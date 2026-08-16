@@ -39,12 +39,12 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   day: {
     eyebrow: 'Focus',
     title: 'Today',
-    supporting: 'Adaptive domain focus for this weekday.'
+    supporting: 'Adaptive focus, due-soon nudges, and pinch flags with shrink moves.'
   },
   week: {
     eyebrow: 'Shape',
     title: 'Week',
-    supporting: 'Due work across the working week.'
+    supporting: 'Spot overload days and shrink them before they land.'
   },
   month: {
     eyebrow: 'Horizon',

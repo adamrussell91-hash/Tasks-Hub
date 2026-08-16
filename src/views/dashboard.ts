@@ -10,8 +10,10 @@ import {
   tasksForDay,
   searchEntities
 } from '@/domain/queries';
+import { detectPinchPoints } from '@/domain/pinch';
 import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
+import { renderPressureStrips } from '@/views/pinch-strip';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -77,6 +79,10 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   );
   canvas.append(intro);
 
+  const pressure = el('div', 'pressure-host');
+  renderPressureStrips(pressure, tasks, today, () => void renderDayView(canvas));
+  canvas.append(pressure);
+
   const form = renderQuickAdd(() => void renderDayView(canvas));
   canvas.append(form);
 
@@ -99,12 +105,29 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
 export async function renderWeekView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
   const tasks = await tasksApi.listTasks();
-  const days = weekDays(new Date());
+  const today = new Date();
+  const days = weekDays(today);
+  const pinchesByKey = new Map(detectPinchPoints(tasks, today, { days: 7 }).map((p) => [p.date_key, p]));
+
   canvas.replaceChildren();
+  const pressure = el('div', 'pressure-host');
+  renderPressureStrips(pressure, tasks, today, () => void renderWeekView(canvas));
+  canvas.append(pressure);
+
   const grid = el('div', 'week-grid');
   for (const day of days) {
-    const col = el('section', 'week-col');
-    col.append(el('h3', 'week-col__title', day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })));
+    const key = toDateKey(day);
+    const pinch = pinchesByKey.get(key);
+    const col = el('section', pinch ? `week-col week-col--${pinch.severity}` : 'week-col');
+    const title = el(
+      'h3',
+      'week-col__title',
+      day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })
+    );
+    col.append(title);
+    if (pinch) {
+      col.append(el('span', 'chip', pinch.severity === 'overloaded' ? 'overloaded' : 'watch'));
+    }
     const dayTasks = tasksForDay(tasks, day);
     if (!dayTasks.length) col.append(el('p', 'empty-state empty-state--compact', '—'));
     for (const task of dayTasks) {
