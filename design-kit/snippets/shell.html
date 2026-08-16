@@ -1,48 +1,37 @@
 <!DOCTYPE html>
-<html lang="en" data-hub="tasks">
+<html lang="en" data-hub="knowledge">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tasks Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hub</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
     />
-    <link rel="stylesheet" href="../tokens/tokens.css" />
-    <link rel="stylesheet" href="../overlays/hub-density.css" />
-    <link rel="stylesheet" href="../chrome/hub-chrome.css" />
+    <link rel="stylesheet" href="../css/tokens.css" />
+    <link rel="stylesheet" href="../css/overlays.css" />
+    <link rel="stylesheet" href="../css/chrome.css" />
   </head>
   <body>
-    <div id="app">
-      <a class="skip-link" href="#hub-main">Skip to content</a>
-      <div class="hub-layout">
-        <nav class="hub-layout__rail" aria-label="Tasks navigation">
-          <div class="hub-layout__rail-brand-row">
-            <p class="hub-layout__rail-brand">Tasks Hub</p>
+    <div class="hub-layout">
+      <aside class="hub-rail">
+        <p class="hub-rail__brand">Knowledge Hub</p>
+        <!-- nav buttons: use .btn.btn--ghost; colour with --on-dark on the rail -->
+      </aside>
+      <div class="hub-canvas">
+        <header class="page-header">
+          <div class="page-header__copy">
+            <p class="page-header__eyebrow">Section</p>
+            <h1 class="page-header__title">Page title</h1>
+            <p class="page-header__supporting">One line of supporting copy.</p>
           </div>
-          <div class="hub-layout__rail-nav">
-            <nav class="primary-nav" aria-label="Primary">
-              <a class="primary-nav__link" href="#/board" aria-current="page">
-                <span class="primary-nav__glyph" aria-hidden="true">▦</span>
-                Board
-              </a>
-              <a class="primary-nav__link" href="#/graph">
-                <span class="primary-nav__glyph" aria-hidden="true">◈</span>
-                Graph
-              </a>
-            </nav>
+          <div class="page-header__actions">
+            <button class="btn btn--secondary" type="button">Secondary</button>
+            <button class="btn btn--primary" type="button">Primary</button>
           </div>
-        </nav>
-        <div class="hub-layout__main" id="hub-main">
-          <div class="hub-layout__context-bar">
-            <h1 class="hub-layout__context-bar-title">Board</h1>
-          </div>
-          <div class="hub-layout__canvas">
-            <!-- View mounts here -->
-          </div>
-        </div>
+        </header>
       </div>
     </div>
   </body>

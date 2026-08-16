@@ -32,10 +32,12 @@ AI chat: Anthropic via Netlify Functions (Teaching pattern). Spec’s `jade-melo
 
 ## Chrome (design-kit)
 
-- `html[data-hub="tasks"]` — Teaching clone (glass, tiles, labeled rail). See `design-kit/TASKS.md`.
-- Board is home; Graph is a rail page (blockers / workstreams).
-- `overlays/hub-density.css` groups `teaching` + `tasks`.
-- Prefer replacing vendored kit with committed `hub-design-kit` when pushed.
+Canonical copy on `main` (`3d8668f`). Load: Inter → `css/tokens.css` → `overlays.css` → `chrome.css` → `sign-in.css` → hub CSS.
+
+- `html[data-hub="tasks"]` — Teaching clone. See `design-kit/TASKS.md`.
+- Board home; Graph rail (blockers / workstreams).
+- Page header: eyebrow → title → supporting → actions.
+- Sign-in from `snippets/sign-in.html`.
 
 ## Framework Library seed
 
@@ -48,7 +50,3 @@ Ship seed JSON in `fixtures/seed.json` (Eat the Frog, timeboxing, Eisenhower). E
 ## Reminders
 
 **In-app first** (due-soon strip on Day/Week views). Push/email deferred.
-
-## Hub chrome
-
-`html[data-hub="tasks"]`, design-kit tokens + chrome, navy **labeled** rail branded **Tasks Hub**. Board home; Graph for blockers/workstreams.

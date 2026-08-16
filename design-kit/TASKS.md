@@ -1,30 +1,61 @@
-# Tasks Hub — chrome & surfaces brief
+# Tasks Hub — agent design notes
 
-Read `AGENTS.md` first. This file is **chrome + surfaces only**, not the data model (see `docs/specs/task-project-manager-hub-spec.md`).
+Read `AGENTS.md` first. This file is the extra brief for **Tasks Hub only**. It does not unlock a new palette, type scale, rail, or button system.
 
-## Hub identity
+Chrome is Teaching. Product surfaces (board, graph, charts) stay in the hub. Data models and persistence are out of scope here.
 
-- Set `html[data-hub="tasks"]`.
-- **Teaching clone** for glass, tiles, and the labeled navy rail (not Life’s icon rail, not Knowledge’s narrow rail).
-- `overlays.css` must group `teaching` and `tasks` on the same density tokens so they cannot drift.
-- No new palette. No viz package lives in the kit — borrow from siblings in app code.
+Canonical kit: `/Users/adamrussell/Projects/hub-design-kit`
 
-## Primary surfaces
+## Shell
+
+```html
+<html lang="en" data-hub="tasks">
+```
+
+Load Inter, then kit `tokens.css`, `overlays.css`, `chrome.css` (new hub), then Tasks Hub CSS.
+
+`data-hub="tasks"` **clones Teaching**: more glass, more tiles, labeled left rail (not Knowledge’s icon rail). Values live in `css/overlays.css` — do not retune them in the hub.
+
+Page header stays kit: uppercase eyebrow → `h1` → optional supporting → actions on the right.
+
+Agent writes: propose → **confirm card** → apply.
+
+## Surfaces
 
 | Surface | Role |
 |---------|------|
-| **Board** | Home. Status columns over the shared Task store. |
-| **Graph** | Rail page. Two modes: **blockers** (`depends_on`) and **workstreams** (project / parent links). |
-| Day / Week / Month / List / Search / Templates | Supporting views over the same data. |
+| **Board** | Home. Task / project / excursion cards as Teaching tiles (glass, `--hub-tile-gap`). |
+| **Graph** | A rail page, not home. Two modes on that page: **blockers** (task nodes, blocked-by edges) and **workstreams** (clustered projects / areas). |
+| **Charts** | Blocks on the board (counts, trends). Not a third chrome system. |
 
-## Borrow, don’t reinvent
+Status colour uses existing tokens only: Wave, Marine, Depth, pastel chips. High Sea is accent / decisive, never body text on orange, never focus rings.
 
-- **Knowledge Hub** — force graph interaction: search, select, preview (`src/archive/forceGraph.ts` pattern).
-- **Life Hub** — `chart-kit` first cuts only when a board/project surface needs ring, columns, or area-line. Do not vendor a new chart library into the kit.
+## Borrow — do not redraw
 
-## Out of scope for the kit
+Copy interaction and rendering from hubs that already have it. Restyle with kit tokens if a copied stylesheet hard-codes hex. Do not invent a Tasks graph library or a new chart look.
 
-- Icon-only rail
-- New colour tokens
-- Orbit / constellation stretch visuals (app phase later)
-- Embedding d3 or chart code inside `design-kit/`
+**Graphs (Knowledge Hub)**
+
+- Force layout: `src/archive/forceGraph.ts`
+- Focus / search / selection colouring: `src/archive/graphFocus.ts`
+- Model shape (adapt nodes/edges; do not keep note/keyword semantics): `src/archive/keywordGraph.ts`
+
+Use Knowledge’s habits: search field, select a node, preview card. Universe / fake-sun modes are Knowledge product, not a Tasks requirement.
+
+Path: `/Users/adamrussell/Documents/Codex/2026-08-13/files-mentioned-by-the-user-2026/outputs/knowledge-hub`
+
+**Charts (Life Hub)**
+
+- Kit root: `js/app/chart-kit/`
+- Prefer **ring**, **columns**, **area-line** for board metrics. Reach for heatmap / pie / sankey / etc. only when the same chart type already exists there and fits the data.
+
+Path: `/Users/adamrussell/Documents/Claude/Projects/life-hub`
+
+Graph and chart CSS belongs in the hub (or a copy of those modules). Do not add viz packages to this design-kit repo in this pass.
+
+## Hard rules
+
+- Do not fork `--rail-width` to the Knowledge icon rail.
+- Do not flatten glass to Knowledge/Life’s `glass-panel` override. Tasks keeps Teaching frost.
+- Do not start a Tasks colour story “because work is serious.”
+- If a size or colour is missing, pick the nearest token.

@@ -4,7 +4,7 @@ Personal task and project manager (Clare DeMind), sibling to Teaching Hub, Life 
 
 **Spec:** [`docs/specs/task-project-manager-hub-spec.md`](docs/specs/task-project-manager-hub-spec.md)  
 **Decisions:** [`docs/DECISIONS.md`](docs/DECISIONS.md)  
-**Design kit:** [`design-kit/AGENTS.md`](design-kit/AGENTS.md) + [`design-kit/TASKS.md`](design-kit/TASKS.md) — `html[data-hub="tasks"]`, Board home, Graph rail.
+**Design kit:** [`design-kit/AGENTS.md`](design-kit/AGENTS.md) + [`design-kit/TASKS.md`](design-kit/TASKS.md) — canonical kit on `main`, Board home, Graph rail.
 
 ## Stack
 

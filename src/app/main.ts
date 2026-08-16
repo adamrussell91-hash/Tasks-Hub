@@ -1,8 +1,15 @@
+import '../../design-kit/css/tokens.css';
+import '../../design-kit/css/overlays.css';
+import '../../design-kit/css/chrome.css';
+import '../../design-kit/css/sign-in.css';
+import '../styles/hub.css';
+import '../styles/views.css';
+
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
   parseHashRoute,
-  renderContextBar,
   renderHubShell,
+  renderPageHeader,
   renderPrimaryNav,
   type HubViewId
 } from '@/shell/shell';
@@ -18,16 +25,52 @@ import {
   renderProjectsView
 } from '@/views/dashboard';
 
-const TITLES: Record<HubViewId, string> = {
-  board: 'Board',
-  graph: 'Graph',
-  day: 'Today',
-  week: 'Week',
-  month: 'Month',
-  list: 'Backlog',
-  search: 'Search',
-  templates: 'Templates',
-  projects: 'Projects'
+const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
+  board: {
+    eyebrow: 'Home',
+    title: 'Board',
+    supporting: 'Tasks and projects as Teaching-density tiles.'
+  },
+  graph: {
+    eyebrow: 'Structure',
+    title: 'Graph',
+    supporting: 'Blockers and workstreams — Knowledge-style search, select, preview.'
+  },
+  day: {
+    eyebrow: 'Focus',
+    title: 'Today',
+    supporting: 'Adaptive domain focus for this weekday.'
+  },
+  week: {
+    eyebrow: 'Shape',
+    title: 'Week',
+    supporting: 'Due work across the working week.'
+  },
+  month: {
+    eyebrow: 'Horizon',
+    title: 'Month',
+    supporting: 'Milestones and excursion key dates.'
+  },
+  list: {
+    eyebrow: 'Inbox',
+    title: 'Backlog',
+    supporting: 'Open tasks without a due date.'
+  },
+  search: {
+    eyebrow: 'Find',
+    title: 'Search',
+    supporting: 'Titles and descriptions across tasks and projects.'
+  },
+  templates: {
+    eyebrow: 'Reuse',
+    title: 'Templates',
+    supporting: 'Start from a template or grow the library from real work.'
+  },
+  projects: {
+    eyebrow: 'Arcs',
+    title: 'Projects',
+    supporting: 'Programs, excursions, and standard projects.'
+  }
 };
 
 async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<void> {
@@ -64,7 +107,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
   const paint = async () => {
     const view = parseHashRoute();
     renderPrimaryNav(shell.railNav, view);
-    renderContextBar(shell, TITLES[view]);
+    renderPageHeader(shell, HEADERS[view]);
     await renderActiveView(view, shell.canvas);
   };
 

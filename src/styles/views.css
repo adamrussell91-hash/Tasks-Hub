@@ -52,11 +52,16 @@
 }
 
 .task-row {
-  background: var(--glass);
-  backdrop-filter: blur(22px) saturate(115%);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  border-radius: var(--radius-md);
-  box-shadow: var(--elev-3);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--hub-glass-fill) 100%, white),
+    color-mix(in srgb, var(--hub-glass-fill) 75%, transparent)
+  );
+  backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
+  -webkit-backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: var(--hub-tile-radius);
+  box-shadow: var(--hub-elev-card);
   padding: var(--space-4) var(--space-5);
 }
 
@@ -213,11 +218,17 @@
 }
 
 .board-col {
-  background: var(--glass);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  /* Teaching-density glass tile */
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--hub-glass-fill) 100%, white),
+    color-mix(in srgb, var(--hub-glass-fill) 75%, transparent)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.92);
   border-radius: var(--radius-lg);
-  box-shadow: var(--elev-3);
-  backdrop-filter: blur(22px) saturate(115%);
+  box-shadow: var(--hub-elev-card);
+  backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
+  -webkit-backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
   padding: var(--space-4);
   min-height: 16rem;
 }

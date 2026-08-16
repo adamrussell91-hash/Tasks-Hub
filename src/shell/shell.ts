@@ -2,9 +2,9 @@ export interface HubShellRefs {
   root: HTMLElement;
   rail: HTMLElement;
   railNav: HTMLElement;
-  main: HTMLElement;
-  contextBar: HTMLElement;
   canvas: HTMLElement;
+  pageHeader: HTMLElement;
+  headerActions: HTMLElement;
   logoutButton: HTMLButtonElement | null;
 }
 
@@ -44,28 +44,29 @@ export function createSkipLink(targetId: string): HTMLAnchorElement {
   return a;
 }
 
+/** Shell from design-kit/snippets/shell.html — Tasks brand + labeled rail. */
 export function renderHubShell(root: HTMLElement, options: HubShellOptions = {}): HubShellRefs {
   root.replaceChildren();
 
   const layout = document.createElement('div');
   layout.className = 'hub-layout';
 
-  const rail = document.createElement('nav');
-  rail.className = 'hub-layout__rail';
+  const rail = document.createElement('aside');
+  rail.className = 'hub-rail';
   rail.setAttribute('aria-label', 'Tasks navigation');
 
-  const brandRow = document.createElement('div');
-  brandRow.className = 'hub-layout__rail-brand-row';
+  const top = document.createElement('div');
+  top.className = 'hub-rail__top';
 
   const brand = document.createElement('p');
-  brand.className = 'hub-layout__rail-brand';
+  brand.className = 'hub-rail__brand';
   brand.textContent = 'Tasks Hub';
 
   let logoutButton: HTMLButtonElement | null = null;
   if (options.onLogout) {
     logoutButton = document.createElement('button');
     logoutButton.type = 'button';
-    logoutButton.className = 'hub-layout__logout';
+    logoutButton.className = 'hub-rail__logout';
     logoutButton.textContent = 'Sign out';
     logoutButton.addEventListener('click', () => {
       if (!logoutButton) return;
@@ -74,31 +75,33 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
         if (logoutButton) logoutButton.disabled = false;
       });
     });
-    brandRow.append(brand, logoutButton);
+    top.append(brand, logoutButton);
   } else {
-    brandRow.append(brand);
+    top.append(brand);
   }
 
   const railNav = document.createElement('div');
-  railNav.className = 'hub-layout__rail-nav';
+  railNav.className = 'hub-rail__nav';
+  rail.append(top, railNav);
 
-  rail.append(brandRow, railNav);
+  const canvasWrap = document.createElement('div');
+  canvasWrap.className = 'hub-canvas';
+  canvasWrap.id = 'hub-main';
 
-  const main = document.createElement('div');
-  main.className = 'hub-layout__main';
-  main.id = 'hub-main';
+  const pageHeader = document.createElement('header');
+  pageHeader.className = 'page-header';
 
-  const contextBar = document.createElement('div');
-  contextBar.className = 'hub-layout__context-bar';
+  const headerActions = document.createElement('div');
+  headerActions.className = 'page-header__actions';
 
   const canvas = document.createElement('div');
-  canvas.className = 'hub-layout__canvas';
+  canvas.className = 'hub-canvas__body';
 
-  main.append(contextBar, canvas);
-  layout.append(rail, main);
+  canvasWrap.append(pageHeader, canvas);
+  layout.append(rail, canvasWrap);
   root.append(createSkipLink('hub-main'), layout);
 
-  return { root, rail, railNav, main, contextBar, canvas, logoutButton };
+  return { root, rail, railNav, canvas, pageHeader, headerActions, logoutButton };
 }
 
 export function renderPrimaryNav(railNav: HTMLElement, active: HubViewId): void {
@@ -122,14 +125,41 @@ export function renderPrimaryNav(railNav: HTMLElement, active: HubViewId): void 
   railNav.append(nav);
 }
 
-export function renderContextBar(refs: HubShellRefs, title: string, trailing?: HTMLElement): void {
-  refs.contextBar.hidden = false;
-  refs.contextBar.replaceChildren();
-  const h1 = document.createElement('h1');
-  h1.className = 'hub-layout__context-bar-title';
-  h1.textContent = title;
-  refs.contextBar.append(h1);
-  if (trailing) refs.contextBar.append(trailing);
+export interface PageHeaderConfig {
+  eyebrow: string;
+  title: string;
+  supporting?: string;
+  actions?: HTMLElement | null;
+}
+
+/** Kit page header: uppercase eyebrow → h1 → optional supporting → actions. */
+export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): void {
+  refs.pageHeader.replaceChildren();
+  const copy = document.createElement('div');
+  copy.className = 'page-header__copy';
+
+  const eyebrow = document.createElement('p');
+  eyebrow.className = 'page-header__eyebrow';
+  eyebrow.textContent = config.eyebrow;
+
+  const title = document.createElement('h1');
+  title.className = 'page-header__title';
+  title.textContent = config.title;
+
+  copy.append(eyebrow, title);
+  if (config.supporting) {
+    const supporting = document.createElement('p');
+    supporting.className = 'page-header__supporting';
+    supporting.textContent = config.supporting;
+    copy.append(supporting);
+  }
+
+  refs.pageHeader.append(copy);
+  if (config.actions) {
+    refs.headerActions.replaceChildren();
+    refs.headerActions.append(config.actions);
+    refs.pageHeader.append(refs.headerActions);
+  }
 }
 
 export function parseHashRoute(): HubViewId {
