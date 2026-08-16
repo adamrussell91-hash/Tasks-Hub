@@ -21,7 +21,8 @@ export type HubViewId =
   | 'list'
   | 'search'
   | 'templates'
-  | 'projects';
+  | 'projects'
+  | 'corey';
 
 /** Labeled Teaching-style rail — Board is home per design-kit/TASKS.md */
 const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> = [
@@ -32,6 +33,7 @@ const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> 
   { id: 'month', label: 'Month', href: '#/month', glyph: '▣' },
   { id: 'list', label: 'Backlog', href: '#/list', glyph: '☰' },
   { id: 'projects', label: 'Projects', href: '#/projects', glyph: '◇' },
+  { id: 'corey', label: 'Corey', href: '#/corey', glyph: '◐' },
   { id: 'templates', label: 'Templates', href: '#/templates', glyph: '▥' },
   { id: 'search', label: 'Search', href: '#/search', glyph: '⌕' }
 ];
@@ -174,7 +176,16 @@ export function parseHashRoute(): HubViewId {
     'list',
     'search',
     'templates',
-    'projects'
+    'projects',
+    'corey'
   ];
   return known.includes(id) ? id : 'board';
+}
+
+/** Public Corey share: `#/capacity/<token>` */
+export function parseCapacityShareToken(): string | null {
+  const hash = location.hash.replace(/^#\/?/, '');
+  const parts = hash.split('/');
+  if (parts[0] === 'capacity' && parts[1]) return parts[1];
+  return null;
 }

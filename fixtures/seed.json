@@ -144,6 +144,27 @@
       "student_group_reference": null,
       "generated_admin_tasks": [],
       "drafted_documents": null
+    },
+    {
+      "schema_version": 1,
+      "id": "proj_close_demo",
+      "title": "Term 2 marking wrap",
+      "description": "Seed project ready for closure (all tasks done, slipped past baseline).",
+      "arc_summary": "Finished — due for retrospective.",
+      "type": "standard",
+      "milestones": [],
+      "status": "active",
+      "baseline_end_date": "2026-07-15",
+      "current_end_date": "2026-08-01",
+      "review_summary": null,
+      "stall_flagged_at": null,
+      "created_at": "2026-06-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z",
+      "competition_or_event_type": null,
+      "key_dates": null,
+      "student_group_reference": null,
+      "generated_admin_tasks": [],
+      "drafted_documents": null
     }
   ],
   "tasks": [
@@ -247,6 +268,29 @@
         "teaching",
         "publish"
       ],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_close_done",
+      "title": "Finalise Term 2 marks",
+      "description": "Done task under closure demo project.",
+      "domain": "teaching",
+      "framework_used": null,
+      "estimated_duration": 120,
+      "actual_duration": 140,
+      "due_date": "2026-08-01",
+      "created_at": "2026-07-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z",
+      "completed_at": "2026-08-01T00:00:00.000Z",
+      "status": "done",
+      "priority": "high",
+      "parent_project_id": "proj_close_demo",
+      "parent_task_id": null,
+      "depends_on": [],
+      "tags": ["marking"],
       "recurrence_rule": null,
       "attachments": [],
       "source": "manual"

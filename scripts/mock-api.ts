@@ -67,6 +67,16 @@ export function createMockApi({ seed }: MockApiOptions) {
       return json(200, { ok: true, data: { loggedOut: true } });
     }
 
+    // Public Corey capacity — token only, no session
+    if (path === '/api/capacity' && method === 'GET' && url.searchParams.get('token')) {
+      const sPublic = store();
+      const view = await sPublic.getPublicCapacityByToken(url.searchParams.get('token')!);
+      if (!view) {
+        return json(404, { ok: false, error: { code: 'not_found', message: 'Unknown share' } });
+      }
+      return json(200, { ok: true, data: view });
+    }
+
     if (!authenticated && path.startsWith('/api/')) {
       return json(401, { ok: false, error: { code: 'unauthenticated', message: 'Sign in required' } });
     }
@@ -159,6 +169,52 @@ export function createMockApi({ seed }: MockApiOptions) {
       const q = url.searchParams.get('q') ?? '';
       const [tasks, projects] = await Promise.all([s.listTasks(), s.listProjects()]);
       return json(200, { ok: true, data: searchEntities(tasks, projects, q) });
+    }
+
+    if (path === '/api/capacity') {
+      if (method === 'GET') {
+        return json(200, {
+          ok: true,
+          data: {
+            snapshot: await s.getCapacitySnapshot(),
+            share: await s.getCapacityShare()
+          }
+        });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'ensure_share') {
+          return json(200, { ok: true, data: { share: await s.ensureCapacityShare() } });
+        }
+        if (b.action === 'rotate_share') {
+          return json(200, { ok: true, data: { share: await s.rotateCapacityShare() } });
+        }
+      }
+    }
+
+    if (path === '/api/reviews') {
+      if (method === 'GET') {
+        const projectId = url.searchParams.get('project_id');
+        if (projectId) {
+          return json(200, {
+            ok: true,
+            data: { variance: await s.getProjectVariance(projectId) }
+          });
+        }
+        return json(200, { ok: true, data: { reviews: await s.listReviewLogs() } });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'close') {
+          return json(200, {
+            ok: true,
+            data: await s.closeProject({
+              project_id: String(b.project_id),
+              reason: String(b.reason ?? '')
+            })
+          });
+        }
+      }
     }
 
     return json(404, { ok: false, error: { code: 'not_found', message: `No mock route ${method} ${path}` } });

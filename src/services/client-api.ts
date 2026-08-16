@@ -44,6 +44,51 @@ export const tasksApi = {
       overrides
     }),
 
+  getCapacity: () =>
+    apiGet<{
+      snapshot: import('@/domain/capacity').CapacitySnapshot;
+      share: import('@/schemas/capacity').CapacityShare | null;
+    }>('/api/capacity'),
+
+  ensureCapacityShare: () =>
+    apiPost<{ share: import('@/schemas/capacity').CapacityShare }>('/api/capacity', {
+      action: 'ensure_share'
+    }),
+
+  rotateCapacityShare: () =>
+    apiPost<{ share: import('@/schemas/capacity').CapacityShare }>('/api/capacity', {
+      action: 'rotate_share'
+    }),
+
+  getPublicCapacity: (token: string) =>
+    apiGet<{
+      generated_at: string;
+      headlines: string[];
+      overall: import('@/domain/capacity').CapacityLevel;
+      days: Array<{
+        date_key: string;
+        weekday: string;
+        level: import('@/domain/capacity').CapacityLevel;
+      }>;
+    }>(`/api/capacity?token=${encodeURIComponent(token)}`),
+
+  listReviewLogs: () =>
+    apiGet<{ reviews: import('@/schemas/templates').ReviewLog[] }>('/api/reviews').then(
+      (r) => r.reviews
+    ),
+
+  getProjectVariance: (project_id: string) =>
+    apiGet<{ variance: import('@/domain/closure').ProjectVariance }>(
+      `/api/reviews?project_id=${encodeURIComponent(project_id)}`
+    ).then((r) => r.variance),
+
+  closeProject: (project_id: string, reason: string) =>
+    apiPost<{
+      project: Project;
+      review: import('@/schemas/templates').ReviewLog;
+      variance: import('@/domain/closure').ProjectVariance;
+    }>('/api/reviews', { action: 'close', project_id, reason }),
+
   search: (q: string) =>
     apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`)
 };

@@ -5,8 +5,12 @@ import {
   ExcursionTemplateSchema,
   TaskTemplateSchema,
   ProjectTemplateSchema,
-  AgentActionLogSchema
+  AgentActionLogSchema,
+  ReviewLogSchema
 } from '@/schemas/templates';
+import { CapacityShareSchema } from '@/schemas/capacity';
+import { buildCapacitySnapshot, toCoreyPublicView } from '@/domain/capacity';
+import { computeProjectVariance, deriveProjectEndDate } from '@/domain/closure';
 import type { IndexDoc, SeedData, TasksStore } from './types';
 
 export interface KvAdapter {
@@ -29,6 +33,9 @@ export interface KeyBuilders {
   projectTemplateKey: (id: string) => string;
   projectTemplatesIndexKey: () => string;
   agentActionLogKey: (id: string) => string;
+  reviewLogKey: (id: string) => string;
+  reviewLogsIndexKey: () => string;
+  capacityShareKey: () => string;
   metaSeededKey: () => string;
 }
 
@@ -305,6 +312,118 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         tags: overrides.tags ?? parsed.default_fields.tags ?? [],
         ...overrides
       });
+    },
+
+    async getCapacitySnapshot(now = new Date()) {
+      const tasks = await this.listTasks();
+      return buildCapacitySnapshot(tasks, now, 14);
+    },
+
+    async getCapacityShare() {
+      const raw = await kv.getJSON(keys.capacityShareKey());
+      return raw ? CapacityShareSchema.parse(raw) : null;
+    },
+
+    async ensureCapacityShare() {
+      const existing = await this.getCapacityShare();
+      if (existing?.enabled) return existing;
+      const stamp = nowIso();
+      const share = CapacityShareSchema.parse({
+        schema_version: 1,
+        id: newId('cap'),
+        token: crypto.randomUUID().replace(/-/g, ''),
+        enabled: true,
+        created_at: stamp,
+        rotated_at: null
+      });
+      await kv.setJSON(keys.capacityShareKey(), share);
+      return share;
+    },
+
+    async rotateCapacityShare() {
+      const existing = await this.getCapacityShare();
+      const stamp = nowIso();
+      const share = CapacityShareSchema.parse({
+        schema_version: 1,
+        id: existing?.id ?? newId('cap'),
+        token: crypto.randomUUID().replace(/-/g, ''),
+        enabled: true,
+        created_at: existing?.created_at ?? stamp,
+        rotated_at: stamp
+      });
+      await kv.setJSON(keys.capacityShareKey(), share);
+      return share;
+    },
+
+    async getPublicCapacityByToken(token) {
+      const share = await this.getCapacityShare();
+      if (!share || !share.enabled || share.token !== token) return null;
+      const snapshot = await this.getCapacitySnapshot();
+      return toCoreyPublicView(snapshot);
+    },
+
+    async listReviewLogs() {
+      return listByIndex(kv, keys.reviewLogsIndexKey(), keys.reviewLogKey, (raw) =>
+        ReviewLogSchema.parse(raw)
+      );
+    },
+
+    async getProjectVariance(projectId) {
+      const project = await this.getProject(projectId);
+      if (!project) throw new Error(`Project not found: ${projectId}`);
+      const tasks = await this.listTasks();
+      return computeProjectVariance(project, tasks);
+    },
+
+    async closeProject(input) {
+      const reason = input.reason.trim();
+      if (!reason) throw new Error('A short retrospective is required');
+      const existing = await this.getProject(input.project_id);
+      if (!existing) throw new Error(`Project not found: ${input.project_id}`);
+      if (existing.status === 'archived_dead') throw new Error('Project already closed');
+
+      const tasks = await this.listTasks();
+      const derived = deriveProjectEndDate(existing, tasks);
+      const variance = computeProjectVariance(
+        { ...existing, current_end_date: derived },
+        tasks
+      );
+
+      const project = await this.updateProject(existing.id, {
+        status: 'archived_dead',
+        current_end_date: derived,
+        review_summary: reason
+      });
+
+      const review = ReviewLogSchema.parse({
+        schema_version: 1,
+        id: newId('rev'),
+        project_id: project.id,
+        outcome: 'closed',
+        reason,
+        baseline_end_date: project.baseline_end_date,
+        current_end_date: project.current_end_date,
+        slip_days: variance.slip_days,
+        created_at: nowIso()
+      });
+      await kv.setJSON(keys.reviewLogKey(review.id), review);
+      const ids = await readIndex(kv, keys.reviewLogsIndexKey());
+      ids.push(review.id);
+      await writeIndex(kv, keys.reviewLogsIndexKey(), ids);
+
+      const log = AgentActionLogSchema.parse({
+        schema_version: 1,
+        id: newId('aal'),
+        agent: 'Clare DeMind',
+        action: 'update',
+        entity_type: 'project',
+        entity_id: project.id,
+        reason: `Closed: ${reason}`,
+        created_at: nowIso()
+      });
+      await kv.setJSON(keys.agentActionLogKey(log.id), log);
+
+      return { project, review, variance };
     }
   };
 }

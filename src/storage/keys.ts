@@ -50,6 +50,14 @@ export function reviewLogKey(id: string): string {
   return `review_logs/${id}`;
 }
 
+export function reviewLogsIndexKey(): string {
+  return 'review_logs/_index';
+}
+
+export function capacityShareKey(): string {
+  return 'meta/capacity_share';
+}
+
 export function agentActionLogKey(id: string): string {
   return `agent_actions/${id}`;
 }

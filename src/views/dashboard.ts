@@ -10,6 +10,7 @@ import {
   tasksForDay,
   searchEntities
 } from '@/domain/queries';
+import { computeProjectVariance, formatSlip } from '@/domain/closure';
 import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
 
@@ -174,27 +175,163 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const projects = await tasksApi.listProjects();
+  const [projects, tasks, reviews] = await Promise.all([
+    tasksApi.listProjects(),
+    tasksApi.listTasks(),
+    tasksApi.listReviewLogs().catch(() => [])
+  ]);
+
   canvas.replaceChildren();
-  canvas.append(el('p', 'view-lede', 'Programs, excursions, and standard projects.'));
+  canvas.append(
+    el(
+      'p',
+      'view-lede',
+      'Programs and arcs. Close finished work with a short retrospective — baseline vs current end date is logged.'
+    )
+  );
+
+  const confirmHost = el('div', 'closure-confirm');
+  const live = projects.filter((p) => p.status !== 'archived_dead');
+  const closed = projects.filter((p) => p.status === 'archived_dead');
+
   const stack = el('div', 'task-stack');
-  for (const project of projects) {
-    const row = el('article', 'task-row');
-    row.append(
-      el('h3', 'task-row__title', project.title),
-      el('p', 'task-row__desc', project.arc_summary || project.description),
-      el('div', 'task-row__meta')
+  for (const project of live) {
+    stack.append(
+      await renderProjectClosureCard(project, tasks, confirmHost, () => void renderProjectsView(canvas))
     );
-    const meta = row.querySelector('.task-row__meta')!;
-    meta.append(
-      el('span', 'chip', project.type),
-      el('span', 'chip chip--muted', project.status),
-      el('span', 'chip chip--muted', `${project.milestones.length} milestones`)
-    );
-    stack.append(row);
   }
-  if (!projects.length) canvas.append(el('p', 'empty-state', 'No projects yet.'));
-  else canvas.append(stack);
+  if (!live.length) stack.append(el('p', 'empty-state', 'No open projects.'));
+  canvas.append(stack, confirmHost);
+
+  if (closed.length) {
+    canvas.append(el('h2', 'section-title', 'Closed'));
+    const dead = el('div', 'task-stack');
+    for (const project of closed) {
+      const row = el('article', 'task-row');
+      row.append(
+        el('h3', 'task-row__title', project.title),
+        el('p', 'task-row__desc', project.review_summary || project.arc_summary || ''),
+        el('span', 'chip chip--muted', 'closed')
+      );
+      dead.append(row);
+    }
+    canvas.append(dead);
+  }
+
+  const closedReviews = reviews.filter((r) => r.outcome === 'closed');
+  if (closedReviews.length) {
+    canvas.append(el('h2', 'section-title', 'Closure log'));
+    const logStack = el('div', 'task-stack');
+    for (const review of [...closedReviews].reverse().slice(0, 8)) {
+      const proj = projects.find((p) => p.id === review.project_id);
+      const slip =
+        review.slip_days === null || review.slip_days === undefined
+          ? ''
+          : review.slip_days === 0
+            ? ' · on baseline'
+            : review.slip_days > 0
+              ? ` · +${review.slip_days}d vs baseline`
+              : ` · ${review.slip_days}d vs baseline`;
+      const row = el('article', 'task-row');
+      row.append(
+        el('h3', 'task-row__title', proj?.title ?? review.project_id),
+        el('p', 'task-row__desc', `${review.reason}${slip}`)
+      );
+      logStack.append(row);
+    }
+    canvas.append(logStack);
+  }
+}
+
+async function renderProjectClosureCard(
+  project: Project,
+  tasks: Task[],
+  confirmHost: HTMLElement,
+  onDone: () => void
+): Promise<HTMLElement> {
+  const variance = computeProjectVariance(project, tasks);
+  const row = el('article', variance.ready_to_close ? 'task-row closure-card' : 'task-row');
+  row.append(
+    el('h3', 'task-row__title', project.title),
+    el('p', 'task-row__desc', project.arc_summary || project.description),
+    el('div', 'task-row__meta')
+  );
+  const meta = row.querySelector('.task-row__meta')!;
+  meta.append(
+    el('span', 'chip', project.type),
+    el('span', 'chip chip--muted', project.status),
+    el('span', 'chip chip--muted', formatSlip(variance.slip_days)),
+    el(
+      'span',
+      'chip chip--muted',
+      `baseline ${variance.baseline_end_date?.slice(0, 10) ?? '—'} → now ${variance.derived_end_date?.slice(0, 10) ?? '—'}`
+    )
+  );
+
+  if (variance.ready_to_close) {
+    const actions = el('div', 'task-row__actions');
+    const closeBtn = el('button', 'btn btn--primary', 'Close project');
+    closeBtn.type = 'button';
+    closeBtn.addEventListener('click', () => {
+      showCloseConfirm(confirmHost, project, variance.slip_days, onDone);
+    });
+    actions.append(closeBtn);
+    row.append(actions);
+  }
+  return row;
+}
+
+function showCloseConfirm(
+  host: HTMLElement,
+  project: Project,
+  slipDays: number | null,
+  onDone: () => void
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm closure');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'closure-confirm__title', `Close ${project.title}`));
+  const reason = el('input', 'sign-in__input') as HTMLInputElement;
+  reason.placeholder = 'Short retrospective (required)';
+  reason.setAttribute('aria-label', 'Retrospective');
+  const slipText =
+    slipDays === null
+      ? 'No baseline comparison.'
+      : slipDays === 0
+        ? 'Landed on baseline.'
+        : slipDays > 0
+          ? `${slipDays} days past baseline.`
+          : `${Math.abs(slipDays)} days ahead of baseline.`;
+  card.append(el('p', 'page-header__supporting', `${slipText} Do not apply until Confirm.`), reason);
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    const text = reason.value.trim();
+    if (!text) {
+      host.append(el('p', 'empty-state', 'Add a retrospective first.'));
+      return;
+    }
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await tasksApi.closeProject(project.id, text);
+      host.replaceChildren(el('p', 'canvas-status', 'Project closed.'));
+      onDone();
+    } catch (err) {
+      host.replaceChildren(
+        el('p', 'empty-state', err instanceof Error ? err.message : 'Close failed')
+      );
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
 }
 
 export async function renderSearchView(canvas: HTMLElement): Promise<void> {

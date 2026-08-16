@@ -64,8 +64,12 @@ export const ReviewLogSchema = z.object({
   schema_version: schemaVersion,
   id: z.string().min(1),
   project_id: z.string(),
-  outcome: z.enum(['revived', 'frankensteined', 'buried']),
+  outcome: z.enum(['revived', 'frankensteined', 'buried', 'closed']),
   reason: z.string(),
+  /** Planned-vs-actual snapshot at closure (nullable for stall outcomes). */
+  baseline_end_date: z.string().nullable().default(null),
+  current_end_date: z.string().nullable().default(null),
+  slip_days: z.number().nullable().default(null),
   created_at: z.string()
 });
 

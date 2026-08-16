@@ -7,6 +7,7 @@ import '../styles/views.css';
 
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
+  parseCapacityShareToken,
   parseHashRoute,
   renderHubShell,
   renderPageHeader,
@@ -15,6 +16,7 @@ import {
 } from '@/shell/shell';
 import { renderBoardView } from '@/views/board';
 import { renderGraphView } from '@/views/graph';
+import { renderCoreyView, renderPublicCapacityView } from '@/views/corey';
 import {
   renderDayView,
   renderWeekView,
@@ -69,7 +71,12 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   projects: {
     eyebrow: 'Arcs',
     title: 'Projects',
-    supporting: 'Programs, excursions, and standard projects.'
+    supporting: 'Close with planned-vs-actual, or keep arcs moving.'
+  },
+  corey: {
+    eyebrow: 'Share',
+    title: 'Corey capacity',
+    supporting: 'Read-only availability — no task titles on the public link.'
   }
 };
 
@@ -93,7 +100,21 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderTemplatesView(canvas);
     case 'projects':
       return renderProjectsView(canvas);
+    case 'corey':
+      return renderCoreyView(canvas);
   }
+}
+
+async function bootPublicCapacity(root: HTMLElement, token: string): Promise<void> {
+  root.replaceChildren();
+  const shell = renderHubShell(root, {});
+  shell.logoutButton?.remove();
+  renderPageHeader(shell, {
+    eyebrow: 'Shared',
+    title: 'Capacity',
+    supporting: 'Adam’s rough availability — nothing task-level.'
+  });
+  await renderPublicCapacityView(shell.canvas, token);
 }
 
 async function bootApp(root: HTMLElement): Promise<void> {
@@ -105,6 +126,11 @@ async function bootApp(root: HTMLElement): Promise<void> {
   });
 
   const paint = async () => {
+    const share = parseCapacityShareToken();
+    if (share) {
+      await bootPublicCapacity(root, share);
+      return;
+    }
     const view = parseHashRoute();
     renderPrimaryNav(shell.railNav, view);
     renderPageHeader(shell, HEADERS[view]);
@@ -121,6 +147,15 @@ async function bootApp(root: HTMLElement): Promise<void> {
 
 async function boot(root: HTMLElement): Promise<void> {
   root.replaceChildren();
+  const share = parseCapacityShareToken();
+  if (share) {
+    await bootPublicCapacity(root, share);
+    window.addEventListener('hashchange', () => {
+      void boot(root);
+    });
+    return;
+  }
+
   try {
     const session = await fetchSession();
     if (!session.authenticated) {

@@ -4,8 +4,12 @@ import type {
   FrameworkEntry,
   ExcursionTemplate,
   TaskTemplate,
-  ProjectTemplate
+  ProjectTemplate,
+  ReviewLog
 } from '@/schemas/templates';
+import type { CapacityShare } from '@/schemas/capacity';
+import type { CapacitySnapshot } from '@/domain/capacity';
+import type { ProjectVariance } from '@/domain/closure';
 
 export interface SeedData {
   tasks: Task[];
@@ -41,4 +45,26 @@ export interface TasksStore {
   saveTaskAsTemplate(taskId: string, name: string): Promise<TaskTemplate>;
   saveProjectAsTemplate(projectId: string, name: string): Promise<ProjectTemplate>;
   createTaskFromTemplate(templateId: string, overrides?: Partial<Task>): Promise<Task>;
+
+  getCapacitySnapshot(now?: Date): Promise<CapacitySnapshot>;
+  ensureCapacityShare(): Promise<CapacityShare>;
+  rotateCapacityShare(): Promise<CapacityShare>;
+  getCapacityShare(): Promise<CapacityShare | null>;
+  getPublicCapacityByToken(token: string): Promise<{
+    generated_at: string;
+    headlines: string[];
+    overall: import('@/domain/capacity').CapacityLevel;
+    days: Array<{
+      date_key: string;
+      weekday: string;
+      level: import('@/domain/capacity').CapacityLevel;
+    }>;
+  } | null>;
+
+  listReviewLogs(): Promise<ReviewLog[]>;
+  getProjectVariance(projectId: string): Promise<ProjectVariance>;
+  closeProject(input: {
+    project_id: string;
+    reason: string;
+  }): Promise<{ project: Project; review: ReviewLog; variance: ProjectVariance }>;
 }
