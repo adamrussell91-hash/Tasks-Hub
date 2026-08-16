@@ -42,10 +42,14 @@ NETLIFY_SITE_ID=… NETLIFY_AUTH_TOKEN=… npm run seed:blobs
 
 ### Production deploy note
 
-GitHub Pages deploys from `main` automatically (SPA is live). **Netlify Functions** (`artasks-hub` / `tasks-api`) need either:
+GitHub Pages deploys from `main` automatically (SPA is live). **Netlify Functions** (`artasks-hub` / `tasks-api`, site id `c6696619-f478-4ac1-b0cd-1e4cfd3101df`) need a fresh production deploy of `main`.
 
-1. Repo secrets `NETLIFY_AUTH_TOKEN` + `NETLIFY_SITE_ID` (workflow `.github/workflows/netlify.yml`), or  
-2. A production deploy of `main` from the Netlify UI for site `artasks-hub`.
+Netlify’s build command is intentionally a no-op (API-only publish dir); a bad `npm run build` / `tsc` in `seed.mts` was what made earlier UI deploys fail with exit code 2 — that is fixed on `main`.
+
+To redeploy:
+
+1. **Netlify UI** — trigger a production deploy of `main` for `artasks-hub`, then sign in and `POST /api/seed` (or wait for auto-seed on first store touch), or  
+2. **GitHub Actions** — add repo secret `NETLIFY_AUTH_TOKEN` (Netlify → User settings → Applications → Personal access tokens) and re-run **Deploy Netlify Functions**. Site id is already defaulted in the workflow.
 
 Until Functions redeploy, new routes (`/api/clare`, `/api/stall`, …) 404 and the Blobs store stays empty.
 

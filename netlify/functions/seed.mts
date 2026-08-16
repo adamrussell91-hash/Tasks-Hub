@@ -37,7 +37,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   if (request.method !== 'POST') {
-    return withCors(methodNotAllowed(['POST', 'OPTIONS']), request, env);
+    return withCors(methodNotAllowed('POST, OPTIONS'), request, env);
   }
 
   try {

@@ -1,9 +1,13 @@
 [build]
+  # API-only site — do not run Vite/tsc (that is GitHub Pages). A failing
+  # `npm run build` was aborting Netlify deploys with exit code 2.
+  command = "echo 'Tasks Hub API: publish netlify/public + bundle functions'"
   publish = "netlify/public"
   functions = "netlify/functions"
 
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "SITE_ORIGIN"
+  NODE_VERSION = "22"
 
 [functions]
   node_bundler = "esbuild"
