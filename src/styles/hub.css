@@ -19,29 +19,6 @@
   transform: none;
 }
 
-.hub-rail__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.hub-rail__logout {
-  border: 1px solid var(--on-dark-line);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--on-dark-muted);
-  font: inherit;
-  font-size: var(--text-xs);
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-}
-
-.hub-rail__logout:hover:not(:disabled) {
-  color: var(--on-dark);
-  background: var(--on-dark-hover);
-}
-
 .hub-rail__nav {
   display: flex;
   flex-direction: column;
