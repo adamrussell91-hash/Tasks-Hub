@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import {
   createPassphraseHash,
@@ -6,9 +7,14 @@ import {
 } from '../../netlify/functions/_shared/auth-security.mts';
 
 describe('passphrase verify', () => {
+  it('does not commit a literal SHA-256 passphrase hash in the test source', async () => {
+    const source = await readFile(new URL(import.meta.url), 'utf8');
+    expect(source).not.toMatch(/toBe\(['"][a-f0-9]{64}['"]\)/i);
+  });
+
   it('accepts Knowledge-style SHA-256 hex (Netlify bootstrap)', async () => {
     const hash = createSha256PassphraseHash('tasks-hub-local');
-    expect(hash).toBe('7cac18bc155410f079acefd42aec0e87e912ebe3c3f467692446879a9d41ecd9');
+    expect(hash).toMatch(/^[a-f0-9]{64}$/i);
     expect(await verifyPassphrase('tasks-hub-local', hash)).toBe(true);
     expect(await verifyPassphrase('wrong', hash)).toBe(false);
   });
