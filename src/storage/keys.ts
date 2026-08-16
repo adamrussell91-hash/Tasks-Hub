@@ -50,6 +50,19 @@ export function reviewLogKey(id: string): string {
   return `review_logs/${id}`;
 }
 
+export function stressFlagKey(id: string): string {
+  return `stress_flags/${id}`;
+}
+
+export function stressFlagsIndexKey(): string {
+  return 'stress_flags/_index';
+}
+
+/** Per-agent inbox of StressFlag ids (write-on-create; consumers poll). */
+export function agentInboxKey(agentSlug: string): string {
+  return `agent_inbox/${agentSlug}`;
+}
+
 export function agentActionLogKey(id: string): string {
   return `agent_actions/${id}`;
 }

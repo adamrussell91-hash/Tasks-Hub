@@ -6,6 +6,7 @@ import type {
   TaskTemplate,
   ProjectTemplate
 } from '@/schemas/templates';
+import type { StressFlag } from '@/schemas/stress';
 
 export interface SeedData {
   tasks: Task[];
@@ -41,4 +42,18 @@ export interface TasksStore {
   saveTaskAsTemplate(taskId: string, name: string): Promise<TaskTemplate>;
   saveProjectAsTemplate(projectId: string, name: string): Promise<ProjectTemplate>;
   createTaskFromTemplate(templateId: string, overrides?: Partial<Task>): Promise<Task>;
+
+  listStressFlags(): Promise<StressFlag[]>;
+  listAgentInbox(agent: string): Promise<StressFlag[]>;
+  raiseStressFlag(input: {
+    pattern_description: string;
+    pattern_kind?: StressFlag['pattern_kind'];
+    source_project_or_task_id?: string | null;
+    fingerprint?: string;
+  }): Promise<StressFlag>;
+  scanAndRaiseStressFlags(options?: { now?: Date }): Promise<{
+    raised: StressFlag[];
+    skipped: number;
+    patterns: number;
+  }>;
 }

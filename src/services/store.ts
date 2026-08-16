@@ -7,6 +7,8 @@ import {
   ProjectTemplateSchema,
   AgentActionLogSchema
 } from '@/schemas/templates';
+import { DEFAULT_STRESS_ROUTE, StressFlagSchema } from '@/schemas/stress';
+import { agentSlug, detectStressPatterns } from '@/domain/stress';
 import type { IndexDoc, SeedData, TasksStore } from './types';
 
 export interface KvAdapter {
@@ -29,6 +31,9 @@ export interface KeyBuilders {
   projectTemplateKey: (id: string) => string;
   projectTemplatesIndexKey: () => string;
   agentActionLogKey: (id: string) => string;
+  stressFlagKey: (id: string) => string;
+  stressFlagsIndexKey: () => string;
+  agentInboxKey: (agentSlug: string) => string;
   metaSeededKey: () => string;
 }
 
@@ -305,6 +310,103 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         tags: overrides.tags ?? parsed.default_fields.tags ?? [],
         ...overrides
       });
+    },
+
+    async listStressFlags() {
+      return listByIndex(kv, keys.stressFlagsIndexKey(), keys.stressFlagKey, (raw) =>
+        StressFlagSchema.parse(raw)
+      );
+    },
+
+    async listAgentInbox(agent) {
+      const slug = agentSlug(agent);
+      const doc = await kv.getJSON<IndexDoc>(keys.agentInboxKey(slug));
+      const ids = doc?.ids ?? [];
+      const flags: Awaited<ReturnType<TasksStore['listStressFlags']>> = [];
+      for (const id of ids) {
+        const raw = await kv.getJSON(keys.stressFlagKey(id));
+        if (raw) flags.push(StressFlagSchema.parse(raw));
+      }
+      return flags;
+    },
+
+    async raiseStressFlag(input) {
+      const stamp = nowIso();
+      const fingerprint =
+        input.fingerprint ?? `manual:${input.pattern_description.slice(0, 80)}:${stamp.slice(0, 10)}`;
+      const existing = await this.listStressFlags();
+      const dup = existing.find((f) => f.fingerprint === fingerprint);
+      if (dup) return dup;
+
+      const flag = StressFlagSchema.parse({
+        schema_version: 1,
+        id: newId('sf'),
+        source_project_or_task_id: input.source_project_or_task_id ?? null,
+        pattern_description: input.pattern_description,
+        pattern_kind: input.pattern_kind ?? 'manual',
+        raised_by: 'Clare DeMind',
+        routed_to: DEFAULT_STRESS_ROUTE,
+        recurrence_note: null,
+        fingerprint,
+        created_at: stamp
+      });
+
+      await kv.setJSON(keys.stressFlagKey(flag.id), flag);
+      const ids = await readIndex(kv, keys.stressFlagsIndexKey());
+      ids.push(flag.id);
+      await writeIndex(kv, keys.stressFlagsIndexKey(), ids);
+
+      // Write-on-create into each agent inbox (DECISIONS.md — no sync fan-out yet).
+      for (const agent of flag.routed_to) {
+        const slug = agentSlug(agent);
+        const inboxIds = await readIndex(kv, keys.agentInboxKey(slug));
+        if (!inboxIds.includes(flag.id)) {
+          inboxIds.push(flag.id);
+          await writeIndex(kv, keys.agentInboxKey(slug), inboxIds);
+        }
+      }
+
+      const log = AgentActionLogSchema.parse({
+        schema_version: 1,
+        id: newId('aal'),
+        agent: 'Clare DeMind',
+        action: 'create',
+        entity_type: 'stress_flag',
+        entity_id: flag.id,
+        reason: `StressFlag: ${flag.pattern_description}`,
+        created_at: stamp
+      });
+      await kv.setJSON(keys.agentActionLogKey(log.id), log);
+
+      return flag;
+    },
+
+    async scanAndRaiseStressFlags(options = {}) {
+      const now = options.now ?? new Date();
+      const [projects, tasks, existing] = await Promise.all([
+        this.listProjects(),
+        this.listTasks(),
+        this.listStressFlags()
+      ]);
+      const patterns = detectStressPatterns(projects, tasks, now);
+      const known = new Set(existing.map((f) => f.fingerprint));
+      const raised = [];
+      let skipped = 0;
+      for (const pattern of patterns) {
+        if (known.has(pattern.fingerprint)) {
+          skipped += 1;
+          continue;
+        }
+        const flag = await this.raiseStressFlag({
+          pattern_description: pattern.pattern_description,
+          pattern_kind: pattern.pattern_kind,
+          source_project_or_task_id: pattern.source_project_or_task_id,
+          fingerprint: pattern.fingerprint
+        });
+        known.add(flag.fingerprint);
+        raised.push(flag);
+      }
+      return { raised, skipped, patterns: patterns.length };
     }
   };
 }

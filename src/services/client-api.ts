@@ -44,6 +44,34 @@ export const tasksApi = {
       overrides
     }),
 
+  listStressFlags: () =>
+    apiGet<{ flags: import('@/schemas/stress').StressFlag[] }>('/api/stress-flags').then(
+      (r) => r.flags
+    ),
+
+  listAgentInbox: (inbox: string) =>
+    apiGet<{ flags: import('@/schemas/stress').StressFlag[]; inbox: string }>(
+      `/api/stress-flags?inbox=${encodeURIComponent(inbox)}`
+    ).then((r) => r.flags),
+
+  scanStressFlags: () =>
+    apiPost<{
+      raised: import('@/schemas/stress').StressFlag[];
+      skipped: number;
+      patterns: number;
+    }>('/api/stress-flags', { action: 'scan' }),
+
+  raiseStressFlag: (body: {
+    pattern_description: string;
+    pattern_kind?: string;
+    source_project_or_task_id?: string | null;
+    fingerprint?: string;
+  }) =>
+    apiPost<import('@/schemas/stress').StressFlag>('/api/stress-flags', {
+      action: 'raise',
+      ...body
+    }),
+
   search: (q: string) =>
     apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`)
 };
