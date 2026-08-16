@@ -15,6 +15,9 @@ import {
 } from '@/shell/shell';
 import { renderBoardView } from '@/views/board';
 import { renderGraphView } from '@/views/graph';
+import { renderOrbitView } from '@/views/orbit';
+import { renderBranchView } from '@/views/branch';
+import { renderConstellationView } from '@/views/constellation';
 import {
   renderDayView,
   renderWeekView,
@@ -35,6 +38,21 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     eyebrow: 'Structure',
     title: 'Graph',
     supporting: 'Blockers and workstreams — Knowledge-style search, select, preview.'
+  },
+  orbit: {
+    eyebrow: 'Stretch',
+    title: 'Orbit',
+    supporting: 'Adam at the centre — urgency pulls work closer.'
+  },
+  branch: {
+    eyebrow: 'Stretch',
+    title: 'Branch',
+    supporting: 'One project’s parent tree and depends_on edges.'
+  },
+  constellation: {
+    eyebrow: 'Stretch',
+    title: 'Constellation',
+    supporting: 'Completions light stars — a payoff metaphor, not a task list.'
   },
   day: {
     eyebrow: 'Focus',
@@ -79,6 +97,12 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderBoardView(canvas);
     case 'graph':
       return renderGraphView(canvas);
+    case 'orbit':
+      return renderOrbitView(canvas);
+    case 'branch':
+      return renderBranchView(canvas);
+    case 'constellation':
+      return renderConstellationView(canvas);
     case 'day':
       return renderDayView(canvas);
     case 'week':

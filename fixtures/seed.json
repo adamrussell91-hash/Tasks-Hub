@@ -175,6 +175,32 @@
     },
     {
       "schema_version": 1,
+      "id": "task_demo_outline_units",
+      "title": "Outline MindWorks units",
+      "description": "Child of the lesson pack — branch-view depth.",
+      "domain": "teaching",
+      "framework_used": null,
+      "estimated_duration": 40,
+      "actual_duration": null,
+      "due_date": "2026-08-19",
+      "created_at": "2026-08-14T00:00:00.000Z",
+      "updated_at": "2026-08-14T00:00:00.000Z",
+      "completed_at": null,
+      "status": "open",
+      "priority": "medium",
+      "parent_project_id": "proj_mindworks",
+      "parent_task_id": "task_demo_lesson_pack",
+      "depends_on": [],
+      "tags": [
+        "teaching",
+        "mindworks"
+      ],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
       "id": "task_demo_wedding_vendor",
       "title": "Reply to florist quote",
       "description": "Confirm availability for November.",
@@ -202,7 +228,7 @@
       "schema_version": 1,
       "id": "task_demo_backlog",
       "title": "Sort fragrance research notes",
-      "description": "Backlog \u2014 no due date yet.",
+      "description": "Backlog — no due date yet.",
       "domain": "life",
       "framework_used": "fw_timeboxing",
       "estimated_duration": 45,
@@ -246,6 +272,31 @@
       "tags": [
         "teaching",
         "publish"
+      ],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_walk_done",
+      "title": "Evening walk — done",
+      "description": "Seed completion so the constellation has a lit star.",
+      "domain": "health",
+      "framework_used": null,
+      "estimated_duration": 25,
+      "actual_duration": 25,
+      "due_date": "2026-08-15",
+      "created_at": "2026-08-14T00:00:00.000Z",
+      "updated_at": "2026-08-15T18:00:00.000Z",
+      "completed_at": "2026-08-15T18:00:00.000Z",
+      "status": "done",
+      "priority": "low",
+      "parent_project_id": null,
+      "parent_task_id": null,
+      "depends_on": [],
+      "tags": [
+        "health"
       ],
       "recurrence_rule": null,
       "attachments": [],

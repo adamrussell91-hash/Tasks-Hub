@@ -346,3 +346,232 @@
   font-size: var(--text-sm);
   color: var(--muted);
 }
+
+/* Stretch views — Orbit / Branch / Constellation (spec §6.5) */
+
+.orbit-svg,
+.branch-svg,
+.constellation-svg {
+  display: block;
+  width: 100%;
+}
+
+.orbit-ring {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+
+.orbit-spin {
+  animation: orbit-drift 120s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes orbit-drift {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.orbit-body {
+  cursor: pointer;
+  outline: none;
+}
+
+.orbit-body:focus-visible .orbit-planet {
+  stroke: var(--wave);
+  stroke-width: 3;
+}
+
+.orbit-planet {
+  transition: transform 0.35s ease, filter 0.35s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.orbit-body:hover .orbit-planet {
+  filter: brightness(1.06);
+  transform: scale(1.08);
+}
+
+.orbit-label,
+.orbit-centre__label {
+  fill: var(--navy);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.orbit-centre__label {
+  fill: var(--on-dark);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.branch-project-select {
+  max-width: 18rem;
+}
+
+.branch-edge {
+  fill: none;
+  stroke: var(--wave);
+  stroke-width: 1.5;
+  opacity: 0.55;
+  stroke-dasharray: 180;
+  stroke-dashoffset: 180;
+  animation: branch-draw 0.7s ease forwards;
+}
+
+.branch-edge--depends {
+  stroke: var(--high-sea-ink);
+  stroke-dasharray: 5 5;
+  opacity: 0.7;
+  animation: none;
+}
+
+@keyframes branch-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.branch-node {
+  cursor: pointer;
+  outline: none;
+  opacity: 0;
+  animation: branch-node-in 0.45s ease forwards;
+  animation-delay: var(--branch-delay, 0ms);
+}
+
+@keyframes branch-node-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.branch-node__shape {
+  fill: var(--glass);
+  stroke: var(--marine);
+  stroke-width: 1.25;
+  transition: stroke 0.2s ease, fill 0.2s ease;
+}
+
+.branch-node--project .branch-node__shape {
+  fill: var(--depth);
+  stroke: var(--high-sea);
+}
+
+.branch-node:hover .branch-node__shape,
+.branch-node:focus-visible .branch-node__shape {
+  stroke: var(--wave);
+  stroke-width: 2;
+}
+
+.branch-node__label {
+  fill: var(--navy);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.branch-node--project .branch-node__label {
+  fill: var(--on-dark);
+  font-weight: 600;
+}
+
+.constellation-sky {
+  transition: opacity 0.8s ease;
+}
+
+.constellation-haze {
+  fill: rgba(168, 90, 12, 0.12);
+  animation: constellation-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes constellation-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.constellation-line {
+  stroke: var(--pastel-gold);
+  stroke-width: 1;
+  opacity: 0;
+  animation: constellation-line-in 0.8s ease forwards;
+  animation-delay: var(--line-delay, 0ms);
+}
+
+@keyframes constellation-line-in {
+  to {
+    opacity: 0.55;
+  }
+}
+
+.constellation-star circle {
+  fill: rgba(255, 255, 255, 0.28);
+  stroke: transparent;
+}
+
+.constellation-star--lit circle {
+  fill: var(--pastel-gold);
+  stroke: var(--pastel-gold-ink);
+  stroke-width: 0.6;
+  animation: constellation-twinkle 2.8s ease-in-out infinite;
+  animation-delay: var(--star-delay, 0ms);
+}
+
+@keyframes constellation-twinkle {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.constellation-star--lit {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.constellation-fill {
+  fill: var(--on-dark);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-spin,
+  .branch-edge,
+  .branch-node,
+  .constellation-haze,
+  .constellation-line,
+  .constellation-star--lit circle {
+    animation: none;
+  }
+
+  .branch-node,
+  .constellation-line {
+    opacity: 1;
+  }
+}
