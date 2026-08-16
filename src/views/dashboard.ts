@@ -57,9 +57,21 @@ function renderTaskRow(task: Task, onToggle: (t: Task) => void): HTMLElement {
 }
 
 async function toggleDone(task: Task): Promise<void> {
-  await tasksApi.updateTask(task.id, {
-    status: task.status === 'done' ? 'open' : 'done'
-  });
+  if (task.status === 'done') {
+    await tasksApi.updateTask(task.id, { status: 'open' });
+    return;
+  }
+  if (task.estimated_duration && task.actual_duration == null) {
+    const raw = window.prompt(
+      `How long did “${task.title}” actually take? (minutes, estimate was ${task.estimated_duration})`,
+      String(task.estimated_duration)
+    );
+    if (raw !== null && raw.trim() !== '' && !Number.isNaN(Number(raw))) {
+      await tasksApi.recordClareActual(task.id, Number(raw));
+      return;
+    }
+  }
+  await tasksApi.updateTask(task.id, { status: 'done' });
 }
 
 export async function renderDayView(canvas: HTMLElement): Promise<void> {
@@ -76,6 +88,15 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
     `Adaptive focus: ${prefs.join(', ')} · ${toDateKey(today)}`
   );
   canvas.append(intro);
+
+  const clareLink = el('p', 'clare-inline');
+  const goClare = el('button', 'btn btn--secondary', 'Negotiate with Clare');
+  goClare.type = 'button';
+  goClare.addEventListener('click', () => {
+    location.hash = '#/clare';
+  });
+  clareLink.append(goClare);
+  canvas.append(clareLink);
 
   const form = renderQuickAdd(() => void renderDayView(canvas));
   canvas.append(form);

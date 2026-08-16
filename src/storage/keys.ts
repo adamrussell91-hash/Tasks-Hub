@@ -54,6 +54,18 @@ export function agentActionLogKey(id: string): string {
   return `agent_actions/${id}`;
 }
 
+export function clareCalibrationKey(domain: string): string {
+  return `clare_calibration/${domain}`;
+}
+
+export function clareCalibrationsIndexKey(): string {
+  return 'clare_calibration/_index';
+}
+
+export function clareNegotiationLogKey(id: string): string {
+  return `clare_negotiations/${id}`;
+}
+
 export function metaSeededKey(): string {
   return 'meta/seeded';
 }

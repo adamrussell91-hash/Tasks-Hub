@@ -7,6 +7,17 @@ import {
   ProjectTemplateSchema,
   AgentActionLogSchema
 } from '@/schemas/templates';
+import { ClareCalibrationSchema, ClareNegotiationLogSchema } from '@/schemas/clare';
+import {
+  backlogTasks
+} from '@/domain/queries';
+import {
+  buildProposal,
+  emptyCalibration,
+  recordActualSample,
+  recordNegotiationSample,
+  type ClareProposalInput
+} from '@/domain/clare';
 import type { IndexDoc, SeedData, TasksStore } from './types';
 
 export interface KvAdapter {
@@ -29,6 +40,9 @@ export interface KeyBuilders {
   projectTemplateKey: (id: string) => string;
   projectTemplatesIndexKey: () => string;
   agentActionLogKey: (id: string) => string;
+  clareCalibrationKey: (domain: string) => string;
+  clareCalibrationsIndexKey: () => string;
+  clareNegotiationLogKey: (id: string) => string;
   metaSeededKey: () => string;
 }
 
@@ -305,6 +319,115 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         tags: overrides.tags ?? parsed.default_fields.tags ?? [],
         ...overrides
       });
+    },
+
+    async getClareCalibration(domain) {
+      const raw = await kv.getJSON(keys.clareCalibrationKey(domain));
+      if (raw) return ClareCalibrationSchema.parse(raw);
+      return emptyCalibration(domain, nowIso());
+    },
+    async listClareCalibrations() {
+      const ids = await readIndex(kv, keys.clareCalibrationsIndexKey());
+      const out = [];
+      for (const id of ids) {
+        const raw = await kv.getJSON(keys.clareCalibrationKey(id));
+        if (raw) out.push(ClareCalibrationSchema.parse(raw));
+      }
+      return out;
+    },
+    async proposeWithClare(input: ClareProposalInput) {
+      const [frameworks, tasks, calibration] = await Promise.all([
+        this.listFrameworks(),
+        this.listTasks(),
+        this.getClareCalibration(input.domain)
+      ]);
+      return buildProposal(
+        {
+          ...input,
+          backlog_titles: input.backlog_titles ?? backlogTasks(tasks).map((t) => t.title)
+        },
+        frameworks,
+        calibration.sample_count > 0 ? calibration : null
+      );
+    },
+    async acceptClareProposal({ proposal, accepted_minutes, framework_id }) {
+      const stamp = nowIso();
+      const task = await this.createTask({
+        title: proposal.title,
+        description: proposal.description,
+        domain: proposal.domain,
+        priority: proposal.priority,
+        due_date: proposal.due_date,
+        framework_used: framework_id ?? proposal.framework_id,
+        estimated_duration: accepted_minutes,
+        source: 'suggested_by_agent',
+        tags: ['clare']
+      });
+
+      const negotiation = ClareNegotiationLogSchema.parse({
+        schema_version: 1,
+        id: newId('cnl'),
+        task_id: task.id,
+        domain: proposal.domain,
+        framework_id: framework_id ?? proposal.framework_id,
+        proposed_minutes: proposal.proposed_minutes,
+        accepted_minutes,
+        reasoning: proposal.reasoning,
+        created_at: stamp
+      });
+      await kv.setJSON(keys.clareNegotiationLogKey(negotiation.id), negotiation);
+
+      let calibration = await this.getClareCalibration(proposal.domain);
+      calibration = recordNegotiationSample(
+        calibration,
+        proposal.proposed_minutes,
+        accepted_minutes,
+        stamp
+      );
+      await kv.setJSON(keys.clareCalibrationKey(proposal.domain), calibration);
+      const calIds = await readIndex(kv, keys.clareCalibrationsIndexKey());
+      if (!calIds.includes(proposal.domain)) {
+        calIds.push(proposal.domain);
+        await writeIndex(kv, keys.clareCalibrationsIndexKey(), calIds);
+      }
+
+      const log = AgentActionLogSchema.parse({
+        schema_version: 1,
+        id: newId('aal'),
+        agent: 'Clare DeMind',
+        action: 'create',
+        entity_type: 'task',
+        entity_id: task.id,
+        reason: proposal.reasoning,
+        created_at: stamp
+      });
+      await kv.setJSON(keys.agentActionLogKey(log.id), log);
+
+      return { task, negotiation, calibration };
+    },
+    async recordClareActual(taskId, actualMinutes) {
+      const task = await this.updateTask(taskId, {
+        actual_duration: actualMinutes,
+        status: 'done'
+      });
+      if (!task.estimated_duration) {
+        return { task, calibration: null };
+      }
+      const stamp = nowIso();
+      let calibration = await this.getClareCalibration(task.domain);
+      calibration = recordActualSample(
+        calibration,
+        task.estimated_duration,
+        actualMinutes,
+        stamp
+      );
+      await kv.setJSON(keys.clareCalibrationKey(task.domain), calibration);
+      const calIds = await readIndex(kv, keys.clareCalibrationsIndexKey());
+      if (!calIds.includes(task.domain)) {
+        calIds.push(task.domain);
+        await writeIndex(kv, keys.clareCalibrationsIndexKey(), calIds);
+      }
+      return { task, calibration };
     }
   };
 }

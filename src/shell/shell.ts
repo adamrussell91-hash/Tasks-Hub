@@ -21,11 +21,13 @@ export type HubViewId =
   | 'list'
   | 'search'
   | 'templates'
-  | 'projects';
+  | 'projects'
+  | 'clare';
 
 /** Labeled Teaching-style rail — Board is home per design-kit/TASKS.md */
 const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> = [
   { id: 'board', label: 'Board', href: '#/board', glyph: '▦' },
+  { id: 'clare', label: 'Clare', href: '#/clare', glyph: '✦' },
   { id: 'graph', label: 'Graph', href: '#/graph', glyph: '◈' },
   { id: 'day', label: 'Today', href: '#/day', glyph: '◉' },
   { id: 'week', label: 'Week', href: '#/week', glyph: '▤' },
@@ -167,6 +169,7 @@ export function parseHashRoute(): HubViewId {
   const id = hash.split(/[/?]/)[0] as HubViewId;
   const known: HubViewId[] = [
     'board',
+    'clare',
     'graph',
     'day',
     'week',

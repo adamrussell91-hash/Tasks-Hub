@@ -161,6 +161,51 @@ export function createMockApi({ seed }: MockApiOptions) {
       return json(200, { ok: true, data: searchEntities(tasks, projects, q) });
     }
 
+    if (path === '/api/clare') {
+      if (method === 'GET') {
+        const domain = url.searchParams.get('domain');
+        if (domain) {
+          return json(200, {
+            ok: true,
+            data: { calibration: await s.getClareCalibration(domain as 'teaching') }
+          });
+        }
+        return json(200, { ok: true, data: { calibrations: await s.listClareCalibrations() } });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'propose') {
+          return json(200, {
+            ok: true,
+            data: await s.proposeWithClare({
+              title: String(b.title ?? ''),
+              domain: b.domain as 'teaching',
+              description: b.description === undefined ? undefined : String(b.description),
+              priority: b.priority as 'medium' | undefined,
+              due_date:
+                b.due_date === undefined || b.due_date === null ? null : String(b.due_date)
+            })
+          });
+        }
+        if (b.action === 'accept') {
+          return json(201, {
+            ok: true,
+            data: await s.acceptClareProposal({
+              proposal: b.proposal as import('../src/domain/clare').ClareProposal,
+              accepted_minutes: Number(b.accepted_minutes),
+              framework_id: b.framework_id === undefined ? undefined : String(b.framework_id)
+            })
+          });
+        }
+        if (b.action === 'record_actual') {
+          return json(200, {
+            ok: true,
+            data: await s.recordClareActual(String(b.task_id), Number(b.actual_minutes))
+          });
+        }
+      }
+    }
+
     return json(404, { ok: false, error: { code: 'not_found', message: `No mock route ${method} ${path}` } });
   }
 

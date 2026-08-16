@@ -6,6 +6,8 @@ import type {
   TaskTemplate,
   ProjectTemplate
 } from '@/schemas/templates';
+import type { ClareCalibration, ClareNegotiationLog } from '@/schemas/clare';
+import type { ClareProposal, ClareProposalInput } from '@/domain/clare';
 
 export interface SeedData {
   tasks: Task[];
@@ -41,4 +43,17 @@ export interface TasksStore {
   saveTaskAsTemplate(taskId: string, name: string): Promise<TaskTemplate>;
   saveProjectAsTemplate(projectId: string, name: string): Promise<ProjectTemplate>;
   createTaskFromTemplate(templateId: string, overrides?: Partial<Task>): Promise<Task>;
+
+  getClareCalibration(domain: Task['domain']): Promise<ClareCalibration>;
+  listClareCalibrations(): Promise<ClareCalibration[]>;
+  proposeWithClare(input: ClareProposalInput): Promise<ClareProposal>;
+  acceptClareProposal(input: {
+    proposal: ClareProposal;
+    accepted_minutes: number;
+    framework_id?: string;
+  }): Promise<{ task: Task; negotiation: ClareNegotiationLog; calibration: ClareCalibration }>;
+  recordClareActual(
+    taskId: string,
+    actualMinutes: number
+  ): Promise<{ task: Task; calibration: ClareCalibration | null }>;
 }

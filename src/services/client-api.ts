@@ -44,6 +44,36 @@ export const tasksApi = {
       overrides
     }),
 
+  proposeWithClare: (body: {
+    title: string;
+    domain: string;
+    description?: string;
+    priority?: string;
+    due_date?: string | null;
+  }) => apiPost<import('@/domain/clare').ClareProposal>('/api/clare', { action: 'propose', ...body }),
+
+  acceptClareProposal: (body: {
+    proposal: import('@/domain/clare').ClareProposal;
+    accepted_minutes: number;
+    framework_id?: string;
+  }) =>
+    apiPost<{
+      task: Task;
+      negotiation: import('@/schemas/clare').ClareNegotiationLog;
+      calibration: import('@/schemas/clare').ClareCalibration;
+    }>('/api/clare', { action: 'accept', ...body }),
+
+  recordClareActual: (task_id: string, actual_minutes: number) =>
+    apiPost<{ task: Task; calibration: import('@/schemas/clare').ClareCalibration | null }>(
+      '/api/clare',
+      { action: 'record_actual', task_id, actual_minutes }
+    ),
+
+  listClareCalibrations: () =>
+    apiGet<{ calibrations: import('@/schemas/clare').ClareCalibration[] }>('/api/clare').then(
+      (r) => r.calibrations
+    ),
+
   search: (q: string) =>
     apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`)
 };

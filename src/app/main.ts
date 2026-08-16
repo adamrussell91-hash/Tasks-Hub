@@ -15,6 +15,7 @@ import {
 } from '@/shell/shell';
 import { renderBoardView } from '@/views/board';
 import { renderGraphView } from '@/views/graph';
+import { renderClareView } from '@/views/clare';
 import {
   renderDayView,
   renderWeekView,
@@ -30,6 +31,11 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     eyebrow: 'Home',
     title: 'Board',
     supporting: 'Tasks and projects as Teaching-density tiles.'
+  },
+  clare: {
+    eyebrow: 'Negotiate',
+    title: 'Clare DeMind',
+    supporting: 'Framework pick, time estimate, confirm — then she learns from overrides.'
   },
   graph: {
     eyebrow: 'Structure',
@@ -77,6 +83,8 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
   switch (view) {
     case 'board':
       return renderBoardView(canvas);
+    case 'clare':
+      return renderClareView(canvas);
     case 'graph':
       return renderGraphView(canvas);
     case 'day':
