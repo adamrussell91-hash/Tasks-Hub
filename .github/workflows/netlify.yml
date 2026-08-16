@@ -1,12 +1,16 @@
 name: Deploy Netlify Functions
 
-# Deploys artasks-hub (tasks-api) when secrets are present.
-# Required repo secrets: NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID
+# Deploys artasks-hub (tasks-api) when NETLIFY_AUTH_TOKEN is present.
+# Site id is public for this hub; only the personal access token is secret.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+env:
+  # artasks-hub (not secret). Optional secret NETLIFY_SITE_ID overrides if the site is recreated.
+  NETLIFY_SITE_ID: c6696619-f478-4ac1-b0cd-1e4cfd3101df
 
 jobs:
   deploy:
@@ -24,21 +28,27 @@ jobs:
       - name: Deploy to Netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID || env.NETLIFY_SITE_ID }}
         run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
-            echo "::warning::NETLIFY_AUTH_TOKEN / NETLIFY_SITE_ID secrets missing — skip Functions deploy. Add them under repo Settings → Secrets, or deploy site artasks-hub from the Netlify UI."
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::warning::NETLIFY_AUTH_TOKEN secret missing — skip Functions deploy. Create a Netlify personal access token (User settings → Applications → Personal access tokens), add it as the GitHub secret NETLIFY_AUTH_TOKEN, then re-run this workflow. Or click Deploy of main in the Netlify UI for artasks-hub (build command is now a no-op echo)."
             exit 0
+          fi
+          if [ -n "${{ secrets.NETLIFY_SITE_ID }}" ]; then
+            export NETLIFY_SITE_ID="${{ secrets.NETLIFY_SITE_ID }}"
           fi
           npx --yes netlify-cli@23 deploy --prod --dir=netlify/public --functions=netlify/functions --message "main $(git rev-parse --short HEAD)"
 
       - name: Seed Blobs (idempotent)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID }}
         run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
-            echo "skip seed — no Netlify secrets"
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "skip seed — no NETLIFY_AUTH_TOKEN"
             exit 0
+          fi
+          if [ -n "${{ secrets.NETLIFY_SITE_ID }}" ]; then
+            export NETLIFY_SITE_ID="${{ secrets.NETLIFY_SITE_ID }}"
           fi
           npm run seed:blobs
