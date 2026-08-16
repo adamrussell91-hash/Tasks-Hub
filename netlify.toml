@@ -1,0 +1,11 @@
+[build]
+  publish = "netlify/public"
+  functions = "netlify/functions"
+
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SITE_ORIGIN"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@netlify/blobs"]
+  included_files = ["config/clare-protocol.md", "fixtures/seed.json"]
