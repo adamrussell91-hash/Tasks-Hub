@@ -1,18 +1,15 @@
 #!/usr/bin/env node
 /**
- * Seed Netlify Blobs from fixtures/seed.json.
+ * Seed Netlify Blobs from fixtures/seed.json (plain JS — no TS loader needed).
  * Requires NETLIFY_SITE_ID + NETLIFY_AUTH_TOKEN (or NETLIFY_API_TOKEN).
  *
- * Usage:
- *   node scripts/seed-blobs.mjs           # seed only if meta/seeded missing
- *   FORCE_SEED=1 node scripts/seed-blobs.mjs  # wipe marker and re-seed indexes
+ *   node scripts/seed-blobs.mjs
+ *   FORCE_SEED=1 node scripts/seed-blobs.mjs
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getStore } from '@netlify/blobs';
-import * as keys from '../src/storage/keys.ts';
-import { seedIfEmpty } from '../src/services/store.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const seed = JSON.parse(readFileSync(join(root, 'fixtures/seed.json'), 'utf8'));
@@ -27,20 +24,83 @@ if (!siteID || !token) {
 }
 
 const store = getStore({ name: 'tasks-hub-content', siteID, token });
-const kv = {
-  getJSON: async (key) => (await store.get(key, { type: 'json' })) ?? null,
-  setJSON: async (key, value) => {
-    await store.setJSON(key, value);
-  },
-  delete: async (key) => {
-    await store.delete(key);
-  }
-};
+
+async function getJSON(key) {
+  return (await store.get(key, { type: 'json' })) ?? null;
+}
+
+async function setJSON(key, value) {
+  await store.setJSON(key, value);
+}
+
+async function del(key) {
+  await store.delete(key);
+}
+
+async function writeIndex(key, ids) {
+  await setJSON(key, { ids });
+}
 
 if (process.env.FORCE_SEED === '1') {
-  await kv.delete(keys.metaSeededKey());
+  await del('meta/seeded');
   console.log('seed-blobs: cleared meta/seeded (FORCE_SEED=1)');
 }
 
-await seedIfEmpty(kv, keys, seed);
-console.log('seed-blobs: tasks-hub-content seeded (or already marked seeded)');
+const marker = await getJSON('meta/seeded');
+if (marker) {
+  console.log('seed-blobs: already seeded at', marker.at, '(set FORCE_SEED=1 to redo)');
+  process.exit(0);
+}
+
+for (const item of seed.frameworks ?? []) {
+  await setJSON(`frameworks/${item.id}`, item);
+}
+await writeIndex(
+  'frameworks/_index',
+  (seed.frameworks ?? []).map((f) => f.id)
+);
+
+for (const item of seed.excursion_templates ?? []) {
+  await setJSON(`excursion_templates/${item.id}`, item);
+}
+await writeIndex(
+  'excursion_templates/_index',
+  (seed.excursion_templates ?? []).map((t) => t.id)
+);
+
+for (const item of seed.task_templates ?? []) {
+  await setJSON(`task_templates/${item.id}`, item);
+}
+await writeIndex(
+  'task_templates/_index',
+  (seed.task_templates ?? []).map((t) => t.id)
+);
+
+for (const item of seed.project_templates ?? []) {
+  await setJSON(`project_templates/${item.id}`, item);
+}
+await writeIndex(
+  'project_templates/_index',
+  (seed.project_templates ?? []).map((t) => t.id)
+);
+
+for (const item of seed.projects ?? []) {
+  await setJSON(`projects/${item.id}`, item);
+}
+await writeIndex(
+  'projects/_index',
+  (seed.projects ?? []).map((p) => p.id)
+);
+
+for (const item of seed.tasks ?? []) {
+  await setJSON(`tasks/${item.id}`, item);
+}
+await writeIndex(
+  'tasks/_index',
+  (seed.tasks ?? []).map((t) => t.id)
+);
+
+await setJSON('meta/seeded', { at: new Date().toISOString() });
+console.log(
+  `seed-blobs: wrote ${(seed.tasks ?? []).length} tasks, ${(seed.projects ?? []).length} projects`
+);
