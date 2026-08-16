@@ -1,5 +1,5 @@
 import { getHubSession } from './_shared/session.mts';
-import { getTasksStore, keys, blobKv } from './_shared/blobs.mts';
+import { getTasksStore, keys, blobKv, resetSeedCache } from './_shared/blobs.mts';
 import { seedIfEmpty } from '../../src/services/store.ts';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -45,8 +45,10 @@ export default async function handler(request: Request): Promise<Response> {
     const kv = blobKv();
     if (body.force) {
       await kv.delete(keys.metaSeededKey());
+      resetSeedCache();
     }
     await seedIfEmpty(kv, keys, loadSeed());
+    resetSeedCache();
     const store = await getTasksStore();
     const [tasks, projects] = await Promise.all([store.listTasks(), store.listProjects()]);
     return withCors(
