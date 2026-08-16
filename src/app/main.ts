@@ -6,6 +6,8 @@ import {
   renderPrimaryNav,
   type HubViewId
 } from '@/shell/shell';
+import { renderBoardView } from '@/views/board';
+import { renderGraphView } from '@/views/graph';
 import {
   renderDayView,
   renderWeekView,
@@ -17,6 +19,8 @@ import {
 } from '@/views/dashboard';
 
 const TITLES: Record<HubViewId, string> = {
+  board: 'Board',
+  graph: 'Graph',
   day: 'Today',
   week: 'Week',
   month: 'Month',
@@ -28,6 +32,10 @@ const TITLES: Record<HubViewId, string> = {
 
 async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<void> {
   switch (view) {
+    case 'board':
+      return renderBoardView(canvas);
+    case 'graph':
+      return renderGraphView(canvas);
     case 'day':
       return renderDayView(canvas);
     case 'week':
@@ -64,7 +72,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
     void paint();
   });
 
-  if (!location.hash) location.hash = '#/day';
+  if (!location.hash || location.hash === '#/') location.hash = '#/board';
   await paint();
 }
 

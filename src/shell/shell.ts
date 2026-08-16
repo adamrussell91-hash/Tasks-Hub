@@ -12,15 +12,27 @@ export interface HubShellOptions {
   onLogout?: () => void | Promise<void>;
 }
 
-export type HubViewId = 'day' | 'week' | 'month' | 'list' | 'search' | 'templates' | 'projects';
+export type HubViewId =
+  | 'board'
+  | 'graph'
+  | 'day'
+  | 'week'
+  | 'month'
+  | 'list'
+  | 'search'
+  | 'templates'
+  | 'projects';
 
+/** Labeled Teaching-style rail — Board is home per design-kit/TASKS.md */
 const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> = [
+  { id: 'board', label: 'Board', href: '#/board', glyph: '▦' },
+  { id: 'graph', label: 'Graph', href: '#/graph', glyph: '◈' },
   { id: 'day', label: 'Today', href: '#/day', glyph: '◉' },
-  { id: 'week', label: 'Week', href: '#/week', glyph: '▦' },
+  { id: 'week', label: 'Week', href: '#/week', glyph: '▤' },
   { id: 'month', label: 'Month', href: '#/month', glyph: '▣' },
   { id: 'list', label: 'Backlog', href: '#/list', glyph: '☰' },
   { id: 'projects', label: 'Projects', href: '#/projects', glyph: '◇' },
-  { id: 'templates', label: 'Templates', href: '#/templates', glyph: '▤' },
+  { id: 'templates', label: 'Templates', href: '#/templates', glyph: '▥' },
   { id: 'search', label: 'Search', href: '#/search', glyph: '⌕' }
 ];
 
@@ -121,8 +133,18 @@ export function renderContextBar(refs: HubShellRefs, title: string, trailing?: H
 }
 
 export function parseHashRoute(): HubViewId {
-  const hash = location.hash.replace(/^#\/?/, '') || 'day';
+  const hash = location.hash.replace(/^#\/?/, '') || 'board';
   const id = hash.split(/[/?]/)[0] as HubViewId;
-  const known: HubViewId[] = ['day', 'week', 'month', 'list', 'search', 'templates', 'projects'];
-  return known.includes(id) ? id : 'day';
+  const known: HubViewId[] = [
+    'board',
+    'graph',
+    'day',
+    'week',
+    'month',
+    'list',
+    'search',
+    'templates',
+    'projects'
+  ];
+  return known.includes(id) ? id : 'board';
 }

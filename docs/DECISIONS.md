@@ -24,9 +24,18 @@ Answers to Open Questions in `docs/specs/task-project-manager-hub-spec.md`.
 | Surface | Host | Hostname |
 |---------|------|----------|
 | Static SPA | GitHub Pages | `tasks-hub.adam-russell.com` |
-| API | Netlify Functions | `tasks-api.adam-russell.com` |
+| API | Netlify Functions | `tasks-api.adam-russell.com` (site `artasks-hub`, temp `https://artasks-hub.netlify.app`) |
+
+Netlify env (already bootstrapped): `TASKS_HUB_PASSPHRASE_HASH` (SHA-256 of `tasks-hub-local`, Knowledge convention), `SESSION_SECRET`, `SITE_ORIGIN=https://tasks-hub.adam-russell.com`. Auth verifier accepts **both** SHA-256 hex and Teaching-style `scrypt$v1$…`. Blob seed still pending first Functions deploy of this branch.
 
 AI chat: Anthropic via Netlify Functions (Teaching pattern). Spec’s `jade-melomakarona` openai-proxy is **not** present in sibling repos; do not hard-depend on it. Optional OpenAI key only if a later feature needs embeddings/completions.
+
+## Chrome (design-kit)
+
+- `html[data-hub="tasks"]` — Teaching clone (glass, tiles, labeled rail). See `design-kit/TASKS.md`.
+- Board is home; Graph is a rail page (blockers / workstreams).
+- `overlays/hub-density.css` groups `teaching` + `tasks`.
+- Prefer replacing vendored kit with committed `hub-design-kit` when pushed.
 
 ## Framework Library seed
 
@@ -42,4 +51,4 @@ Ship seed JSON in `fixtures/seed.json` (Eat the Frog, timeboxing, Eisenhower). E
 
 ## Hub chrome
 
-`html[data-hub="tasks"]`, design-kit tokens + chrome, navy rail branded **Tasks Hub**.
+`html[data-hub="tasks"]`, design-kit tokens + chrome, navy **labeled** rail branded **Tasks Hub**. Board home; Graph for blockers/workstreams.

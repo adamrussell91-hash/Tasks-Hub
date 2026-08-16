@@ -4,14 +4,14 @@ Personal task and project manager (Clare DeMind), sibling to Teaching Hub, Life 
 
 **Spec:** [`docs/specs/task-project-manager-hub-spec.md`](docs/specs/task-project-manager-hub-spec.md)  
 **Decisions:** [`docs/DECISIONS.md`](docs/DECISIONS.md)  
-**Design kit:** [`design-kit/AGENTS.md`](design-kit/AGENTS.md) — `html[data-hub="tasks"]`, start from `design-kit/snippets/shell.html`
+**Design kit:** [`design-kit/AGENTS.md`](design-kit/AGENTS.md) + [`design-kit/TASKS.md`](design-kit/TASKS.md) — `html[data-hub="tasks"]`, Board home, Graph rail.
 
 ## Stack
 
 - Vite + TypeScript (vanilla DOM, no React)
 - GitHub Pages — static shell (`dist/`)
-- Netlify Functions + Blobs — auth + `tasks-hub-content` store
-- Cotton Glass tokens via vendored `design-kit/`
+- Netlify Functions + Blobs — auth + `tasks-hub-content` store (site `artasks-hub`)
+- Cotton Glass tokens via vendored `design-kit/` (Teaching density group)
 
 | Surface | Hostname |
 |---------|----------|
@@ -32,12 +32,14 @@ Open [http://localhost:5175](http://localhost:5175).
 | Local passphrase | `tasks-hub-local` |
 | Seed | `fixtures/seed.json` (frameworks, Ethics Olympiad / Da Vinci templates, MindWorks demo) |
 
+> Infra note: ChatGPT looked at empty `main`. The scaffold lives on branch `cursor/tasks-hub-foundation-77da` / PR #1 — merge (or deploy that branch) before Netlify Blob seeding.
+
 ## Build sequence status
 
 1. Data model + Blobs scaffolding — done
 2. Shared CRUD service (UI + future Clare) — done
-3. Day / week / month / list / search + templates — done (first cut)
-4. Dependencies + Kanban / Gantt — next
+3. Board home + Graph (blockers/workstreams) + day/week/month/list/search/templates — done (first cut)
+4. Dependencies polish + Gantt — next
 5. Excursion engine — next
 6–12. Clare negotiation, pinch points, stalled projects, StressFlags, Corey view, review loop — later
 
@@ -47,4 +49,4 @@ Open [http://localhost:5175](http://localhost:5175).
 npm run generate:auth
 ```
 
-Set `TASKS_HUB_PASSPHRASE_HASH`, `SESSION_SECRET`, and `SITE_ORIGIN=https://tasks-hub.adam-russell.com` on the Netlify site.
+Netlify already has SHA-256 of `tasks-hub-local` (Knowledge convention). The API accepts that or Teaching-style scrypt. Also set `SITE_ORIGIN=https://tasks-hub.adam-russell.com`.

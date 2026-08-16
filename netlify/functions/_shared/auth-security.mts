@@ -1,4 +1,11 @@
-import { createHmac, randomBytes as nodeRandomBytes, scrypt, timingSafeEqual, type ScryptOptions } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  randomBytes as nodeRandomBytes,
+  scrypt,
+  timingSafeEqual,
+  type ScryptOptions
+} from 'node:crypto';
 
 const SCRYPT_COST = 16_384;
 const SCRYPT_BLOCK_SIZE = 8;
@@ -32,7 +39,24 @@ export async function createPassphraseHash(
   return `scrypt$v1$${SCRYPT_COST}$${SCRYPT_BLOCK_SIZE}$${SCRYPT_PARALLELIZATION}$${saltBuffer.toString('base64url')}$${hash.toString('base64url')}`;
 }
 
+/**
+ * Accepts Teaching-style `scrypt$v1$…` or Knowledge-style bare SHA-256 hex
+ * (what the Netlify bootstrap set for `tasks-hub-local`).
+ */
 export async function verifyPassphrase(passphrase: string | Buffer, encoded: unknown): Promise<boolean> {
+  if (typeof encoded !== 'string' || encoded.length === 0) return false;
+
+  if (/^[a-f0-9]{64}$/i.test(encoded)) {
+    const actual = createHash('sha256').update(passphrase).digest('hex');
+    try {
+      const a = Buffer.from(actual, 'utf8');
+      const b = Buffer.from(encoded.toLowerCase(), 'utf8');
+      return a.length === b.length && timingSafeEqual(a, b);
+    } catch {
+      return false;
+    }
+  }
+
   const parsed = parsePassphraseHash(encoded);
   if (!parsed) return false;
 
@@ -42,6 +66,11 @@ export async function verifyPassphrase(passphrase: string | Buffer, encoded: unk
   } catch {
     return false;
   }
+}
+
+/** Knowledge Hub convention — useful for Netlify env bootstraps. */
+export function createSha256PassphraseHash(passphrase: string | Buffer): string {
+  return createHash('sha256').update(passphrase).digest('hex');
 }
 
 export interface SessionTokenPayload {

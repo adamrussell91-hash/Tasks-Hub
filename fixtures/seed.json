@@ -72,7 +72,9 @@
         "framework_used": "fw_timeboxing",
         "estimated_duration": 90,
         "priority": "high",
-        "tags": ["marking"]
+        "tags": [
+          "marking"
+        ]
       },
       "created_from": null,
       "created_at": "2026-08-01T00:00:00.000Z"
@@ -86,9 +88,21 @@
       "type": "standard",
       "excursion_template_id": null,
       "default_milestones": [
-        { "title": "Kickoff", "due_date": null, "status": "open" },
-        { "title": "Midpoint check", "due_date": null, "status": "open" },
-        { "title": "Close", "due_date": null, "status": "open" }
+        {
+          "title": "Kickoff",
+          "due_date": null,
+          "status": "open"
+        },
+        {
+          "title": "Midpoint check",
+          "due_date": null,
+          "status": "open"
+        },
+        {
+          "title": "Close",
+          "due_date": null,
+          "status": "open"
+        }
       ],
       "created_from": null,
       "created_at": "2026-08-01T00:00:00.000Z"
@@ -151,7 +165,10 @@
       "parent_project_id": "proj_mindworks",
       "parent_task_id": null,
       "depends_on": [],
-      "tags": ["teaching", "publish"],
+      "tags": [
+        "teaching",
+        "publish"
+      ],
       "recurrence_rule": null,
       "attachments": [],
       "source": "manual"
@@ -174,7 +191,9 @@
       "parent_project_id": null,
       "parent_task_id": null,
       "depends_on": [],
-      "tags": ["wedding"],
+      "tags": [
+        "wedding"
+      ],
       "recurrence_rule": null,
       "attachments": [],
       "source": "manual"
@@ -183,7 +202,7 @@
       "schema_version": 1,
       "id": "task_demo_backlog",
       "title": "Sort fragrance research notes",
-      "description": "Backlog — no due date yet.",
+      "description": "Backlog \u2014 no due date yet.",
       "domain": "life",
       "framework_used": "fw_timeboxing",
       "estimated_duration": 45,
@@ -197,7 +216,37 @@
       "parent_project_id": null,
       "parent_task_id": null,
       "depends_on": [],
-      "tags": ["fragrance"],
+      "tags": [
+        "fragrance"
+      ],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_publish",
+      "title": "Publish Year 12 pack",
+      "description": "Blocked until lesson pack is finished.",
+      "domain": "teaching",
+      "framework_used": null,
+      "estimated_duration": 30,
+      "actual_duration": null,
+      "due_date": "2026-08-18",
+      "created_at": "2026-08-14T00:00:00.000Z",
+      "updated_at": "2026-08-14T00:00:00.000Z",
+      "completed_at": null,
+      "status": "open",
+      "priority": "high",
+      "parent_project_id": "proj_mindworks",
+      "parent_task_id": null,
+      "depends_on": [
+        "task_demo_lesson_pack"
+      ],
+      "tags": [
+        "teaching",
+        "publish"
+      ],
       "recurrence_rule": null,
       "attachments": [],
       "source": "manual"

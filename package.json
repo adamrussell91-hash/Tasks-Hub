@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@netlify/blobs": "9.1.2",
+    "@types/d3-force": "^3.0.10",
+    "d3-force": "^3.0.0",
     "happy-dom": "^17.4.4",
     "zod": "3.25.76"
   },

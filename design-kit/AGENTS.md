@@ -7,7 +7,8 @@ This kit is the visual source of truth for Adam’s hubs (Teaching, Life, Knowle
 1. Use **closed tokens** from `tokens/tokens.css`. Do not invent colours, type sizes, radii, or shadows.
 2. Load **tokens → overlays → chrome** in that order.
 3. Start new pages from `snippets/shell.html`.
-4. Set `html[data-hub="teaching|life|knowledge|tasks"]`. The only intentional per-hub visual difference is glass/tile density via `overlays/hub-density.css`.
+4. Set `html[data-hub="teaching|life|knowledge|tasks"]`. The only intentional per-hub visual difference is glass/tile density via `overlays/hub-density.css` (`teaching` and `tasks` share the same density group).
+5. For Tasks Hub surfaces (Board home, Graph rail), also read `TASKS.md`.
 
 ## Do not
 
