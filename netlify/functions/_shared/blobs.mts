@@ -45,6 +45,10 @@ export function blobKv(store: Store = getContentStore()): KvAdapter {
 
 let seedPromise: Promise<void> | null = null;
 
+export function resetSeedCache(): void {
+  seedPromise = null;
+}
+
 /** Idempotent Blobs seed on first Functions touch (meta/seeded marker). */
 async function ensureSeeded(kv: KvAdapter = blobKv()): Promise<void> {
   if (!seedPromise) {
