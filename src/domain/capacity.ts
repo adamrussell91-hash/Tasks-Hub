@@ -1,5 +1,5 @@
 import type { Task } from '@/schemas/task';
-import { addDays, parseDue, startOfDay, tasksForDay, toDateKey } from '@/domain/queries';
+import { addDays, startOfDay, tasksForDay, toDateKey } from '@/domain/queries';
 
 export type CapacityLevel = 'free' | 'light' | 'busy' | 'slammed';
 
