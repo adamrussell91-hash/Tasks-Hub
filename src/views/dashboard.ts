@@ -4,6 +4,7 @@ import {
   adaptiveTodayTasks,
   backlogTasks,
   milestonesInMonth,
+  excursionKeyDatesInMonth,
   preferredDomains,
   toDateKey,
   weekDays,
@@ -123,6 +124,7 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
   const projects = await tasksApi.listProjects();
   const month = new Date();
   const items = milestonesInMonth(projects, month);
+  const keyDates = excursionKeyDatesInMonth(projects, month);
   canvas.replaceChildren();
   canvas.append(
     el(
@@ -131,8 +133,8 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
       month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) + ' · milestones & key dates'
     )
   );
-  if (!items.length) {
-    canvas.append(el('p', 'empty-state', 'No milestones this month.'));
+  if (!items.length && !keyDates.length) {
+    canvas.append(el('p', 'empty-state', 'No milestones or excursion key dates this month.'));
     return;
   }
   const stack = el('div', 'task-stack');
@@ -144,6 +146,17 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
       el('span', 'chip chip--muted', milestone.due_date?.slice(0, 10) ?? '')
     );
     row.append(el('h3', 'task-row__title', milestone.title), meta);
+    stack.append(row);
+  }
+  for (const { project, label, due_date } of keyDates) {
+    const row = el('article', 'task-row');
+    const meta = el('div', 'task-row__meta');
+    meta.append(
+      el('span', 'chip', project.title),
+      el('span', 'chip', 'key date'),
+      el('span', 'chip chip--muted', due_date.slice(0, 10))
+    );
+    row.append(el('h3', 'task-row__title', label), meta);
     stack.append(row);
   }
   canvas.append(stack);
@@ -273,10 +286,18 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
   }
   for (const et of data.excursion_templates as ExcursionTemplate[]) {
     const row = el('article', 'task-row');
+    const actions = el('div', 'task-row__actions');
+    const use = el('button', 'btn btn--primary', 'Use');
+    use.type = 'button';
+    use.addEventListener('click', () => {
+      location.hash = `#/excursions`;
+    });
+    actions.append(use);
     row.append(
       el('h3', 'task-row__title', et.name),
       el('span', 'chip', 'excursion'),
-      el('p', 'task-row__desc', et.checklist_items.join(' · '))
+      el('p', 'task-row__desc', et.checklist_items.join(' · ')),
+      actions
     );
     projStack.append(row);
   }

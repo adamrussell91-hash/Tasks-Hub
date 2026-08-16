@@ -7,6 +7,7 @@ import {
   ProjectTemplateSchema,
   AgentActionLogSchema
 } from '@/schemas/templates';
+import { buildExcursionPlan } from '@/domain/excursion';
 import type { IndexDoc, SeedData, TasksStore } from './types';
 
 export interface KvAdapter {
@@ -305,6 +306,66 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         tags: overrides.tags ?? parsed.default_fields.tags ?? [],
         ...overrides
       });
+    },
+    async createExcursionFromTemplate(input) {
+      const raw = await kv.getJSON(keys.excursionTemplateKey(input.excursion_template_id));
+      if (!raw) throw new Error(`Excursion template not found: ${input.excursion_template_id}`);
+      const template = ExcursionTemplateSchema.parse(raw);
+      const plan = buildExcursionPlan(template, {
+        title: input.title,
+        event_date: input.event_date,
+        student_group_reference: input.student_group_reference,
+        description: input.description
+      });
+
+      let project = await this.createProject({
+        title: input.title,
+        description: input.description ?? `${template.name} excursion`,
+        arc_summary: `${template.name} on ${plan.event_date}`,
+        type: 'excursion',
+        status: 'active',
+        baseline_end_date: plan.event_date,
+        current_end_date: plan.event_date,
+        competition_or_event_type: template.id,
+        key_dates: plan.key_dates,
+        student_group_reference: input.student_group_reference ?? null,
+        drafted_documents: plan.drafted_documents,
+        generated_admin_tasks: [],
+        milestones: []
+      });
+
+      const milestones = plan.milestones.map((m) => ({
+        id: newId('ms'),
+        project_id: project.id,
+        title: m.title,
+        due_date: m.due_date,
+        status: m.status
+      }));
+
+      const tasks: Task[] = [];
+      for (const planned of plan.admin_tasks) {
+        const task = await this.createTask({
+          title: planned.title,
+          description: planned.description,
+          domain: 'teaching',
+          due_date: planned.due_date,
+          estimated_duration: planned.estimated_duration,
+          priority: planned.priority,
+          parent_project_id: project.id,
+          tags: planned.tags,
+          source: 'auto_generated_from_excursion'
+        });
+        tasks.push(task);
+      }
+
+      project = await this.updateProject(project.id, {
+        milestones,
+        generated_admin_tasks: tasks.map((t) => t.id),
+        drafted_documents: plan.drafted_documents,
+        key_dates: plan.key_dates
+      });
+
+      return { project, tasks };
     }
   };
 }

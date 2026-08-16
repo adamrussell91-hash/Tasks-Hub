@@ -41,4 +41,11 @@ export interface TasksStore {
   saveTaskAsTemplate(taskId: string, name: string): Promise<TaskTemplate>;
   saveProjectAsTemplate(projectId: string, name: string): Promise<ProjectTemplate>;
   createTaskFromTemplate(templateId: string, overrides?: Partial<Task>): Promise<Task>;
+  createExcursionFromTemplate(input: {
+    excursion_template_id: string;
+    title: string;
+    event_date: string;
+    student_group_reference?: string | null;
+    description?: string;
+  }): Promise<{ project: Project; tasks: Task[] }>;
 }

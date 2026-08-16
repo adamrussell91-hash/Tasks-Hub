@@ -152,6 +152,21 @@ export function createMockApi({ seed }: MockApiOptions) {
             data: await s.saveProjectAsTemplate(String(b.project_id), String(b.name))
           });
         }
+        if (b.action === 'create_excursion_from_template') {
+          return json(201, {
+            ok: true,
+            data: await s.createExcursionFromTemplate({
+              excursion_template_id: String(b.excursion_template_id),
+              title: String(b.title),
+              event_date: String(b.event_date),
+              student_group_reference:
+                b.student_group_reference === undefined || b.student_group_reference === null
+                  ? null
+                  : String(b.student_group_reference),
+              description: b.description === undefined ? undefined : String(b.description)
+            })
+          });
+        }
       }
     }
 

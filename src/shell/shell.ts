@@ -21,7 +21,8 @@ export type HubViewId =
   | 'list'
   | 'search'
   | 'templates'
-  | 'projects';
+  | 'projects'
+  | 'excursions';
 
 /** Labeled Teaching-style rail — Board is home per design-kit/TASKS.md */
 const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> = [
@@ -32,6 +33,7 @@ const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> 
   { id: 'month', label: 'Month', href: '#/month', glyph: '▣' },
   { id: 'list', label: 'Backlog', href: '#/list', glyph: '☰' },
   { id: 'projects', label: 'Projects', href: '#/projects', glyph: '◇' },
+  { id: 'excursions', label: 'Excursions', href: '#/excursions', glyph: '⚑' },
   { id: 'templates', label: 'Templates', href: '#/templates', glyph: '▥' },
   { id: 'search', label: 'Search', href: '#/search', glyph: '⌕' }
 ];
@@ -174,7 +176,8 @@ export function parseHashRoute(): HubViewId {
     'list',
     'search',
     'templates',
-    'projects'
+    'projects',
+    'excursions'
   ];
   return known.includes(id) ? id : 'board';
 }

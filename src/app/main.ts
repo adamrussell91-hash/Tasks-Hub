@@ -15,6 +15,7 @@ import {
 } from '@/shell/shell';
 import { renderBoardView } from '@/views/board';
 import { renderGraphView } from '@/views/graph';
+import { renderExcursionsView } from '@/views/excursions';
 import {
   renderDayView,
   renderWeekView,
@@ -70,6 +71,11 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     eyebrow: 'Arcs',
     title: 'Projects',
     supporting: 'Programs, excursions, and standard projects.'
+  },
+  excursions: {
+    eyebrow: 'Competitions',
+    title: 'Excursions',
+    supporting: 'Template engine with lead-time admin scheduling and draft notes.'
   }
 };
 
@@ -93,6 +99,8 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderTemplatesView(canvas);
     case 'projects':
       return renderProjectsView(canvas);
+    case 'excursions':
+      return renderExcursionsView(canvas);
   }
 }
 

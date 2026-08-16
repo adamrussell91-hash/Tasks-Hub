@@ -44,6 +44,18 @@ export const tasksApi = {
       overrides
     }),
 
+  createExcursionFromTemplate: (input: {
+    excursion_template_id: string;
+    title: string;
+    event_date: string;
+    student_group_reference?: string | null;
+    description?: string;
+  }) =>
+    apiPost<{ project: Project; tasks: Task[] }>('/api/templates', {
+      action: 'create_excursion_from_template',
+      ...input
+    }),
+
   search: (q: string) =>
     apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`)
 };
