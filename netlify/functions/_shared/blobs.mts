@@ -1,10 +1,23 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getStore, type Store } from '@netlify/blobs';
 import * as keys from '../../../src/storage/keys.ts';
-import { createTasksStore, type KvAdapter } from '../../../src/services/store.ts';
+import {
+  createTasksStore,
+  seedIfEmpty,
+  type KvAdapter
+} from '../../../src/services/store.ts';
+import type { SeedData } from '../../../src/services/types.ts';
 
 export { keys };
 
 const CONTENT_STORE_NAME = 'tasks-hub-content';
+
+function loadSeed(): SeedData {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '../../..');
+  return JSON.parse(readFileSync(join(root, 'fixtures/seed.json'), 'utf8')) as SeedData;
+}
 
 export function getContentStore(): Store {
   return getStore(CONTENT_STORE_NAME);
@@ -30,6 +43,21 @@ export function blobKv(store: Store = getContentStore()): KvAdapter {
   };
 }
 
-export function getTasksStore() {
-  return createTasksStore(blobKv(), keys);
+let seedPromise: Promise<void> | null = null;
+
+/** Idempotent Blobs seed on first Functions touch (meta/seeded marker). */
+async function ensureSeeded(kv: KvAdapter = blobKv()): Promise<void> {
+  if (!seedPromise) {
+    seedPromise = seedIfEmpty(kv, keys, loadSeed()).catch((err) => {
+      seedPromise = null;
+      throw err;
+    });
+  }
+  await seedPromise;
+}
+
+export async function getTasksStore() {
+  const kv = blobKv();
+  await ensureSeeded(kv);
+  return createTasksStore(kv, keys);
 }

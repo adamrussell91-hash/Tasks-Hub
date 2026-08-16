@@ -1,0 +1,24 @@
+# Tasks Hub — Agent Notes
+
+Personal task/project manager. Vite + TypeScript (vanilla DOM, no framework), with Netlify Functions + Blobs for the production API. See `README.md` and `docs/specs/task-project-manager-hub-spec.md` for product detail.
+
+## Cursor Cloud specific instructions
+
+The environment is a static Vite SPA; `npm install` (run by the startup update script) is all the dependency setup needed. Node 22+ is required (`engines.node >= 22`).
+
+### Services / commands
+
+There is a single frontend service. Standard commands live in `package.json`:
+
+- Run (dev): `npm run dev` — Vite dev server on `http://localhost:5175`. It mounts an in-memory **mock API** at `/api/*` (see `scripts/mock-api.ts`, wired via `mockApiPlugin` in `vite.config.ts`) seeded from `fixtures/seed.json`. No Netlify, Blobs, or real backend is needed for local dev.
+- Lint / type-check: `npx tsc -p tsconfig.json --noEmit` — there is **no ESLint**; the TypeScript compiler is the only static check (and is the first step of `npm run build`).
+- Test: `npm test` (Vitest, `happy-dom`). Unit tests only, under `tests/unit`.
+- Build: `npm run build` (`tsc --noEmit` + `vite build` + SPA 404 fallback copy).
+
+### Non-obvious gotchas
+
+- Local sign-in passphrase is `tasks-hub-local` (checked by the mock API only; the real Netlify function uses a hashed secret). The gate blocks all `/api/*` calls until authenticated.
+- Mock API state is **in-memory in the Vite dev process**: created/edited tasks reset when the dev server restarts, and are not shared with the real Netlify Blobs store.
+- After creating/editing a task on the Board, the app re-boots and briefly shows a full-screen loading animation (a spinning 3D cube from the design kit) before the Board reappears — this is normal, not a hang.
+- UI styling comes from the vendored `design-kit/` (Cotton Glass tokens, Teaching density). Per repo convention, read `design-kit/AGENTS.md` before changing hub UI; use existing tokens rather than new colours/type.
+- `.env` values (`TASKS_HUB_PASSPHRASE_HASH`, `SESSION_SECRET`, etc. from `.env.example`) are only needed for the real Netlify Functions / Blobs deployment, not for `npm run dev`.

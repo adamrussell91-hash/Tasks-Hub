@@ -28,7 +28,7 @@ export default async function handler(request: Request): Promise<Response> {
     return withCors(errorResponse(401, 'unauthenticated', 'Sign in required'), request, env);
   }
 
-  const store = getTasksStore();
+  const store = await getTasksStore();
 
   try {
     if (request.method === 'GET') {
@@ -59,6 +59,19 @@ export default async function handler(request: Request): Promise<Response> {
     if (action === 'create_task_from_template') {
       const task = await store.createTaskFromTemplate(String(body.template_id), (body.overrides as object) ?? {});
       return withCors(okResponse(201, task), request, env);
+    }
+    if (action === 'create_excursion_from_template') {
+      const result = await store.createExcursionFromTemplate({
+        excursion_template_id: String(body.excursion_template_id),
+        title: String(body.title),
+        event_date: String(body.event_date),
+        student_group_reference:
+          body.student_group_reference === undefined || body.student_group_reference === null
+            ? null
+            : String(body.student_group_reference),
+        description: body.description === undefined ? undefined : String(body.description)
+      });
+      return withCors(okResponse(201, result), request, env);
     }
 
     return withCors(errorResponse(400, 'unknown_action', 'Unknown templates action'), request, env);

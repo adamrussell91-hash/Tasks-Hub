@@ -67,6 +67,16 @@ export function createMockApi({ seed }: MockApiOptions) {
       return json(200, { ok: true, data: { loggedOut: true } });
     }
 
+    // Public Corey capacity — token only, no session
+    if (path === '/api/capacity' && method === 'GET' && url.searchParams.get('token')) {
+      const sPublic = store();
+      const view = await sPublic.getPublicCapacityByToken(url.searchParams.get('token')!);
+      if (!view) {
+        return json(404, { ok: false, error: { code: 'not_found', message: 'Unknown share' } });
+      }
+      return json(200, { ok: true, data: view });
+    }
+
     if (!authenticated && path.startsWith('/api/')) {
       return json(401, { ok: false, error: { code: 'unauthenticated', message: 'Sign in required' } });
     }
@@ -152,6 +162,21 @@ export function createMockApi({ seed }: MockApiOptions) {
             data: await s.saveProjectAsTemplate(String(b.project_id), String(b.name))
           });
         }
+        if (b.action === 'create_excursion_from_template') {
+          return json(201, {
+            ok: true,
+            data: await s.createExcursionFromTemplate({
+              excursion_template_id: String(b.excursion_template_id),
+              title: String(b.title),
+              event_date: String(b.event_date),
+              student_group_reference:
+                b.student_group_reference === undefined || b.student_group_reference === null
+                  ? null
+                  : String(b.student_group_reference),
+              description: b.description === undefined ? undefined : String(b.description)
+            })
+          });
+        }
       }
     }
 
@@ -159,6 +184,160 @@ export function createMockApi({ seed }: MockApiOptions) {
       const q = url.searchParams.get('q') ?? '';
       const [tasks, projects] = await Promise.all([s.listTasks(), s.listProjects()]);
       return json(200, { ok: true, data: searchEntities(tasks, projects, q) });
+    }
+
+    if (path === '/api/clare') {
+      if (method === 'GET') {
+        const domain = url.searchParams.get('domain');
+        if (domain) {
+          return json(200, {
+            ok: true,
+            data: { calibration: await s.getClareCalibration(domain as 'teaching') }
+          });
+        }
+        return json(200, { ok: true, data: { calibrations: await s.listClareCalibrations() } });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'propose') {
+          return json(200, {
+            ok: true,
+            data: await s.proposeWithClare({
+              title: String(b.title ?? ''),
+              domain: b.domain as 'teaching',
+              description: b.description === undefined ? undefined : String(b.description),
+              priority: b.priority as 'medium' | undefined,
+              due_date: b.due_date === undefined || b.due_date === null ? null : String(b.due_date)
+            })
+          });
+        }
+        if (b.action === 'accept') {
+          return json(201, {
+            ok: true,
+            data: await s.acceptClareProposal({
+              proposal: b.proposal as import('../src/domain/clare').ClareProposal,
+              accepted_minutes: Number(b.accepted_minutes),
+              framework_id: b.framework_id === undefined ? undefined : String(b.framework_id)
+            })
+          });
+        }
+        if (b.action === 'record_actual') {
+          return json(200, {
+            ok: true,
+            data: await s.recordClareActual(String(b.task_id), Number(b.actual_minutes))
+          });
+        }
+      }
+    }
+
+    if (path === '/api/stall') {
+      if (method === 'GET') {
+        return json(200, { ok: true, data: { reviews: await s.listReviewLogs() } });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'flag_stalled') {
+          return json(200, {
+            ok: true,
+            data: await s.flagStalledProjects({
+              weeks: b.weeks === undefined ? undefined : Number(b.weeks)
+            })
+          });
+        }
+        if (b.action === 'resolve') {
+          return json(200, {
+            ok: true,
+            data: await s.resolveStalledProject({
+              project_id: String(b.project_id),
+              outcome: b.outcome as 'revived' | 'frankensteined' | 'buried',
+              reason: String(b.reason ?? ''),
+              merge_into_project_id:
+                b.merge_into_project_id === undefined || b.merge_into_project_id === null
+                  ? null
+                  : String(b.merge_into_project_id)
+            })
+          });
+        }
+      }
+    }
+
+    if (path === '/api/stress-flags') {
+      if (method === 'GET') {
+        const inbox = url.searchParams.get('inbox');
+        if (inbox) {
+          return json(200, {
+            ok: true,
+            data: { flags: await s.listAgentInbox(inbox), inbox }
+          });
+        }
+        return json(200, { ok: true, data: { flags: await s.listStressFlags() } });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'scan') {
+          return json(200, { ok: true, data: await s.scanAndRaiseStressFlags() });
+        }
+        if (b.action === 'raise') {
+          return json(201, {
+            ok: true,
+            data: await s.raiseStressFlag({
+              pattern_description: String(b.pattern_description ?? ''),
+              pattern_kind: (b.pattern_kind as 'manual') ?? 'manual',
+              source_project_or_task_id:
+                b.source_project_or_task_id === undefined || b.source_project_or_task_id === null
+                  ? null
+                  : String(b.source_project_or_task_id),
+              fingerprint: b.fingerprint === undefined ? undefined : String(b.fingerprint)
+            })
+          });
+        }
+      }
+    }
+
+    if (path === '/api/capacity') {
+      if (method === 'GET') {
+        return json(200, {
+          ok: true,
+          data: {
+            snapshot: await s.getCapacitySnapshot(),
+            share: await s.getCapacityShare()
+          }
+        });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'ensure_share') {
+          return json(200, { ok: true, data: { share: await s.ensureCapacityShare() } });
+        }
+        if (b.action === 'rotate_share') {
+          return json(200, { ok: true, data: { share: await s.rotateCapacityShare() } });
+        }
+      }
+    }
+
+    if (path === '/api/reviews') {
+      if (method === 'GET') {
+        const projectId = url.searchParams.get('project_id');
+        if (projectId) {
+          return json(200, {
+            ok: true,
+            data: { variance: await s.getProjectVariance(projectId) }
+          });
+        }
+        return json(200, { ok: true, data: { reviews: await s.listReviewLogs() } });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'close') {
+          return json(200, {
+            ok: true,
+            data: await s.closeProject({
+              project_id: String(b.project_id),
+              reason: String(b.reason ?? '')
+            })
+          });
+        }
+      }
     }
 
     return json(404, { ok: false, error: { code: 'not_found', message: `No mock route ${method} ${path}` } });

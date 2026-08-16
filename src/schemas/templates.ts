@@ -64,8 +64,13 @@ export const ReviewLogSchema = z.object({
   schema_version: schemaVersion,
   id: z.string().min(1),
   project_id: z.string(),
-  outcome: z.enum(['revived', 'frankensteined', 'buried']),
+  outcome: z.enum(['revived', 'frankensteined', 'buried', 'closed']),
   reason: z.string(),
+  merge_into_project_id: z.string().nullable().default(null),
+  /** Planned-vs-actual snapshot at closure (nullable for stall outcomes). */
+  baseline_end_date: z.string().nullable().default(null),
+  current_end_date: z.string().nullable().default(null),
+  slip_days: z.number().nullable().default(null),
   created_at: z.string()
 });
 
@@ -76,7 +81,7 @@ export const AgentActionLogSchema = z.object({
   id: z.string().min(1),
   agent: z.string(),
   action: z.enum(['create', 'update', 'delete']),
-  entity_type: z.enum(['task', 'project', 'milestone', 'template']),
+  entity_type: z.enum(['task', 'project', 'milestone', 'template', 'stress_flag']),
   entity_id: z.string(),
   reason: z.string(),
   created_at: z.string()

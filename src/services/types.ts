@@ -4,8 +4,16 @@ import type {
   FrameworkEntry,
   ExcursionTemplate,
   TaskTemplate,
-  ProjectTemplate
+  ProjectTemplate,
+  ReviewLog
 } from '@/schemas/templates';
+import type { ClareCalibration, ClareNegotiationLog } from '@/schemas/clare';
+import type { ClareProposal, ClareProposalInput } from '@/domain/clare';
+import type { StallOutcome } from '@/domain/stall';
+import type { StressFlag } from '@/schemas/stress';
+import type { CapacityShare } from '@/schemas/capacity';
+import type { CapacitySnapshot, CapacityLevel } from '@/domain/capacity';
+import type { ProjectVariance } from '@/domain/closure';
 
 export interface SeedData {
   tasks: Task[];
@@ -41,4 +49,71 @@ export interface TasksStore {
   saveTaskAsTemplate(taskId: string, name: string): Promise<TaskTemplate>;
   saveProjectAsTemplate(projectId: string, name: string): Promise<ProjectTemplate>;
   createTaskFromTemplate(templateId: string, overrides?: Partial<Task>): Promise<Task>;
+  createExcursionFromTemplate(input: {
+    excursion_template_id: string;
+    title: string;
+    event_date: string;
+    student_group_reference?: string | null;
+    description?: string;
+  }): Promise<{ project: Project; tasks: Task[] }>;
+
+  getClareCalibration(domain: Task['domain']): Promise<ClareCalibration>;
+  listClareCalibrations(): Promise<ClareCalibration[]>;
+  proposeWithClare(input: ClareProposalInput): Promise<ClareProposal>;
+  acceptClareProposal(input: {
+    proposal: ClareProposal;
+    accepted_minutes: number;
+    framework_id?: string;
+  }): Promise<{ task: Task; negotiation: ClareNegotiationLog; calibration: ClareCalibration }>;
+  recordClareActual(
+    taskId: string,
+    actualMinutes: number
+  ): Promise<{ task: Task; calibration: ClareCalibration | null }>;
+
+  listReviewLogs(): Promise<ReviewLog[]>;
+  flagStalledProjects(options?: {
+    weeks?: number;
+    now?: Date;
+  }): Promise<{ flagged: Project[]; candidates: number }>;
+  resolveStalledProject(input: {
+    project_id: string;
+    outcome: StallOutcome;
+    reason: string;
+    merge_into_project_id?: string | null;
+  }): Promise<{ project: Project; review: ReviewLog; moved_task_ids: string[] }>;
+
+  listStressFlags(): Promise<StressFlag[]>;
+  listAgentInbox(agent: string): Promise<StressFlag[]>;
+  raiseStressFlag(input: {
+    pattern_description: string;
+    pattern_kind?: StressFlag['pattern_kind'];
+    source_project_or_task_id?: string | null;
+    fingerprint?: string;
+  }): Promise<StressFlag>;
+  scanAndRaiseStressFlags(options?: { now?: Date }): Promise<{
+    raised: StressFlag[];
+    skipped: number;
+    patterns: number;
+  }>;
+
+  getCapacitySnapshot(now?: Date): Promise<CapacitySnapshot>;
+  ensureCapacityShare(): Promise<CapacityShare>;
+  rotateCapacityShare(): Promise<CapacityShare>;
+  getCapacityShare(): Promise<CapacityShare | null>;
+  getPublicCapacityByToken(token: string): Promise<{
+    generated_at: string;
+    headlines: string[];
+    overall: CapacityLevel;
+    days: Array<{
+      date_key: string;
+      weekday: string;
+      level: CapacityLevel;
+    }>;
+  } | null>;
+
+  getProjectVariance(projectId: string): Promise<ProjectVariance>;
+  closeProject(input: {
+    project_id: string;
+    reason: string;
+  }): Promise<{ project: Project; review: ReviewLog; variance: ProjectVariance }>;
 }

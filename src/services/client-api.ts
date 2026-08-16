@@ -44,6 +44,140 @@ export const tasksApi = {
       overrides
     }),
 
+  createExcursionFromTemplate: (input: {
+    excursion_template_id: string;
+    title: string;
+    event_date: string;
+    student_group_reference?: string | null;
+    description?: string;
+  }) =>
+    apiPost<{ project: Project; tasks: Task[] }>('/api/templates', {
+      action: 'create_excursion_from_template',
+      ...input
+    }),
+
+  proposeWithClare: (body: {
+    title: string;
+    domain: string;
+    description?: string;
+    priority?: string;
+    due_date?: string | null;
+  }) => apiPost<import('@/domain/clare').ClareProposal>('/api/clare', { action: 'propose', ...body }),
+
+  acceptClareProposal: (body: {
+    proposal: import('@/domain/clare').ClareProposal;
+    accepted_minutes: number;
+    framework_id?: string;
+  }) =>
+    apiPost<{
+      task: Task;
+      negotiation: import('@/schemas/clare').ClareNegotiationLog;
+      calibration: import('@/schemas/clare').ClareCalibration;
+    }>('/api/clare', { action: 'accept', ...body }),
+
+  recordClareActual: (task_id: string, actual_minutes: number) =>
+    apiPost<{ task: Task; calibration: import('@/schemas/clare').ClareCalibration | null }>(
+      '/api/clare',
+      { action: 'record_actual', task_id, actual_minutes }
+    ),
+
+  listClareCalibrations: () =>
+    apiGet<{ calibrations: import('@/schemas/clare').ClareCalibration[] }>('/api/clare').then(
+      (r) => r.calibrations
+    ),
+
+  flagStalledProjects: (weeks?: number) =>
+    apiPost<{ flagged: Project[]; candidates: number }>('/api/stall', {
+      action: 'flag_stalled',
+      weeks
+    }),
+
+  resolveStalledProject: (input: {
+    project_id: string;
+    outcome: 'revived' | 'frankensteined' | 'buried';
+    reason: string;
+    merge_into_project_id?: string | null;
+  }) =>
+    apiPost<{
+      project: Project;
+      review: import('@/schemas/templates').ReviewLog;
+      moved_task_ids: string[];
+    }>('/api/stall', { action: 'resolve', ...input }),
+
+  listStressFlags: () =>
+    apiGet<{ flags: import('@/schemas/stress').StressFlag[] }>('/api/stress-flags').then(
+      (r) => r.flags
+    ),
+
+  listAgentInbox: (inbox: string) =>
+    apiGet<{ flags: import('@/schemas/stress').StressFlag[]; inbox: string }>(
+      `/api/stress-flags?inbox=${encodeURIComponent(inbox)}`
+    ).then((r) => r.flags),
+
+  scanStressFlags: () =>
+    apiPost<{
+      raised: import('@/schemas/stress').StressFlag[];
+      skipped: number;
+      patterns: number;
+    }>('/api/stress-flags', { action: 'scan' }),
+
+  raiseStressFlag: (body: {
+    pattern_description: string;
+    pattern_kind?: string;
+    source_project_or_task_id?: string | null;
+    fingerprint?: string;
+  }) =>
+    apiPost<import('@/schemas/stress').StressFlag>('/api/stress-flags', {
+      action: 'raise',
+      ...body
+    }),
+
+  getCapacity: () =>
+    apiGet<{
+      snapshot: import('@/domain/capacity').CapacitySnapshot;
+      share: import('@/schemas/capacity').CapacityShare | null;
+    }>('/api/capacity'),
+
+  ensureCapacityShare: () =>
+    apiPost<{ share: import('@/schemas/capacity').CapacityShare }>('/api/capacity', {
+      action: 'ensure_share'
+    }),
+
+  rotateCapacityShare: () =>
+    apiPost<{ share: import('@/schemas/capacity').CapacityShare }>('/api/capacity', {
+      action: 'rotate_share'
+    }),
+
+  getPublicCapacity: (token: string) =>
+    apiGet<{
+      generated_at: string;
+      headlines: string[];
+      overall: import('@/domain/capacity').CapacityLevel;
+      days: Array<{
+        date_key: string;
+        weekday: string;
+        level: import('@/domain/capacity').CapacityLevel;
+      }>;
+    }>(`/api/capacity?token=${encodeURIComponent(token)}`),
+
+  /** Shared by the stall review loop and Corey's closure loop (same ReviewLog store). */
+  listReviewLogs: () =>
+    apiGet<{ reviews: import('@/schemas/templates').ReviewLog[] }>('/api/reviews').then(
+      (r) => r.reviews
+    ),
+
+  getProjectVariance: (project_id: string) =>
+    apiGet<{ variance: import('@/domain/closure').ProjectVariance }>(
+      `/api/reviews?project_id=${encodeURIComponent(project_id)}`
+    ).then((r) => r.variance),
+
+  closeProject: (project_id: string, reason: string) =>
+    apiPost<{
+      project: Project;
+      review: import('@/schemas/templates').ReviewLog;
+      variance: import('@/domain/closure').ProjectVariance;
+    }>('/api/reviews', { action: 'close', project_id, reason }),
+
   search: (q: string) =>
     apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`)
 };

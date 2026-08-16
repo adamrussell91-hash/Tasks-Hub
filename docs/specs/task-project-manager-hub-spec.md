@@ -221,8 +221,14 @@ Stretch phase, after the above is stable and in daily use, the orbit view, branc
 
 ## 9. Open Questions Summary
 
-- Data persistence pattern, follow whatever the existing hubs use, confirm this is actually suitable for this hub's more relational, higher-write data before locking it in
-- Cross-hub communication pattern (shared database, internal APIs, or webhook or event layer), follow whatever pattern the existing hubs already use, if any
-- Where the Framework Library content itself lives and how it gets populated initially
-- Whether StressFlag routing between agents is a synchronous call at flag-creation time or a batched process Hammond runs periodically
-- Delivery mechanism for reminders and notifications (in-app only, versus push or email)
+**Closed — see [`docs/DECISIONS.md`](../DECISIONS.md).**
+
+| Topic | Locked answer |
+|-------|----------------|
+| Persistence | Netlify Blobs `tasks-hub-content` |
+| Cross-hub communication | Server-side HTTP + shared-secret headers |
+| Framework Library | Seed JSON → Blobs; Templates UI |
+| StressFlag timing | Write-on-create; consumers poll |
+| Reminders | In-app due-soon / pinch strips; push/email later |
+
+Still deferred (product, not blockers): Teaching Day Book deadline feed, Life Hub capacity signals, push/email delivery.
