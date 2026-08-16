@@ -4,14 +4,18 @@ import {
   adaptiveTodayTasks,
   backlogTasks,
   milestonesInMonth,
+  excursionKeyDatesInMonth,
   preferredDomains,
   toDateKey,
   weekDays,
   tasksForDay,
   searchEntities
 } from '@/domain/queries';
+import { detectPinchPoints } from '@/domain/pinch';
+import { computeProjectVariance, formatSlip } from '@/domain/closure';
 import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
+import { renderPressureStrips } from '@/views/pinch-strip';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -57,9 +61,21 @@ function renderTaskRow(task: Task, onToggle: (t: Task) => void): HTMLElement {
 }
 
 async function toggleDone(task: Task): Promise<void> {
-  await tasksApi.updateTask(task.id, {
-    status: task.status === 'done' ? 'open' : 'done'
-  });
+  if (task.status === 'done') {
+    await tasksApi.updateTask(task.id, { status: 'open' });
+    return;
+  }
+  if (task.estimated_duration && task.actual_duration == null) {
+    const raw = window.prompt(
+      `How long did “${task.title}” actually take? (minutes, estimate was ${task.estimated_duration})`,
+      String(task.estimated_duration)
+    );
+    if (raw !== null && raw.trim() !== '' && !Number.isNaN(Number(raw))) {
+      await tasksApi.recordClareActual(task.id, Number(raw));
+      return;
+    }
+  }
+  await tasksApi.updateTask(task.id, { status: 'done' });
 }
 
 export async function renderDayView(canvas: HTMLElement): Promise<void> {
@@ -76,6 +92,19 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
     `Adaptive focus: ${prefs.join(', ')} · ${toDateKey(today)}`
   );
   canvas.append(intro);
+
+  const clareLink = el('p', 'clare-inline');
+  const goClare = el('button', 'btn btn--secondary', 'Negotiate with Clare');
+  goClare.type = 'button';
+  goClare.addEventListener('click', () => {
+    location.hash = '#/clare';
+  });
+  clareLink.append(goClare);
+  canvas.append(clareLink);
+
+  const pressure = el('div', 'pressure-host');
+  renderPressureStrips(pressure, tasks, today, () => void renderDayView(canvas));
+  canvas.append(pressure);
 
   const form = renderQuickAdd(() => void renderDayView(canvas));
   canvas.append(form);
@@ -99,12 +128,31 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
 export async function renderWeekView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
   const tasks = await tasksApi.listTasks();
-  const days = weekDays(new Date());
+  const today = new Date();
+  const days = weekDays(today);
+  const pinchesByKey = new Map(
+    detectPinchPoints(tasks, today, { days: 7 }).map((p) => [p.date_key, p])
+  );
+
   canvas.replaceChildren();
+  const pressure = el('div', 'pressure-host');
+  renderPressureStrips(pressure, tasks, today, () => void renderWeekView(canvas));
+  canvas.append(pressure);
+
   const grid = el('div', 'week-grid');
   for (const day of days) {
-    const col = el('section', 'week-col');
-    col.append(el('h3', 'week-col__title', day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })));
+    const key = toDateKey(day);
+    const pinch = pinchesByKey.get(key);
+    const col = el('section', pinch ? `week-col week-col--${pinch.severity}` : 'week-col');
+    const title = el(
+      'h3',
+      'week-col__title',
+      day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })
+    );
+    col.append(title);
+    if (pinch) {
+      col.append(el('span', 'chip', pinch.severity === 'overloaded' ? 'overloaded' : 'watch'));
+    }
     const dayTasks = tasksForDay(tasks, day);
     if (!dayTasks.length) col.append(el('p', 'empty-state empty-state--compact', '—'));
     for (const task of dayTasks) {
@@ -123,6 +171,7 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
   const projects = await tasksApi.listProjects();
   const month = new Date();
   const items = milestonesInMonth(projects, month);
+  const keyDates = excursionKeyDatesInMonth(projects, month);
   canvas.replaceChildren();
   canvas.append(
     el(
@@ -131,8 +180,8 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
       month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) + ' · milestones & key dates'
     )
   );
-  if (!items.length) {
-    canvas.append(el('p', 'empty-state', 'No milestones this month.'));
+  if (!items.length && !keyDates.length) {
+    canvas.append(el('p', 'empty-state', 'No milestones or excursion key dates this month.'));
     return;
   }
   const stack = el('div', 'task-stack');
@@ -144,6 +193,17 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
       el('span', 'chip chip--muted', milestone.due_date?.slice(0, 10) ?? '')
     );
     row.append(el('h3', 'task-row__title', milestone.title), meta);
+    stack.append(row);
+  }
+  for (const { project, label, due_date } of keyDates) {
+    const row = el('article', 'task-row');
+    const meta = el('div', 'task-row__meta');
+    meta.append(
+      el('span', 'chip', project.title),
+      el('span', 'chip', 'key date'),
+      el('span', 'chip chip--muted', due_date.slice(0, 10))
+    );
+    row.append(el('h3', 'task-row__title', label), meta);
     stack.append(row);
   }
   canvas.append(stack);
@@ -174,27 +234,316 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const projects = await tasksApi.listProjects();
+  await tasksApi.flagStalledProjects().catch(() => undefined);
+  const [projects, tasks, reviews] = await Promise.all([
+    tasksApi.listProjects(),
+    tasksApi.listTasks(),
+    tasksApi.listReviewLogs().catch(() => [])
+  ]);
+
   canvas.replaceChildren();
-  canvas.append(el('p', 'view-lede', 'Programs, excursions, and standard projects.'));
-  const stack = el('div', 'task-stack');
-  for (const project of projects) {
-    const row = el('article', 'task-row');
-    row.append(
-      el('h3', 'task-row__title', project.title),
-      el('p', 'task-row__desc', project.arc_summary || project.description),
-      el('div', 'task-row__meta')
-    );
-    const meta = row.querySelector('.task-row__meta')!;
-    meta.append(
-      el('span', 'chip', project.type),
-      el('span', 'chip chip--muted', project.status),
-      el('span', 'chip chip--muted', `${project.milestones.length} milestones`)
-    );
-    stack.append(row);
+  canvas.append(
+    el(
+      'p',
+      'view-lede',
+      'Programs and arcs. Quiet projects (6+ weeks) flag as stalled — revive, Frankenstein, or bury with a reason. Finished work closes with a short retrospective against its baseline end date.'
+    )
+  );
+
+  const stallConfirmHost = el('div', 'stall-confirm');
+  const closureConfirmHost = el('div', 'closure-confirm');
+  const stalled = projects.filter((p) => p.status === 'stalled');
+  const live = projects.filter((p) => p.status !== 'stalled' && p.status !== 'archived_dead');
+  const closed = projects.filter((p) => p.status === 'archived_dead');
+  const mergeTargets = projects.filter(
+    (p) => p.status !== 'archived_dead' && p.status !== 'stalled'
+  );
+
+  if (stalled.length) {
+    canvas.append(el('h2', 'section-title', 'Stalled — choose an outcome'));
+    const stallStack = el('div', 'task-stack');
+    for (const project of stalled) {
+      stallStack.append(
+        renderStalledCard(project, tasks, mergeTargets, stallConfirmHost, () =>
+          void renderProjectsView(canvas)
+        )
+      );
+    }
+    canvas.append(stallStack, stallConfirmHost);
   }
-  if (!projects.length) canvas.append(el('p', 'empty-state', 'No projects yet.'));
-  else canvas.append(stack);
+
+  canvas.append(el('h2', 'section-title', 'Active & revived'));
+  const stack = el('div', 'task-stack');
+  for (const project of live) {
+    stack.append(
+      renderProjectClosureCard(project, tasks, closureConfirmHost, () =>
+        void renderProjectsView(canvas)
+      )
+    );
+  }
+  if (!live.length) stack.append(el('p', 'empty-state', 'No active projects.'));
+  canvas.append(stack, closureConfirmHost);
+
+  if (closed.length) {
+    canvas.append(el('h2', 'section-title', 'Closed, buried & frankensteined'));
+    const deadStack = el('div', 'task-stack');
+    for (const project of closed) {
+      const row = el('article', 'task-row');
+      row.append(
+        el('h3', 'task-row__title', project.title),
+        el('p', 'task-row__desc', project.review_summary || project.arc_summary || ''),
+        el('span', 'chip chip--muted', project.status)
+      );
+      deadStack.append(row);
+    }
+    canvas.append(deadStack);
+  }
+
+  if (reviews.length) {
+    canvas.append(el('h2', 'section-title', 'Review log'));
+    const logStack = el('div', 'task-stack');
+    for (const review of [...reviews].reverse().slice(0, 8)) {
+      const proj = projects.find((p) => p.id === review.project_id);
+      const slip =
+        review.slip_days === null || review.slip_days === undefined
+          ? ''
+          : review.slip_days === 0
+            ? ' · on baseline'
+            : review.slip_days > 0
+              ? ` · +${review.slip_days}d vs baseline`
+              : ` · ${review.slip_days}d vs baseline`;
+      const row = el('article', 'task-row');
+      row.append(
+        el('h3', 'task-row__title', `${review.outcome} · ${proj?.title ?? review.project_id}`),
+        el('p', 'task-row__desc', `${review.reason}${slip}`)
+      );
+      logStack.append(row);
+    }
+    canvas.append(logStack);
+  }
+}
+
+function renderProjectClosureCard(
+  project: Project,
+  tasks: Task[],
+  confirmHost: HTMLElement,
+  onDone: () => void
+): HTMLElement {
+  const variance = computeProjectVariance(project, tasks);
+  const row = el('article', variance.ready_to_close ? 'task-row closure-card' : 'task-row');
+  const openCount = tasks.filter(
+    (t) => t.parent_project_id === project.id && t.status !== 'done' && t.status !== 'dead'
+  ).length;
+  row.append(
+    el('h3', 'task-row__title', project.title),
+    el('p', 'task-row__desc', project.arc_summary || project.description),
+    el('div', 'task-row__meta')
+  );
+  const meta = row.querySelector('.task-row__meta')!;
+  meta.append(
+    el('span', 'chip', project.type),
+    el('span', 'chip chip--muted', project.status),
+    el('span', 'chip chip--muted', `${project.milestones.length} milestones`),
+    el('span', 'chip chip--muted', `${openCount} open tasks`),
+    el('span', 'chip chip--muted', formatSlip(variance.slip_days)),
+    el(
+      'span',
+      'chip chip--muted',
+      `baseline ${variance.baseline_end_date?.slice(0, 10) ?? '—'} → now ${variance.derived_end_date?.slice(0, 10) ?? '—'}`
+    )
+  );
+
+  if (variance.ready_to_close) {
+    const actions = el('div', 'task-row__actions');
+    const closeBtn = el('button', 'btn btn--primary', 'Close project');
+    closeBtn.type = 'button';
+    closeBtn.addEventListener('click', () => {
+      showCloseConfirm(confirmHost, project, variance.slip_days, onDone);
+    });
+    actions.append(closeBtn);
+    row.append(actions);
+  }
+  return row;
+}
+
+function showCloseConfirm(
+  host: HTMLElement,
+  project: Project,
+  slipDays: number | null,
+  onDone: () => void
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm closure');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'closure-confirm__title', `Close ${project.title}`));
+  const reason = el('input', 'sign-in__input') as HTMLInputElement;
+  reason.placeholder = 'Short retrospective (required)';
+  reason.setAttribute('aria-label', 'Retrospective');
+  const slipText =
+    slipDays === null
+      ? 'No baseline comparison.'
+      : slipDays === 0
+        ? 'Landed on baseline.'
+        : slipDays > 0
+          ? `${slipDays} days past baseline.`
+          : `${Math.abs(slipDays)} days ahead of baseline.`;
+  card.append(el('p', 'page-header__supporting', `${slipText} Do not apply until Confirm.`), reason);
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    const text = reason.value.trim();
+    if (!text) {
+      host.append(el('p', 'empty-state', 'Add a retrospective first.'));
+      return;
+    }
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await tasksApi.closeProject(project.id, text);
+      host.replaceChildren(el('p', 'canvas-status', 'Project closed.'));
+      onDone();
+    } catch (err) {
+      host.replaceChildren(
+        el('p', 'empty-state', err instanceof Error ? err.message : 'Close failed')
+      );
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
+}
+
+function renderStalledCard(
+  project: Project,
+  tasks: Task[],
+  mergeTargets: Project[],
+  confirmHost: HTMLElement,
+  onDone: () => void
+): HTMLElement {
+  const card = el('article', 'stall-card');
+  const openCount = tasks.filter(
+    (t) => t.parent_project_id === project.id && t.status !== 'done' && t.status !== 'dead'
+  ).length;
+  card.append(
+    el('p', 'page-header__eyebrow', 'Stalled'),
+    el('h3', 'task-row__title', project.title),
+    el('p', 'task-row__desc', project.arc_summary || project.description),
+    el('div', 'task-row__meta')
+  );
+  const meta = card.querySelector('.task-row__meta')!;
+  meta.append(
+    el('span', 'chip', project.type),
+    el('span', 'chip chip--muted', `${openCount} open tasks`),
+    el(
+      'span',
+      'chip chip--muted',
+      project.stall_flagged_at ? `flagged ${project.stall_flagged_at.slice(0, 10)}` : 'flagged'
+    )
+  );
+
+  const reason = el('input', 'sign-in__input') as HTMLInputElement;
+  reason.placeholder = 'Short reason (required)';
+  reason.setAttribute('aria-label', `Reason for ${project.title}`);
+
+  const merge = el('select', 'quick-add__select') as HTMLSelectElement;
+  merge.setAttribute('aria-label', 'Frankenstein into');
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = 'Merge into… (for Frankenstein)';
+  merge.append(blank);
+  for (const target of mergeTargets.filter((p) => p.id !== project.id)) {
+    const opt = document.createElement('option');
+    opt.value = target.id;
+    opt.textContent = target.title;
+    merge.append(opt);
+  }
+
+  const actions = el('div', 'stall-card__actions');
+  const outcomes: Array<{ id: 'revived' | 'frankensteined' | 'buried'; label: string }> = [
+    { id: 'revived', label: 'Revive' },
+    { id: 'frankensteined', label: 'Frankenstein' },
+    { id: 'buried', label: 'Bury' }
+  ];
+  for (const outcome of outcomes) {
+    const btn = el(
+      'button',
+      outcome.id === 'buried' ? 'btn btn--decisive' : 'btn btn--secondary',
+      outcome.label
+    );
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      const text = reason.value.trim();
+      if (!text) {
+        confirmHost.replaceChildren(el('p', 'empty-state', 'Add a short reason first.'));
+        return;
+      }
+      if (outcome.id === 'frankensteined' && !merge.value) {
+        confirmHost.replaceChildren(el('p', 'empty-state', 'Pick a merge target for Frankenstein.'));
+        return;
+      }
+      showStallConfirm(confirmHost, project, outcome.id, text, merge.value || null, onDone);
+    });
+    actions.append(btn);
+  }
+
+  card.append(reason, merge, actions);
+  return card;
+}
+
+function showStallConfirm(
+  host: HTMLElement,
+  project: Project,
+  outcome: 'revived' | 'frankensteined' | 'buried',
+  reason: string,
+  mergeInto: string | null,
+  onDone: () => void
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm stall outcome');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'stall-confirm__title', `${outcome} · ${project.title}`));
+  card.append(
+    el(
+      'p',
+      'page-header__supporting',
+      `${reason}${mergeInto ? ` · merge → ${mergeInto}` : ''}. Do not apply until Confirm.`
+    )
+  );
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await tasksApi.resolveStalledProject({
+        project_id: project.id,
+        outcome,
+        reason,
+        merge_into_project_id: mergeInto
+      });
+      host.replaceChildren(el('p', 'canvas-status', 'Outcome recorded.'));
+      onDone();
+    } catch (err) {
+      host.replaceChildren(
+        el('p', 'empty-state', err instanceof Error ? err.message : 'Resolve failed')
+      );
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
 }
 
 export async function renderSearchView(canvas: HTMLElement): Promise<void> {
@@ -273,10 +622,18 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
   }
   for (const et of data.excursion_templates as ExcursionTemplate[]) {
     const row = el('article', 'task-row');
+    const actions = el('div', 'task-row__actions');
+    const use = el('button', 'btn btn--primary', 'Use');
+    use.type = 'button';
+    use.addEventListener('click', () => {
+      location.hash = '#/excursions';
+    });
+    actions.append(use);
     row.append(
       el('h3', 'task-row__title', et.name),
       el('span', 'chip', 'excursion'),
-      el('p', 'task-row__desc', et.checklist_items.join(' · '))
+      el('p', 'task-row__desc', et.checklist_items.join(' · ')),
+      actions
     );
     projStack.append(row);
   }

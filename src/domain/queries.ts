@@ -116,6 +116,34 @@ export function milestonesInMonth(projects: Project[], month: Date): Array<{
   );
 }
 
+/** Excursion key dates (permission / staff / risk / payment / event) falling in a month. */
+export function excursionKeyDatesInMonth(
+  projects: Project[],
+  month: Date
+): Array<{ project: Project; label: string; due_date: string }> {
+  const y = month.getFullYear();
+  const m = month.getMonth();
+  const out: Array<{ project: Project; label: string; due_date: string }> = [];
+  for (const project of projects) {
+    if (project.type !== 'excursion') continue;
+    const pairs: Array<[string, string | null | undefined]> = [
+      ['Permission note', project.key_dates?.permission_note_due],
+      ['Staff notification', project.key_dates?.staff_notification_due],
+      ['Risk assessment', project.key_dates?.risk_assessment_due],
+      ['Payment', project.key_dates?.payment_due],
+      ['Event', project.current_end_date]
+    ];
+    for (const [label, due_date] of pairs) {
+      if (!due_date) continue;
+      const due = parseDue(due_date);
+      if (due && due.getFullYear() === y && due.getMonth() === m) {
+        out.push({ project, label, due_date });
+      }
+    }
+  }
+  return out.sort((a, b) => a.due_date.localeCompare(b.due_date));
+}
+
 export function searchEntities(
   tasks: Task[],
   projects: Project[],

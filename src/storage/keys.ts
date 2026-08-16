@@ -50,8 +50,41 @@ export function reviewLogKey(id: string): string {
   return `review_logs/${id}`;
 }
 
+export function reviewLogsIndexKey(): string {
+  return 'review_logs/_index';
+}
+
+export function capacityShareKey(): string {
+  return 'meta/capacity_share';
+}
+
+export function stressFlagKey(id: string): string {
+  return `stress_flags/${id}`;
+}
+
+export function stressFlagsIndexKey(): string {
+  return 'stress_flags/_index';
+}
+
+/** Per-agent inbox of StressFlag ids (write-on-create; consumers poll). */
+export function agentInboxKey(agentSlug: string): string {
+  return `agent_inbox/${agentSlug}`;
+}
+
 export function agentActionLogKey(id: string): string {
   return `agent_actions/${id}`;
+}
+
+export function clareCalibrationKey(domain: string): string {
+  return `clare_calibration/${domain}`;
+}
+
+export function clareCalibrationsIndexKey(): string {
+  return 'clare_calibration/_index';
+}
+
+export function clareNegotiationLogKey(id: string): string {
+  return `clare_negotiations/${id}`;
 }
 
 export function metaSeededKey(): string {

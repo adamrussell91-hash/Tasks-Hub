@@ -7,6 +7,7 @@ import '../styles/views.css';
 
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
+  parseCapacityShareToken,
   parseHashRoute,
   renderHubShell,
   renderPageHeader,
@@ -15,6 +16,14 @@ import {
 } from '@/shell/shell';
 import { renderBoardView } from '@/views/board';
 import { renderGraphView } from '@/views/graph';
+import { renderGanttView } from '@/views/gantt';
+import { renderOrbitView } from '@/views/orbit';
+import { renderBranchView } from '@/views/branch';
+import { renderConstellationView } from '@/views/constellation';
+import { renderClareView } from '@/views/clare';
+import { renderExcursionsView } from '@/views/excursions';
+import { renderStressView } from '@/views/stress';
+import { renderCoreyView, renderPublicCapacityView } from '@/views/corey';
 import {
   renderDayView,
   renderWeekView,
@@ -31,20 +40,45 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     title: 'Board',
     supporting: 'Tasks and projects as Teaching-density tiles.'
   },
+  clare: {
+    eyebrow: 'Negotiate',
+    title: 'Clare DeMind',
+    supporting: 'Propose duration and framework — confirm before write.'
+  },
   graph: {
     eyebrow: 'Structure',
     title: 'Graph',
     supporting: 'Blockers and workstreams — Knowledge-style search, select, preview.'
   },
+  gantt: {
+    eyebrow: 'Schedule',
+    title: 'Gantt',
+    supporting: 'Project timeline from due dates and dependencies.'
+  },
+  orbit: {
+    eyebrow: 'Stretch',
+    title: 'Orbit',
+    supporting: 'Adam at the centre — urgency pulls work closer.'
+  },
+  branch: {
+    eyebrow: 'Stretch',
+    title: 'Branch',
+    supporting: 'One project’s parent tree and depends_on edges.'
+  },
+  constellation: {
+    eyebrow: 'Stretch',
+    title: 'Constellation',
+    supporting: 'Completions light stars — a payoff metaphor, not a task list.'
+  },
   day: {
     eyebrow: 'Focus',
     title: 'Today',
-    supporting: 'Adaptive domain focus for this weekday.'
+    supporting: 'Adaptive domain focus, pinch pressure, and due-soon.'
   },
   week: {
     eyebrow: 'Shape',
     title: 'Week',
-    supporting: 'Due work across the working week.'
+    supporting: 'Due work with pinch watch / overload cues.'
   },
   month: {
     eyebrow: 'Horizon',
@@ -69,7 +103,22 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   projects: {
     eyebrow: 'Arcs',
     title: 'Projects',
-    supporting: 'Programs, excursions, and standard projects.'
+    supporting: 'Stall revive / Frankenstein / bury, or close with planned-vs-actual.'
+  },
+  excursions: {
+    eyebrow: 'Events',
+    title: 'Excursions',
+    supporting: 'Spin up admin tasks from Ethics Olympiad / Da Vinci templates.'
+  },
+  stress: {
+    eyebrow: 'Network',
+    title: 'StressFlags',
+    supporting: 'Pattern flags routed to Hammond, Penelope, and Vera inboxes.'
+  },
+  corey: {
+    eyebrow: 'Share',
+    title: 'Corey capacity',
+    supporting: 'Read-only availability — no task titles on the public link.'
   }
 };
 
@@ -77,8 +126,18 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
   switch (view) {
     case 'board':
       return renderBoardView(canvas);
+    case 'clare':
+      return renderClareView(canvas);
     case 'graph':
       return renderGraphView(canvas);
+    case 'gantt':
+      return renderGanttView(canvas);
+    case 'orbit':
+      return renderOrbitView(canvas);
+    case 'branch':
+      return renderBranchView(canvas);
+    case 'constellation':
+      return renderConstellationView(canvas);
     case 'day':
       return renderDayView(canvas);
     case 'week':
@@ -93,7 +152,25 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderTemplatesView(canvas);
     case 'projects':
       return renderProjectsView(canvas);
+    case 'excursions':
+      return renderExcursionsView(canvas);
+    case 'stress':
+      return renderStressView(canvas);
+    case 'corey':
+      return renderCoreyView(canvas);
   }
+}
+
+async function bootPublicCapacity(root: HTMLElement, token: string): Promise<void> {
+  root.replaceChildren();
+  const shell = renderHubShell(root, {});
+  shell.logoutButton?.remove();
+  renderPageHeader(shell, {
+    eyebrow: 'Shared',
+    title: 'Capacity',
+    supporting: 'Adam’s rough availability — nothing task-level.'
+  });
+  await renderPublicCapacityView(shell.canvas, token);
 }
 
 async function bootApp(root: HTMLElement): Promise<void> {
@@ -105,6 +182,11 @@ async function bootApp(root: HTMLElement): Promise<void> {
   });
 
   const paint = async () => {
+    const share = parseCapacityShareToken();
+    if (share) {
+      await bootPublicCapacity(root, share);
+      return;
+    }
     const view = parseHashRoute();
     renderPrimaryNav(shell.railNav, view);
     renderPageHeader(shell, HEADERS[view]);
@@ -121,6 +203,15 @@ async function bootApp(root: HTMLElement): Promise<void> {
 
 async function boot(root: HTMLElement): Promise<void> {
   root.replaceChildren();
+  const share = parseCapacityShareToken();
+  if (share) {
+    await bootPublicCapacity(root, share);
+    window.addEventListener('hashchange', () => {
+      void boot(root);
+    });
+    return;
+  }
+
   try {
     const session = await fetchSession();
     if (!session.authenticated) {

@@ -14,24 +14,40 @@ export interface HubShellOptions {
 
 export type HubViewId =
   | 'board'
+  | 'clare'
   | 'graph'
+  | 'gantt'
+  | 'orbit'
+  | 'branch'
+  | 'constellation'
   | 'day'
   | 'week'
   | 'month'
   | 'list'
   | 'search'
   | 'templates'
-  | 'projects';
+  | 'projects'
+  | 'excursions'
+  | 'stress'
+  | 'corey';
 
 /** Labeled Teaching-style rail — Board is home per design-kit/TASKS.md */
 const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> = [
   { id: 'board', label: 'Board', href: '#/board', glyph: '▦' },
+  { id: 'clare', label: 'Clare', href: '#/clare', glyph: '✦' },
   { id: 'graph', label: 'Graph', href: '#/graph', glyph: '◈' },
+  { id: 'gantt', label: 'Gantt', href: '#/gantt', glyph: '▬' },
+  { id: 'orbit', label: 'Orbit', href: '#/orbit', glyph: '◎' },
+  { id: 'branch', label: 'Branch', href: '#/branch', glyph: '⎇' },
+  { id: 'constellation', label: 'Sky', href: '#/constellation', glyph: '✧' },
   { id: 'day', label: 'Today', href: '#/day', glyph: '◉' },
   { id: 'week', label: 'Week', href: '#/week', glyph: '▤' },
   { id: 'month', label: 'Month', href: '#/month', glyph: '▣' },
   { id: 'list', label: 'Backlog', href: '#/list', glyph: '☰' },
   { id: 'projects', label: 'Projects', href: '#/projects', glyph: '◇' },
+  { id: 'excursions', label: 'Excursions', href: '#/excursions', glyph: '⚑' },
+  { id: 'stress', label: 'Network', href: '#/stress', glyph: '✶' },
+  { id: 'corey', label: 'Corey', href: '#/corey', glyph: '◐' },
   { id: 'templates', label: 'Templates', href: '#/templates', glyph: '▥' },
   { id: 'search', label: 'Search', href: '#/search', glyph: '⌕' }
 ];
@@ -167,14 +183,30 @@ export function parseHashRoute(): HubViewId {
   const id = hash.split(/[/?]/)[0] as HubViewId;
   const known: HubViewId[] = [
     'board',
+    'clare',
     'graph',
+    'gantt',
+    'orbit',
+    'branch',
+    'constellation',
     'day',
     'week',
     'month',
     'list',
     'search',
     'templates',
-    'projects'
+    'projects',
+    'excursions',
+    'stress',
+    'corey'
   ];
   return known.includes(id) ? id : 'board';
+}
+
+/** Public Corey share: `#/capacity/<token>` */
+export function parseCapacityShareToken(): string | null {
+  const hash = location.hash.replace(/^#\/?/, '');
+  const parts = hash.split('/');
+  if (parts[0] === 'capacity' && parts[1]) return parts[1];
+  return null;
 }

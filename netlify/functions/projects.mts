@@ -26,7 +26,7 @@ export default async function handler(request: Request): Promise<Response> {
     return withCors(errorResponse(401, 'unauthenticated', 'Sign in required'), request, env);
   }
 
-  const store = getTasksStore();
+  const store = await getTasksStore();
   const url = new URL(request.url);
   const id = url.searchParams.get('id');
 

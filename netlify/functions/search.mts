@@ -28,7 +28,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const q = new URL(request.url).searchParams.get('q') ?? '';
-  const store = getTasksStore();
+  const store = await getTasksStore();
   const [tasks, projects] = await Promise.all([store.listTasks(), store.listProjects()]);
   return withCors(okResponse(200, searchEntities(tasks, projects, q)), request, env);
 }
