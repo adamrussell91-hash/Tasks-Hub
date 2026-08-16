@@ -250,6 +250,61 @@
       "recurrence_rule": null,
       "attachments": [],
       "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_mw_brief",
+      "title": "Lock MindWorks term brief",
+      "description": "Align outcomes with showcase milestone.",
+      "domain": "teaching",
+      "framework_used": "fw_eisenhower",
+      "estimated_duration": 120,
+      "actual_duration": null,
+      "due_date": "2026-08-22",
+      "created_at": "2026-08-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z",
+      "completed_at": null,
+      "status": "in_progress",
+      "priority": "urgent",
+      "parent_project_id": "proj_mindworks",
+      "parent_task_id": null,
+      "depends_on": [
+        "task_demo_publish"
+      ],
+      "tags": [
+        "mindworks"
+      ],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_mw_rehearsal",
+      "title": "Showcase rehearsal",
+      "description": "Dry run before November showcase.",
+      "domain": "teaching",
+      "framework_used": "fw_timeboxing",
+      "estimated_duration": 180,
+      "actual_duration": null,
+      "due_date": "2026-11-08",
+      "created_at": "2026-08-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z",
+      "completed_at": null,
+      "status": "open",
+      "priority": "high",
+      "parent_project_id": "proj_mindworks",
+      "parent_task_id": null,
+      "depends_on": [
+        "task_demo_mw_brief"
+      ],
+      "tags": [
+        "mindworks",
+        "showcase"
+      ],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
     }
   ]
 }

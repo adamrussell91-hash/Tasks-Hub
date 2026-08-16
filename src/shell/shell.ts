@@ -15,6 +15,7 @@ export interface HubShellOptions {
 export type HubViewId =
   | 'board'
   | 'graph'
+  | 'gantt'
   | 'day'
   | 'week'
   | 'month'
@@ -27,12 +28,13 @@ export type HubViewId =
 const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> = [
   { id: 'board', label: 'Board', href: '#/board', glyph: '▦' },
   { id: 'graph', label: 'Graph', href: '#/graph', glyph: '◈' },
+  { id: 'gantt', label: 'Gantt', href: '#/gantt', glyph: '▤' },
   { id: 'day', label: 'Today', href: '#/day', glyph: '◉' },
-  { id: 'week', label: 'Week', href: '#/week', glyph: '▤' },
+  { id: 'week', label: 'Week', href: '#/week', glyph: '▥' },
   { id: 'month', label: 'Month', href: '#/month', glyph: '▣' },
   { id: 'list', label: 'Backlog', href: '#/list', glyph: '☰' },
   { id: 'projects', label: 'Projects', href: '#/projects', glyph: '◇' },
-  { id: 'templates', label: 'Templates', href: '#/templates', glyph: '▥' },
+  { id: 'templates', label: 'Templates', href: '#/templates', glyph: '▦' },
   { id: 'search', label: 'Search', href: '#/search', glyph: '⌕' }
 ];
 
@@ -168,6 +170,7 @@ export function parseHashRoute(): HubViewId {
   const known: HubViewId[] = [
     'board',
     'graph',
+    'gantt',
     'day',
     'week',
     'month',

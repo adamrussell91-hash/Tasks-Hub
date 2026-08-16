@@ -23,6 +23,9 @@ const COLUMNS: Array<{ id: BoardColumnId; title: string; statuses: Task['status'
   { id: 'done', title: 'Done', statuses: ['done'] }
 ];
 
+/** Session-scoped project filter for Kanban (spec: project-scoped board). */
+let boardProjectFilter: string | 'all' = 'all';
+
 function isBlocked(task: Task, byId: Map<string, Task>): boolean {
   if (task.status === 'done' || task.status === 'dead') return false;
   return task.depends_on.some((id) => {
@@ -32,8 +35,7 @@ function isBlocked(task: Task, byId: Map<string, Task>): boolean {
 }
 
 function columnFor(task: Task, byId: Map<string, Task>): BoardColumnId {
-  if (task.status === 'done') return 'done';
-  if (task.status === 'dead') return 'done';
+  if (task.status === 'done' || task.status === 'dead') return 'done';
   if (isBlocked(task, byId)) return 'blocked';
   if (task.status === 'in_progress') return 'in_progress';
   return 'todo';
@@ -46,6 +48,9 @@ function renderCard(task: Task, onMove: (task: Task, status: Task['status']) => 
   const meta = el('div', 'board-card__meta');
   meta.append(el('span', 'chip', task.domain), el('span', 'chip chip--muted', task.priority));
   if (task.due_date) meta.append(el('span', 'chip chip--muted', task.due_date.slice(0, 10)));
+  if (task.depends_on.length) {
+    meta.append(el('span', 'chip chip--muted', `${task.depends_on.length} deps`));
+  }
   card.append(meta);
 
   const actions = el('div', 'board-card__actions');
@@ -70,23 +75,51 @@ function renderCard(task: Task, onMove: (task: Task, status: Task['status']) => 
   return card;
 }
 
-/** Board is the Tasks Hub home surface (Teaching-density tiles, status columns). */
+/** Board is the Tasks Hub home surface — optional project scope for Kanban. */
 export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading board…'));
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
   const byId = new Map(tasks.map((t) => [t.id, t]));
-  const active = tasks.filter((t) => t.status !== 'dead');
+  const scoped =
+    boardProjectFilter === 'all'
+      ? tasks.filter((t) => t.status !== 'dead')
+      : tasks.filter((t) => t.status !== 'dead' && t.parent_project_id === boardProjectFilter);
 
   canvas.replaceChildren();
   canvas.append(
     el(
       'p',
       'view-lede',
-      `Board · ${openTasks(tasks).length} open · ${projects.filter((p) => p.status === 'active').length} active projects · ${toDateKey(new Date())}`
+      `Board · ${openTasks(scoped).length} open in scope · ${projects.filter((p) => p.status === 'active').length} active projects · ${toDateKey(new Date())}`
     )
   );
 
-  const form = renderQuickAdd(() => void renderBoardView(canvas));
+  const filterRow = el('div', 'board-filter');
+  filterRow.append(el('span', 'chip chip--muted', 'Scope'));
+  const select = el('select', 'quick-add__select') as HTMLSelectElement;
+  select.setAttribute('aria-label', 'Board project scope');
+  const allOpt = document.createElement('option');
+  allOpt.value = 'all';
+  allOpt.textContent = 'All tasks';
+  select.append(allOpt);
+  for (const project of projects) {
+    const opt = document.createElement('option');
+    opt.value = project.id;
+    opt.textContent = project.title;
+    select.append(opt);
+  }
+  select.value = boardProjectFilter;
+  select.addEventListener('change', () => {
+    boardProjectFilter = select.value as string | 'all';
+    void renderBoardView(canvas);
+  });
+  filterRow.append(select);
+  canvas.append(filterRow);
+
+  const form = renderQuickAdd(
+    () => void renderBoardView(canvas),
+    boardProjectFilter === 'all' ? null : boardProjectFilter
+  );
   canvas.append(form);
 
   const board = el('div', 'board-grid');
@@ -94,7 +127,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     const section = el('section', 'board-col');
     section.append(el('h2', 'board-col__title', col.title));
     const stack = el('div', 'board-col__stack');
-    const items = active.filter((t) => columnFor(t, byId) === col.id);
+    const items = scoped.filter((t) => columnFor(t, byId) === col.id);
     if (!items.length) stack.append(el('p', 'empty-state empty-state--compact', '—'));
     for (const task of items) {
       stack.append(
@@ -110,7 +143,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   canvas.append(board);
 }
 
-function renderQuickAdd(onCreated: () => void): HTMLElement {
+function renderQuickAdd(onCreated: () => void, projectId: string | null): HTMLElement {
   const form = el('form', 'quick-add');
   const title = el('input', 'sign-in__input') as HTMLInputElement;
   title.placeholder = 'New task on the board';
@@ -132,7 +165,8 @@ function renderQuickAdd(onCreated: () => void): HTMLElement {
       await tasksApi.createTask({
         title: title.value.trim(),
         domain: domain.value,
-        due_date: toDateKey(new Date())
+        due_date: toDateKey(new Date()),
+        parent_project_id: projectId
       });
       title.value = '';
       onCreated();

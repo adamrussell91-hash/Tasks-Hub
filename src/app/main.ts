@@ -15,6 +15,7 @@ import {
 } from '@/shell/shell';
 import { renderBoardView } from '@/views/board';
 import { renderGraphView } from '@/views/graph';
+import { renderGanttView } from '@/views/gantt';
 import {
   renderDayView,
   renderWeekView,
@@ -29,12 +30,17 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   board: {
     eyebrow: 'Home',
     title: 'Board',
-    supporting: 'Tasks and projects as Teaching-density tiles.'
+    supporting: 'Status columns — scope to a project for a quieter Kanban.'
   },
   graph: {
     eyebrow: 'Structure',
     title: 'Graph',
     supporting: 'Blockers and workstreams — Knowledge-style search, select, preview.'
+  },
+  gantt: {
+    eyebrow: 'Timeline',
+    title: 'Gantt',
+    supporting: 'Project bars and milestones with depends_on edges.'
   },
   day: {
     eyebrow: 'Focus',
@@ -79,6 +85,8 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderBoardView(canvas);
     case 'graph':
       return renderGraphView(canvas);
+    case 'gantt':
+      return renderGanttView(canvas);
     case 'day':
       return renderDayView(canvas);
     case 'week':
