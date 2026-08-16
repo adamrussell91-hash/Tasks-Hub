@@ -66,6 +66,7 @@ export const ReviewLogSchema = z.object({
   project_id: z.string(),
   outcome: z.enum(['revived', 'frankensteined', 'buried']),
   reason: z.string(),
+  merge_into_project_id: z.string().nullable().default(null),
   created_at: z.string()
 });
 

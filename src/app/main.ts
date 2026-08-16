@@ -69,7 +69,7 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   projects: {
     eyebrow: 'Arcs',
     title: 'Projects',
-    supporting: 'Programs, excursions, and standard projects.'
+    supporting: 'Stall detection with revive, Frankenstein, or bury — reasons in the review log.'
   }
 };
 

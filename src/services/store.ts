@@ -5,8 +5,14 @@ import {
   ExcursionTemplateSchema,
   TaskTemplateSchema,
   ProjectTemplateSchema,
-  AgentActionLogSchema
+  AgentActionLogSchema,
+  ReviewLogSchema
 } from '@/schemas/templates';
+import {
+  DEFAULT_STALL_WEEKS,
+  findStallCandidates,
+  outcomeProjectStatus
+} from '@/domain/stall';
 import type { IndexDoc, SeedData, TasksStore } from './types';
 
 export interface KvAdapter {
@@ -29,6 +35,8 @@ export interface KeyBuilders {
   projectTemplateKey: (id: string) => string;
   projectTemplatesIndexKey: () => string;
   agentActionLogKey: (id: string) => string;
+  reviewLogKey: (id: string) => string;
+  reviewLogsIndexKey: () => string;
   metaSeededKey: () => string;
 }
 
@@ -305,6 +313,97 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         tags: overrides.tags ?? parsed.default_fields.tags ?? [],
         ...overrides
       });
+    },
+
+    async listReviewLogs() {
+      return listByIndex(kv, keys.reviewLogsIndexKey(), keys.reviewLogKey, (raw) =>
+        ReviewLogSchema.parse(raw)
+      );
+    },
+
+    async flagStalledProjects(options = {}) {
+      const weeks = options.weeks ?? DEFAULT_STALL_WEEKS;
+      const now = options.now ?? new Date();
+      const stamp = nowIso();
+      const [projects, tasks] = await Promise.all([this.listProjects(), this.listTasks()]);
+      const candidates = findStallCandidates(projects, tasks, now, weeks);
+      const flagged: Awaited<ReturnType<TasksStore['listProjects']>> = [];
+
+      for (const candidate of candidates) {
+        if (candidate.project.status === 'stalled') {
+          flagged.push(candidate.project);
+          continue;
+        }
+        if (candidate.project.status === 'archived_dead') continue;
+        const updated = await this.updateProject(candidate.project.id, {
+          status: 'stalled',
+          stall_flagged_at: stamp
+        });
+        flagged.push(updated);
+      }
+
+      return { flagged, candidates: candidates.length };
+    },
+
+    async resolveStalledProject(input) {
+      const reason = input.reason.trim();
+      if (!reason) throw new Error('A short reason is required');
+
+      const existing = await this.getProject(input.project_id);
+      if (!existing) throw new Error(`Project not found: ${input.project_id}`);
+
+      const moved_task_ids: string[] = [];
+      if (input.outcome === 'frankensteined') {
+        const targetId = input.merge_into_project_id;
+        if (!targetId) throw new Error('Frankenstein needs a merge target project');
+        if (targetId === input.project_id) throw new Error('Cannot merge a project into itself');
+        const target = await this.getProject(targetId);
+        if (!target || target.status === 'archived_dead') {
+          throw new Error('Merge target project not found or archived');
+        }
+        const tasks = await this.listTasks();
+        for (const task of tasks) {
+          if (task.parent_project_id !== existing.id) continue;
+          await this.updateTask(task.id, { parent_project_id: targetId });
+          moved_task_ids.push(task.id);
+        }
+      }
+
+      const status = outcomeProjectStatus(input.outcome);
+      const project = await this.updateProject(existing.id, {
+        status,
+        stall_flagged_at: input.outcome === 'revived' ? null : existing.stall_flagged_at ?? nowIso(),
+        review_summary: reason
+      });
+
+      const review = ReviewLogSchema.parse({
+        schema_version: 1,
+        id: newId('rev'),
+        project_id: project.id,
+        outcome: input.outcome,
+        reason,
+        merge_into_project_id:
+          input.outcome === 'frankensteined' ? (input.merge_into_project_id ?? null) : null,
+        created_at: nowIso()
+      });
+      await kv.setJSON(keys.reviewLogKey(review.id), review);
+      const ids = await readIndex(kv, keys.reviewLogsIndexKey());
+      ids.push(review.id);
+      await writeIndex(kv, keys.reviewLogsIndexKey(), ids);
+
+      const log = AgentActionLogSchema.parse({
+        schema_version: 1,
+        id: newId('aal'),
+        agent: 'Clare DeMind',
+        action: 'update',
+        entity_type: 'project',
+        entity_id: project.id,
+        reason: `${input.outcome}: ${reason}`,
+        created_at: nowIso()
+      });
+      await kv.setJSON(keys.agentActionLogKey(log.id), log);
+
+      return { project, review, moved_task_ids };
     }
   };
 }

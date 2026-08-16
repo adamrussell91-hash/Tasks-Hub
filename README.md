@@ -38,10 +38,10 @@ Open [http://localhost:5175](http://localhost:5175).
 
 1. Data model + Blobs scaffolding — done
 2. Shared CRUD service (UI + future Clare) — done
-3. Board home + Graph (blockers/workstreams) + day/week/month/list/search/templates — done (first cut)
-4. Dependencies polish + Gantt — next
-5. Excursion engine — next
-6–12. Clare negotiation, pinch points, stalled projects, StressFlags, Corey view, review loop — later
+3. Board home + Graph + day/week/month/list/search/templates — done (first cut)
+4–8. Gantt, excursions, Clare, pinch points — see open PRs
+9. Stalled projects (revive / Frankenstein / bury) — done
+10–12. StressFlags, Corey view, review/closure loop — later
 
 ## Auth secrets
 

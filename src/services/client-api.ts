@@ -44,6 +44,29 @@ export const tasksApi = {
       overrides
     }),
 
+  flagStalledProjects: (weeks?: number) =>
+    apiPost<{ flagged: Project[]; candidates: number }>('/api/stall', {
+      action: 'flag_stalled',
+      weeks
+    }),
+
+  resolveStalledProject: (input: {
+    project_id: string;
+    outcome: 'revived' | 'frankensteined' | 'buried';
+    reason: string;
+    merge_into_project_id?: string | null;
+  }) =>
+    apiPost<{
+      project: Project;
+      review: import('@/schemas/templates').ReviewLog;
+      moved_task_ids: string[];
+    }>('/api/stall', { action: 'resolve', ...input }),
+
+  listReviewLogs: () =>
+    apiGet<{ reviews: import('@/schemas/templates').ReviewLog[] }>('/api/stall').then(
+      (r) => r.reviews
+    ),
+
   search: (q: string) =>
     apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`)
 };

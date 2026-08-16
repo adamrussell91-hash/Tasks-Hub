@@ -161,6 +161,37 @@ export function createMockApi({ seed }: MockApiOptions) {
       return json(200, { ok: true, data: searchEntities(tasks, projects, q) });
     }
 
+    if (path === '/api/stall') {
+      if (method === 'GET') {
+        return json(200, { ok: true, data: { reviews: await s.listReviewLogs() } });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'flag_stalled') {
+          return json(200, {
+            ok: true,
+            data: await s.flagStalledProjects({
+              weeks: b.weeks === undefined ? undefined : Number(b.weeks)
+            })
+          });
+        }
+        if (b.action === 'resolve') {
+          return json(200, {
+            ok: true,
+            data: await s.resolveStalledProject({
+              project_id: String(b.project_id),
+              outcome: b.outcome as 'revived' | 'frankensteined' | 'buried',
+              reason: String(b.reason ?? ''),
+              merge_into_project_id:
+                b.merge_into_project_id === undefined || b.merge_into_project_id === null
+                  ? null
+                  : String(b.merge_into_project_id)
+            })
+          });
+        }
+      }
+    }
+
     return json(404, { ok: false, error: { code: 'not_found', message: `No mock route ${method} ${path}` } });
   }
 

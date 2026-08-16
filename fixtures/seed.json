@@ -144,6 +144,35 @@
       "student_group_reference": null,
       "generated_admin_tasks": [],
       "drafted_documents": null
+    },
+    {
+      "schema_version": 1,
+      "id": "proj_stalled_masters",
+      "title": "Masters reading notes",
+      "description": "Literature notes that stopped moving mid-year.",
+      "arc_summary": "Quiet since June — seed for stall detection.",
+      "type": "standard",
+      "milestones": [
+        {
+          "id": "ms_masters_1",
+          "project_id": "proj_stalled_masters",
+          "title": "Annotated bibliography",
+          "due_date": "2026-06-30",
+          "status": "open"
+        }
+      ],
+      "status": "active",
+      "baseline_end_date": "2026-09-01",
+      "current_end_date": "2026-09-01",
+      "review_summary": null,
+      "stall_flagged_at": null,
+      "created_at": "2026-05-01T00:00:00.000Z",
+      "updated_at": "2026-06-01T00:00:00.000Z",
+      "competition_or_event_type": null,
+      "key_dates": null,
+      "student_group_reference": null,
+      "generated_admin_tasks": [],
+      "drafted_documents": null
     }
   ],
   "tasks": [
@@ -247,6 +276,29 @@
         "teaching",
         "publish"
       ],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_masters_notes",
+      "title": "Summarise three journal articles",
+      "description": "Belongs to the stalled Masters project.",
+      "domain": "teaching",
+      "framework_used": "fw_timeboxing",
+      "estimated_duration": 90,
+      "actual_duration": null,
+      "due_date": null,
+      "created_at": "2026-05-20T00:00:00.000Z",
+      "updated_at": "2026-06-01T00:00:00.000Z",
+      "completed_at": null,
+      "status": "open",
+      "priority": "low",
+      "parent_project_id": "proj_stalled_masters",
+      "parent_task_id": null,
+      "depends_on": [],
+      "tags": ["masters"],
       "recurrence_rule": null,
       "attachments": [],
       "source": "manual"

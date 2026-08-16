@@ -174,12 +174,50 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const projects = await tasksApi.listProjects();
+  await tasksApi.flagStalledProjects().catch(() => undefined);
+  const [projects, tasks, reviews] = await Promise.all([
+    tasksApi.listProjects(),
+    tasksApi.listTasks(),
+    tasksApi.listReviewLogs().catch(() => [])
+  ]);
+
   canvas.replaceChildren();
-  canvas.append(el('p', 'view-lede', 'Programs, excursions, and standard projects.'));
+  canvas.append(
+    el(
+      'p',
+      'view-lede',
+      'Programs and arcs. Quiet projects (6+ weeks) flag as stalled — revive, Frankenstein, or bury with a reason.'
+    )
+  );
+
+  const confirmHost = el('div', 'stall-confirm');
+  const stalled = projects.filter((p) => p.status === 'stalled');
+  const live = projects.filter((p) => p.status !== 'stalled' && p.status !== 'archived_dead');
+  const buried = projects.filter((p) => p.status === 'archived_dead');
+  const mergeTargets = projects.filter(
+    (p) => p.status !== 'archived_dead' && p.status !== 'stalled'
+  );
+
+  if (stalled.length) {
+    canvas.append(el('h2', 'section-title', 'Stalled — choose an outcome'));
+    const stallStack = el('div', 'task-stack');
+    for (const project of stalled) {
+      stallStack.append(
+        renderStalledCard(project, tasks, mergeTargets, confirmHost, () =>
+          void renderProjectsView(canvas)
+        )
+      );
+    }
+    canvas.append(stallStack, confirmHost);
+  }
+
+  canvas.append(el('h2', 'section-title', 'Active & revived'));
   const stack = el('div', 'task-stack');
-  for (const project of projects) {
+  for (const project of live) {
     const row = el('article', 'task-row');
+    const openCount = tasks.filter(
+      (t) => t.parent_project_id === project.id && t.status !== 'done' && t.status !== 'dead'
+    ).length;
     row.append(
       el('h3', 'task-row__title', project.title),
       el('p', 'task-row__desc', project.arc_summary || project.description),
@@ -189,12 +227,170 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     meta.append(
       el('span', 'chip', project.type),
       el('span', 'chip chip--muted', project.status),
-      el('span', 'chip chip--muted', `${project.milestones.length} milestones`)
+      el('span', 'chip chip--muted', `${project.milestones.length} milestones`),
+      el('span', 'chip chip--muted', `${openCount} open tasks`)
     );
     stack.append(row);
   }
-  if (!projects.length) canvas.append(el('p', 'empty-state', 'No projects yet.'));
-  else canvas.append(stack);
+  if (!live.length) stack.append(el('p', 'empty-state', 'No active projects.'));
+  canvas.append(stack);
+
+  if (buried.length) {
+    canvas.append(el('h2', 'section-title', 'Buried / frankensteined'));
+    const deadStack = el('div', 'task-stack');
+    for (const project of buried) {
+      const row = el('article', 'task-row');
+      row.append(
+        el('h3', 'task-row__title', project.title),
+        el('p', 'task-row__desc', project.review_summary || project.arc_summary || ''),
+        el('span', 'chip chip--muted', project.status)
+      );
+      deadStack.append(row);
+    }
+    canvas.append(deadStack);
+  }
+
+  if (reviews.length) {
+    canvas.append(el('h2', 'section-title', 'Review log'));
+    const logStack = el('div', 'task-stack');
+    for (const review of [...reviews].reverse().slice(0, 8)) {
+      const row = el('article', 'task-row');
+      const proj = projects.find((p) => p.id === review.project_id);
+      row.append(
+        el('h3', 'task-row__title', `${review.outcome} · ${proj?.title ?? review.project_id}`),
+        el('p', 'task-row__desc', review.reason)
+      );
+      logStack.append(row);
+    }
+    canvas.append(logStack);
+  }
+}
+
+function renderStalledCard(
+  project: Project,
+  tasks: Task[],
+  mergeTargets: Project[],
+  confirmHost: HTMLElement,
+  onDone: () => void
+): HTMLElement {
+  const card = el('article', 'stall-card');
+  const openCount = tasks.filter(
+    (t) => t.parent_project_id === project.id && t.status !== 'done' && t.status !== 'dead'
+  ).length;
+  card.append(
+    el('p', 'page-header__eyebrow', 'Stalled'),
+    el('h3', 'task-row__title', project.title),
+    el('p', 'task-row__desc', project.arc_summary || project.description),
+    el('div', 'task-row__meta')
+  );
+  const meta = card.querySelector('.task-row__meta')!;
+  meta.append(
+    el('span', 'chip', project.type),
+    el('span', 'chip chip--muted', `${openCount} open tasks`),
+    el(
+      'span',
+      'chip chip--muted',
+      project.stall_flagged_at ? `flagged ${project.stall_flagged_at.slice(0, 10)}` : 'flagged'
+    )
+  );
+
+  const reason = el('input', 'sign-in__input') as HTMLInputElement;
+  reason.placeholder = 'Short reason (required)';
+  reason.setAttribute('aria-label', `Reason for ${project.title}`);
+
+  const merge = el('select', 'quick-add__select') as HTMLSelectElement;
+  merge.setAttribute('aria-label', 'Frankenstein into');
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = 'Merge into… (for Frankenstein)';
+  merge.append(blank);
+  for (const target of mergeTargets.filter((p) => p.id !== project.id)) {
+    const opt = document.createElement('option');
+    opt.value = target.id;
+    opt.textContent = target.title;
+    merge.append(opt);
+  }
+
+  const actions = el('div', 'stall-card__actions');
+  const outcomes: Array<{ id: 'revived' | 'frankensteined' | 'buried'; label: string }> = [
+    { id: 'revived', label: 'Revive' },
+    { id: 'frankensteined', label: 'Frankenstein' },
+    { id: 'buried', label: 'Bury' }
+  ];
+  for (const outcome of outcomes) {
+    const btn = el(
+      'button',
+      outcome.id === 'buried' ? 'btn btn--decisive' : 'btn btn--secondary',
+      outcome.label
+    );
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      const text = reason.value.trim();
+      if (!text) {
+        confirmHost.replaceChildren(el('p', 'empty-state', 'Add a short reason first.'));
+        return;
+      }
+      if (outcome.id === 'frankensteined' && !merge.value) {
+        confirmHost.replaceChildren(el('p', 'empty-state', 'Pick a merge target for Frankenstein.'));
+        return;
+      }
+      showStallConfirm(confirmHost, project, outcome.id, text, merge.value || null, onDone);
+    });
+    actions.append(btn);
+  }
+
+  card.append(reason, merge, actions);
+  return card;
+}
+
+function showStallConfirm(
+  host: HTMLElement,
+  project: Project,
+  outcome: 'revived' | 'frankensteined' | 'buried',
+  reason: string,
+  mergeInto: string | null,
+  onDone: () => void
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm stall outcome');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'stall-confirm__title', `${outcome} · ${project.title}`));
+  card.append(
+    el(
+      'p',
+      'page-header__supporting',
+      `${reason}${mergeInto ? ` · merge → ${mergeInto}` : ''}. Do not apply until Confirm.`
+    )
+  );
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await tasksApi.resolveStalledProject({
+        project_id: project.id,
+        outcome,
+        reason,
+        merge_into_project_id: mergeInto
+      });
+      host.replaceChildren(el('p', 'canvas-status', 'Outcome recorded.'));
+      onDone();
+    } catch (err) {
+      host.replaceChildren(
+        el('p', 'empty-state', err instanceof Error ? err.message : 'Resolve failed')
+      );
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
 }
 
 export async function renderSearchView(canvas: HTMLElement): Promise<void> {

@@ -4,8 +4,10 @@ import type {
   FrameworkEntry,
   ExcursionTemplate,
   TaskTemplate,
-  ProjectTemplate
+  ProjectTemplate,
+  ReviewLog
 } from '@/schemas/templates';
+import type { StallOutcome } from '@/domain/stall';
 
 export interface SeedData {
   tasks: Task[];
@@ -41,4 +43,16 @@ export interface TasksStore {
   saveTaskAsTemplate(taskId: string, name: string): Promise<TaskTemplate>;
   saveProjectAsTemplate(projectId: string, name: string): Promise<ProjectTemplate>;
   createTaskFromTemplate(templateId: string, overrides?: Partial<Task>): Promise<Task>;
+
+  listReviewLogs(): Promise<ReviewLog[]>;
+  flagStalledProjects(options?: {
+    weeks?: number;
+    now?: Date;
+  }): Promise<{ flagged: Project[]; candidates: number }>;
+  resolveStalledProject(input: {
+    project_id: string;
+    outcome: StallOutcome;
+    reason: string;
+    merge_into_project_id?: string | null;
+  }): Promise<{ project: Project; review: ReviewLog; moved_task_ids: string[] }>;
 }
