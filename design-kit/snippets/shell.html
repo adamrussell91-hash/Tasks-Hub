@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-hub="tasks">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tasks Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../tokens/tokens.css" />
+    <link rel="stylesheet" href="../overlays/hub-density.css" />
+    <link rel="stylesheet" href="../chrome/hub-chrome.css" />
+  </head>
+  <body>
+    <div id="app">
+      <a class="skip-link" href="#hub-main">Skip to content</a>
+      <div class="hub-layout">
+        <nav class="hub-layout__rail" aria-label="Tasks navigation">
+          <div class="hub-layout__rail-brand-row">
+            <p class="hub-layout__rail-brand">Tasks Hub</p>
+          </div>
+          <div class="hub-layout__rail-nav">
+            <nav class="primary-nav" aria-label="Primary">
+              <a class="primary-nav__link" href="#/" aria-current="page">
+                <span class="primary-nav__glyph" aria-hidden="true">◉</span>
+                Today
+              </a>
+            </nav>
+          </div>
+        </nav>
+        <div class="hub-layout__main" id="hub-main">
+          <div class="hub-layout__context-bar">
+            <h1 class="hub-layout__context-bar-title">Today</h1>
+          </div>
+          <div class="hub-layout__canvas">
+            <!-- View mounts here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

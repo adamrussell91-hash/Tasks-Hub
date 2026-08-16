@@ -1,0 +1,206 @@
+{
+  "frameworks": [
+    {
+      "schema_version": 1,
+      "id": "fw_eat_the_frog",
+      "name": "Eat the Frog",
+      "best_suited_task_pattern": "High-importance task that keeps getting deprioritised",
+      "reasoning_template": "Eat the Frog, because this has been sitting untouched and keeps getting deprioritised."
+    },
+    {
+      "schema_version": 1,
+      "id": "fw_timeboxing",
+      "name": "Timeboxing",
+      "best_suited_task_pattern": "Open-ended work that expands to fill the day",
+      "reasoning_template": "Timeboxing, because this will expand forever without a hard stop."
+    },
+    {
+      "schema_version": 1,
+      "id": "fw_eisenhower",
+      "name": "Eisenhower matrix",
+      "best_suited_task_pattern": "Competing urgencies where importance is unclear",
+      "reasoning_template": "Eisenhower, because urgency and importance are fighting each other here."
+    }
+  ],
+  "excursion_templates": [
+    {
+      "schema_version": 1,
+      "id": "ext_ethics_olympiad",
+      "name": "Ethics Olympiad",
+      "default_lead_times": {
+        "permission_note_days": 21,
+        "staff_email_days": 21,
+        "risk_assessment_days": 42,
+        "payment_days": 28
+      },
+      "checklist_items": [
+        "Permission note drafted and sent",
+        "Staff absence email sent",
+        "Risk assessment lodged",
+        "Payment confirmed",
+        "Student list finalised"
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "ext_da_vinci",
+      "name": "Da Vinci Decathlon",
+      "default_lead_times": {
+        "permission_note_days": 28,
+        "staff_email_days": 21,
+        "risk_assessment_days": 42,
+        "payment_days": 35
+      },
+      "checklist_items": [
+        "Team registration",
+        "Permission note drafted and sent",
+        "Staff absence email sent",
+        "Risk assessment lodged",
+        "Travel / venue logistics",
+        "Payment confirmed"
+      ]
+    }
+  ],
+  "task_templates": [
+    {
+      "schema_version": 1,
+      "id": "tt_marking_batch",
+      "name": "Marking batch",
+      "domain": "teaching",
+      "default_fields": {
+        "title_pattern": "Marking batch",
+        "framework_used": "fw_timeboxing",
+        "estimated_duration": 90,
+        "priority": "high",
+        "tags": ["marking"]
+      },
+      "created_from": null,
+      "created_at": "2026-08-01T00:00:00.000Z"
+    }
+  ],
+  "project_templates": [
+    {
+      "schema_version": 1,
+      "id": "pt_standard_term",
+      "name": "Standard term project",
+      "type": "standard",
+      "excursion_template_id": null,
+      "default_milestones": [
+        { "title": "Kickoff", "due_date": null, "status": "open" },
+        { "title": "Midpoint check", "due_date": null, "status": "open" },
+        { "title": "Close", "due_date": null, "status": "open" }
+      ],
+      "created_from": null,
+      "created_at": "2026-08-01T00:00:00.000Z"
+    }
+  ],
+  "projects": [
+    {
+      "schema_version": 1,
+      "id": "proj_mindworks",
+      "title": "MindWorks",
+      "description": "Multi-term academic initiative.",
+      "arc_summary": "Build and stabilise MindWorks across the year.",
+      "type": "academic_program",
+      "milestones": [
+        {
+          "id": "ms_mw_1",
+          "project_id": "proj_mindworks",
+          "title": "Term plan locked",
+          "due_date": "2026-08-22",
+          "status": "open"
+        },
+        {
+          "id": "ms_mw_2",
+          "project_id": "proj_mindworks",
+          "title": "Showcase",
+          "due_date": "2026-11-15",
+          "status": "open"
+        }
+      ],
+      "status": "active",
+      "baseline_end_date": "2026-11-15",
+      "current_end_date": "2026-11-15",
+      "review_summary": null,
+      "stall_flagged_at": null,
+      "created_at": "2026-07-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z",
+      "competition_or_event_type": null,
+      "key_dates": null,
+      "student_group_reference": null,
+      "generated_admin_tasks": [],
+      "drafted_documents": null
+    }
+  ],
+  "tasks": [
+    {
+      "schema_version": 1,
+      "id": "task_demo_lesson_pack",
+      "title": "Finish lesson pack for Year 12",
+      "description": "Polish blocks and publish draft.",
+      "domain": "teaching",
+      "framework_used": "fw_eat_the_frog",
+      "estimated_duration": 60,
+      "actual_duration": null,
+      "due_date": "2026-08-17",
+      "created_at": "2026-08-14T00:00:00.000Z",
+      "updated_at": "2026-08-14T00:00:00.000Z",
+      "completed_at": null,
+      "status": "open",
+      "priority": "high",
+      "parent_project_id": "proj_mindworks",
+      "parent_task_id": null,
+      "depends_on": [],
+      "tags": ["teaching", "publish"],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_wedding_vendor",
+      "title": "Reply to florist quote",
+      "description": "Confirm availability for November.",
+      "domain": "wedding",
+      "framework_used": null,
+      "estimated_duration": 20,
+      "actual_duration": null,
+      "due_date": "2026-08-16",
+      "created_at": "2026-08-10T00:00:00.000Z",
+      "updated_at": "2026-08-10T00:00:00.000Z",
+      "completed_at": null,
+      "status": "open",
+      "priority": "medium",
+      "parent_project_id": null,
+      "parent_task_id": null,
+      "depends_on": [],
+      "tags": ["wedding"],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_backlog",
+      "title": "Sort fragrance research notes",
+      "description": "Backlog — no due date yet.",
+      "domain": "life",
+      "framework_used": "fw_timeboxing",
+      "estimated_duration": 45,
+      "actual_duration": null,
+      "due_date": null,
+      "created_at": "2026-08-05T00:00:00.000Z",
+      "updated_at": "2026-08-05T00:00:00.000Z",
+      "completed_at": null,
+      "status": "open",
+      "priority": "low",
+      "parent_project_id": null,
+      "parent_task_id": null,
+      "depends_on": [],
+      "tags": ["fragrance"],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    }
+  ]
+}

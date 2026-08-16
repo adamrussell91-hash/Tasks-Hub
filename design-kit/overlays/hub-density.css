@@ -1,0 +1,24 @@
+/* Per-hub glass/tile density. Only these differ between hubs. */
+html[data-hub="teaching"] {
+  --hub-glass-alpha: 0.70;
+  --hub-tile-gap: var(--space-4);
+}
+
+html[data-hub="life"] {
+  --hub-glass-alpha: 0.78;
+  --hub-tile-gap: var(--space-3);
+}
+
+html[data-hub="knowledge"] {
+  --hub-glass-alpha: 0.66;
+  --hub-tile-gap: var(--space-5);
+}
+
+html[data-hub="tasks"] {
+  --hub-glass-alpha: 0.72;
+  --hub-tile-gap: var(--space-4);
+}
+
+html[data-hub] {
+  --glass: rgba(255, 255, 255, var(--hub-glass-alpha, 0.70));
+}

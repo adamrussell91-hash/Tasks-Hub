@@ -1,0 +1,192 @@
+import * as keys from '../src/storage/keys';
+import { createTasksStore, seedIfEmpty, type KvAdapter } from '../src/services/store';
+import type { SeedData } from '../src/services/types';
+import { searchEntities } from '../src/domain/queries';
+import { TaskCreateSchema, TaskUpdateSchema } from '../src/schemas/task';
+import { ProjectCreateSchema, ProjectUpdateSchema } from '../src/schemas/project';
+
+export function createMemoryKv(): KvAdapter & { map: Map<string, unknown> } {
+  const map = new Map<string, unknown>();
+  return {
+    map,
+    async getJSON<T>(key: string) {
+      return (map.has(key) ? map.get(key) : null) as T | null;
+    },
+    async setJSON(key: string, value: unknown) {
+      map.set(key, value);
+    },
+    async delete(key: string) {
+      map.delete(key);
+    }
+  };
+}
+
+export interface MockApiOptions {
+  seed: SeedData;
+}
+
+export function createMockApi({ seed }: MockApiOptions) {
+  const kv = createMemoryKv();
+  let seeded = false;
+  const LOCAL_PASSPHRASE = 'tasks-hub-local';
+  let authenticated = false;
+
+  async function ensure() {
+    if (!seeded) {
+      await seedIfEmpty(kv, keys, seed);
+      seeded = true;
+    }
+  }
+
+  function store() {
+    return createTasksStore(kv, keys);
+  }
+
+  function json(status: number, body: unknown) {
+    return { status, body };
+  }
+
+  async function handle(method: string, urlPath: string, body?: unknown) {
+    await ensure();
+    const url = new URL(urlPath, 'http://local.test');
+    const path = url.pathname;
+
+    if (path === '/api/session' && method === 'GET') {
+      return json(200, { ok: true, data: { authenticated } });
+    }
+    if (path === '/api/auth' && method === 'POST') {
+      const passphrase = (body as { passphrase?: string })?.passphrase;
+      if (passphrase === LOCAL_PASSPHRASE) {
+        authenticated = true;
+        return json(200, { ok: true, data: { authenticated: true, expiresAt: Date.now() + 12 * 3600_000 } });
+      }
+      return json(401, { ok: false, error: { code: 'invalid_credentials', message: 'Invalid passphrase' } });
+    }
+    if (path === '/api/logout' && method === 'POST') {
+      authenticated = false;
+      return json(200, { ok: true, data: { loggedOut: true } });
+    }
+
+    if (!authenticated && path.startsWith('/api/')) {
+      return json(401, { ok: false, error: { code: 'unauthenticated', message: 'Sign in required' } });
+    }
+
+    const s = store();
+    const id = url.searchParams.get('id');
+
+    if (path === '/api/tasks') {
+      if (method === 'GET') {
+        if (id) {
+          const task = await s.getTask(id);
+          if (!task) return json(404, { ok: false, error: { code: 'not_found', message: 'Task not found' } });
+          return json(200, { ok: true, data: task });
+        }
+        return json(200, { ok: true, data: { tasks: await s.listTasks() } });
+      }
+      if (method === 'POST') {
+        const parsed = TaskCreateSchema.parse(body);
+        return json(201, { ok: true, data: await s.createTask(parsed) });
+      }
+      if (method === 'PATCH' && id) {
+        const parsed = TaskUpdateSchema.parse(body);
+        return json(200, { ok: true, data: await s.updateTask(id, parsed) });
+      }
+      if (method === 'DELETE' && id) {
+        await s.deleteTask(id, body as { agent?: string; reason?: string } | undefined);
+        return json(200, { ok: true, data: { deleted: true } });
+      }
+    }
+
+    if (path === '/api/projects') {
+      if (method === 'GET') {
+        if (id) {
+          const project = await s.getProject(id);
+          if (!project) return json(404, { ok: false, error: { code: 'not_found', message: 'Project not found' } });
+          return json(200, { ok: true, data: project });
+        }
+        return json(200, { ok: true, data: { projects: await s.listProjects() } });
+      }
+      if (method === 'POST') {
+        const parsed = ProjectCreateSchema.parse(body);
+        return json(201, { ok: true, data: await s.createProject(parsed) });
+      }
+      if (method === 'PATCH' && id) {
+        const parsed = ProjectUpdateSchema.parse(body);
+        return json(200, { ok: true, data: await s.updateProject(id, parsed) });
+      }
+      if (method === 'DELETE' && id) {
+        await s.deleteProject(id, body as { agent?: string; reason?: string } | undefined);
+        return json(200, { ok: true, data: { deleted: true } });
+      }
+    }
+
+    if (path === '/api/templates') {
+      if (method === 'GET') {
+        return json(200, {
+          ok: true,
+          data: {
+            frameworks: await s.listFrameworks(),
+            excursion_templates: await s.listExcursionTemplates(),
+            task_templates: await s.listTaskTemplates(),
+            project_templates: await s.listProjectTemplates()
+          }
+        });
+      }
+      if (method === 'POST') {
+        const b = body as Record<string, unknown>;
+        if (b.action === 'save_task_as_template') {
+          return json(201, {
+            ok: true,
+            data: await s.saveTaskAsTemplate(String(b.task_id), String(b.name))
+          });
+        }
+        if (b.action === 'create_task_from_template') {
+          return json(201, {
+            ok: true,
+            data: await s.createTaskFromTemplate(String(b.template_id), (b.overrides as object) ?? {})
+          });
+        }
+        if (b.action === 'save_project_as_template') {
+          return json(201, {
+            ok: true,
+            data: await s.saveProjectAsTemplate(String(b.project_id), String(b.name))
+          });
+        }
+      }
+    }
+
+    if (path === '/api/search' && method === 'GET') {
+      const q = url.searchParams.get('q') ?? '';
+      const [tasks, projects] = await Promise.all([s.listTasks(), s.listProjects()]);
+      return json(200, { ok: true, data: searchEntities(tasks, projects, q) });
+    }
+
+    return json(404, { ok: false, error: { code: 'not_found', message: `No mock route ${method} ${path}` } });
+  }
+
+  return {
+    async handleNodeRequest(
+      req: { method?: string; url?: string; on: Function; headers: { [k: string]: unknown } },
+      res: { statusCode: number; setHeader: Function; end: Function }
+    ) {
+      const chunks: Buffer[] = [];
+      await new Promise<void>((resolve) => {
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => resolve());
+      });
+      let body: unknown;
+      const raw = Buffer.concat(chunks).toString('utf8');
+      if (raw) {
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          body = undefined;
+        }
+      }
+      const result = await handle(req.method ?? 'GET', req.url ?? '/', body);
+      res.statusCode = result.status;
+      res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(result.body));
+    }
+  };
+}
