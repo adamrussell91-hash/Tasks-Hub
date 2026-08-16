@@ -33,19 +33,20 @@ export default async function handler(request: Request): Promise<Response> {
 
   try {
     const body = (await request.json().catch(() => ({}))) as { force?: boolean };
+    const force = Boolean(body.force);
+    const seed = loadSeed();
     const kv = blobKv();
-    if (body.force) {
-      await kv.delete(keys.metaSeededKey());
-      resetSeedCache();
-    }
-    await seedIfEmpty(kv, keys, loadSeed());
+    resetSeedCache();
+    await seedIfEmpty(kv, keys, seed, { force });
     resetSeedCache();
     const store = await getTasksStore();
     const [tasks, projects] = await Promise.all([store.listTasks(), store.listProjects()]);
     return withCors(
       okResponse(200, {
         seeded: true,
-        forced: Boolean(body.force),
+        forced: force,
+        loaded_task_count: seed.tasks.length,
+        loaded_project_count: seed.projects.length,
         task_count: tasks.length,
         project_count: projects.length
       }),

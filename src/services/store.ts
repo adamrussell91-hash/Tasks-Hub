@@ -793,10 +793,15 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
 
 export type { TaskDomain };
 
-/** Seed once into an empty store (idempotent via meta/seeded). */
-export async function seedIfEmpty(kv: KvAdapter, keys: KeyBuilders, seed: SeedData): Promise<void> {
+/** Seed once into an empty store (idempotent via meta/seeded). Pass force to rewrite. */
+export async function seedIfEmpty(
+  kv: KvAdapter,
+  keys: KeyBuilders,
+  seed: SeedData,
+  options: { force?: boolean } = {}
+): Promise<void> {
   const marker = await kv.getJSON<{ at: string }>(keys.metaSeededKey());
-  if (marker) return;
+  if (marker && !options.force) return;
 
   for (const item of seed.frameworks) {
     await kv.setJSON(keys.frameworkKey(item.id), FrameworkEntrySchema.parse(item));
