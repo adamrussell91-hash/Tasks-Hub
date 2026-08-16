@@ -33,12 +33,21 @@ Open [http://localhost:5175](http://localhost:5175).
 | Local passphrase | `tasks-hub-local` |
 | Seed | `fixtures/seed.json` (frameworks, Ethics Olympiad / Da Vinci templates, MindWorks + demo tasks) |
 
-Mock API seeds automatically. Production Blobs seed on first authenticated Functions request (`meta/seeded`), or manually:
+Mock API seeds automatically. Production Blobs seed on first authenticated Functions request (`meta/seeded`), via `POST /api/seed`, or:
 
 ```bash
 NETLIFY_SITE_ID=… NETLIFY_AUTH_TOKEN=… npm run seed:blobs
 # FORCE_SEED=1 … to clear the marker and re-apply seed indexes
 ```
+
+### Production deploy note
+
+GitHub Pages deploys from `main` automatically (SPA is live). **Netlify Functions** (`artasks-hub` / `tasks-api`) need either:
+
+1. Repo secrets `NETLIFY_AUTH_TOKEN` + `NETLIFY_SITE_ID` (workflow `.github/workflows/netlify.yml`), or  
+2. A production deploy of `main` from the Netlify UI for site `artasks-hub`.
+
+Until Functions redeploy, new routes (`/api/clare`, `/api/stall`, …) 404 and the Blobs store stays empty.
 
 ## Build sequence status
 
