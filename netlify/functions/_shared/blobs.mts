@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getStore, type Store } from '@netlify/blobs';
@@ -14,9 +14,24 @@ export { keys };
 
 const CONTENT_STORE_NAME = 'tasks-hub-content';
 
-function loadSeed(): SeedData {
-  const root = join(dirname(fileURLToPath(import.meta.url)), '../../..');
-  return JSON.parse(readFileSync(join(root, 'fixtures/seed.json'), 'utf8')) as SeedData;
+/**
+ * Netlify esbuild places the handler at `/var/task/netlify/functions/*.mjs`.
+ * `included_files` (fixtures/seed.json) land under `process.cwd()` (`/var/task`).
+ * Walking `../../..` from the handler incorrectly resolves to `/var/fixtures/...`.
+ */
+export function loadSeed(): SeedData {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(process.cwd(), 'fixtures/seed.json'),
+    join(here, '../../fixtures/seed.json'),
+    join(here, '../../../fixtures/seed.json'),
+    join(here, '../../../../fixtures/seed.json')
+  ];
+  for (const path of candidates) {
+    if (!existsSync(path)) continue;
+    return JSON.parse(readFileSync(path, 'utf8')) as SeedData;
+  }
+  throw new Error(`fixtures/seed.json not found (cwd=${process.cwd()}; tried ${candidates.join(', ')})`);
 }
 
 export function getContentStore(): Store {

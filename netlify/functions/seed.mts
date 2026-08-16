@@ -1,10 +1,6 @@
 import { getHubSession } from './_shared/session.mts';
-import { getTasksStore, keys, blobKv, resetSeedCache } from './_shared/blobs.mts';
+import { getTasksStore, keys, blobKv, resetSeedCache, loadSeed } from './_shared/blobs.mts';
 import { seedIfEmpty } from '../../src/services/store.ts';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import type { SeedData } from '../../src/services/types.ts';
 import {
   errorResponse,
   guardRequestOrigin,
@@ -15,11 +11,6 @@ import {
   preflightResponse,
   withCors
 } from './_shared/http.mts';
-
-function loadSeed(): SeedData {
-  const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
-  return JSON.parse(readFileSync(join(root, 'fixtures/seed.json'), 'utf8')) as SeedData;
-}
 
 /** Authenticated seed / re-seed of Blobs from fixtures/seed.json. */
 export default async function handler(request: Request): Promise<Response> {
@@ -66,3 +57,5 @@ export default async function handler(request: Request): Promise<Response> {
     return withCors(errorResponse(500, 'seed_failed', message), request, env);
   }
 }
+
+export const config = { path: '/api/seed' };
