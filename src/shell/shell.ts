@@ -16,6 +16,7 @@ export type HubViewId =
   | 'board'
   | 'clare'
   | 'graph'
+  | 'maps'
   | 'gantt'
   | 'orbit'
   | 'branch'
@@ -36,6 +37,7 @@ const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> 
   { id: 'board', label: 'Board', href: '#/board', glyph: '▦' },
   { id: 'clare', label: 'Clare', href: '#/clare', glyph: '✦' },
   { id: 'graph', label: 'Graph', href: '#/graph', glyph: '◈' },
+  { id: 'maps', label: 'Maps', href: '#/maps', glyph: '⧉' },
   { id: 'gantt', label: 'Gantt', href: '#/gantt', glyph: '▬' },
   { id: 'orbit', label: 'Orbit', href: '#/orbit', glyph: '◎' },
   { id: 'branch', label: 'Branch', href: '#/branch', glyph: '⎇' },
@@ -185,6 +187,7 @@ export function parseHashRoute(): HubViewId {
     'board',
     'clare',
     'graph',
+    'maps',
     'gantt',
     'orbit',
     'branch',

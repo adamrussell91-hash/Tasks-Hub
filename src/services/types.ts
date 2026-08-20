@@ -14,6 +14,7 @@ import type { StressFlag } from '@/schemas/stress';
 import type { CapacityShare } from '@/schemas/capacity';
 import type { CapacitySnapshot, CapacityLevel } from '@/domain/capacity';
 import type { ProjectVariance } from '@/domain/closure';
+import type { TransitMap } from '@/schemas/map';
 
 export interface SeedData {
   tasks: Task[];
@@ -22,6 +23,7 @@ export interface SeedData {
   excursion_templates: ExcursionTemplate[];
   task_templates: TaskTemplate[];
   project_templates: ProjectTemplate[];
+  maps?: TransitMap[];
 }
 
 export interface IndexDoc {
@@ -116,4 +118,10 @@ export interface TasksStore {
     project_id: string;
     reason: string;
   }): Promise<{ project: Project; review: ReviewLog; variance: ProjectVariance }>;
+
+  listMaps(): Promise<TransitMap[]>;
+  getMap(id: string): Promise<TransitMap | null>;
+  createMap(input: Partial<TransitMap> & { title: string }): Promise<TransitMap>;
+  updateMap(id: string, patch: Partial<TransitMap>): Promise<TransitMap>;
+  deleteMap(id: string): Promise<void>;
 }

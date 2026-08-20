@@ -1,6 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/api/client';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
+import type { TransitMap } from '@/schemas/map';
 import type {
   FrameworkEntry,
   ExcursionTemplate,
@@ -179,5 +180,12 @@ export const tasksApi = {
     }>('/api/reviews', { action: 'close', project_id, reason }),
 
   search: (q: string) =>
-    apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`)
+    apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`),
+
+  listMaps: () => apiGet<{ maps: TransitMap[] }>('/api/maps').then((r) => r.maps),
+  getMap: (id: string) => apiGet<TransitMap>(`/api/maps?id=${encodeURIComponent(id)}`),
+  createMap: (body: unknown) => apiPost<TransitMap>('/api/maps', body),
+  updateMap: (id: string, body: unknown) =>
+    apiPatch<TransitMap>(`/api/maps?id=${encodeURIComponent(id)}`, body),
+  deleteMap: (id: string) => apiDelete<{ deleted: boolean }>(`/api/maps?id=${encodeURIComponent(id)}`)
 };
