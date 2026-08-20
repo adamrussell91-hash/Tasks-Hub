@@ -1,6 +1,7 @@
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { buildProjectGanttRows, formatTick, layoutGantt, type GanttLayout } from '@/domain/gantt';
+import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -149,15 +150,23 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
   }
 
   const toolbar = el('div', 'gantt-toolbar');
-  const select = el('select', 'quick-add__select') as HTMLSelectElement;
-  select.setAttribute('aria-label', 'Project');
-  for (const project of datedProjects) {
-    const opt = document.createElement('option');
-    opt.value = project.id;
-    opt.textContent = `${project.title} (${project.type})`;
-    select.append(opt);
-  }
-  toolbar.append(el('span', 'chip chip--muted', 'Project'), select);
+  let projectId = datedProjects[0]!.id;
+  const projectFilter = createHubFilter({
+    key: 'Project',
+    label: 'Project',
+    defaultValue: datedProjects[0]!.id,
+    options: datedProjects.map((project) => ({
+      value: project.id,
+      label: `${project.title} (${project.type})`
+    })),
+    value: projectId,
+    onChange: (value) => {
+      projectId = value;
+      const project = datedProjects.find((p) => p.id === projectId);
+      if (project) paint(project);
+    }
+  });
+  toolbar.append(projectFilter.el);
   canvas.append(toolbar);
 
   const legend = el('div', 'gantt-legend');
@@ -180,11 +189,6 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     }
     paintChart(host, layout);
   };
-
-  select.addEventListener('change', () => {
-    const project = datedProjects.find((p) => p.id === select.value);
-    if (project) paint(project);
-  });
 
   paint(datedProjects[0]!);
 }

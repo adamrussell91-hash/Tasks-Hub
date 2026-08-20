@@ -2,6 +2,7 @@ import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { layoutProjectBranch, type BranchNode } from '@/domain/branch';
+import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -157,27 +158,28 @@ export async function renderBranchView(canvas: HTMLElement): Promise<void> {
   }
 
   const toolbar = el('div', 'graph-toolbar');
-  const select = document.createElement('select');
-  select.className = 'sign-in__input branch-project-select';
-  select.setAttribute('aria-label', 'Project');
-  for (const project of active) {
-    const opt = document.createElement('option');
-    opt.value = project.id;
-    opt.textContent = project.title;
-    select.append(opt);
-  }
   const preferred = active.find((p) => p.id === 'proj_mindworks') ?? active[0];
-  select.value = preferred.id;
-  toolbar.append(select);
+  let projectId = preferred.id;
+  const projectFilter = createHubFilter({
+    key: 'Project',
+    label: 'Project',
+    defaultValue: preferred.id,
+    options: active.map((project) => ({ value: project.id, label: project.title })),
+    value: projectId,
+    onChange: (value) => {
+      projectId = value;
+      paint();
+    }
+  });
+  toolbar.append(projectFilter.el);
   canvas.append(toolbar);
 
   const host = el('div', 'branch-host graph-host');
   canvas.append(host);
 
   const paint = () => {
-    const project = active.find((p) => p.id === select.value) ?? preferred;
+    const project = active.find((p) => p.id === projectId) ?? preferred;
     mountBranch(host, project, tasks);
   };
-  select.addEventListener('change', paint);
   paint();
 }
