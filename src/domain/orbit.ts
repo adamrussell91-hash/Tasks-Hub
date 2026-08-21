@@ -118,8 +118,31 @@ export function layoutOrbit(
     const hash = [...body.id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
     body.angle = i * golden + (hash % 17) * 0.01;
   });
+  separateCloseAngles(bodies);
 
   return bodies;
+}
+
+/** Push bodies that share a ring apart so planets do not sit on top of each other. */
+export function separateCloseAngles(bodies: OrbitBody[]): void {
+  for (let pass = 0; pass < 8; pass += 1) {
+    for (let i = 0; i < bodies.length; i += 1) {
+      for (let j = i + 1; j < bodies.length; j += 1) {
+        const a = bodies[i]!;
+        const b = bodies[j]!;
+        if (Math.abs(a.radius - b.radius) > a.size + b.size + 18) continue;
+        let delta = a.angle - b.angle;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        const minSep = 0.42;
+        if (Math.abs(delta) >= minSep) continue;
+        const push = (minSep - Math.abs(delta)) / 2;
+        const dir = delta >= 0 ? 1 : -1;
+        a.angle += dir * push;
+        b.angle -= dir * push;
+      }
+    }
+  }
 }
 
 export function domainFill(domain: string | null): string {

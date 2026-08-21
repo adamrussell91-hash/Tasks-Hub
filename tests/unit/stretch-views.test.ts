@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
-import { layoutOrbit, taskUrgency } from '@/domain/orbit';
+import { layoutOrbit, separateCloseAngles, taskUrgency, type OrbitBody } from '@/domain/orbit';
 import { layoutProjectBranch } from '@/domain/branch';
 import { buildConstellation } from '@/domain/constellation';
 
@@ -87,6 +87,42 @@ describe('orbit layout', () => {
     const projBody = bodies.find((b) => b.id === 'proj_mw');
     expect(projBody?.kind).toBe('project');
     expect(projBody!.size).toBeGreaterThanOrEqual(18);
+  });
+
+  it('separates bodies that share a ring', () => {
+    const packed: OrbitBody[] = [
+      {
+        id: 'a',
+        kind: 'task',
+        label: 'A',
+        domain: 'teaching',
+        urgency: 0.2,
+        radius: 80,
+        angle: 0,
+        size: 12,
+        priority: 'high',
+        due_date: null,
+        estimated_minutes: 30
+      },
+      {
+        id: 'b',
+        kind: 'task',
+        label: 'B',
+        domain: 'life',
+        urgency: 0.2,
+        radius: 82,
+        angle: 0.05,
+        size: 12,
+        priority: 'high',
+        due_date: null,
+        estimated_minutes: 30
+      }
+    ];
+    separateCloseAngles(packed);
+    let delta = packed[0]!.angle - packed[1]!.angle;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    expect(Math.abs(delta)).toBeGreaterThan(0.3);
   });
 });
 

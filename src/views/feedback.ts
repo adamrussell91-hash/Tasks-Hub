@@ -33,6 +33,41 @@ export function renderInlineError(host: HTMLElement, err: unknown): void {
   host.replaceChildren(el('p', 'empty-state', errorMessage(err)));
 }
 
+export function showConfirmWrite(
+  host: HTMLElement,
+  title: string,
+  summary: string,
+  onConfirm: () => Promise<void>,
+  confirmLabel = 'Confirm'
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm change');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'page-header__title', title));
+  card.append(el('p', 'page-header__supporting', `${summary} Do not apply until Confirm.`));
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', confirmLabel);
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await onConfirm();
+      host.replaceChildren(el('p', 'canvas-status', 'Applied.'));
+    } catch (err) {
+      host.replaceChildren(el('p', 'empty-state', errorMessage(err)));
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
+}
+
 export async function withBusy<T>(
   buttons: HTMLButtonElement[],
   work: () => Promise<T>,

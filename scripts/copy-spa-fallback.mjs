@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,4 +13,5 @@ if (!existsSync(indexHtml)) {
 }
 
 copyFileSync(indexHtml, fallbackHtml);
-console.log('copy-spa-fallback: wrote dist/404.html');
+writeFileSync(join(root, 'dist', '_redirects'), '/*    /index.html   200\n');
+console.log('copy-spa-fallback: wrote dist/404.html and dist/_redirects');

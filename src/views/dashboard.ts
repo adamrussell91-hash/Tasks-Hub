@@ -17,7 +17,7 @@ import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { findStallCandidates } from '@/domain/stall';
-import { errorMessage, renderLoadError } from '@/views/feedback';
+import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -34,7 +34,11 @@ function priorityClass(p: Task['priority']): string {
   return `task-row__priority task-row__priority--${p}`;
 }
 
-function renderTaskRow(task: Task, onToggle: (t: Task) => void): HTMLElement {
+function renderTaskRow(
+  task: Task,
+  onToggle: (t: Task) => void,
+  onDelete?: (t: Task) => void
+): HTMLElement {
   const row = el('article', 'task-row');
   row.dataset.domain = task.domain;
 
@@ -67,10 +71,29 @@ function renderTaskRow(task: Task, onToggle: (t: Task) => void): HTMLElement {
     }
   });
   actions.append(done);
+  if (onDelete) {
+    const remove = el('button', 'btn btn--ghost', 'Delete');
+    remove.type = 'button';
+    remove.addEventListener('click', () => onDelete(task));
+    actions.append(remove);
+  }
 
   if (task.description) row.append(top, el('p', 'task-row__desc', task.description), meta, actions);
   else row.append(top, meta, actions);
   return row;
+}
+
+function confirmDeleteTask(host: HTMLElement, task: Task, reload: () => Promise<void>): void {
+  showConfirmWrite(
+    host,
+    `Delete “${task.title}”`,
+    'This removes the task from the hub.',
+    async () => {
+      await tasksApi.deleteTask(task.id, { agent: 'Tasks Hub', reason: 'Row delete' });
+      await reload();
+    },
+    'Delete'
+  );
 }
 
 async function toggleDone(task: Task): Promise<void> {
@@ -126,16 +149,21 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
     canvas.append(el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.'));
     return;
   }
+  const confirmHost = el('div', 'task-confirm');
   const stack = el('div', 'task-stack');
   for (const task of list) {
     stack.append(
-      renderTaskRow(task, async (t) => {
-        await toggleDone(t);
-        await renderDayView(canvas);
-      })
+      renderTaskRow(
+        task,
+        async (t) => {
+          await toggleDone(t);
+          await renderDayView(canvas);
+        },
+        (t) => confirmDeleteTask(confirmHost, t, () => renderDayView(canvas))
+      )
     );
   }
-  canvas.append(stack);
+  canvas.append(stack, confirmHost);
 }
 
 export async function renderWeekView(canvas: HTMLElement): Promise<void> {
@@ -259,20 +287,25 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren();
   canvas.append(el('p', 'view-lede', 'Open tasks without a due date, filterable later by domain/tag/priority.'));
   canvas.append(renderQuickAdd(() => void renderListView(canvas)));
+  const confirmHost = el('div', 'task-confirm');
   if (!list.length) {
-    canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
+    canvas.append(el('p', 'empty-state', 'Backlog is clear.'), confirmHost);
     return;
   }
   const stack = el('div', 'task-stack');
   for (const task of list) {
     stack.append(
-      renderTaskRow(task, async (t) => {
-        await toggleDone(t);
-        await renderListView(canvas);
-      })
+      renderTaskRow(
+        task,
+        async (t) => {
+          await toggleDone(t);
+          await renderListView(canvas);
+        },
+        (t) => confirmDeleteTask(confirmHost, t, () => renderListView(canvas))
+      )
     );
   }
-  canvas.append(stack);
+  canvas.append(stack, confirmHost);
 }
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
@@ -633,7 +666,25 @@ export async function renderSearchView(canvas: HTMLElement): Promise<void> {
       paintSearch(results, data.tasks, data.projects);
     }
   });
-  canvas.append(form, results);
+  const confirmHost = el('div', 'task-confirm');
+  canvas.append(form, results, confirmHost);
+}
+
+async function refreshSearch(host: HTMLElement): Promise<void> {
+  const input = host.previousElementSibling?.querySelector('input');
+  const q = input instanceof HTMLInputElement ? input.value.trim() : '';
+  if (q.length < 2) {
+    host.replaceChildren();
+    return;
+  }
+  try {
+    const data = await tasksApi.search(q);
+    paintSearch(host, data.tasks, data.projects);
+  } catch {
+    const [allTasks, allProjects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+    const data = searchEntities(allTasks, allProjects, q);
+    paintSearch(host, data.tasks, data.projects);
+  }
 }
 
 function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): void {
@@ -649,23 +700,18 @@ function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): voi
   }
   for (const task of tasks) {
     host.append(
-      renderTaskRow(task, async (t) => {
-        await toggleDone(t);
-        const input = host.previousElementSibling?.querySelector('input');
-        const q = input instanceof HTMLInputElement ? input.value.trim() : '';
-        if (q.length < 2) return;
-        try {
-          const data = await tasksApi.search(q);
-          paintSearch(host, data.tasks, data.projects);
-        } catch {
-          const [allTasks, allProjects] = await Promise.all([
-            tasksApi.listTasks(),
-            tasksApi.listProjects()
-          ]);
-          const data = searchEntities(allTasks, allProjects, q);
-          paintSearch(host, data.tasks, data.projects);
+      renderTaskRow(
+        task,
+        async (t) => {
+          await toggleDone(t);
+          await refreshSearch(host);
+        },
+        (t) => {
+          const confirmHost = host.parentElement?.querySelector('.task-confirm');
+          if (!(confirmHost instanceof HTMLElement)) return;
+          confirmDeleteTask(confirmHost, t, () => refreshSearch(host));
         }
-      })
+      )
     );
   }
 }

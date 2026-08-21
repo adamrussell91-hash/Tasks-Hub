@@ -151,12 +151,12 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
         .distance(mode === 'blockers' ? 110 : 88)
         .strength(0.45)
     )
-    .force('charge', forceManyBody<GraphNode>().strength(mode === 'workstreams' ? -420 : -280))
-    .force('x', forceX(width / 2).strength(0.05))
-    .force('y', forceY(height / 2).strength(0.05))
+    .force('charge', forceManyBody<GraphNode>().strength(mode === 'workstreams' ? -640 : -380))
+    .force('x', forceX(width / 2).strength(0.04))
+    .force('y', forceY(height / 2).strength(0.04))
     .force(
       'collide',
-      forceCollide<GraphNode>().radius((n) => (n.kind === 'project' ? 28 : 18))
+      forceCollide<GraphNode>().radius((n) => (n.kind === 'project' ? 46 : 28))
     )
     .on('tick', draw);
 
