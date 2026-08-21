@@ -20,7 +20,7 @@ export interface ApiRequestOptions {
   signal?: AbortSignal;
 }
 
-const RETRYABLE_CODES = new Set(['invalid_response', 'network_error']);
+const RETRYABLE_CODES = new Set(['invalid_response', 'network_error', 'timeout']);
 const RETRY_ATTEMPTS = 3;
 
 function isApiResult<T>(value: unknown): value is ApiResult<T> {
