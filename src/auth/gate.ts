@@ -101,6 +101,13 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     error.hidden = true;
+
+    if (!normalizePassphrase(input.value)) {
+      showError('Enter your passphrase.');
+      input.focus();
+      return;
+    }
+
     submit.disabled = true;
 
     try {

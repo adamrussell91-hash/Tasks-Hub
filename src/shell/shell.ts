@@ -180,29 +180,44 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   refs.pageHeader.append(refs.headerActions);
 }
 
+const KNOWN_VIEWS: HubViewId[] = [
+  'board',
+  'clare',
+  'graph',
+  'maps',
+  'gantt',
+  'orbit',
+  'branch',
+  'constellation',
+  'day',
+  'week',
+  'month',
+  'list',
+  'search',
+  'templates',
+  'projects',
+  'excursions',
+  'stress',
+  'corey'
+];
+
+export function knownHubViews(): readonly HubViewId[] {
+  return KNOWN_VIEWS;
+}
+
+export function hashViewId(hash = location.hash): string {
+  return hash.replace(/^#\/?/, '').split(/[/?]/)[0] || 'board';
+}
+
+export function isKnownHashView(hash = location.hash): boolean {
+  const id = hashViewId(hash);
+  if (id === 'capacity') return true;
+  return KNOWN_VIEWS.includes(id as HubViewId);
+}
+
 export function parseHashRoute(): HubViewId {
-  const hash = location.hash.replace(/^#\/?/, '') || 'board';
-  const id = hash.split(/[/?]/)[0] as HubViewId;
-  const known: HubViewId[] = [
-    'board',
-    'clare',
-    'graph',
-    'gantt',
-    'orbit',
-    'branch',
-    'constellation',
-    'day',
-    'week',
-    'month',
-    'list',
-    'search',
-    'templates',
-    'projects',
-    'excursions',
-    'stress',
-    'corey'
-  ];
-  return known.includes(id) ? id : 'board';
+  const id = hashViewId() as HubViewId;
+  return KNOWN_VIEWS.includes(id) ? id : 'board';
 }
 
 /** Public Corey share: `#/capacity/<token>` */

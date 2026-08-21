@@ -35,6 +35,9 @@ function paintTrigger(btn, options, value, defaultValue) {
   if (label) label.textContent = optionLabel(current);
   btn.dataset.hubValue = String(current.value);
   btn.classList.toggle('is-set', String(current.value) !== String(defaultValue));
+  const base = btn.dataset.hubAriaBase || btn.getAttribute('aria-label') || btn.dataset.hubFilter || 'Filter';
+  if (!btn.dataset.hubAriaBase) btn.dataset.hubAriaBase = base.replace(/: .*$/, '');
+  btn.setAttribute('aria-label', `${btn.dataset.hubAriaBase}: ${optionLabel(current)}`);
 }
 
 function closeOpenMenu(returnFocus = false) {
