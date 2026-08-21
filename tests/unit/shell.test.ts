@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { renderHubShell, renderPageHeader } from '../../src/shell/shell';
+import { parseHashRoute, renderHubShell, renderPageHeader } from '../../src/shell/shell';
 
 describe('hub shell chrome', () => {
   it('keeps a single uppercase rail brand and no labelled rail logout', () => {
@@ -52,5 +52,24 @@ describe('hub shell chrome', () => {
     expect(actions.at(-2)).toBe('hub-utilities');
     expect(actions.at(-1)).toBe('hub-mark');
     expect(refs.logoutButton?.getAttribute('aria-label')).toBe('Sign out');
+  });
+});
+
+describe('parseHashRoute', () => {
+  it('keeps Maps on Maps instead of falling back to Board', () => {
+    location.hash = '#/maps';
+    expect(parseHashRoute()).toBe('maps');
+  });
+
+  it('recognises other rail destinations', () => {
+    location.hash = '#/graph';
+    expect(parseHashRoute()).toBe('graph');
+    location.hash = '#/stress';
+    expect(parseHashRoute()).toBe('stress');
+  });
+
+  it('falls back to Board for unknown hashes', () => {
+    location.hash = '#/nope';
+    expect(parseHashRoute()).toBe('board');
   });
 });
