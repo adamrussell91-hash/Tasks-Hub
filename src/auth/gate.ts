@@ -49,6 +49,13 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   form.className = 'sign-in__card';
   form.noValidate = true;
 
+  const mark = document.createElement('img');
+  mark.className = 'sign-in__mark';
+  mark.src = 'design-kit/icons/tasks.svg';
+  mark.alt = '';
+  mark.width = 56;
+  mark.height = 56;
+
   const brand = document.createElement('p');
   brand.className = 'sign-in__brand';
   brand.textContent = 'Tasks Hub';
@@ -56,12 +63,6 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   const title = document.createElement('h1');
   title.className = 'sign-in__title';
   title.textContent = 'Sign in';
-
-  const supporting = document.createElement('p');
-  supporting.className = 'sign-in__supporting';
-  supporting.textContent = window.isSecureContext
-    ? 'Day-to-day tasks and project arcs — Clare DeMind’s desk.'
-    : `This tab is not a secure context. Open ${API_SIGN_IN_URL} instead.`;
 
   const field = document.createElement('div');
   field.className = 'sign-in__field';
@@ -80,6 +81,7 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   input.type = 'password';
   input.required = true;
   input.autocomplete = 'current-password';
+  input.enterKeyHint = 'go';
 
   const error = document.createElement('p');
   error.className = 'sign-in__error';
@@ -92,7 +94,7 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   submit.textContent = 'Sign in';
 
   field.append(label, input);
-  form.append(brand, title, supporting, field, error, submit);
+  form.append(mark, brand, title, field, error, submit);
   wrapper.append(form);
   container.append(wrapper);
 
