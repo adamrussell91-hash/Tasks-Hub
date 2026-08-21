@@ -1,5 +1,6 @@
-/* Shared action chrome. Existing hubs import this instead of full chrome.css. */
-@import "./filters.css";
+/* Shared action chrome. Existing hubs import this instead of full chrome.css.
+ * Left rail is css/rail.css (RAIL.md) — load it alongside this sheet when adopting.
+ */
 
 /* Discrete chrome utilities (refresh / sign out). Top-right of the page header —
    faded icon only, never a labelled .btn. Snippet: snippets/hub-utilities.html */
@@ -43,46 +44,12 @@
   display: block;
 }
 
-/* Discrete chrome utilities (refresh / sign out). Top-right of the page header —
-   faded icon only, never a labelled .btn. Snippet: snippets/hub-utilities.html */
-.hub-utilities {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-px);
-  flex-shrink: 0;
-  margin-left: var(--space-2);
-}
-
-.hub-icon-btn {
-  display: inline-grid;
-  place-items: center;
+/* Site tile — canvas top-right, after .hub-utilities. Same file as favicon + login. */
+.hub-mark {
+  display: block;
   width: 2rem;
   height: 2rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: transparent;
-  color: var(--shallow);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.hub-icon-btn:hover:not(:disabled),
-.hub-icon-btn:focus-visible {
-  color: var(--muted);
-  background: transparent;
-}
-
-.hub-icon-btn:disabled {
-  opacity: 0.45;
-  cursor: wait;
-}
-
-.hub-icon-btn svg {
-  width: 1.125rem;
-  height: 1.125rem;
-  display: block;
+  flex-shrink: 0;
 }
 
 .btn {
