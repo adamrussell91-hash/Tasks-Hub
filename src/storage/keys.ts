@@ -90,3 +90,11 @@ export function clareNegotiationLogKey(id: string): string {
 export function metaSeededKey(): string {
   return 'meta/seeded';
 }
+
+export function mapKey(id: string): string {
+  return `maps/${id}`;
+}
+
+export function mapsIndexKey(): string {
+  return 'maps/_index';
+}

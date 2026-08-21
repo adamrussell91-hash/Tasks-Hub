@@ -251,15 +251,19 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   );
 
   const toolbar = el('div', 'graph-toolbar');
-  const blockersBtn = el('button', 'btn btn--primary', 'Blockers');
+  const modes = el('div', 'hub-pills');
+  modes.setAttribute('role', 'group');
+  modes.setAttribute('aria-label', 'Graph mode');
+  const blockersBtn = el('button', 'hub-pills__btn is-active', 'Blockers');
   blockersBtn.type = 'button';
-  const workBtn = el('button', 'btn btn--secondary', 'Workstreams');
+  const workBtn = el('button', 'hub-pills__btn', 'Workstreams');
   workBtn.type = 'button';
-  const search = el('input', 'sign-in__input') as HTMLInputElement;
+  modes.append(blockersBtn, workBtn);
+  const search = el('input', 'hub-search') as HTMLInputElement;
   search.type = 'search';
   search.placeholder = 'Filter nodes…';
   search.setAttribute('aria-label', 'Filter graph');
-  toolbar.append(blockersBtn, workBtn, search);
+  toolbar.append(modes, search);
   canvas.append(toolbar);
 
   const host = el('div', 'graph-host');
@@ -279,14 +283,14 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
 
   blockersBtn.addEventListener('click', () => {
     mode = 'blockers';
-    blockersBtn.className = 'btn btn--primary';
-    workBtn.className = 'btn btn--secondary';
+    blockersBtn.classList.add('is-active');
+    workBtn.classList.remove('is-active');
     paint();
   });
   workBtn.addEventListener('click', () => {
     mode = 'workstreams';
-    workBtn.className = 'btn btn--primary';
-    blockersBtn.className = 'btn btn--secondary';
+    workBtn.classList.add('is-active');
+    blockersBtn.classList.remove('is-active');
     paint();
   });
   search.addEventListener('input', () => paint());

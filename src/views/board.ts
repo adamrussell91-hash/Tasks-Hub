@@ -2,6 +2,7 @@ import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { openTasks, toDateKey } from '@/domain/queries';
+import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -95,25 +96,21 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   );
 
   const filterRow = el('div', 'board-filter');
-  filterRow.append(el('span', 'chip chip--muted', 'Scope'));
-  const select = el('select', 'quick-add__select') as HTMLSelectElement;
-  select.setAttribute('aria-label', 'Board project scope');
-  const allOpt = document.createElement('option');
-  allOpt.value = 'all';
-  allOpt.textContent = 'All tasks';
-  select.append(allOpt);
-  for (const project of projects) {
-    const opt = document.createElement('option');
-    opt.value = project.id;
-    opt.textContent = project.title;
-    select.append(opt);
-  }
-  select.value = boardProjectFilter;
-  select.addEventListener('change', () => {
-    boardProjectFilter = select.value as string | 'all';
-    void renderBoardView(canvas);
+  const scope = createHubFilter({
+    key: 'Scope',
+    label: 'Board project scope',
+    defaultValue: 'all',
+    options: [
+      { value: 'all', label: 'All tasks' },
+      ...projects.map((project) => ({ value: project.id, label: project.title }))
+    ],
+    value: boardProjectFilter,
+    onChange: (value) => {
+      boardProjectFilter = value as string | 'all';
+      void renderBoardView(canvas);
+    }
   });
-  filterRow.append(select);
+  filterRow.append(scope.el);
   canvas.append(filterRow);
 
   const form = renderQuickAdd(

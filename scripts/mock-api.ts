@@ -4,6 +4,7 @@ import type { SeedData } from '../src/services/types';
 import { searchEntities } from '../src/domain/queries';
 import { TaskCreateSchema, TaskUpdateSchema } from '../src/schemas/task';
 import { ProjectCreateSchema, ProjectUpdateSchema } from '../src/schemas/project';
+import { TransitMapCreateSchema, TransitMapUpdateSchema } from '../src/schemas/map';
 
 export function createMemoryKv(): KvAdapter & { map: Map<string, unknown> } {
   const map = new Map<string, unknown>();
@@ -126,6 +127,29 @@ export function createMockApi({ seed }: MockApiOptions) {
       }
       if (method === 'DELETE' && id) {
         await s.deleteProject(id, body as { agent?: string; reason?: string } | undefined);
+        return json(200, { ok: true, data: { deleted: true } });
+      }
+    }
+
+    if (path === '/api/maps') {
+      if (method === 'GET') {
+        if (id) {
+          const map = await s.getMap(id);
+          if (!map) return json(404, { ok: false, error: { code: 'not_found', message: 'Map not found' } });
+          return json(200, { ok: true, data: map });
+        }
+        return json(200, { ok: true, data: { maps: await s.listMaps() } });
+      }
+      if (method === 'POST') {
+        const parsed = TransitMapCreateSchema.parse(body);
+        return json(201, { ok: true, data: await s.createMap(parsed) });
+      }
+      if (method === 'PATCH' && id) {
+        const parsed = TransitMapUpdateSchema.parse(body);
+        return json(200, { ok: true, data: await s.updateMap(id, parsed) });
+      }
+      if (method === 'DELETE' && id) {
+        await s.deleteMap(id);
         return json(200, { ok: true, data: { deleted: true } });
       }
     }

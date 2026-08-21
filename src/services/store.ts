@@ -11,6 +11,8 @@ import {
 import { ClareCalibrationSchema, ClareNegotiationLogSchema } from '@/schemas/clare';
 import { DEFAULT_STRESS_ROUTE, StressFlagSchema } from '@/schemas/stress';
 import { CapacityShareSchema } from '@/schemas/capacity';
+import { TransitMapSchema } from '@/schemas/map';
+import { mindWorks2026Map } from '@/domain/maps-seed';
 import { buildExcursionPlan } from '@/domain/excursion';
 import { backlogTasks } from '@/domain/queries';
 import {
@@ -56,6 +58,8 @@ export interface KeyBuilders {
   clareCalibrationsIndexKey: () => string;
   clareNegotiationLogKey: (id: string) => string;
   metaSeededKey: () => string;
+  mapKey: (id: string) => string;
+  mapsIndexKey: () => string;
 }
 
 function nowIso(): string {
@@ -787,6 +791,61 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       await kv.setJSON(keys.agentActionLogKey(log.id), log);
 
       return { project, review, variance };
+    },
+
+    async listMaps() {
+      let maps = await listByIndex(kv, keys.mapsIndexKey(), keys.mapKey, (raw) =>
+        TransitMapSchema.parse(raw)
+      );
+      if (maps.length === 0) {
+        const seedMap = mindWorks2026Map();
+        await kv.setJSON(keys.mapKey(seedMap.id), seedMap);
+        await writeIndex(kv, keys.mapsIndexKey(), [seedMap.id]);
+        maps = [seedMap];
+      }
+      return maps;
+    },
+    async getMap(id) {
+      const raw = await kv.getJSON(keys.mapKey(id));
+      return raw ? TransitMapSchema.parse(raw) : null;
+    },
+    async createMap(input) {
+      const stamp = nowIso();
+      const map = TransitMapSchema.parse({
+        schema_version: 1,
+        id: newId('map'),
+        title: input.title,
+        year: input.year ?? null,
+        lines: input.lines ?? [],
+        stations: input.stations ?? [],
+        ticks: input.ticks ?? [],
+        created_at: stamp,
+        updated_at: stamp
+      });
+      await kv.setJSON(keys.mapKey(map.id), map);
+      const ids = await readIndex(kv, keys.mapsIndexKey());
+      ids.push(map.id);
+      await writeIndex(kv, keys.mapsIndexKey(), ids);
+      return map;
+    },
+    async updateMap(id, patch) {
+      const existing = await this.getMap(id);
+      if (!existing) throw new Error(`Map not found: ${id}`);
+      const next = TransitMapSchema.parse({
+        ...existing,
+        ...patch,
+        id: existing.id,
+        schema_version: 1,
+        created_at: existing.created_at,
+        updated_at: nowIso()
+      });
+      await kv.setJSON(keys.mapKey(id), next);
+      return next;
+    },
+    async deleteMap(id) {
+      await kv.delete(keys.mapKey(id));
+      const ids = (await readIndex(kv, keys.mapsIndexKey())).filter((x) => x !== id);
+      await writeIndex(kv, keys.mapsIndexKey(), ids);
     }
   };
 }
@@ -855,6 +914,16 @@ export async function seedIfEmpty(
     kv,
     keys.tasksIndexKey(),
     seed.tasks.map((t) => t.id)
+  );
+
+  const maps = seed.maps?.length ? seed.maps : [mindWorks2026Map()];
+  for (const item of maps) {
+    await kv.setJSON(keys.mapKey(item.id), TransitMapSchema.parse(item));
+  }
+  await writeIndex(
+    kv,
+    keys.mapsIndexKey(),
+    maps.map((m) => m.id)
   );
 
   await kv.setJSON(keys.metaSeededKey(), { at: nowIso() });

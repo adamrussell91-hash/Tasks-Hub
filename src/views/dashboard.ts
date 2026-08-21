@@ -549,7 +549,7 @@ function showStallConfirm(
 export async function renderSearchView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren();
   const form = el('form', 'search-form');
-  const input = el('input', 'sign-in__input') as HTMLInputElement;
+  const input = el('input', 'hub-search') as HTMLInputElement;
   input.type = 'search';
   input.placeholder = 'Search tasks and projects…';
   input.setAttribute('aria-label', 'Search');

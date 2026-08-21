@@ -15,12 +15,6 @@
   top: var(--space-2);
 }
 
-.sign-in__hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
 .view-lede {
   margin: 0 0 var(--space-4);
   color: var(--muted);
@@ -1064,6 +1058,86 @@
   font-family: Inter, system-ui, sans-serif;
   font-size: 12px;
   opacity: 0.85;
+}
+
+.map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.map-stage {
+  position: relative;
+  background: var(--cotton);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  min-height: 28rem;
+  overflow: hidden;
+}
+
+.map-svg {
+  display: block;
+  width: 100%;
+  height: 36rem;
+}
+
+.map-zoom {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+}
+
+.map-line-letter,
+.map-tick__label,
+.map-tick__note,
+.map-station__label {
+  font-family: Inter, ui-sans-serif, sans-serif;
+  fill: var(--ink);
+  pointer-events: none;
+}
+
+.map-line-letter {
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  fill: var(--muted);
+}
+
+.map-station__label {
+  font-size: var(--text-2xs);
+}
+
+.map-tick__label {
+  font-size: var(--text-xs);
+  fill: var(--muted);
+}
+
+.map-tick__note {
+  font-size: var(--text-2xs);
+  fill: var(--pastel-lilac-ink);
+}
+
+.map-station.is-selected .map-station__body,
+.map-tick.is-selected circle {
+  stroke: var(--high-sea);
+}
+
+.map-preview {
+  margin-top: var(--space-4);
+}
+
+.map-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.map-confirm {
+  margin-top: var(--space-4);
 }
 
 @media (prefers-reduced-motion: reduce) {

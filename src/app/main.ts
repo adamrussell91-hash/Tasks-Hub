@@ -16,6 +16,7 @@ import {
 } from '@/shell/shell';
 import { renderBoardView } from '@/views/board';
 import { renderGraphView } from '@/views/graph';
+import { renderMapsView } from '@/views/maps';
 import { renderGanttView } from '@/views/gantt';
 import { renderOrbitView } from '@/views/orbit';
 import { renderBranchView } from '@/views/branch';
@@ -49,6 +50,11 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     eyebrow: 'Structure',
     title: 'Graph',
     supporting: 'Blockers and workstreams — Knowledge-style search, select, preview.'
+  },
+  maps: {
+    eyebrow: 'Pathways',
+    title: 'Maps',
+    supporting: 'Transit diagrams for programs and projects.'
   },
   gantt: {
     eyebrow: 'Schedule',
@@ -130,6 +136,8 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderClareView(canvas);
     case 'graph':
       return renderGraphView(canvas);
+    case 'maps':
+      return renderMapsView(canvas);
     case 'gantt':
       return renderGanttView(canvas);
     case 'orbit':
