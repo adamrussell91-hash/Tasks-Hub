@@ -3,6 +3,7 @@ import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { openTasks, toDateKey } from '@/domain/queries';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
+import { showConfirmWrite } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -42,9 +43,14 @@ function columnFor(task: Task, byId: Map<string, Task>): BoardColumnId {
   return 'todo';
 }
 
-function renderCard(task: Task, onMove: (task: Task, status: Task['status']) => void): HTMLElement {
+function renderCard(
+  task: Task,
+  onMove: (task: Task, status: Task['status']) => void,
+  onDelete: (task: Task) => void
+): HTMLElement {
   const card = el('article', 'board-card');
   card.dataset.domain = task.domain;
+  card.dataset.status = task.status;
   card.append(el('h3', 'board-card__title', task.title));
   const meta = el('div', 'board-card__meta');
   meta.append(el('span', 'chip', task.domain), el('span', 'chip chip--muted', task.priority));
@@ -58,20 +64,39 @@ function renderCard(task: Task, onMove: (task: Task, status: Task['status']) => 
   if (task.status !== 'in_progress' && task.status !== 'done') {
     const start = el('button', 'btn btn--secondary', 'Start');
     start.type = 'button';
-    start.addEventListener('click', () => onMove(task, 'in_progress'));
+    start.addEventListener('click', () => {
+      start.disabled = true;
+      start.textContent = 'Saving…';
+      card.dataset.status = 'in_progress';
+      onMove(task, 'in_progress');
+    });
     actions.append(start);
   }
   if (task.status !== 'done') {
     const done = el('button', 'btn btn--primary', 'Done');
     done.type = 'button';
-    done.addEventListener('click', () => onMove(task, 'done'));
+    done.addEventListener('click', () => {
+      done.disabled = true;
+      done.textContent = 'Saving…';
+      card.dataset.status = 'done';
+      onMove(task, 'done');
+    });
     actions.append(done);
   } else {
     const reopen = el('button', 'btn btn--ghost', 'Reopen');
     reopen.type = 'button';
-    reopen.addEventListener('click', () => onMove(task, 'open'));
+    reopen.addEventListener('click', () => {
+      reopen.disabled = true;
+      reopen.textContent = 'Saving…';
+      card.dataset.status = 'open';
+      onMove(task, 'open');
+    });
     actions.append(reopen);
   }
+  const remove = el('button', 'btn btn--ghost', 'Delete');
+  remove.type = 'button';
+  remove.addEventListener('click', () => onDelete(task));
+  actions.append(remove);
   card.append(actions);
   return card;
 }
@@ -79,7 +104,20 @@ function renderCard(task: Task, onMove: (task: Task, status: Task['status']) => 
 /** Board is the Tasks Hub home surface — optional project scope for Kanban. */
 export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading board…'));
-  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  let tasks: Awaited<ReturnType<typeof tasksApi.listTasks>>;
+  let projects: Awaited<ReturnType<typeof tasksApi.listProjects>>;
+  try {
+    [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  } catch (err) {
+    canvas.replaceChildren(
+      el('p', 'empty-state', err instanceof Error ? err.message : 'Could not load board')
+    );
+    const retry = el('button', 'btn btn--secondary', 'Retry');
+    retry.type = 'button';
+    retry.addEventListener('click', () => void renderBoardView(canvas));
+    canvas.append(retry);
+    return;
+  }
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const scoped =
     boardProjectFilter === 'all'
@@ -119,6 +157,9 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   );
   canvas.append(form);
 
+  const confirmHost = el('div', 'board-confirm');
+  canvas.append(confirmHost);
+
   const board = el('div', 'board-grid');
   for (const col of COLUMNS) {
     const section = el('section', 'board-col');
@@ -128,10 +169,35 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     if (!items.length) stack.append(el('p', 'empty-state empty-state--compact', '—'));
     for (const task of items) {
       stack.append(
-        renderCard(task, async (t, status) => {
-          await tasksApi.updateTask(t.id, { status });
-          await renderBoardView(canvas);
-        })
+        renderCard(
+          task,
+          async (t, status) => {
+            try {
+              await tasksApi.updateTask(t.id, { status });
+              await renderBoardView(canvas);
+            } catch (err) {
+              canvas.prepend(
+                el('p', 'empty-state', err instanceof Error ? err.message : 'Update failed')
+              );
+              await renderBoardView(canvas);
+            }
+          },
+          (t) => {
+            showConfirmWrite(
+              confirmHost,
+              `Delete “${t.title}”`,
+              'This removes the task from the hub.',
+              async () => {
+                await tasksApi.deleteTask(t.id, {
+                  agent: 'Tasks Hub',
+                  reason: 'Board delete'
+                });
+                await renderBoardView(canvas);
+              },
+              'Delete'
+            );
+          }
+        )
       );
     }
     section.append(stack);
@@ -167,6 +233,8 @@ function renderQuickAdd(onCreated: () => void, projectId: string | null): HTMLEl
       });
       title.value = '';
       onCreated();
+    } catch (err) {
+      form.append(el('p', 'empty-state', err instanceof Error ? err.message : 'Create failed'));
     } finally {
       submit.disabled = false;
     }

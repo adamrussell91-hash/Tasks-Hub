@@ -39,6 +39,10 @@ function showConfirm(
     cancel.disabled = true;
     try {
       await onConfirm();
+    } catch (err) {
+      host.replaceChildren(
+        el('p', 'empty-state', err instanceof Error ? err.message : 'Create failed')
+      );
     } finally {
       ok.disabled = false;
       cancel.disabled = false;

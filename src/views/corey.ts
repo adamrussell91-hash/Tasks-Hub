@@ -1,6 +1,7 @@
 import type { CapacityLevel, CapacitySnapshot } from '@/domain/capacity';
 import type { CapacityShare } from '@/schemas/capacity';
 import { tasksApi } from '@/services/client-api';
+import { renderLoadError } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -45,13 +46,17 @@ function shareUrl(token: string): string {
 /** Adam’s capacity desk — preview + share link for Corey (no task titles on the public side). */
 export async function renderCoreyView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading capacity…'));
-  const data = await tasksApi.getCapacity();
-  let share = data.share;
-  if (!share) {
-    const ensured = await tasksApi.ensureCapacityShare();
-    share = ensured.share;
+  try {
+    const data = await tasksApi.getCapacity();
+    let share = data.share;
+    if (!share) {
+      const ensured = await tasksApi.ensureCapacityShare();
+      share = ensured.share;
+    }
+    paintCorey(canvas, data.snapshot, share);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderCoreyView(canvas), 'Could not load capacity');
   }
-  paintCorey(canvas, data.snapshot, share);
 }
 
 function paintCorey(canvas: HTMLElement, snapshot: CapacitySnapshot, share: CapacityShare): void {

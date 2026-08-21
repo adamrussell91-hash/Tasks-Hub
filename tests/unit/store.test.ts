@@ -99,4 +99,17 @@ describe('queries', () => {
     const list = adaptiveTodayTasks(seed.tasks, day);
     expect(list.some((t) => t.id === 'task_demo_lesson_pack')).toBe(true);
   });
+
+  it('creates a project from the standard term template', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    const project = await store.createProjectFromTemplate('pt_standard_term');
+    expect(project.title).toBe('Standard term project');
+    expect(project.milestones.map((m) => m.title)).toEqual([
+      'Kickoff',
+      'Midpoint check',
+      'Close'
+    ]);
+  });
 });

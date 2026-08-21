@@ -2,12 +2,14 @@ import '../../design-kit/css/tokens.css';
 import '../../design-kit/css/overlays.css';
 import '../../design-kit/css/chrome.css';
 import '../../design-kit/css/rail.css';
+import '../../design-kit/css/filters.css';
 import '../../design-kit/css/sign-in.css';
 import '../styles/hub.css';
 import '../styles/views.css';
 
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
+  isKnownHashView,
   parseCapacityShareToken,
   parseHashRoute,
   renderHubShell,
@@ -15,6 +17,7 @@ import {
   renderPrimaryNav,
   type HubViewId
 } from '@/shell/shell';
+import { renderLoadError } from '@/views/feedback';
 import { renderBoardView } from '@/views/board';
 import { renderGraphView } from '@/views/graph';
 import { renderMapsView } from '@/views/maps';
@@ -74,8 +77,8 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   },
   constellation: {
     eyebrow: 'Stretch',
-    title: 'Constellation',
-    supporting: 'Completions light stars — a payoff metaphor, not a task list.'
+    title: 'Sky',
+    supporting: 'Constellation metaphor — completions light stars, not a task list.'
   },
   day: {
     eyebrow: 'Focus',
@@ -128,6 +131,21 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Read-only availability — no task titles on the public link.'
   }
 };
+
+function renderNotFound(canvas: HTMLElement, hash: string): void {
+  canvas.replaceChildren();
+  const lede = document.createElement('p');
+  lede.className = 'view-lede';
+  lede.textContent = `${hash || '#/'} is not a Tasks Hub page.`;
+  const home = document.createElement('button');
+  home.type = 'button';
+  home.className = 'btn btn--primary';
+  home.textContent = 'Back to Board';
+  home.addEventListener('click', () => {
+    location.hash = '#/board';
+  });
+  canvas.append(lede, home);
+}
 
 async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<void> {
   switch (view) {
@@ -191,15 +209,34 @@ async function bootApp(root: HTMLElement): Promise<void> {
   });
 
   const paint = async () => {
+    window.scrollTo(0, 0);
+    const canvasWrap = shell.canvas.closest('.hub-canvas');
+    if (canvasWrap instanceof HTMLElement) canvasWrap.scrollTop = 0;
+    shell.canvas.scrollTop = 0;
+
     const share = parseCapacityShareToken();
     if (share) {
       await bootPublicCapacity(root, share);
       return;
     }
+    if (!isKnownHashView()) {
+      renderPrimaryNav(shell.railNav, 'board');
+      renderPageHeader(shell, {
+        eyebrow: 'Missing',
+        title: 'Page not found',
+        supporting: 'Unknown route — the URL was not rewritten to Board.'
+      });
+      renderNotFound(shell.canvas, location.hash);
+      return;
+    }
     const view = parseHashRoute();
     renderPrimaryNav(shell.railNav, view);
     renderPageHeader(shell, HEADERS[view]);
-    await renderActiveView(view, shell.canvas);
+    try {
+      await renderActiveView(view, shell.canvas);
+    } catch (err) {
+      renderLoadError(shell.canvas, err, () => void paint(), `Could not load ${HEADERS[view].title}`);
+    }
   };
 
   window.addEventListener('hashchange', () => {

@@ -45,6 +45,13 @@ export const tasksApi = {
       overrides
     }),
 
+  createProjectFromTemplate: (template_id: string, overrides?: unknown) =>
+    apiPost<Project>('/api/templates', {
+      action: 'create_project_from_template',
+      template_id,
+      overrides
+    }),
+
   createExcursionFromTemplate: (input: {
     excursion_template_id: string;
     title: string;

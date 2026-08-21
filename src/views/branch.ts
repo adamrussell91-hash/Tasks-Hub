@@ -134,7 +134,18 @@ function mountBranch(
   }
   svg.append(nodes);
 
-  host.append(svg, tip, preview);
+  const list = el('ul', 'viz-alt');
+  list.setAttribute('aria-label', `Branch nodes for ${project.title}`);
+  for (const node of layout.nodes) {
+    const item = el('li');
+    const btn = el('button', 'btn btn--ghost', `${node.kind}: ${node.label}`);
+    btn.type = 'button';
+    btn.addEventListener('click', () => showPreview(preview, node, byId.get(node.id)));
+    item.append(btn);
+    list.append(item);
+  }
+
+  host.append(svg, tip, preview, list);
 }
 
 /** Spec §6.5 — hierarchical / depends_on tree for one project. */

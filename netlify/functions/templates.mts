@@ -60,6 +60,13 @@ export default async function handler(request: Request): Promise<Response> {
       const task = await store.createTaskFromTemplate(String(body.template_id), (body.overrides as object) ?? {});
       return withCors(okResponse(201, task), request, env);
     }
+    if (action === 'create_project_from_template') {
+      const project = await store.createProjectFromTemplate(
+        String(body.template_id),
+        (body.overrides as object) ?? {}
+      );
+      return withCors(okResponse(201, project), request, env);
+    }
     if (action === 'create_excursion_from_template') {
       const result = await store.createExcursionFromTemplate({
         excursion_template_id: String(body.excursion_template_id),

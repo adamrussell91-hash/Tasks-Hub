@@ -14,7 +14,7 @@ import { CapacityShareSchema } from '@/schemas/capacity';
 import { TransitMapSchema } from '@/schemas/map';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { buildExcursionPlan } from '@/domain/excursion';
-import { backlogTasks } from '@/domain/queries';
+import { addDays, backlogTasks, toDateKey } from '@/domain/queries';
 import {
   buildProposal,
   emptyCalibration,
@@ -335,6 +335,34 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         tags: overrides.tags ?? parsed.default_fields.tags ?? [],
         ...overrides
       });
+    },
+    async createProjectFromTemplate(templateId, overrides = {}) {
+      const raw = await kv.getJSON(keys.projectTemplateKey(templateId));
+      if (!raw) throw new Error(`Project template not found: ${templateId}`);
+      const parsed = ProjectTemplateSchema.parse(raw);
+      if (parsed.type === 'excursion' && parsed.excursion_template_id) {
+        const { project } = await this.createExcursionFromTemplate({
+          excursion_template_id: parsed.excursion_template_id,
+          title: overrides.title ?? parsed.name,
+          event_date: overrides.event_date ?? toDateKey(addDays(new Date(), 45)),
+          description: overrides.description
+        });
+        return project;
+      }
+      const project = await this.createProject({
+        title: overrides.title ?? parsed.name,
+        description: overrides.description ?? '',
+        type: parsed.type,
+        status: 'active'
+      });
+      const milestones = parsed.default_milestones.map((milestone) => ({
+        id: newId('ms'),
+        project_id: project.id,
+        title: milestone.title ?? 'Milestone',
+        due_date: milestone.due_date ?? null,
+        status: (milestone.status ?? 'open') as 'open'
+      }));
+      return this.updateProject(project.id, { milestones });
     },
     async createExcursionFromTemplate(input) {
       const raw = await kv.getJSON(keys.excursionTemplateKey(input.excursion_template_id));

@@ -1140,6 +1140,52 @@
   margin-top: var(--space-4);
 }
 
+.viz-alt {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.viz-alt .btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.viz-alt--table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.viz-alt--table th,
+.viz-alt--table td {
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.week-preview {
+  position: relative;
+  right: auto;
+  top: auto;
+  width: min(24rem, 100%);
+  margin: var(--space-4) 0 0;
+}
+
+.orbit-host,
+.branch-host,
+.constellation-host,
+.graph-host {
+  overflow: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orbit-spin,
   .branch-edge,

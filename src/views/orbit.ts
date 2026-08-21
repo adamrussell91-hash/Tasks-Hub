@@ -41,8 +41,8 @@ function mountOrbit(host: HTMLElement, tasks: Task[], projects: Project[]): void
   const cy = height / 2;
   const maxR = Math.min(cx, cy) - 36;
   const scaled = layoutOrbit(tasks, projects, new Date(), {
-    minRadius: Math.max(48, maxR * 0.22),
-    maxRadius: maxR
+    minRadius: Math.max(72, maxR * 0.32),
+    maxRadius: maxR * 0.92
   });
   if (!scaled.length) {
     host.append(el('p', 'empty-state', 'Nothing in orbit — add open tasks or active projects.'));
@@ -110,12 +110,6 @@ function mountOrbit(host: HTMLElement, tasks: Task[], projects: Project[]): void
     planet.setAttribute('stroke-width', body.kind === 'project' ? '2.25' : '1.25');
     planet.setAttribute('class', 'orbit-planet');
 
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', String(x + body.size + 6));
-    label.setAttribute('y', String(y + 4));
-    label.setAttribute('class', 'orbit-label');
-    label.textContent = body.label.slice(0, 26);
-
     const select = () => showPreview(preview, body);
     g.addEventListener('click', select);
     g.addEventListener('keydown', (event) => {
@@ -135,7 +129,7 @@ function mountOrbit(host: HTMLElement, tasks: Task[], projects: Project[]): void
       tip.hidden = true;
     });
 
-    g.append(planet, label);
+    g.append(planet);
     spin.append(g);
   }
 
@@ -159,7 +153,18 @@ function mountOrbit(host: HTMLElement, tasks: Task[], projects: Project[]): void
   centre.append(core, coreLabel);
   svg.append(centre);
 
-  host.append(svg, tip, preview);
+  const list = el('ul', 'viz-alt');
+  list.setAttribute('aria-label', 'Orbit bodies, nearest first');
+  for (const body of [...scaled].sort((a, b) => a.urgency - b.urgency)) {
+    const item = el('li');
+    const btn = el('button', 'btn btn--ghost', `${body.kind}: ${body.label}`);
+    btn.type = 'button';
+    btn.addEventListener('click', () => showPreview(preview, body));
+    item.append(btn);
+    list.append(item);
+  }
+
+  host.append(svg, tip, preview, list);
 }
 
 /** Spec §6.5 — urgency as orbital distance; Adam at centre. */

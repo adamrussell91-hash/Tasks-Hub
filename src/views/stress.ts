@@ -1,5 +1,6 @@
 import type { StressFlag } from '@/schemas/stress';
 import { tasksApi } from '@/services/client-api';
+import { renderLoadError } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -33,15 +34,29 @@ function renderFlag(flag: StressFlag): HTMLElement {
 /** Read-only StressFlag trail — agents poll inboxes; Adam can inspect texture here. */
 export async function renderStressView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Scanning pressure patterns…'));
-  const scan = await tasksApi.scanStressFlags().catch(() => ({
-    raised: [],
-    skipped: 0,
-    patterns: 0
-  }));
-  const [flags, hammond] = await Promise.all([
-    tasksApi.listStressFlags(),
-    tasksApi.listAgentInbox('General Hammond')
-  ]);
+  let scan: { raised: StressFlag[]; skipped: number; patterns: number } | null = null;
+  let scanError: unknown = null;
+  let flags: StressFlag[];
+  let hammond: StressFlag[];
+  try {
+    try {
+      scan = await tasksApi.scanStressFlags();
+    } catch (err) {
+      scanError = err;
+    }
+    [flags, hammond] = await Promise.all([
+      tasksApi.listStressFlags(),
+      tasksApi.listAgentInbox('General Hammond')
+    ]);
+  } catch (err) {
+    renderLoadError(
+      canvas,
+      err,
+      () => void renderStressView(canvas),
+      'Could not load StressFlags'
+    );
+    return;
+  }
 
   canvas.replaceChildren();
   canvas.append(
@@ -53,12 +68,15 @@ export async function renderStressView(canvas: HTMLElement): Promise<void> {
   );
 
   const status = el('p', 'stress-scan-status');
-  status.textContent =
-    scan.raised.length > 0
-      ? `Scan raised ${scan.raised.length} new flag(s); ${scan.skipped} already known.`
-      : scan.patterns > 0
-        ? `Scan found ${scan.patterns} pattern(s); all already routed.`
-        : 'No pressure patterns right now.';
+  if (scanError) {
+    status.textContent = `Scan failed: ${scanError instanceof Error ? scanError.message : 'Request failed'}`;
+  } else if (scan && scan.raised.length > 0) {
+    status.textContent = `Scan raised ${scan.raised.length} new flag(s); ${scan.skipped} already known.`;
+  } else if (scan && scan.patterns > 0) {
+    status.textContent = `Scan found ${scan.patterns} pattern(s); all already routed.`;
+  } else {
+    status.textContent = 'No pressure patterns right now.';
+  }
   canvas.append(status);
 
   const rescan = el('button', 'btn btn--secondary', 'Scan again');

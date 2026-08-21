@@ -51,6 +51,10 @@ export interface TasksStore {
   saveTaskAsTemplate(taskId: string, name: string): Promise<TaskTemplate>;
   saveProjectAsTemplate(projectId: string, name: string): Promise<ProjectTemplate>;
   createTaskFromTemplate(templateId: string, overrides?: Partial<Task>): Promise<Task>;
+  createProjectFromTemplate(
+    templateId: string,
+    overrides?: Partial<Project> & { event_date?: string }
+  ): Promise<Project>;
   createExcursionFromTemplate(input: {
     excursion_template_id: string;
     title: string;
