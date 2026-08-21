@@ -198,6 +198,15 @@ async function bootApp(root: HTMLElement): Promise<void> {
     void paint();
   });
 
+  shell.rail.querySelector<HTMLElement>('[data-home]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (location.hash === '#/board') {
+      void paint();
+      return;
+    }
+    location.hash = '#/board';
+  });
+
   if (!location.hash || location.hash === '#/') location.hash = '#/board';
   await paint();
 }

@@ -125,6 +125,9 @@ describe('hub shell chrome', () => {
     const refs = renderHubShell(root);
     renderPrimaryNav(refs.railNav, 'board');
     expect(refs.rail.querySelector('.hub-rail__brand')?.getAttribute('aria-current')).toBe('page');
+    expect(refs.railNav.querySelector('[aria-current="page"] .hub-rail__label')?.textContent).toBe(
+      'Board'
+    );
   });
 
   it('loads rail.css and does not override --rail-width or use an icon column', () => {
