@@ -20,7 +20,10 @@ Glass intensity and tile density only, via `html[data-hub=…]` in `css/overlays
   <link rel="stylesheet" href="/design-kit/overlays.css" />
   <link rel="stylesheet" href="/design-kit/actions.css" />
   <link rel="stylesheet" href="/design-kit/sign-in.css" />
+  <link rel="stylesheet" href="/design-kit/rail.css" />
 ```
+
+Rail contract: [`RAIL.md`](RAIL.md) — brand is a home control; first-class pages are outline icon + title-case label.
 
 Existing hubs keep their own layout CSS. New hubs can also load `chrome.css`. Passphrase gates use `snippets/sign-in.html`.
 

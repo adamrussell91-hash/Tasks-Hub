@@ -13,16 +13,17 @@
     <link rel="stylesheet" href="../css/tokens.css" />
     <link rel="stylesheet" href="../css/overlays.css" />
     <link rel="stylesheet" href="../css/chrome.css" />
+    <link rel="stylesheet" href="../css/rail.css" />
   </head>
   <body>
     <div class="hub-layout">
       <aside class="hub-rail">
         <div class="hub-rail__brand-block">
-          <!-- Single line; CSS uppercases. Do not stack with <br> or restyle as a hero. -->
-          <p class="hub-rail__brand">Knowledge Hub</p>
+          <!-- Home control; CSS uppercases. Do not stack with <br> or restyle as a hero. -->
+          <a class="hub-rail__brand" href="#/" data-home aria-label="Knowledge Hub home">Knowledge Hub</a>
           <!-- Optional: <p class="hub-rail__tagline">Private dashboard</p> -->
         </div>
-        <!-- nav buttons: use .btn.btn--ghost; colour with --on-dark on the rail -->
+        <!-- First-class pages: outline icon + title-case label. See RAIL.md. -->
       </aside>
       <div class="hub-canvas">
         <header class="page-header">

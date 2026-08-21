@@ -1,5 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
-import { renderHubShell, renderPageHeader } from '../../src/shell/shell';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  RAIL_PAGES,
+  renderHubShell,
+  renderPageHeader,
+  renderPrimaryNav
+} from '../../src/shell/shell';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const hubCss = readFileSync(join(here, '../../src/styles/hub.css'), 'utf8');
+const mainTs = readFileSync(join(here, '../../src/app/main.ts'), 'utf8');
 
 describe('hub shell chrome', () => {
   it('keeps a single uppercase rail brand and no labelled rail logout', () => {
@@ -10,6 +22,17 @@ describe('hub shell chrome', () => {
     expect(brand?.textContent).toBe('Tasks Hub');
     expect(refs.rail.querySelector('.hub-rail__logout')).toBeNull();
     expect(refs.rail.textContent).not.toContain('Sign out');
+  });
+
+  it('makes Tasks Hub a home control to the Board', () => {
+    const root = document.createElement('div');
+    const refs = renderHubShell(root);
+
+    const brand = refs.rail.querySelector<HTMLAnchorElement>('.hub-rail__brand');
+    expect(brand?.tagName).toBe('A');
+    expect(brand?.getAttribute('href')).toBe('#/board');
+    expect(brand?.hasAttribute('data-home')).toBe(true);
+    expect(brand?.getAttribute('aria-label')).toBe('Tasks Hub home');
   });
 
   it('places a discrete sign-out icon in page-header actions', () => {
@@ -51,5 +74,63 @@ describe('hub shell chrome', () => {
     expect(actions[0]).toContain('btn');
     expect(actions.at(-1)).toBe('hub-utilities');
     expect(refs.logoutButton?.getAttribute('aria-label')).toBe('Sign out');
+  });
+
+  it('renders first-class pages as outline icons with title-case labels', () => {
+    const root = document.createElement('div');
+    const refs = renderHubShell(root);
+    renderPrimaryNav(refs.railNav, 'graph');
+
+    const links = [...refs.railNav.querySelectorAll<HTMLAnchorElement>('.hub-rail__link')];
+    expect(links.map((el) => el.getAttribute('href'))).toEqual(RAIL_PAGES.map((p) => p.href));
+    expect(links.map((el) => el.querySelector('.hub-rail__label')?.textContent)).toEqual(
+      RAIL_PAGES.map((p) => p.label)
+    );
+    expect(RAIL_PAGES.map((p) => p.label)).toEqual([
+      'Board',
+      'Clare',
+      'Graph',
+      'Gantt',
+      'Orbit',
+      'Branch',
+      'Sky',
+      'Today',
+      'Week',
+      'Month',
+      'Backlog',
+      'Projects',
+      'Excursions',
+      'Network',
+      'Corey',
+      'Templates',
+      'Search'
+    ]);
+
+    for (const link of links) {
+      const icon = link.querySelector<SVGSVGElement>('svg.hub-rail__icon');
+      expect(icon).not.toBeNull();
+      expect(icon?.getAttribute('fill')).toBe('none');
+      expect(icon?.getAttribute('stroke')).toBe('currentColor');
+      expect(link.querySelector('.nav-dot')).toBeNull();
+    }
+
+    expect(refs.railNav.querySelector('[aria-current="page"] .hub-rail__label')?.textContent).toBe(
+      'Graph'
+    );
+    expect(refs.rail.querySelector('.hub-rail__brand')?.getAttribute('aria-current')).toBeNull();
+  });
+
+  it('marks the brand current on the Board home route', () => {
+    const root = document.createElement('div');
+    const refs = renderHubShell(root);
+    renderPrimaryNav(refs.railNav, 'board');
+    expect(refs.rail.querySelector('.hub-rail__brand')?.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('loads rail.css and does not override --rail-width or use an icon column', () => {
+    expect(mainTs).toContain("import '../../design-kit/css/rail.css'");
+    expect(hubCss).not.toMatch(/--rail-width\s*:/);
+    expect(hubCss).not.toContain('nav-dot');
+    expect(hubCss).not.toContain('justify-items: center');
   });
 });
