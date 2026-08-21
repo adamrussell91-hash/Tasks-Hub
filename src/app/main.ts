@@ -1,6 +1,7 @@
 import '../../design-kit/css/tokens.css';
 import '../../design-kit/css/overlays.css';
 import '../../design-kit/css/chrome.css';
+import '../../design-kit/css/rail.css';
 import '../../design-kit/css/sign-in.css';
 import '../styles/hub.css';
 import '../styles/views.css';
@@ -195,6 +196,15 @@ async function bootApp(root: HTMLElement): Promise<void> {
 
   window.addEventListener('hashchange', () => {
     void paint();
+  });
+
+  shell.rail.querySelector<HTMLElement>('[data-home]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (location.hash === '#/board') {
+      void paint();
+      return;
+    }
+    location.hash = '#/board';
   });
 
   if (!location.hash || location.hash === '#/') location.hash = '#/board';

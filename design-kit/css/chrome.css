@@ -86,9 +86,10 @@ html[data-hub="life"] .glass-panel {
   color: var(--on-dark);
 }
 
-/* Rail brand: one line, CSS uppercase. Text is "Teaching Hub" / "Life Hub" /
-   "Knowledge Hub" / "Tasks Hub" — never stacked <br>, never a large title-case
-   hero on the rail. Optional tagline sits under the brand. */
+/* Rail brand: home control, one line, CSS uppercase. Text is "Teaching Hub" /
+   "Life Hub" / "Knowledge Hub" / "Tasks Hub" — never stacked <br>, never a
+   large title-case hero. Optional tagline sits under the brand. Page links
+   (outline icon + title-case label) live in rail.css — see RAIL.md. */
 .hub-rail__brand-block {
   padding: var(--space-1) var(--space-3) var(--space-4);
 }

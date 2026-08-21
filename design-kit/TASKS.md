@@ -13,11 +13,11 @@ Tasks Hub: `/Users/adamrussell/Projects/tasks-hub`
 <html lang="en" data-hub="tasks">
 ```
 
-Load Inter, then kit `tokens.css`, `overlays.css`, `chrome.css` (new hub), then Tasks Hub CSS.
+Load Inter, then kit `tokens.css`, `overlays.css`, `chrome.css`, `rail.css` (see `RAIL.md`), then Tasks Hub CSS.
 
 `data-hub="tasks"` **clones Teaching**: more glass, more tiles, labeled left rail (not Knowledge’s icon rail). Values live in `css/overlays.css` — do not retune them in the hub.
 
-Page header stays kit: uppercase eyebrow → `h1` → optional supporting → actions on the right. Rail brand is `.hub-rail__brand` (single uppercase line). Refresh and sign out use `.hub-utilities` / `.hub-icon-btn` at the canvas top-right — not labelled pills on the rail.
+Page header stays kit: uppercase eyebrow → `h1` → optional supporting → actions on the right. Rail brand is a home control (`.hub-rail__brand` + `data-home`) that goes to Board. First-class rail pages are outline icon + title-case label. Refresh and sign out use `.hub-utilities` / `.hub-icon-btn` at the canvas top-right — not labelled pills on the rail.
 
 Agent writes: propose → **confirm card** → apply.
 
@@ -57,6 +57,7 @@ Graph and chart CSS belongs in the hub (or a copy of those modules). Do not add 
 ## Hard rules
 
 - Do not fork `--rail-width` to the Knowledge icon rail.
+- Do not put coloured dots or an icon-column layout on the Tasks rail. See `RAIL.md`.
 - Do not flatten glass to Knowledge/Life’s `glass-panel` override. Tasks keeps Teaching frost.
 - Do not start a Tasks colour story “because work is serious.”
 - If a size or colour is missing, pick the nearest token.

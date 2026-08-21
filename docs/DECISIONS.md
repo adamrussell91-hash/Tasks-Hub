@@ -34,7 +34,7 @@ AI chat: Anthropic via Netlify Functions (Teaching pattern). Spec’s `jade-melo
 
 ## Chrome (design-kit)
 
-Canonical copy on `main` (`3d8668f`). Load: Inter → `css/tokens.css` → `overlays.css` → `chrome.css` → `sign-in.css` → hub CSS.
+Canonical copy on `main` (`3d8668f`). Load: Inter → `css/tokens.css` → `overlays.css` → `chrome.css` → `rail.css` → `sign-in.css` → hub CSS. Rail contract: `design-kit/RAIL.md`.
 
 - `html[data-hub="tasks"]` — Teaching clone. See `design-kit/TASKS.md`.
 - Board home; Graph / Gantt / stretch Orbit·Branch·Sky; Clare / Network / Corey rail pages.

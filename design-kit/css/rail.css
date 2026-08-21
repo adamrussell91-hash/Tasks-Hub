@@ -1,0 +1,88 @@
+/* Shared hub rail pages. Load after tokens, overlays, and chrome.
+   Brand = home control. First-class pages = outline icon + title-case label.
+   No coloured dots, no icon-column layout, no --rail-width override. */
+
+.hub-rail__brand {
+  appearance: none;
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  color: var(--on-dark-muted);
+}
+
+.hub-rail__brand:hover,
+.hub-rail__brand:focus-visible {
+  color: var(--on-dark);
+}
+
+.hub-rail__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-px);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.hub-rail__pages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-px);
+}
+
+.hub-rail__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--on-dark-muted);
+  text-decoration: none;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-card);
+  font-weight: var(--weight-medium);
+  text-transform: none;
+  letter-spacing: var(--tracking-normal);
+}
+
+.hub-rail__icon {
+  width: var(--space-5);
+  height: var(--space-5);
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hub-rail__label {
+  min-width: 0;
+  text-transform: none;
+  letter-spacing: var(--tracking-normal);
+}
+
+.hub-rail__link:hover,
+.hub-rail__link:focus-visible {
+  color: var(--on-dark);
+  background: var(--on-dark-hover);
+}
+
+.hub-rail__link[aria-current='page'] {
+  color: var(--on-dark);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.09);
+  font-weight: var(--weight-semibold);
+}
+
+/* Coloured dots are a Life leftover — never on the rail. */
+.hub-rail .nav-dot,
+.hub-rail [class*='nav-dot'] {
+  display: none;
+}

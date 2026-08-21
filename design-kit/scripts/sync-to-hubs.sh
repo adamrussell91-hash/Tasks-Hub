@@ -21,11 +21,13 @@ copy_kit() {
   mkdir -p "$css_dest" "$dest/snippets"
   cp "$KIT/AGENTS.md" "$dest/AGENTS.md"
   cp "$KIT/TASKS.md" "$dest/TASKS.md"
+  cp "$KIT/RAIL.md" "$dest/RAIL.md"
   cp "$KIT/css/tokens.css" "$css_dest/tokens.css"
   cp "$KIT/css/overlays.css" "$css_dest/overlays.css"
   cp "$KIT/css/chrome.css" "$css_dest/chrome.css"
   cp "$KIT/css/actions.css" "$css_dest/actions.css"
   cp "$KIT/css/sign-in.css" "$css_dest/sign-in.css"
+  cp "$KIT/css/rail.css" "$css_dest/rail.css"
   cp "$KIT/snippets/"*.html "$dest/snippets/"
   echo "Synced $dest"
 }

@@ -10,8 +10,9 @@ Tasks Hub agents: also read `TASKS.md` (Teaching chrome, board home, graph/chart
 2. `css/overlays.css` — the only per-hub differences (glass / tile density)
 3. `css/actions.css` — `.btn`, Wave `:focus-visible`, `.confirm-card` (import in existing hubs)
 4. `css/sign-in.css` — passphrase gate (brand, Sign in, labelled field)
-5. `css/chrome.css` — rail, page header, buttons, confirm cards (new hubs)
-6. `snippets/` — copy the HTML, then wire behaviour (`shell.html`, `hub-utilities.html`, `sign-in.html`, `confirm-card.html`)
+5. `css/chrome.css` — rail shell, page header, buttons, confirm cards (new hubs)
+6. `css/rail.css` — brand as home control + first-class pages (outline icon + title-case label). See `RAIL.md`
+7. `snippets/` — copy the HTML, then wire behaviour (`shell.html`, `hub-utilities.html`, `sign-in.html`, `confirm-card.html`)
 
 Canonical repo: `/Users/adamrussell/Projects/hub-design-kit`  
 GitHub: https://github.com/adamrussell91-hash/hub-design-kit  
@@ -21,8 +22,9 @@ Each hub also has a copy at `design-kit/` so this workspace can see it.
 
 - Colours, type scale, spacing, radius, shadows
 - Page header: uppercase eyebrow → `h1` title → optional supporting → actions on the right
-- Left rail: `--rail-width`, depth→marine gradient, `--on-dark*` text
-- Rail brand: `.hub-rail__brand` — single line, CSS `text-transform: uppercase`, `--text-2xs`. Copy is `"Teaching Hub"` / `"Life Hub"` / `"Knowledge Hub"` / `"Tasks Hub"`. No stacked `<br>`, no large title-case hero on the rail. Optional `.hub-rail__tagline` only.
+- Left rail: `--rail-width`, depth→marine gradient, `--on-dark*` text. Spec: `RAIL.md`. Load `css/rail.css`.
+- Rail brand: `.hub-rail__brand` is a **home control** (`data-home`). Single line, CSS `text-transform: uppercase`, `--text-2xs`. Copy is `"Teaching Hub"` / `"Life Hub"` / `"Knowledge Hub"` / `"Tasks Hub"`. No stacked `<br>`, no large title-case hero on the rail. Optional `.hub-rail__tagline` only.
+- First-class rail pages: outline SVG + title-case label in a row. No coloured dots, no icon column, no hub `--rail-width` override (Knowledge’s 5.75rem icon rail is the only exception, and it lives in `overlays.css`).
 - Chrome utilities: refresh and sign out are `.hub-icon-btn` icons in `.hub-utilities` at the **canvas top-right** (last child of `.page-header__actions`). Faded `--shallow` icons — never labelled pill `.btn`s on the rail or header. Snippet: `snippets/hub-utilities.html`.
 - Buttons: `.btn` + `--primary` / `--secondary` / `--ghost` / `--decisive`
 - Agent UX: propose → **confirm card** → apply. Never silent writes that look like a new UI kit
@@ -53,7 +55,7 @@ Product UI (graphs, lesson blocks, bloods) stays in the hub. Chrome does not.
 
 When editing a hub, replace local logout/refresh chrome with the kit pattern (after sync):
 
-1. Rail brand → `.hub-rail__brand` (or map the hub’s brand class to the same token rules). Single line of copy `"… Hub"`; CSS uppercases it. Drop stacked `<br>` titles and large title-case rail heroes.
+1. Rail brand → `.hub-rail__brand` home control (`data-home`, or map the hub’s brand class to the same token rules). Single line of copy `"… Hub"`; CSS uppercases it. Drop stacked `<br>` titles and large title-case rail heroes. First-class pages: outline icon + title-case label (`rail.css`). No coloured dots, no icon column, no `--rail-width` override.
 2. Sign out / refresh → copy `snippets/hub-utilities.html` into `.page-header__actions` (canvas top-right). Keep existing ids/data attributes if tests rely on them; change the markup to `.hub-icon-btn`.
 3. Delete labelled pill logout styles on the rail (`.teacher-layout__logout`, `.rail__logout`, `.hub-rail__logout`, `.quiet-button` used as Sign out/Refresh).
 4. Load `actions.css` (or `chrome.css`) so `.hub-icon-btn` is defined.
@@ -62,6 +64,6 @@ When editing a hub, replace local logout/refresh chrome with the kit pattern (af
 
 1. Copy `design-kit/` into the new repo (or run the sync script after adding the path).
 2. `<html lang="en" data-hub="…">`
-3. Load Inter, then `tokens.css`, `overlays.css`, `chrome.css`, then the hub’s own CSS.
+3. Load Inter, then `tokens.css`, `overlays.css`, `chrome.css`, `rail.css`, then the hub’s own CSS.
 4. Start from `snippets/shell.html`.
 5. Hub-only CSS may add domain styles; it may not redefine `:root` colours or type.
