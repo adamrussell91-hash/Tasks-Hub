@@ -16,6 +16,7 @@ export type HubViewId =
   | 'board'
   | 'clare'
   | 'graph'
+  | 'maps'
   | 'gantt'
   | 'orbit'
   | 'branch'
