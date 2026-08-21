@@ -79,7 +79,20 @@ function renderCard(task: Task, onMove: (task: Task, status: Task['status']) => 
 /** Board is the Tasks Hub home surface — optional project scope for Kanban. */
 export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading board…'));
-  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  let tasks: Awaited<ReturnType<typeof tasksApi.listTasks>>;
+  let projects: Awaited<ReturnType<typeof tasksApi.listProjects>>;
+  try {
+    [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  } catch (err) {
+    canvas.replaceChildren(
+      el('p', 'empty-state', err instanceof Error ? err.message : 'Could not load board')
+    );
+    const retry = el('button', 'btn btn--secondary', 'Retry');
+    retry.type = 'button';
+    retry.addEventListener('click', () => void renderBoardView(canvas));
+    canvas.append(retry);
+    return;
+  }
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const scoped =
     boardProjectFilter === 'all'
@@ -129,8 +142,14 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     for (const task of items) {
       stack.append(
         renderCard(task, async (t, status) => {
-          await tasksApi.updateTask(t.id, { status });
-          await renderBoardView(canvas);
+          try {
+            await tasksApi.updateTask(t.id, { status });
+            await renderBoardView(canvas);
+          } catch (err) {
+            canvas.prepend(
+              el('p', 'empty-state', err instanceof Error ? err.message : 'Update failed')
+            );
+          }
         })
       );
     }
@@ -167,6 +186,8 @@ function renderQuickAdd(onCreated: () => void, projectId: string | null): HTMLEl
       });
       title.value = '';
       onCreated();
+    } catch (err) {
+      form.append(el('p', 'empty-state', err instanceof Error ? err.message : 'Create failed'));
     } finally {
       submit.disabled = false;
     }

@@ -111,12 +111,12 @@ export function layoutOrbit(
     })
   ];
 
-  // Spread angles; jitter by id so layout is stable
+  // Golden-angle spread so near-centre bodies do not stack on one ray
   bodies.sort((a, b) => a.urgency - b.urgency || a.label.localeCompare(b.label));
-  const n = bodies.length || 1;
+  const golden = Math.PI * (3 - Math.sqrt(5));
   bodies.forEach((body, i) => {
     const hash = [...body.id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-    body.angle = (i / n) * Math.PI * 2 + (hash % 17) * 0.02;
+    body.angle = i * golden + (hash % 17) * 0.01;
   });
 
   return bodies;

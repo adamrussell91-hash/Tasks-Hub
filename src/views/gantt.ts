@@ -188,6 +188,20 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
       return;
     }
     paintChart(host, layout);
+    const table = el('table', 'viz-alt viz-alt--table');
+    table.setAttribute('aria-label', `Gantt rows for ${project.title}`);
+    const body = el('tbody');
+    for (const row of rows) {
+      const tr = el('tr');
+      tr.append(
+        el('th', undefined, row.label),
+        el('td', undefined, row.kind),
+        el('td', undefined, row.status)
+      );
+      body.append(tr);
+    }
+    table.append(body);
+    host.append(table);
   };
 
   paint(datedProjects[0]!);

@@ -61,6 +61,11 @@ async function apiRequest<T>(
     headers['Content-Type'] = 'application/json';
   }
 
+  const signal =
+    options.signal ?? (typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal
+      ? AbortSignal.timeout(20_000)
+      : undefined);
+
   let response: Response;
   try {
     response = await fetch(url, {
@@ -68,12 +73,19 @@ async function apiRequest<T>(
       credentials: 'include',
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal: options.signal
+      signal
     });
   } catch (cause) {
+    const raw = cause instanceof Error ? cause.message : 'Network request failed';
+    const timedOut = cause instanceof DOMException && cause.name === 'TimeoutError';
+    const message = timedOut
+      ? `Timed out calling ${url}`
+      : raw === 'Failed to fetch' || raw === 'Network request failed'
+        ? `Could not reach ${url}. Check CORS, the Functions deploy, or the Network tab.`
+        : raw;
     throw new ApiClientError({
-      code: 'network_error',
-      message: cause instanceof Error ? cause.message : 'Network request failed'
+      code: timedOut ? 'timeout' : 'network_error',
+      message
     });
   }
 

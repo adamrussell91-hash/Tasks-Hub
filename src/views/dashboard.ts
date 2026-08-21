@@ -16,6 +16,8 @@ import { computeProjectVariance, formatSlip } from '@/domain/closure';
 import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
 import { renderPressureStrips } from '@/views/pinch-strip';
+import { findStallCandidates } from '@/domain/stall';
+import { errorMessage, renderLoadError } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -52,7 +54,18 @@ function renderTaskRow(task: Task, onToggle: (t: Task) => void): HTMLElement {
   const actions = el('div', 'task-row__actions');
   const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
   done.type = 'button';
-  done.addEventListener('click', () => onToggle(task));
+  done.addEventListener('click', async () => {
+    done.disabled = true;
+    const label = done.textContent;
+    done.textContent = 'Saving…';
+    try {
+      await onToggle(task);
+    } catch (err) {
+      done.disabled = false;
+      done.textContent = label;
+      row.append(el('p', 'empty-state', errorMessage(err)));
+    }
+  });
   actions.append(done);
 
   if (task.description) row.append(top, el('p', 'task-row__desc', task.description), meta, actions);
@@ -139,6 +152,10 @@ export async function renderWeekView(canvas: HTMLElement): Promise<void> {
   renderPressureStrips(pressure, tasks, today, () => void renderWeekView(canvas));
   canvas.append(pressure);
 
+  const preview = el('aside', 'graph-preview week-preview');
+  preview.hidden = true;
+  preview.setAttribute('aria-live', 'polite');
+
   const grid = el('div', 'week-grid');
   for (const day of days) {
     const key = toDateKey(day);
@@ -159,11 +176,37 @@ export async function renderWeekView(canvas: HTMLElement): Promise<void> {
       const item = el('button', 'week-chip', task.title);
       item.type = 'button';
       item.dataset.domain = task.domain;
+      item.setAttribute('aria-label', `${task.title}, ${task.priority}, due ${task.due_date?.slice(0, 10) ?? 'undated'}`);
+      item.addEventListener('click', () => {
+        preview.hidden = false;
+        preview.replaceChildren(
+          el('p', 'graph-preview__eyebrow', task.domain),
+          el('h3', 'graph-preview__title', task.title),
+          el(
+            'p',
+            'graph-preview__meta',
+            [task.priority, task.due_date ? `Due ${task.due_date.slice(0, 10)}` : null, task.status.replace('_', ' ')]
+              .filter(Boolean)
+              .join(' · ')
+          )
+        );
+        const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
+        done.type = 'button';
+        done.addEventListener('click', async () => {
+          try {
+            await toggleDone(task);
+            await renderWeekView(canvas);
+          } catch (err) {
+            preview.append(el('p', 'empty-state', errorMessage(err)));
+          }
+        });
+        preview.append(done);
+      });
       col.append(item);
     }
     grid.append(col);
   }
-  canvas.append(grid);
+  canvas.append(grid, preview);
 }
 
 export async function renderMonthView(canvas: HTMLElement): Promise<void> {
@@ -234,12 +277,25 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  await tasksApi.flagStalledProjects().catch(() => undefined);
-  const [projects, tasks, reviews] = await Promise.all([
-    tasksApi.listProjects(),
-    tasksApi.listTasks(),
-    tasksApi.listReviewLogs().catch(() => [])
-  ]);
+  let flagWarning = '';
+  try {
+    await tasksApi.flagStalledProjects();
+  } catch (err) {
+    flagWarning = `Could not persist stall flags (${errorMessage(err)}). Showing quiet projects from local detection.`;
+  }
+  let projects: Project[];
+  let tasks: Task[];
+  let reviews: Awaited<ReturnType<typeof tasksApi.listReviewLogs>>;
+  try {
+    [projects, tasks, reviews] = await Promise.all([
+      tasksApi.listProjects(),
+      tasksApi.listTasks(),
+      tasksApi.listReviewLogs().catch(() => [])
+    ]);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderProjectsView(canvas), 'Could not load projects');
+    return;
+  }
 
   canvas.replaceChildren();
   canvas.append(
@@ -249,11 +305,17 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
       'Programs and arcs. Quiet projects (6+ weeks) flag as stalled — revive, Frankenstein, or bury with a reason. Finished work closes with a short retrospective against its baseline end date.'
     )
   );
+  if (flagWarning) canvas.append(el('p', 'empty-state', flagWarning));
 
   const stallConfirmHost = el('div', 'stall-confirm');
   const closureConfirmHost = el('div', 'closure-confirm');
-  const stalled = projects.filter((p) => p.status === 'stalled');
-  const live = projects.filter((p) => p.status !== 'stalled' && p.status !== 'archived_dead');
+  const candidateIds = new Set(
+    findStallCandidates(projects, tasks).map((c) => c.project.id)
+  );
+  const stalled = projects.filter((p) => p.status === 'stalled' || candidateIds.has(p.id));
+  const live = projects.filter(
+    (p) => p.status !== 'archived_dead' && !stalled.some((s) => s.id === p.id)
+  );
   const closed = projects.filter((p) => p.status === 'archived_dead');
   const mergeTargets = projects.filter(
     (p) => p.status !== 'archived_dead' && p.status !== 'stalled'
@@ -586,15 +648,79 @@ function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): voi
     host.append(row);
   }
   for (const task of tasks) {
-    host.append(renderTaskRow(task, async () => undefined));
+    host.append(
+      renderTaskRow(task, async (t) => {
+        await toggleDone(t);
+        const input = host.previousElementSibling?.querySelector('input');
+        const q = input instanceof HTMLInputElement ? input.value.trim() : '';
+        if (q.length < 2) return;
+        try {
+          const data = await tasksApi.search(q);
+          paintSearch(host, data.tasks, data.projects);
+        } catch {
+          const [allTasks, allProjects] = await Promise.all([
+            tasksApi.listTasks(),
+            tasksApi.listProjects()
+          ]);
+          const data = searchEntities(allTasks, allProjects, q);
+          paintSearch(host, data.tasks, data.projects);
+        }
+      })
+    );
   }
+}
+
+function showTemplateConfirm(
+  host: HTMLElement,
+  title: string,
+  summary: string,
+  onConfirm: () => Promise<void>
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm template use');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'page-header__title', title));
+  card.append(el('p', 'page-header__supporting', `${summary} Do not apply until Confirm.`));
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await onConfirm();
+    } catch (err) {
+      host.replaceChildren(el('p', 'empty-state', errorMessage(err)));
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
 }
 
 export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const data = await tasksApi.listTemplates();
+  let data: Awaited<ReturnType<typeof tasksApi.listTemplates>>;
+  try {
+    data = await tasksApi.listTemplates();
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderTemplatesView(canvas), 'Could not load templates');
+    return;
+  }
   canvas.replaceChildren();
-  canvas.append(el('p', 'view-lede', 'Start from a template, or save any task/project as one from its row later.'));
+  canvas.append(
+    el(
+      'p',
+      'view-lede',
+      'Start from a template. Writes go through a confirm card — nothing is created on the first click.'
+    )
+  );
+  const confirmHost = el('div', 'template-confirm');
 
   canvas.append(el('h2', 'section-title', 'Task templates'));
   const taskStack = el('div', 'task-stack');
@@ -603,9 +729,16 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     const actions = el('div', 'task-row__actions');
     const use = el('button', 'btn btn--primary', 'Use');
     use.type = 'button';
-    use.addEventListener('click', async () => {
-      await tasksApi.createTaskFromTemplate(tt.id);
-      location.hash = '#/day';
+    use.addEventListener('click', () => {
+      showTemplateConfirm(
+        confirmHost,
+        `Create “${tt.name}”`,
+        `This will create a ${tt.domain} task from the template and open Today.`,
+        async () => {
+          await tasksApi.createTaskFromTemplate(tt.id);
+          location.hash = '#/day';
+        }
+      );
     });
     actions.append(use);
     row.append(el('h3', 'task-row__title', tt.name), el('span', 'chip', tt.domain), actions);
@@ -617,7 +750,26 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
   const projStack = el('div', 'task-stack');
   for (const pt of data.project_templates as ProjectTemplate[]) {
     const row = el('article', 'task-row');
-    row.append(el('h3', 'task-row__title', pt.name), el('span', 'chip', pt.type));
+    const actions = el('div', 'task-row__actions');
+    const use = el('button', 'btn btn--primary', 'Use');
+    use.type = 'button';
+    use.addEventListener('click', () => {
+      if (pt.type === 'excursion' && pt.excursion_template_id) {
+        location.hash = '#/excursions';
+        return;
+      }
+      showTemplateConfirm(
+        confirmHost,
+        `Create “${pt.name}”`,
+        `This will create a ${pt.type} project with ${pt.default_milestones.length} default milestone(s) and open Projects.`,
+        async () => {
+          await tasksApi.createProjectFromTemplate(pt.id);
+          location.hash = '#/projects';
+        }
+      );
+    });
+    actions.append(use);
+    row.append(el('h3', 'task-row__title', pt.name), el('span', 'chip', pt.type), actions);
     projStack.append(row);
   }
   for (const et of data.excursion_templates as ExcursionTemplate[]) {
@@ -637,7 +789,7 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     );
     projStack.append(row);
   }
-  canvas.append(projStack);
+  canvas.append(projStack, confirmHost);
 }
 
 function renderQuickAdd(onCreated: () => void): HTMLElement {
@@ -666,6 +818,8 @@ function renderQuickAdd(onCreated: () => void): HTMLElement {
       });
       title.value = '';
       onCreated();
+    } catch (err) {
+      form.append(el('p', 'empty-state', errorMessage(err)));
     } finally {
       submit.disabled = false;
     }

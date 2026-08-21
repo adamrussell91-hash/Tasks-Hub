@@ -117,7 +117,12 @@ function mountConstellation(host: HTMLElement, model: ConstellationModel): void 
   fillLabel.textContent = `${haze}% sky · ${model.completed_count} lit · ${model.open_count} waiting`;
   svg.append(fillLabel);
 
-  host.append(svg, tip);
+  const list = el('ul', 'viz-alt');
+  list.setAttribute('aria-label', 'Constellation stars');
+  for (const star of model.stars) {
+    list.append(el('li', undefined, `${star.lit ? 'Lit' : 'Waiting'}: ${star.label}`));
+  }
+  host.append(svg, tip, list);
 }
 
 /** Spec §6.5 — emotional payoff metaphor, not a task manager. */

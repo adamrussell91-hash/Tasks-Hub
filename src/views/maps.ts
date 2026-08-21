@@ -1,5 +1,6 @@
 import type { MapLine, MapStation, MapTick, TransitMap } from '@/schemas/map';
 import { tasksApi } from '@/services/client-api';
+import { renderLoadError } from '@/views/feedback';
 import {
   crossingKind,
   exportMapHtml,
@@ -303,7 +304,14 @@ function showConfirm(host: HTMLElement, summary: string, onConfirm: () => Promis
 
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading maps…'));
-  const [maps, projects] = await Promise.all([tasksApi.listMaps(), tasksApi.listProjects()]);
+  let maps: Awaited<ReturnType<typeof tasksApi.listMaps>>;
+  let projects: Awaited<ReturnType<typeof tasksApi.listProjects>>;
+  try {
+    [maps, projects] = await Promise.all([tasksApi.listMaps(), tasksApi.listProjects()]);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderMapsView(canvas), 'Could not load maps');
+    return;
+  }
   const year = new Date().getFullYear();
   let current = pickCurrentYearMap(maps, year) ?? maps[0]!;
   let mode: Mode = 'view';

@@ -3,6 +3,7 @@ import type { FrameworkEntry } from '@/schemas/templates';
 import type { ClareProposal } from '@/domain/clare';
 import { tasksApi } from '@/services/client-api';
 import { preferredDomains, toDateKey } from '@/domain/queries';
+import { renderLoadError } from '@/views/feedback';
 
 const SKIP_REASONING_KEY = 'tasks-hub-clare-skip-reasoning';
 
@@ -39,10 +40,17 @@ function domainOptions(select: HTMLSelectElement, preferred: TaskDomain): void {
 /** Clare DeMind desk — negotiate estimate + framework, then confirm-card create. */
 export async function renderClareView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading Clare…'));
-  const [templates, calibrations] = await Promise.all([
-    tasksApi.listTemplates(),
-    tasksApi.listClareCalibrations().catch(() => [])
-  ]);
+  let templates: Awaited<ReturnType<typeof tasksApi.listTemplates>>;
+  let calibrations: Awaited<ReturnType<typeof tasksApi.listClareCalibrations>>;
+  try {
+    [templates, calibrations] = await Promise.all([
+      tasksApi.listTemplates(),
+      tasksApi.listClareCalibrations().catch(() => [])
+    ]);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderClareView(canvas), 'Could not load Clare');
+    return;
+  }
   const frameworks = templates.frameworks as FrameworkEntry[];
 
   canvas.replaceChildren();

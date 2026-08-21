@@ -180,6 +180,15 @@ export function createMockApi({ seed }: MockApiOptions) {
             data: await s.createTaskFromTemplate(String(b.template_id), (b.overrides as object) ?? {})
           });
         }
+        if (b.action === 'create_project_from_template') {
+          return json(201, {
+            ok: true,
+            data: await s.createProjectFromTemplate(
+              String(b.template_id),
+              (b.overrides as object) ?? {}
+            )
+          });
+        }
         if (b.action === 'save_project_as_template') {
           return json(201, {
             ok: true,

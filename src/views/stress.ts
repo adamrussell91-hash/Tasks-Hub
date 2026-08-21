@@ -1,5 +1,6 @@
 import type { StressFlag } from '@/schemas/stress';
 import { tasksApi } from '@/services/client-api';
+import { renderLoadError } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -33,15 +34,28 @@ function renderFlag(flag: StressFlag): HTMLElement {
 /** Read-only StressFlag trail — agents poll inboxes; Adam can inspect texture here. */
 export async function renderStressView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Scanning pressure patterns…'));
-  const scan = await tasksApi.scanStressFlags().catch(() => ({
-    raised: [],
-    skipped: 0,
-    patterns: 0
-  }));
-  const [flags, hammond] = await Promise.all([
-    tasksApi.listStressFlags(),
-    tasksApi.listAgentInbox('General Hammond')
-  ]);
+  let scan: { raised: StressFlag[]; skipped: number; patterns: number };
+  let flags: StressFlag[];
+  let hammond: StressFlag[];
+  try {
+    scan = await tasksApi.scanStressFlags().catch(() => ({
+      raised: [],
+      skipped: 0,
+      patterns: 0
+    }));
+    [flags, hammond] = await Promise.all([
+      tasksApi.listStressFlags(),
+      tasksApi.listAgentInbox('General Hammond')
+    ]);
+  } catch (err) {
+    renderLoadError(
+      canvas,
+      err,
+      () => void renderStressView(canvas),
+      'Could not load StressFlags'
+    );
+    return;
+  }
 
   canvas.replaceChildren();
   canvas.append(

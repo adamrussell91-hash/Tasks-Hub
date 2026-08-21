@@ -111,8 +111,8 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
         'p',
         'empty-state',
         mode === 'blockers'
-          ? 'No dependency edges yet. Add depends_on on tasks to see blockers.'
-          : 'No project workstreams yet. Assign tasks to a project.'
+          ? 'No dependency edges match this filter. Clear search or add depends_on on tasks.'
+          : 'No project workstreams match this filter. Assign tasks to a project.'
       )
     );
     return;
@@ -189,9 +189,11 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
             : '#244f7c';
       ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#13233a';
-      ctx.font = '12px Inter, sans-serif';
-      ctx.fillText(node.label.slice(0, 28), node.x + r + 6, node.y + 4);
+      if (node.id === selected || node === hover) {
+        ctx.fillStyle = '#13233a';
+        ctx.font = '12px Inter, sans-serif';
+        ctx.fillText(node.label.slice(0, 28), node.x + r + 6, node.y + 4);
+      }
     }
   }
 
@@ -214,6 +216,18 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
     );
     draw();
   }
+
+  const list = el('ul', 'viz-alt');
+  list.setAttribute('aria-label', mode === 'blockers' ? 'Blocker nodes' : 'Workstream nodes');
+  for (const node of simNodes) {
+    const item = el('li');
+    const btn = el('button', 'btn btn--ghost', `${node.kind}: ${node.label}`);
+    btn.type = 'button';
+    btn.addEventListener('click', () => showPreview(node));
+    item.append(btn);
+    list.append(item);
+  }
+  host.append(list);
 
   canvas.addEventListener('mousemove', (event) => {
     const rect = canvas.getBoundingClientRect();
@@ -256,8 +270,10 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   modes.setAttribute('aria-label', 'Graph mode');
   const blockersBtn = el('button', 'hub-pills__btn is-active', 'Blockers');
   blockersBtn.type = 'button';
+  blockersBtn.setAttribute('aria-pressed', 'true');
   const workBtn = el('button', 'hub-pills__btn', 'Workstreams');
   workBtn.type = 'button';
+  workBtn.setAttribute('aria-pressed', 'false');
   modes.append(blockersBtn, workBtn);
   const search = el('input', 'hub-search') as HTMLInputElement;
   search.type = 'search';
@@ -284,13 +300,17 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   blockersBtn.addEventListener('click', () => {
     mode = 'blockers';
     blockersBtn.classList.add('is-active');
+    blockersBtn.setAttribute('aria-pressed', 'true');
     workBtn.classList.remove('is-active');
+    workBtn.setAttribute('aria-pressed', 'false');
     paint();
   });
   workBtn.addEventListener('click', () => {
     mode = 'workstreams';
     workBtn.classList.add('is-active');
+    workBtn.setAttribute('aria-pressed', 'true');
     blockersBtn.classList.remove('is-active');
+    blockersBtn.setAttribute('aria-pressed', 'false');
     paint();
   });
   search.addEventListener('input', () => paint());
