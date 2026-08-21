@@ -10,7 +10,33 @@ export async function fetchSession(): Promise<SessionInfo> {
 }
 
 export function normalizePassphrase(value: string): string {
-  return value.trim();
+  return value.normalize('NFC').trim();
+}
+
+/**
+ * Safari can show keystrokes in a password field while `input.value` is still
+ * empty at submit. Keep a live copy and also read FormData.
+ */
+export function attachPassphraseCapture(
+  input: HTMLInputElement,
+  form: HTMLFormElement
+): () => string {
+  let typed = '';
+  const remember = (value: string) => {
+    if (value.length > 0) typed = value;
+  };
+  input.addEventListener('input', () => remember(input.value));
+  input.addEventListener('keyup', () => remember(input.value));
+  input.addEventListener('beforeinput', (event) => {
+    if (event.inputType === 'insertText' && event.data && !input.value) {
+      typed += event.data;
+    }
+  });
+  return () => {
+    const fromForm = new FormData(form).get('passphrase');
+    const candidates = [input.value, typeof fromForm === 'string' ? fromForm : '', typed];
+    return normalizePassphrase(candidates.find((value) => value.length > 0) ?? '');
+  };
 }
 
 export const API_SIGN_IN_URL = 'https://tasks-api.adam-russell.com';
@@ -18,8 +44,14 @@ export const API_SIGN_IN_URL = 'https://tasks-api.adam-russell.com';
 export function messageForSignInFailure(err: unknown): string {
   if (err instanceof ApiClientError) {
     if (err.code === 'invalid_credentials') return 'Invalid passphrase';
-    if (err.code === 'forbidden' || err.code === 'network_error') {
-      return `Could not sign in from this tab. Open ${API_SIGN_IN_URL}`;
+    if (err.code === 'invalid_response') {
+      return 'The sign-in service did not respond. Try again.';
+    }
+    if (err.code === 'forbidden') {
+      return `This origin is blocked. Open ${API_SIGN_IN_URL}`;
+    }
+    if (err.code === 'network_error') {
+      return `Could not reach the API. Try again, or open ${API_SIGN_IN_URL}`;
     }
     return err.message || 'Unable to sign in. Please try again.';
   }
@@ -121,6 +153,8 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   wrapper.append(form);
   container.append(wrapper);
 
+  const readPassphrase = attachPassphraseCapture(input, form);
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     error.hidden = true;
@@ -134,7 +168,12 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
     submit.disabled = true;
 
     try {
-      const session = await authenticate(input.value);
+      const passphrase = readPassphrase();
+      if (!passphrase) {
+        showError('The field was empty when Sign in was pressed. Click it, type again, then Sign in.');
+        return;
+      }
+      const session = await authenticate(passphrase);
       if (!session.authenticated) {
         showError('Invalid passphrase');
         return;
