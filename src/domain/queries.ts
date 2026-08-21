@@ -36,12 +36,28 @@ export function addDays(date: Date, days: number): Date {
   return d;
 }
 
-export function toDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
 }
 
+/** Calendar date in the local timezone — never UTC (`toISOString` shifts Sydney/AU dates). */
+export function toDateKey(date: Date): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+/**
+ * Date-only `YYYY-MM-DD` values are local calendar days, not UTC midnights.
+ * Full ISO timestamps stay instants.
+ */
 export function parseDue(due: string | null): Date | null {
   if (!due) return null;
+  const dateOnly = DATE_ONLY.exec(due);
+  if (dateOnly) {
+    const local = new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+    return Number.isNaN(local.getTime()) ? null : local;
+  }
   const d = new Date(due);
   return Number.isNaN(d.getTime()) ? null : d;
 }
