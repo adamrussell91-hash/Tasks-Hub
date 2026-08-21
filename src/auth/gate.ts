@@ -9,8 +9,25 @@ export async function fetchSession(): Promise<SessionInfo> {
   return apiGet<SessionInfo>('/api/session');
 }
 
+export function normalizePassphrase(value: string): string {
+  return value.trim();
+}
+
+export const API_SIGN_IN_URL = 'https://tasks-api.adam-russell.com';
+
+export function messageForSignInFailure(err: unknown): string {
+  if (err instanceof ApiClientError) {
+    if (err.code === 'invalid_credentials') return 'Invalid passphrase';
+    if (err.code === 'forbidden' || err.code === 'network_error') {
+      return `Could not sign in from this tab. Open ${API_SIGN_IN_URL}`;
+    }
+    return err.message || 'Unable to sign in. Please try again.';
+  }
+  return 'Unable to sign in. Please try again.';
+}
+
 export async function authenticate(passphrase: string): Promise<SessionInfo> {
-  return apiPost<SessionInfo>('/api/auth', { passphrase });
+  return apiPost<SessionInfo>('/api/auth', { passphrase: normalizePassphrase(passphrase) });
 }
 
 export async function logout(): Promise<void> {
@@ -88,17 +105,18 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
 
     try {
       const session = await authenticate(input.value);
-      if (session.authenticated) {
-        options?.onSuccess?.(session);
+      if (!session.authenticated) {
+        showError('Invalid passphrase');
         return;
       }
-      showError('Invalid passphrase');
+      const confirmed = await fetchSession();
+      if (!confirmed.authenticated) {
+        showError(`Safari blocked the session cookie. Open ${API_SIGN_IN_URL}`);
+        return;
+      }
+      options?.onSuccess?.(session);
     } catch (err) {
-      const message =
-        err instanceof ApiClientError && err.code === 'invalid_credentials'
-          ? 'Invalid passphrase'
-          : 'Unable to sign in. Please try again.';
-      showError(message);
+      showError(messageForSignInFailure(err));
     } finally {
       submit.disabled = false;
     }

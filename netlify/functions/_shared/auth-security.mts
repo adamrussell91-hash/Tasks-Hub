@@ -15,7 +15,10 @@ const SESSION_MS = 12 * 60 * 60 * 1000;
 
 export const SESSION_COOKIE_NAME = 'tasks_hub_session';
 
-const SESSION_COOKIE_ATTRIBUTES = 'Path=/; Secure; HttpOnly; SameSite=None';
+// Lax, not None: Pages (`tasks-hub`) and Functions (`tasks-api`) are same-site
+// under adam-russell.com. Safari ITP treats SameSite=None as a tracking cookie
+// and often drops it on the cross-origin sign-in POST.
+const SESSION_COOKIE_ATTRIBUTES = 'Path=/; Secure; HttpOnly; SameSite=Lax';
 
 function scryptAsync(password: string | Buffer, salt: Buffer, keylen: number, options: ScryptOptions): Promise<Buffer> {
   return new Promise((resolve, reject) => {

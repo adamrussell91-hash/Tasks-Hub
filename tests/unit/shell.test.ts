@@ -49,7 +49,8 @@ describe('hub shell chrome', () => {
 
     const actions = [...refs.headerActions.children].map((el) => el.className);
     expect(actions[0]).toContain('btn');
-    expect(actions.at(-1)).toBe('hub-utilities');
+    expect(actions).toContain('hub-utilities');
+    expect(actions.at(-1)).toBe('hub-mark');
     expect(refs.logoutButton?.getAttribute('aria-label')).toBe('Sign out');
   });
 });

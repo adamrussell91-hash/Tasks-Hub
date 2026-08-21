@@ -1,7 +1,15 @@
 /**
  * Production API origin. Prefer VITE_API_BASE_URL at Pages build time.
  */
-const PLACEHOLDER_API_BASE_URL = 'https://tasks-api.adam-russell.com';
+export const PLACEHOLDER_API_BASE_URL = 'https://tasks-api.adam-russell.com';
+
+const SAME_ORIGIN_API_HOSTS = new Set([
+  'localhost',
+  '127.0.0.1',
+  '[::1]',
+  'tasks-api.adam-russell.com',
+  'artasks-hub.netlify.app'
+]);
 
 function readViteApiBaseUrl(): string | undefined {
   if (typeof import.meta === 'undefined') return undefined;
@@ -14,16 +22,23 @@ function readViteApiBaseUrl(): string | undefined {
 
 const PRODUCTION_API_BASE_URL = readViteApiBaseUrl() ?? PLACEHOLDER_API_BASE_URL;
 
-const LOCAL_HOSTNAME_RE = /^(localhost|127\.0\.0\.1|\[::1\])$/;
+/** Empty string = same-origin `/api/*` (Vite mock, or the Functions-hosted SPA). */
+export function resolveApiBaseUrl(
+  hostname: string,
+  configured: string = PRODUCTION_API_BASE_URL
+): string {
+  return SAME_ORIGIN_API_HOSTS.has(hostname) ? '' : configured;
+}
 
 function resolveDefaultBaseUrl(): string {
   if (typeof location === 'undefined') return '';
-  return LOCAL_HOSTNAME_RE.test(location.hostname) ? '' : PRODUCTION_API_BASE_URL;
+  return resolveApiBaseUrl(location.hostname);
 }
 
 export const API_BASE_URL = resolveDefaultBaseUrl();
 
 export function getApiBaseUrl(override?: string): string {
   if (override !== undefined) return override;
+  if (typeof location !== 'undefined') return resolveApiBaseUrl(location.hostname);
   return API_BASE_URL;
 }

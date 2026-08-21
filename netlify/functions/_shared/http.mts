@@ -41,6 +41,20 @@ export function errorResponse(
   );
 }
 
+/** Always-allowed browser origins (Pages app + Functions-hosted app). */
+export const BUILTIN_SITE_ORIGINS = [
+  'https://tasks-hub.adam-russell.com',
+  'https://tasks-api.adam-russell.com'
+] as const;
+
+export function parseAllowedOrigins(env: FunctionEnv): string[] {
+  const extra =
+    typeof env.SITE_ORIGIN === 'string'
+      ? env.SITE_ORIGIN.split(',').map((value) => value.trim()).filter(Boolean)
+      : [];
+  return [...new Set<string>([...BUILTIN_SITE_ORIGINS, ...extra])];
+}
+
 export function requireSameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
   const fetchSite = request.headers.get('sec-fetch-site');
@@ -50,11 +64,13 @@ export function requireSameOrigin(request: Request): boolean {
   );
 }
 
+export function originIsAllowed(origin: string | null, env: FunctionEnv): boolean {
+  return origin !== null && origin.length > 0 && parseAllowedOrigins(env).includes(origin);
+}
+
 export function requireAllowedOrigin(request: Request, env: FunctionEnv): boolean {
   if (requireSameOrigin(request)) return true;
-  const origin = request.headers.get('origin');
-  const allowed = typeof env.SITE_ORIGIN === 'string' ? env.SITE_ORIGIN : '';
-  return Boolean(allowed) && origin === allowed;
+  return originIsAllowed(request.headers.get('origin'), env);
 }
 
 export function guardRequestOrigin(request: Request, env: FunctionEnv): Response | null {
@@ -63,17 +79,19 @@ export function guardRequestOrigin(request: Request, env: FunctionEnv): Response
     : errorResponse(403, 'forbidden', 'This request origin is not allowed.');
 }
 
-export function corsHeaders(request: Request, env: FunctionEnv): Record<string, string> {
-  const origin = request.headers.get('origin');
-  const allowed = typeof env.SITE_ORIGIN === 'string' ? env.SITE_ORIGIN : '';
-  if (!allowed || origin !== allowed) return {};
+export function corsHeadersForOrigin(origin: string | null, env: FunctionEnv): Record<string, string> {
+  if (!originIsAllowed(origin, env)) return {};
   return {
-    'access-control-allow-origin': allowed,
+    'access-control-allow-origin': origin as string,
     'access-control-allow-credentials': 'true',
     'access-control-allow-headers': 'content-type',
     'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     vary: 'origin'
   };
+}
+
+export function corsHeaders(request: Request, env: FunctionEnv): Record<string, string> {
+  return corsHeadersForOrigin(request.headers.get('origin'), env);
 }
 
 export function withCors(response: Response, request: Request, env: FunctionEnv): Response {

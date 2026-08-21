@@ -165,21 +165,19 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   }
 
   refs.pageHeader.append(copy);
-  if (config.actions) {
-    refs.headerActions.replaceChildren();
-    refs.headerActions.append(config.actions);
-    const utilities = document.createElement('div');
-    utilities.className = 'hub-utilities';
-    if (refs.logoutButton) utilities.append(refs.logoutButton);
-    const mark = document.createElement('img');
-    mark.className = 'hub-mark';
-    mark.src = 'design-kit/icons/tasks.svg';
-    mark.alt = '';
-    mark.width = 32;
-    mark.height = 32;
-    refs.headerActions.append(utilities, mark);
-    refs.pageHeader.append(refs.headerActions);
-  }
+  refs.headerActions.replaceChildren();
+  if (config.actions) refs.headerActions.append(config.actions);
+  const utilities = document.createElement('div');
+  utilities.className = 'hub-utilities';
+  if (refs.logoutButton) utilities.append(refs.logoutButton);
+  const mark = document.createElement('img');
+  mark.className = 'hub-mark';
+  mark.src = 'design-kit/icons/tasks.svg';
+  mark.alt = '';
+  mark.width = 32;
+  mark.height = 32;
+  refs.headerActions.append(utilities, mark);
+  refs.pageHeader.append(refs.headerActions);
 }
 
 export function parseHashRoute(): HubViewId {

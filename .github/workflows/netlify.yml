@@ -25,19 +25,24 @@ jobs:
 
       - run: npm ci
 
+      - name: Build SPA for same-origin API host
+        run: npx vite build && node scripts/copy-spa-fallback.mjs
+        env:
+          VITE_API_BASE_URL: https://tasks-api.adam-russell.com
+
       - name: Deploy to Netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID || env.NETLIFY_SITE_ID }}
         run: |
           if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo "::warning::NETLIFY_AUTH_TOKEN secret missing — skip Functions deploy. Create a Netlify personal access token (User settings → Applications → Personal access tokens), add it as the GitHub secret NETLIFY_AUTH_TOKEN, then re-run this workflow. Or click Deploy of main in the Netlify UI for artasks-hub (build command is now a no-op echo)."
+            echo "::warning::NETLIFY_AUTH_TOKEN secret missing — skip Functions deploy. Create a Netlify personal access token (User settings → Applications → Personal access tokens), add it as the GitHub secret NETLIFY_AUTH_TOKEN, then re-run this workflow. Or click Deploy of main in the Netlify UI for artasks-hub."
             exit 0
           fi
           if [ -n "${{ secrets.NETLIFY_SITE_ID }}" ]; then
             export NETLIFY_SITE_ID="${{ secrets.NETLIFY_SITE_ID }}"
           fi
-          npx --yes netlify-cli@23 deploy --prod --dir=netlify/public --functions=netlify/functions --message "main $(git rev-parse --short HEAD)"
+          npx --yes netlify-cli@23 deploy --prod --dir=dist --functions=netlify/functions --message "main $(git rev-parse --short HEAD)"
 
       - name: Seed Blobs (idempotent)
         env:
