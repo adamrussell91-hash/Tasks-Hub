@@ -31,7 +31,8 @@ export default async function handler(request: Request): Promise<Response> {
     return withCors(errorResponse(400, 'invalid_json', 'Request body is not valid JSON'), request, env);
   }
 
-  const passphrase = isRecord(body) ? body.passphrase : undefined;
+  const raw = isRecord(body) ? body.passphrase : undefined;
+  const passphrase = typeof raw === 'string' ? raw.normalize('NFC').trim() : undefined;
   if (typeof passphrase !== 'string' || !(await verifyPassphrase(passphrase, env.TASKS_HUB_PASSPHRASE_HASH))) {
     return withCors(errorResponse(401, 'invalid_credentials', 'Invalid passphrase'), request, env);
   }
