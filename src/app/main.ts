@@ -1,6 +1,7 @@
 import '../../design-kit/css/tokens.css';
 import '../../design-kit/css/overlays.css';
 import '../../design-kit/css/chrome.css';
+import '../../design-kit/css/rail.css';
 import '../../design-kit/css/sign-in.css';
 import '../styles/hub.css';
 import '../styles/views.css';

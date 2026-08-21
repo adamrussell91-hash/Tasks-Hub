@@ -33,34 +33,15 @@ export type HubViewId =
   | 'corey';
 
 /** Labeled Teaching-style rail — Board is home per design-kit/TASKS.md */
-const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> = [
-  { id: 'board', label: 'Board', href: '#/board', glyph: '▦' },
-  { id: 'clare', label: 'Clare', href: '#/clare', glyph: '✦' },
-  { id: 'graph', label: 'Graph', href: '#/graph', glyph: '◈' },
-  { id: 'maps', label: 'Maps', href: '#/maps', glyph: '⧉' },
-  { id: 'gantt', label: 'Gantt', href: '#/gantt', glyph: '▬' },
-  { id: 'orbit', label: 'Orbit', href: '#/orbit', glyph: '◎' },
-  { id: 'branch', label: 'Branch', href: '#/branch', glyph: '⎇' },
-  { id: 'constellation', label: 'Sky', href: '#/constellation', glyph: '✧' },
-  { id: 'day', label: 'Today', href: '#/day', glyph: '◉' },
-  { id: 'week', label: 'Week', href: '#/week', glyph: '▤' },
-  { id: 'month', label: 'Month', href: '#/month', glyph: '▣' },
-  { id: 'list', label: 'Backlog', href: '#/list', glyph: '☰' },
-  { id: 'projects', label: 'Projects', href: '#/projects', glyph: '◇' },
-  { id: 'excursions', label: 'Excursions', href: '#/excursions', glyph: '⚑' },
-  { id: 'stress', label: 'Network', href: '#/stress', glyph: '✶' },
-  { id: 'corey', label: 'Corey', href: '#/corey', glyph: '◐' },
-  { id: 'templates', label: 'Templates', href: '#/templates', glyph: '▥' },
-  { id: 'search', label: 'Search', href: '#/search', glyph: '⌕' }
+const NAV: Array<{ id: HubViewId; label: string; href: string }> = [
+  { id: 'board', label: 'Board', href: '#/board' }, { id: 'clare', label: 'Clare', href: '#/clare' }, { id: 'graph', label: 'Graph', href: '#/graph' }, { id: 'maps', label: 'Maps', href: '#/maps' }, { id: 'gantt', label: 'Gantt', href: '#/gantt' }, { id: 'orbit', label: 'Orbit', href: '#/orbit' }, { id: 'branch', label: 'Branch', href: '#/branch' }, { id: 'constellation', label: 'Sky', href: '#/constellation' }, { id: 'day', label: 'Today', href: '#/day' }, { id: 'week', label: 'Week', href: '#/week' }, { id: 'month', label: 'Month', href: '#/month' }, { id: 'list', label: 'Backlog', href: '#/list' }, { id: 'projects', label: 'Projects', href: '#/projects' }, { id: 'excursions', label: 'Excursions', href: '#/excursions' }, { id: 'stress', label: 'Network', href: '#/stress' }, { id: 'corey', label: 'Corey', href: '#/corey' }, { id: 'templates', label: 'Templates', href: '#/templates' }, { id: 'search', label: 'Search', href: '#/search' }
 ];
 
-const SIGN_OUT_ICON = `
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <path d="M10 7V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-1" />
-  <path d="M15 12H3" />
-  <path d="m7 8-4 4 4 4" />
-</svg>
-`.trim();
+function railIcon(): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('hub-rail__icon'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '1.75'); svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', 'M4 5h16v14H4zM8 9h8M8 13h6'); svg.append(path); return svg;
+}
 
 export function createSkipLink(targetId: string): HTMLAnchorElement {
   const a = document.createElement('a');
@@ -68,23 +49,6 @@ export function createSkipLink(targetId: string): HTMLAnchorElement {
   a.href = `#${targetId}`;
   a.textContent = 'Skip to content';
   return a;
-}
-
-function createSignOutButton(onLogout: () => void | Promise<void>): HTMLButtonElement {
-  const logoutButton = document.createElement('button');
-  logoutButton.type = 'button';
-  logoutButton.className = 'hub-icon-btn';
-  logoutButton.setAttribute('data-hub-sign-out', '');
-  logoutButton.setAttribute('aria-label', 'Sign out');
-  logoutButton.title = 'Sign out';
-  logoutButton.innerHTML = SIGN_OUT_ICON;
-  logoutButton.addEventListener('click', () => {
-    logoutButton.disabled = true;
-    void Promise.resolve(onLogout()).finally(() => {
-      logoutButton.disabled = false;
-    });
-  });
-  return logoutButton;
 }
 
 /** Shell from design-kit/snippets/shell.html — Tasks brand + labeled rail. */
@@ -98,17 +62,36 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
   rail.className = 'hub-rail';
   rail.setAttribute('aria-label', 'Tasks navigation');
 
-  const brandBlock = document.createElement('div');
-  brandBlock.className = 'hub-rail__brand-block';
+  const top = document.createElement('div');
+  top.className = 'hub-rail__brand-block';
 
-  const brand = document.createElement('p');
+  const brand = document.createElement('a');
   brand.className = 'hub-rail__brand';
+  brand.href = '#/board';
   brand.textContent = 'Tasks Hub';
-  brandBlock.append(brand);
+
+  let logoutButton: HTMLButtonElement | null = null;
+  if (options.onLogout) {
+    logoutButton = document.createElement('button');
+    logoutButton.type = 'button';
+    logoutButton.className = 'hub-icon-btn';
+    logoutButton.setAttribute('aria-label', 'Sign out');
+    logoutButton.title = 'Sign out';
+    logoutButton.addEventListener('click', () => {
+      if (!logoutButton) return;
+      logoutButton.disabled = true;
+      void Promise.resolve(options.onLogout?.()).finally(() => {
+        if (logoutButton) logoutButton.disabled = false;
+      });
+    });
+    top.append(brand);
+  } else {
+    top.append(brand);
+  }
 
   const railNav = document.createElement('div');
   railNav.className = 'hub-rail__nav';
-  rail.append(brandBlock, railNav);
+  rail.append(top, railNav);
 
   const canvasWrap = document.createElement('div');
   canvasWrap.className = 'hub-canvas';
@@ -120,18 +103,14 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
   const headerActions = document.createElement('div');
   headerActions.className = 'page-header__actions';
 
-  let logoutButton: HTMLButtonElement | null = null;
-  if (options.onLogout) {
-    const utilities = document.createElement('div');
-    utilities.className = 'hub-utilities';
-    logoutButton = createSignOutButton(options.onLogout);
-    utilities.append(logoutButton);
-    headerActions.append(utilities);
-  }
-
   const canvas = document.createElement('div');
   canvas.className = 'hub-canvas__body';
 
+  const utilities = document.createElement('div'); utilities.className = 'hub-utilities';
+  if (logoutButton) utilities.append(logoutButton);
+  const mark = document.createElement('img'); mark.className = 'hub-mark'; mark.src = 'design-kit/icons/tasks.svg'; mark.alt = ''; mark.width = 32; mark.height = 32;
+  headerActions.append(utilities, mark);
+  pageHeader.append(headerActions);
   canvasWrap.append(pageHeader, canvas);
   layout.append(rail, canvasWrap);
   root.append(createSkipLink('hub-main'), layout);
@@ -147,14 +126,10 @@ export function renderPrimaryNav(railNav: HTMLElement, active: HubViewId): void 
 
   for (const item of NAV) {
     const link = document.createElement('a');
-    link.className = 'primary-nav__link';
+    link.className = 'primary-nav__link hub-rail__link';
     link.href = item.href;
     if (item.id === active) link.setAttribute('aria-current', 'page');
-    const glyph = document.createElement('span');
-    glyph.className = 'primary-nav__glyph';
-    glyph.setAttribute('aria-hidden', 'true');
-    glyph.textContent = item.glyph;
-    link.append(glyph, document.createTextNode(` ${item.label}`));
+    link.append(railIcon(), document.createTextNode(item.label));
     nav.append(link);
   }
   railNav.append(nav);
@@ -169,8 +144,6 @@ export interface PageHeaderConfig {
 
 /** Kit page header: uppercase eyebrow → h1 → optional supporting → actions. */
 export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): void {
-  const utilities = refs.headerActions.querySelector('.hub-utilities');
-
   refs.pageHeader.replaceChildren();
   const copy = document.createElement('div');
   copy.className = 'page-header__copy';
@@ -192,12 +165,19 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   }
 
   refs.pageHeader.append(copy);
-
-  refs.headerActions.replaceChildren();
-  if (config.actions) refs.headerActions.append(config.actions);
-  if (utilities) refs.headerActions.append(utilities);
-
-  if (refs.headerActions.childElementCount > 0) {
+  if (config.actions) {
+    refs.headerActions.replaceChildren();
+    refs.headerActions.append(config.actions);
+    const utilities = document.createElement('div');
+    utilities.className = 'hub-utilities';
+    if (refs.logoutButton) utilities.append(refs.logoutButton);
+    const mark = document.createElement('img');
+    mark.className = 'hub-mark';
+    mark.src = 'design-kit/icons/tasks.svg';
+    mark.alt = '';
+    mark.width = 32;
+    mark.height = 32;
+    refs.headerActions.append(utilities, mark);
     refs.pageHeader.append(refs.headerActions);
   }
 }
@@ -209,7 +189,6 @@ export function parseHashRoute(): HubViewId {
     'board',
     'clare',
     'graph',
-    'maps',
     'gantt',
     'orbit',
     'branch',
