@@ -26,7 +26,7 @@ Every hub’s front loading / password page uses `snippets/sign-in.html` + `css/
 | Locked | Per-hub only |
 |--------|----------------|
 | Structure, classes, field label `Passphrase`, title `Sign in`, submit `Sign in` | Brand eyebrow text (`Life Hub`, …) |
-| Page wash + card glass + decorative `.sign-in__wave` on the card (not `data-hub` overlays) | Hub **tile** (`.sign-in__mark` from `icons/`) |
+| Page wash + card glass (not `data-hub` overlays) | Hub **tile** (`.sign-in__mark` from `icons/`) |
 | Input `id="sign-in-passphrase"` | Auth wiring / API |
 | **Enter submits** — `<form novalidate>`, button `type="submit"`, listen to `submit` | `snippets/sign-in.js` `wireSignIn` (or the same pattern) |
 

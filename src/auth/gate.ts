@@ -38,48 +38,6 @@ export interface SignInOptions {
   onSuccess?: (session: SessionInfo) => void;
 }
 
-/** Decorative Wave band from design-kit/snippets/sign-in.html */
-function createSignInWave(): HTMLElement {
-  const wave = document.createElement('div');
-  wave.className = 'sign-in__wave';
-  wave.setAttribute('aria-hidden', 'true');
-  wave.innerHTML = `
-      <div class="sign-in__wave-band sign-in__wave-band--back">
-        <svg viewBox="0 0 1200 140" preserveAspectRatio="none" focusable="false">
-          <defs>
-            <linearGradient id="sign-in-wave-back" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="var(--wave)" stop-opacity="0.28"/>
-              <stop offset="1" stop-color="var(--marine)" stop-opacity="0.4"/>
-            </linearGradient>
-          </defs>
-          <path fill="url(#sign-in-wave-back)" d="M0 48C150 20 450 76 600 48C750 20 1050 76 1200 48V140H0Z"/>
-        </svg>
-      </div>
-      <div class="sign-in__wave-band sign-in__wave-band--mid">
-        <svg viewBox="0 0 1200 140" preserveAspectRatio="none" focusable="false">
-          <defs>
-            <linearGradient id="sign-in-wave-mid" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="var(--wave)" stop-opacity="0.5"/>
-              <stop offset="1" stop-color="var(--marine)" stop-opacity="0.82"/>
-            </linearGradient>
-          </defs>
-          <path fill="url(#sign-in-wave-mid)" d="M0 70C150 48 450 92 600 70C750 48 1050 92 1200 70V140H0Z"/>
-        </svg>
-      </div>
-      <div class="sign-in__wave-band sign-in__wave-band--front">
-        <svg viewBox="0 0 1200 140" preserveAspectRatio="none" focusable="false">
-          <defs>
-            <linearGradient id="sign-in-wave-front" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="var(--wave)"/>
-              <stop offset="1" stop-color="var(--depth)"/>
-            </linearGradient>
-          </defs>
-          <path fill="url(#sign-in-wave-front)" d="M0 94C150 78 450 110 600 94C750 78 1050 110 1200 94V140H0Z"/>
-        </svg>
-      </div>`;
-  return wave;
-}
-
 /** Passphrase gate from design-kit/snippets/sign-in.html + sign-in.css */
 export function renderSignIn(container: HTMLElement, options?: SignInOptions): void {
   container.replaceChildren();
@@ -136,7 +94,7 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   submit.textContent = 'Sign in';
 
   field.append(label, input);
-  form.append(createSignInWave(), mark, brand, title, field, error, submit);
+  form.append(mark, brand, title, field, error, submit);
   wrapper.append(form);
   container.append(wrapper);
 
