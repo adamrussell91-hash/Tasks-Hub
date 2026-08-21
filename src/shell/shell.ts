@@ -180,29 +180,12 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   refs.pageHeader.append(refs.headerActions);
 }
 
+const VIEW_IDS = NAV.map((item) => item.id);
+
 export function parseHashRoute(): HubViewId {
   const hash = location.hash.replace(/^#\/?/, '') || 'board';
-  const id = hash.split(/[/?]/)[0] as HubViewId;
-  const known: HubViewId[] = [
-    'board',
-    'clare',
-    'graph',
-    'gantt',
-    'orbit',
-    'branch',
-    'constellation',
-    'day',
-    'week',
-    'month',
-    'list',
-    'search',
-    'templates',
-    'projects',
-    'excursions',
-    'stress',
-    'corey'
-  ];
-  return known.includes(id) ? id : 'board';
+  const id = hash.split(/[/?]/)[0];
+  return VIEW_IDS.includes(id as HubViewId) ? (id as HubViewId) : 'board';
 }
 
 /** Public Corey share: `#/capacity/<token>` */
