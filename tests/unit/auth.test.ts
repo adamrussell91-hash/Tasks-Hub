@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { ApiClientError } from '../../src/api/client';
 import { resolveApiBaseUrl } from '../../src/api/config';
-import { messageForSignInFailure, normalizePassphrase } from '../../src/auth/gate';
+import { messageForSignInFailure, normalizePassphrase, renderSignIn } from '../../src/auth/gate';
 import {
   createPassphraseHash,
   createSha256PassphraseHash,
@@ -38,6 +38,22 @@ describe('passphrase verify', () => {
   it('sets a same-site Lax session cookie', () => {
     expect(serializeSessionCookie('token')).toContain('SameSite=Lax');
     expect(serializeSessionCookie('token')).not.toContain('SameSite=None');
+  });
+});
+
+describe('sign-in card', () => {
+  it('puts a decorative Wave band on the card without extra copy', () => {
+    const root = document.createElement('div');
+    renderSignIn(root);
+
+    const card = root.querySelector('form.sign-in__card');
+    const wave = card?.querySelector('.sign-in__wave');
+    expect(wave).not.toBeNull();
+    expect(wave?.getAttribute('aria-hidden')).toBe('true');
+    expect(card?.querySelectorAll('.sign-in__wave-band')).toHaveLength(3);
+    expect(root.querySelector('.sign-in__title')?.textContent).toBe('Sign in');
+    expect(root.querySelector('#sign-in-passphrase')).not.toBeNull();
+    expect(root.textContent).not.toMatch(/private dashboard|privacy|purpose/i);
   });
 });
 
