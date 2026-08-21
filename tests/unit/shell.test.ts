@@ -33,7 +33,7 @@ describe('hub shell chrome', () => {
     expect(onLogout).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps sign-out utilities after re-rendering header actions', () => {
+  it('keeps utilities followed by the hub tile after re-rendering header actions', () => {
     const root = document.createElement('div');
     const refs = renderHubShell(root, { onLogout: vi.fn() });
     const extra = document.createElement('button');
@@ -49,7 +49,7 @@ describe('hub shell chrome', () => {
 
     const actions = [...refs.headerActions.children].map((el) => el.className);
     expect(actions[0]).toContain('btn');
-    expect(actions).toContain('hub-utilities');
+    expect(actions.at(-2)).toBe('hub-utilities');
     expect(actions.at(-1)).toBe('hub-mark');
     expect(refs.logoutButton?.getAttribute('aria-label')).toBe('Sign out');
   });
