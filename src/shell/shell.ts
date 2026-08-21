@@ -108,7 +108,7 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
 
   const utilities = document.createElement('div'); utilities.className = 'hub-utilities';
   if (logoutButton) utilities.append(logoutButton);
-  const mark = document.createElement('img'); mark.className = 'hub-mark'; mark.src = 'design-kit/icons/tasks.svg'; mark.alt = ''; mark.width = 32; mark.height = 32;
+  const mark = document.createElement('img'); mark.className = 'hub-mark'; mark.src = '/design-kit/icons/tasks.svg'; mark.alt = ''; mark.width = 32; mark.height = 32;
   headerActions.append(utilities, mark);
   pageHeader.append(headerActions);
   canvasWrap.append(pageHeader, canvas);
@@ -172,7 +172,7 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   if (refs.logoutButton) utilities.append(refs.logoutButton);
   const mark = document.createElement('img');
   mark.className = 'hub-mark';
-  mark.src = 'design-kit/icons/tasks.svg';
+  mark.src = '/design-kit/icons/tasks.svg';
   mark.alt = '';
   mark.width = 32;
   mark.height = 32;

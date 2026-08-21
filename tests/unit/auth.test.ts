@@ -2,7 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { ApiClientError } from '../../src/api/client';
 import { resolveApiBaseUrl } from '../../src/api/config';
-import { messageForSignInFailure, normalizePassphrase } from '../../src/auth/gate';
+import {
+  attachPassphraseCapture,
+  messageForSignInFailure,
+  normalizePassphrase
+} from '../../src/auth/gate';
 import {
   createPassphraseHash,
   createSha256PassphraseHash,
@@ -44,6 +48,18 @@ describe('passphrase verify', () => {
 describe('sign-in helpers', () => {
   it('trims pasted passphrase whitespace', () => {
     expect(normalizePassphrase('  tasks-hub-local  ')).toBe('tasks-hub-local');
+  });
+
+  it('keeps keystrokes when input.value is empty at submit', () => {
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    input.name = 'passphrase';
+    form.append(input);
+    const read = attachPassphraseCapture(input, form);
+    input.value = 'tasks-hub-local';
+    input.dispatchEvent(new Event('input'));
+    input.value = '';
+    expect(read()).toBe('tasks-hub-local');
   });
 
   it('keeps invalid_credentials as Invalid passphrase', () => {

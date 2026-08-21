@@ -10,7 +10,33 @@ export async function fetchSession(): Promise<SessionInfo> {
 }
 
 export function normalizePassphrase(value: string): string {
-  return value.trim();
+  return value.normalize('NFC').trim();
+}
+
+/**
+ * Safari can show keystrokes in a password field while `input.value` is still
+ * empty at submit (even when the user typed). Keep a live copy + FormData.
+ */
+export function attachPassphraseCapture(
+  input: HTMLInputElement,
+  form: HTMLFormElement
+): () => string {
+  let typed = '';
+  const remember = (value: string) => {
+    if (value.length > 0) typed = value;
+  };
+  input.addEventListener('input', () => remember(input.value));
+  input.addEventListener('keyup', () => remember(input.value));
+  input.addEventListener('beforeinput', (event) => {
+    if (event.inputType === 'insertText' && event.data && !input.value) {
+      typed += event.data;
+    }
+  });
+  return () => {
+    const fromForm = new FormData(form).get('passphrase');
+    const candidates = [input.value, typeof fromForm === 'string' ? fromForm : '', typed];
+    return normalizePassphrase(candidates.find((value) => value.length > 0) ?? '');
+  };
 }
 
 export const API_SIGN_IN_URL = 'https://tasks-api.adam-russell.com';
@@ -51,7 +77,7 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
 
   const mark = document.createElement('img');
   mark.className = 'sign-in__mark';
-  mark.src = 'design-kit/icons/tasks.svg';
+  mark.src = '/design-kit/icons/tasks.svg';
   mark.alt = '';
   mark.width = 56;
   mark.height = 56;
@@ -80,8 +106,20 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   input.name = 'passphrase';
   input.type = 'password';
   input.required = true;
-  input.autocomplete = 'current-password';
+  input.autocomplete = 'off';
+  input.setAttribute('autocapitalize', 'off');
+  input.setAttribute('autocorrect', 'off');
+  input.spellcheck = false;
   input.enterKeyHint = 'go';
+
+  const username = document.createElement('input');
+  username.type = 'text';
+  username.name = 'username';
+  username.autocomplete = 'username';
+  username.value = 'tasks-hub';
+  username.hidden = true;
+  username.tabIndex = -1;
+  username.setAttribute('aria-hidden', 'true');
 
   const error = document.createElement('p');
   error.className = 'sign-in__error';
@@ -94,9 +132,12 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
   submit.textContent = 'Sign in';
 
   field.append(label, input);
-  form.append(mark, brand, title, field, error, submit);
+  form.autocomplete = 'off';
+  form.append(mark, brand, title, username, field, error, submit);
   wrapper.append(form);
   container.append(wrapper);
+
+  const readPassphrase = attachPassphraseCapture(input, form);
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -104,7 +145,12 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
     submit.disabled = true;
 
     try {
-      const session = await authenticate(input.value);
+      const passphrase = readPassphrase();
+      if (!passphrase) {
+        showError('Safari did not send what you typed. Click the field, type it again, then Sign in.');
+        return;
+      }
+      const session = await authenticate(passphrase);
       if (!session.authenticated) {
         showError('Invalid passphrase');
         return;
