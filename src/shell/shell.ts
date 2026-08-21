@@ -54,12 +54,37 @@ const NAV: Array<{ id: HubViewId; label: string; href: string; glyph: string }> 
   { id: 'search', label: 'Search', href: '#/search', glyph: '⌕' }
 ];
 
+const SIGN_OUT_ICON = `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M10 7V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-1" />
+  <path d="M15 12H3" />
+  <path d="m7 8-4 4 4 4" />
+</svg>
+`.trim();
+
 export function createSkipLink(targetId: string): HTMLAnchorElement {
   const a = document.createElement('a');
   a.className = 'skip-link';
   a.href = `#${targetId}`;
   a.textContent = 'Skip to content';
   return a;
+}
+
+function createSignOutButton(onLogout: () => void | Promise<void>): HTMLButtonElement {
+  const logoutButton = document.createElement('button');
+  logoutButton.type = 'button';
+  logoutButton.className = 'hub-icon-btn';
+  logoutButton.setAttribute('data-hub-sign-out', '');
+  logoutButton.setAttribute('aria-label', 'Sign out');
+  logoutButton.title = 'Sign out';
+  logoutButton.innerHTML = SIGN_OUT_ICON;
+  logoutButton.addEventListener('click', () => {
+    logoutButton.disabled = true;
+    void Promise.resolve(onLogout()).finally(() => {
+      logoutButton.disabled = false;
+    });
+  });
+  return logoutButton;
 }
 
 /** Shell from design-kit/snippets/shell.html — Tasks brand + labeled rail. */
@@ -73,34 +98,17 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
   rail.className = 'hub-rail';
   rail.setAttribute('aria-label', 'Tasks navigation');
 
-  const top = document.createElement('div');
-  top.className = 'hub-rail__top';
+  const brandBlock = document.createElement('div');
+  brandBlock.className = 'hub-rail__brand-block';
 
   const brand = document.createElement('p');
   brand.className = 'hub-rail__brand';
   brand.textContent = 'Tasks Hub';
-
-  let logoutButton: HTMLButtonElement | null = null;
-  if (options.onLogout) {
-    logoutButton = document.createElement('button');
-    logoutButton.type = 'button';
-    logoutButton.className = 'hub-rail__logout';
-    logoutButton.textContent = 'Sign out';
-    logoutButton.addEventListener('click', () => {
-      if (!logoutButton) return;
-      logoutButton.disabled = true;
-      void Promise.resolve(options.onLogout?.()).finally(() => {
-        if (logoutButton) logoutButton.disabled = false;
-      });
-    });
-    top.append(brand, logoutButton);
-  } else {
-    top.append(brand);
-  }
+  brandBlock.append(brand);
 
   const railNav = document.createElement('div');
   railNav.className = 'hub-rail__nav';
-  rail.append(top, railNav);
+  rail.append(brandBlock, railNav);
 
   const canvasWrap = document.createElement('div');
   canvasWrap.className = 'hub-canvas';
@@ -111,6 +119,15 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
 
   const headerActions = document.createElement('div');
   headerActions.className = 'page-header__actions';
+
+  let logoutButton: HTMLButtonElement | null = null;
+  if (options.onLogout) {
+    const utilities = document.createElement('div');
+    utilities.className = 'hub-utilities';
+    logoutButton = createSignOutButton(options.onLogout);
+    utilities.append(logoutButton);
+    headerActions.append(utilities);
+  }
 
   const canvas = document.createElement('div');
   canvas.className = 'hub-canvas__body';
@@ -152,6 +169,8 @@ export interface PageHeaderConfig {
 
 /** Kit page header: uppercase eyebrow → h1 → optional supporting → actions. */
 export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): void {
+  const utilities = refs.headerActions.querySelector('.hub-utilities');
+
   refs.pageHeader.replaceChildren();
   const copy = document.createElement('div');
   copy.className = 'page-header__copy';
@@ -173,9 +192,12 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   }
 
   refs.pageHeader.append(copy);
-  if (config.actions) {
-    refs.headerActions.replaceChildren();
-    refs.headerActions.append(config.actions);
+
+  refs.headerActions.replaceChildren();
+  if (config.actions) refs.headerActions.append(config.actions);
+  if (utilities) refs.headerActions.append(utilities);
+
+  if (refs.headerActions.childElementCount > 0) {
     refs.pageHeader.append(refs.headerActions);
   }
 }
