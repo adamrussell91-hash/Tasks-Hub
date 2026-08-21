@@ -18,20 +18,33 @@ The fixes live on GitHub, not on the live hosts.
 
 | Fact | Detail |
 |---|---|
-| Branch | `cursor/fix-live-qa-defects-8b55` |
-| PR | https://github.com/adamrussell91-hash/Tasks-Hub/pull/22 |
-| Base | `main` |
-| Pages app | `https://tasks-hub.adam-russell.com` — deploys from **`main` only** |
-| API + should-be SPA | `https://tasks-api.adam-russell.com` — Netlify site **artasks-hub**, site id `c6696619-f478-4ac1-b0cd-1e4cfd3101df` |
+| GitHub repo | `adamrussell91-hash/Tasks-Hub` (git remote also seen as `adamrussell91-hash/tasks-hub`; same repo, GitHub renamed it) |
+| Source branch | `cursor/fix-live-qa-defects-8b55` |
+| Target branch | `main` |
+| PR | **#22** — https://github.com/adamrussell91-hash/Tasks-Hub/pull/22 — title `Fix live-site QA defects from the 2026-08-21 pass` |
+| QA-fix / runbook commit SHA | `76b43550dbf3aa58220c4dad1e8997bd061f0306` (branch HEAD when this runbook was written; includes the runbook file itself) |
+| Earlier QA-fix commits on the same PR | `5e03c4f5` dates · `8ce114fe` Maps/router · `86b5e86e` error UI · `02c66ef8` delete + SPA · `94d4771e` pass-2 test brief |
+| Merge method | **Squash and merge** preferred (one SHA on `main`). **Create a merge commit** is also allowed. Do **not** rebase-and-merge unless squash/merge is unavailable. |
+| Required status checks | None are hard-required. PR was `MERGEABLE` / `CLEAN`. Netlify preview `netlify/artasks-hub/deploy-preview` was **SUCCESS** (not a blocker). Do not wait for GitHub Actions Pages/Netlify jobs on the **PR** — those run on **`main` after merge**. |
+| Pages workflow | File `.github/workflows/pages.yml` · name **Deploy to GitHub Pages** · trigger `push` to `main` or `workflow_dispatch` · **no inputs**. Job builds `npm ci` + `npm test` + `npm run build` with `VITE_API_BASE_URL=https://tasks-api.adam-russell.com`, then `actions/deploy-pages`. |
+| Netlify Actions workflow | File `.github/workflows/netlify.yml` · name **Deploy Netlify Functions** · trigger `push` to `main` or `workflow_dispatch` · **no inputs** (branch picker = `main`). Default `NETLIFY_SITE_ID=c6696619-f478-4ac1-b0cd-1e4cfd3101df`. If secret `NETLIFY_AUTH_TOKEN` is empty the job **exits 0 and skips deploy**. |
+| Netlify team | Not stored in this repo. In the Netlify UI, open the site **artasks-hub** from whichever team Adam’s login shows (search **artasks-hub**). Do not guess a team slug. |
+| Netlify production site | Name **artasks-hub** · site id **`c6696619-f478-4ac1-b0cd-1e4cfd3101df`** · UI https://app.netlify.com/projects/artasks-hub (fallback https://app.netlify.com/sites/artasks-hub) |
+| Netlify preview target | https://deploy-preview-22--artasks-hub.netlify.app · last known preview deploy id `6a8840f4331ceb0008e9da52` |
+| Netlify temp hostname | `https://artasks-hub.netlify.app` (same site; prefer the custom API host) |
+| GitHub Actions secrets (names only) | **Required for Actions→Netlify:** `NETLIFY_AUTH_TOKEN` (Netlify personal access token). **Optional:** `NETLIFY_SITE_ID` (defaults to `c6696619-f478-4ac1-b0cd-1e4cfd3101df`). Never print secret values. |
+| Production frontend (Pages) | `https://tasks-hub.adam-russell.com` — deploys from **`main` only** |
+| Production API + should-be SPA | `https://tasks-api.adam-russell.com` |
+| Expected post-merge deploy SHA | Whatever **`main` tip** is after merging PR 22. Before merge, source SHA is `76b43550dbf3aa58220c4dad1e8997bd061f0306`. After squash, record the new squash SHA from the merge page and confirm the Netlify/Pages deploy log shows that SHA (or the merge commit). |
+| Asset / build identifiers | Pages artifact = Vite `dist/` uploaded by `actions/upload-pages-artifact`. Netlify publish dir **`dist`**, functions **`netlify/functions`**, build `npx vite build && node scripts/copy-spa-fallback.mjs`. Fail if publish dir is `netlify/public`. Preview build id example: `6a8840f4331ceb0008e9da52`. |
 | What live API shows **now** | HTML stub: “Tasks Hub API — Functions only. Static app is on GitHub Pages.” |
 | What it must show after deploy | The real Tasks Hub sign-in / Board (same SPA as Pages) |
-| Preview already built | https://deploy-preview-22--artasks-hub.netlify.app — Netlify preview of this PR. Use it to confirm the build, **then** promote production. |
 | Cloud agent failure | `gh workflow run` → HTTP 403; no `NETLIFY_AUTH_TOKEN` in that VM |
 
 GitHub Actions on `main`:
 
-- **Deploy to GitHub Pages** — builds `dist` and publishes Pages.
-- **Deploy Netlify Functions** — builds the same SPA and `netlify deploy --prod`, but **exits 0 without deploying** if GitHub secret `NETLIFY_AUTH_TOKEN` is missing. Do **not** trust a green Actions tick for Netlify until you read the log.
+- **Deploy to GitHub Pages** (`.github/workflows/pages.yml`) — builds `dist` and publishes Pages.
+- **Deploy Netlify Functions** (`.github/workflows/netlify.yml`) — builds the same SPA and `netlify deploy --prod`, but **exits 0 without deploying** if GitHub secret `NETLIFY_AUTH_TOKEN` is missing. Do **not** trust a green Actions tick for Netlify until you read the log.
 
 `netlify.toml` on this branch: build `npx vite build && node scripts/copy-spa-fallback.mjs`, publish `dist`, functions `netlify/functions`, SPA redirect `/* → /index.html`. Older README text that says the Netlify build is a no-op is **stale**.
 
@@ -101,20 +114,66 @@ The API host is what failed last time (`Failed to fetch` on Clare; Network/Corey
 
 ## 6. Success checks (all required)
 
-Do these on a hard-reloaded tab. Record HTTP status for each.
+Do these on a hard-reloaded tab. Record HTTP status, UI behaviour, and asset hashes. There is **no** `/api/bootstrap`, `/api/health`, `/api/network`, or `/api/corey` route — do not treat those as missing-deploy evidence. Network UI is `#/stress` → `GET /api/stress-flags`. Corey UI is `#/corey` → `GET /api/capacity`.
 
-| Check | URL | Pass |
+### 6.1 Hosts, cache, and build identity
+
+Hard-refresh (bypass cache). If HTML still looks old, use a private window.
+
+| Check | Exact URL | Pass |
 |---|---|---|
-| API is the SPA | `https://tasks-api.adam-russell.com` | Sign-in or Board. **Fail** if body contains `Functions only` |
-| Pages still the SPA | `https://tasks-hub.adam-russell.com` | Sign-in or Board |
-| Maps live | both hosts `#/maps` | Pathways / Maps, not Board |
-| Session | `https://tasks-api.adam-russell.com/api/session` (while signed in) | JSON `ok: true` |
-| Clare | signed in, `#/clare`, Ask Clare on `[LIVE-TEST] deploy check` | Proposal, not `Failed to fetch`. Network `POST /api/clare` 200 `{ ok: true` |
-| Stress | `#/stress` | Leaves “Scanning…”. Data or Retry, not infinite spinner |
-| Corey | `#/corey` | Leaves “Loading capacity…” |
-| Unknown hash | `#/definitely-missing` | Not-found page, not Board |
+| API host is the SPA | `https://tasks-api.adam-russell.com/` | HTTP **200**. Sign-in or Board. **Fail** if body contains `Functions only. Static app is on GitHub Pages.` Title `Tasks Hub`. |
+| Pages host is the SPA | `https://tasks-hub.adam-russell.com/` | HTTP **200**. Sign-in or Board. |
+| API-host assets | view-source `https://tasks-api.adam-russell.com/` | Record exact `/assets/index-<hash>.js` and `/assets/index-<hash>.css`. These are the **API-host build identifiers**. |
+| Pages-host assets | view-source `https://tasks-hub.adam-russell.com/` | Record exact `index-*.js` / `index-*.css`. If both hosts built the same merge tree, hashes should match. |
+| Expected deploy SHA | `https://github.com/adamrussell91-hash/Tasks-Hub/commits/main` | Tip of `main` after merging PR 22. Pages and Netlify deploy logs must show that SHA (or the squash SHA). Source branch SHA before merge: `76b43550dbf3aa58220c4dad1e8997bd061f0306`. |
+| Pages Actions | repo **Actions** → **Deploy to GitHub Pages** on that SHA | Green. Record run URL. |
+| Netlify Actions | repo **Actions** → **Deploy Netlify Functions** on that SHA | Green **and** log must **not** end at `NETLIFY_AUTH_TOKEN secret missing — skip Functions deploy`. Record run URL. |
+| Netlify production deploy | Netlify UI → **artasks-hub** → Production | Status **Published**. Record **deploy ID**. Publish dir **`dist`**, not `netlify/public`. |
+| Do not use preview as prod | `https://deploy-preview-22--artasks-hub.netlify.app/` | Preview only. Last known preview deploy id `6a8840f4331ceb0008e9da52`. |
+
+### 6.2 API endpoints (exact)
+
+Unauthenticated envelope is `{ "ok": false, "error": { "code": "unauthenticated", "message": "Sign in required" } }`.  
+Authenticated success envelope is `{ "ok": true, "data": … }`.
+
+| Check | Method + exact URL | Expected |
+|---|---|---|
+| Session, signed out | `GET https://tasks-api.adam-russell.com/api/session` (no cookie) | HTTP **200** `{ "ok": true, "data": { "authenticated": false } }` — not 401 |
+| Maps, signed out | `GET https://tasks-api.adam-russell.com/api/maps` (no cookie) | HTTP **401** unauthenticated |
+| Tasks, signed out | `GET https://tasks-api.adam-russell.com/api/tasks` (no cookie) | HTTP **401** unauthenticated |
+| Wrong passphrase | `POST https://tasks-api.adam-russell.com/api/auth` `{"passphrase":"wrong"}` | HTTP **401** `{ "ok": false, "error": { "code": "invalid_credentials", "message": "Invalid passphrase" } }` |
+| Sign in (UI) | `https://tasks-api.adam-russell.com/` passphrase `tasks-hub-local` (public in `AGENTS.md`; not a GitHub/Netlify secret) | Form dismissed; hub chrome. Empty submit: **Enter your passphrase.** not **Invalid passphrase.** |
+| Session, signed in | `GET https://tasks-api.adam-russell.com/api/session` | HTTP **200** `{ "ok": true, "data": { "authenticated": true, "expiresAt": <number> } }` |
+| Tasks, signed in | `GET https://tasks-api.adam-russell.com/api/tasks` | HTTP **200** `{ "ok": true, "data": { "tasks": […] } }` |
+| Projects, signed in | `GET https://tasks-api.adam-russell.com/api/projects` | HTTP **200** `{ "ok": true, "data": { "projects": […] } }` |
+| Maps API | `GET https://tasks-api.adam-russell.com/api/maps` | HTTP **200** `{ "ok": true, "data": { "maps": […] } }` — not HTML 404 |
+| Network API | `GET https://tasks-api.adam-russell.com/api/stress-flags` | HTTP **200** `{ "ok": true, "data": { "flags": […] } }` — must not hang |
+| Corey API | `GET https://tasks-api.adam-russell.com/api/capacity` | HTTP **200** `{ "ok": true, "data": { "snapshot": …, "share": … } }` — must not hang |
+| Stall API | `GET https://tasks-api.adam-russell.com/api/stall` | HTTP **200** `{ "ok": true, "data": { "reviews": […] } }` |
+| Clare propose | `POST https://tasks-api.adam-russell.com/api/clare` from `#/clare` | HTTP **200** `{ "ok": true, … }` |
+
+### 6.3 UI routes and behaviour
+
+Prefer the API host so `/api/*` is same-origin.
+
+| Check | Exact URL | Pass |
+|---|---|---|
+| Maps | `https://tasks-api.adam-russell.com/#/maps` and `https://tasks-hub.adam-russell.com/#/maps` | Heading Maps / Pathways. **Not** Board columns. No infinite load. |
+| Network | `https://tasks-api.adam-russell.com/#/stress` | Leaves **Scanning pressure patterns…**. Data or **Retry**. Not an infinite spinner. |
+| Corey | `https://tasks-api.adam-russell.com/#/corey` | Leaves **Loading capacity…**. Headlines / grid or **Retry**. |
+| Clare | `https://tasks-api.adam-russell.com/#/clare` | Ask Clare on `[LIVE-TEST] deploy check` → proposal, not `Failed to fetch`. |
+| Unknown hash | `https://tasks-api.adam-russell.com/#/definitely-missing` | Not-found (**That view isn’t in Tasks Hub** / Back to Board). **Not** Board. |
 
 Discard the Clare confirm after you see a proposal (no need to create a task). If you did create `[LIVE-TEST] deploy check`, Delete it on the Board confirm card.
+
+### 6.4 Do not claim success if
+
+- API `/` still says Functions only.
+- Netlify Actions skipped for missing `NETLIFY_AUTH_TOKEN` and no manual `--prod` / UI publish was done.
+- Asset hashes on production HTML are from an older commit than the merge.
+- `GET /api/maps` or `GET /api/stress-flags` returns HTML 404.
+- You cannot state the merge SHA, both Actions run URLs (or the Netlify deploy ID), and both hosts’ `index-*.js` hashes.
 
 ## 7. If you are blocked
 
@@ -128,6 +187,13 @@ Say which wall:
 
 Do not try a second product. Do not “fix” code. This task is merge + deploy + verify only.
 
+## 7b. Rollback (only if production is worse after publish)
+
+1. **Pages:** GitHub → Actions → **Deploy to GitHub Pages** → open the **previous successful `main` run** → Re-run jobs, **or** revert the merge commit on `main` (GitHub PR 22 → Revert) and let Pages deploy the revert.
+2. **Netlify:** artasks-hub → Deploys → open the last good **production** deploy from **before** this ship → **Publish deploy**. Do not delete the site.
+3. Do not change DNS, custom domains, or passphrase hashes during rollback.
+4. Record both the bad deploy URL and the restored deploy URL.
+
 ## 8. Report template (return exactly this)
 
 ```md
@@ -135,26 +201,43 @@ Do not try a second product. Do not “fix” code. This task is merge + deploy 
 
 - Date:
 - Operator: ChatGPT Live
-- PR 22 merged? yes/no (merge commit SHA if yes)
-- Pages workflow: URL + green/red
-- Netlify production deploy: URL + published yes/no + publish dir observed
+- Repo: adamrussell91-hash/Tasks-Hub
+- PR 22 merged? yes/no
+- Merge method used: squash / merge-commit / rebase (should not be rebase)
+- Merge / main-tip SHA:
+- QA-fix source SHA confirmed: 76b43550dbf3aa58220c4dad1e8997bd061f0306 yes/no
+- Pages workflow (Deploy to GitHub Pages): URL + green/red
+- Netlify workflow (Deploy Netlify Functions): URL + deployed / skipped-no-token / not-run
+- Netlify production deploy ID + published yes/no + publish dir observed (must be dist)
 - NETLIFY_AUTH_TOKEN GitHub secret: already present / I set it / not set (no value)
-- Actions Netlify job: ran and deployed / ran and skipped (no token) / not run
+- tasks-api index-*.js / index-*.css:
+- tasks-hub index-*.js / index-*.css:
 
 ## Live checks
 | Check | Result | Evidence (status / screenshot note) |
 |---|---|---|
 | tasks-api is SPA not stub | | |
 | tasks-hub Board | | |
-| Maps on API host | | |
-| Maps on Pages | | |
+| GET /api/session signed out → authenticated false | | |
+| GET /api/maps signed out → 401 | | |
+| GET /api/session signed in → authenticated true | | |
+| GET /api/tasks 200 | | |
+| GET /api/maps 200 | | |
+| GET /api/stress-flags 200 | | |
+| GET /api/capacity 200 | | |
+| Maps on API host #/maps | | |
+| Maps on Pages #/maps | | |
 | POST /api/clare | | |
-| #/stress left loading | | |
-| #/corey left loading | | |
+| #/stress left Loading/Scanning | | |
+| #/corey left Loading capacity | | |
 | #/definitely-missing not-found | | |
 
+## Rollback (if used)
+- Pages restored to:
+- Netlify restored deploy ID:
+
 ## Blockers
-- none, or numbered list
+- none, or numbered list (GitHub merge permission / Netlify login / NETLIFY_AUTH_TOKEN not in Actions / build failed)
 
 ## What I did not do
 - short list
