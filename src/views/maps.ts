@@ -1,6 +1,6 @@
 import type { MapLine, MapStation, MapTick, TransitMap } from '@/schemas/map';
+import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
-import { renderLoadError } from '@/views/feedback';
 import {
   crossingKind,
   exportMapHtml,
@@ -9,6 +9,11 @@ import {
   segmentCrossings,
   stationLineCuts
 } from '@/domain/maps';
+import { mindWorks2026Map } from '@/domain/maps-seed';
+
+export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] {
+  return maps && maps.length > 0 ? maps : [mindWorks2026Map()];
+}
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -304,17 +309,14 @@ function showConfirm(host: HTMLElement, summary: string, onConfirm: () => Promis
 
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading maps…'));
-  let maps: Awaited<ReturnType<typeof tasksApi.listMaps>>;
-  let projects: Awaited<ReturnType<typeof tasksApi.listProjects>>;
-  try {
-    [maps, projects] = await Promise.all([tasksApi.listMaps(), tasksApi.listProjects()]);
-  } catch (err) {
-    renderLoadError(canvas, err, () => void renderMapsView(canvas), 'Could not load maps');
-    return;
-  }
+  const [listed, projects] = await Promise.all([
+    tasksApi.listMaps().catch(() => [] as TransitMap[]),
+    tasksApi.listProjects().catch(() => [] as Project[])
+  ]);
+  const maps = mapsOrSeed(listed);
   const year = new Date().getFullYear();
   let current = pickCurrentYearMap(maps, year) ?? maps[0]!;
-  let mode: Mode = 'view';
+  let mode: Mode = 'edit';
   let place: Place = 'idle';
   let selectedId: string | null = null;
   let zoom = 1;

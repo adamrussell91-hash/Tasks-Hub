@@ -180,26 +180,7 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   refs.pageHeader.append(refs.headerActions);
 }
 
-const KNOWN_VIEWS: HubViewId[] = [
-  'board',
-  'clare',
-  'graph',
-  'maps',
-  'gantt',
-  'orbit',
-  'branch',
-  'constellation',
-  'day',
-  'week',
-  'month',
-  'list',
-  'search',
-  'templates',
-  'projects',
-  'excursions',
-  'stress',
-  'corey'
-];
+const KNOWN_VIEWS: HubViewId[] = NAV.map((item) => item.id);
 
 export function knownHubViews(): readonly HubViewId[] {
   return KNOWN_VIEWS;

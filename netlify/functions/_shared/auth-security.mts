@@ -42,25 +42,37 @@ export async function createPassphraseHash(
   return `scrypt$v1$${SCRYPT_COST}$${SCRYPT_BLOCK_SIZE}$${SCRYPT_PARALLELIZATION}$${saltBuffer.toString('base64url')}$${hash.toString('base64url')}`;
 }
 
+/** Strip quotes / sha256: prefixes Netlify UI pastes sometimes add. */
+export function normalizeStoredPassphraseHash(encoded: unknown): string | null {
+  if (typeof encoded !== 'string') return null;
+  const cleaned = encoded
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
+    .replace(/^sha-?256:/i, '')
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 /**
  * Accepts Teaching-style `scrypt$v1$…` or Knowledge-style bare SHA-256 hex
  * (what the Netlify bootstrap set for `tasks-hub-local`).
  */
 export async function verifyPassphrase(passphrase: string | Buffer, encoded: unknown): Promise<boolean> {
-  if (typeof encoded !== 'string' || encoded.length === 0) return false;
+  const stored = normalizeStoredPassphraseHash(encoded);
+  if (!stored) return false;
 
-  if (/^[a-f0-9]{64}$/i.test(encoded)) {
+  if (/^[a-f0-9]{64}$/i.test(stored)) {
     const actual = createHash('sha256').update(passphrase).digest('hex');
     try {
       const a = Buffer.from(actual, 'utf8');
-      const b = Buffer.from(encoded.toLowerCase(), 'utf8');
+      const b = Buffer.from(stored.toLowerCase(), 'utf8');
       return a.length === b.length && timingSafeEqual(a, b);
     } catch {
       return false;
     }
   }
 
-  const parsed = parsePassphraseHash(encoded);
+  const parsed = parsePassphraseHash(stored);
   if (!parsed) return false;
 
   try {

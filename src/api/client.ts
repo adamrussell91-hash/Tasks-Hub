@@ -4,12 +4,14 @@ import type { ApiErrorBody, ApiResult } from './types';
 export class ApiClientError extends Error {
   readonly code: string;
   readonly details?: unknown;
+  readonly status?: number;
 
-  constructor(error: ApiErrorBody) {
+  constructor(error: ApiErrorBody, status?: number) {
     super(error.message);
     this.name = 'ApiClientError';
     this.code = error.code;
     this.details = error.details;
+    this.status = status;
   }
 }
 
@@ -18,6 +20,9 @@ export interface ApiRequestOptions {
   signal?: AbortSignal;
 }
 
+const RETRYABLE_CODES = new Set(['invalid_response', 'network_error', 'timeout']);
+const RETRY_ATTEMPTS = 3;
+
 function isApiResult<T>(value: unknown): value is ApiResult<T> {
   if (typeof value !== 'object' || value === null || !('ok' in value)) {
     return false;
@@ -25,28 +30,55 @@ function isApiResult<T>(value: unknown): value is ApiResult<T> {
   return typeof (value as ApiResult<T>).ok === 'boolean';
 }
 
-async function parseApiResponse<T>(response: Response): Promise<ApiResult<T>> {
+export function isRetryableApiError(err: unknown): boolean {
+  return err instanceof ApiClientError && RETRYABLE_CODES.has(err.code);
+}
+
+export async function parseApiResponse<T>(response: Response): Promise<ApiResult<T>> {
+  const text = await response.text();
+  if (!text.trim()) {
+    throw new ApiClientError(
+      {
+        code: 'invalid_response',
+        message: `Empty response (HTTP ${response.status})`
+      },
+      response.status
+    );
+  }
+
   let body: unknown;
   try {
-    body = await response.json();
+    body = JSON.parse(text);
   } catch {
-    throw new ApiClientError({
-      code: 'invalid_response',
-      message: 'Response is not valid JSON'
-    });
+    throw new ApiClientError(
+      {
+        code: 'invalid_response',
+        message: `Non-JSON response (HTTP ${response.status})`
+      },
+      response.status
+    );
   }
 
   if (!isApiResult<T>(body)) {
-    throw new ApiClientError({
-      code: 'invalid_response',
-      message: `Unexpected response shape (HTTP ${response.status})`
-    });
+    throw new ApiClientError(
+      {
+        code: 'invalid_response',
+        message: `Unexpected response shape (HTTP ${response.status})`
+      },
+      response.status
+    );
   }
 
   return body;
 }
 
-async function apiRequest<T>(
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function apiRequestOnce<T>(
   method: string,
   path: string,
   options: ApiRequestOptions & { body?: unknown } = {}
@@ -91,9 +123,29 @@ async function apiRequest<T>(
 
   const result = await parseApiResponse<T>(response);
   if (!result.ok) {
-    throw new ApiClientError(result.error);
+    throw new ApiClientError(result.error, response.status);
   }
   return result.data;
+}
+
+async function apiRequest<T>(
+  method: string,
+  path: string,
+  options: ApiRequestOptions & { body?: unknown } = {}
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
+    try {
+      return await apiRequestOnce<T>(method, path, options);
+    } catch (err) {
+      lastError = err;
+      if (!isRetryableApiError(err) || attempt === RETRY_ATTEMPTS - 1) {
+        throw err;
+      }
+      await delay(180 * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 export function apiGet<T>(path: string, options?: ApiRequestOptions): Promise<T> {

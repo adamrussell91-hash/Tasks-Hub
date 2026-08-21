@@ -1,11 +1,17 @@
 import { readFile } from 'node:fs/promises';
-import { describe, expect, it } from 'vitest';
-import { ApiClientError } from '../../src/api/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiClientError, apiPost } from '../../src/api/client';
 import { resolveApiBaseUrl } from '../../src/api/config';
-import { messageForSignInFailure, normalizePassphrase } from '../../src/auth/gate';
+import {
+  attachPassphraseCapture,
+  messageForSignInFailure,
+  normalizePassphrase
+} from '../../src/auth/gate';
+import { parseApiResponse } from '../../src/api/client';
 import {
   createPassphraseHash,
   createSha256PassphraseHash,
+  normalizeStoredPassphraseHash,
   serializeSessionCookie,
   verifyPassphrase
 } from '../../netlify/functions/_shared/auth-security.mts';
@@ -26,6 +32,8 @@ describe('passphrase verify', () => {
     expect(hash).toMatch(/^[a-f0-9]{64}$/i);
     expect(await verifyPassphrase('tasks-hub-local', hash)).toBe(true);
     expect(await verifyPassphrase('wrong', hash)).toBe(false);
+    expect(await verifyPassphrase('tasks-hub-local', `"${hash}"`)).toBe(true);
+    expect(normalizeStoredPassphraseHash(` sha256:${hash} `)).toBe(hash);
   });
 
   it('accepts Teaching-style scrypt$v1 hashes', async () => {
@@ -46,6 +54,18 @@ describe('sign-in helpers', () => {
     expect(normalizePassphrase('  tasks-hub-local  ')).toBe('tasks-hub-local');
   });
 
+  it('keeps keystrokes when input.value is empty at submit', () => {
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    input.name = 'passphrase';
+    form.append(input);
+    const read = attachPassphraseCapture(input, form);
+    input.value = 'tasks-hub-local';
+    input.dispatchEvent(new Event('input'));
+    input.value = '';
+    expect(read()).toBe('tasks-hub-local');
+  });
+
   it('keeps invalid_credentials as Invalid passphrase', () => {
     expect(
       messageForSignInFailure(
@@ -54,13 +74,53 @@ describe('sign-in helpers', () => {
     ).toBe('Invalid passphrase');
   });
 
-  it('points forbidden and network failures at the API host', () => {
+  it('does not treat a flaky API as “you cannot sign in from this tab”', () => {
+    expect(
+      messageForSignInFailure(
+        new ApiClientError({ code: 'invalid_response', message: 'Response is not valid JSON' })
+      )
+    ).toBe('The sign-in service did not respond. Try again.');
+    expect(
+      messageForSignInFailure(new ApiClientError({ code: 'network_error', message: 'fail' }))
+    ).toMatch(/Try again/);
+  });
+
+  it('points a real origin block at the API host', () => {
     expect(
       messageForSignInFailure(new ApiClientError({ code: 'forbidden', message: 'nope' }))
     ).toContain('https://tasks-api.adam-russell.com');
-    expect(
-      messageForSignInFailure(new ApiClientError({ code: 'network_error', message: 'fail' }))
-    ).toContain('https://tasks-api.adam-russell.com');
+  });
+});
+
+describe('API response parse', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects empty Netlify 502/503 bodies instead of throwing JSON parse noise', async () => {
+    const response = new Response('', {
+      status: 502,
+      headers: { 'content-type': 'text/plain' }
+    });
+    await expect(parseApiResponse(response)).rejects.toMatchObject({
+      code: 'invalid_response',
+      message: 'Empty response (HTTP 502)'
+    });
+  });
+
+  it('retries empty 502s then succeeds', async () => {
+    const ok = { ok: true, data: { authenticated: true } };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('', { status: 502 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(ok), { status: 200, headers: { 'content-type': 'application/json' } })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(apiPost('/api/auth', { passphrase: 'tasks-hub-local' }, { baseUrl: '' })).resolves.toEqual({
+      authenticated: true
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 

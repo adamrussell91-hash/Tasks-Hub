@@ -16,6 +16,7 @@ import {
   stationLineCuts
 } from '@/domain/maps';
 import { mindWorks2026Map } from '@/domain/maps-seed';
+import { mapsOrSeed } from '@/views/maps';
 
 describe('map schema', () => {
   it('accepts a valid map and rejects a diagonal line', () => {
@@ -107,6 +108,11 @@ describe('MindWorks 2026 seed', () => {
 });
 
 describe('library default', () => {
+  it('seeds MindWorks when the API returns nothing', () => {
+    expect(mapsOrSeed([]).map((m) => m.id)).toEqual(['map_mindworks_2026']);
+    expect(mapsOrSeed(undefined).map((m) => m.id)).toEqual(['map_mindworks_2026']);
+  });
+
   it('picks the current-year map when present', () => {
     const maps = [
       { ...mindWorks2026Map(), id: 'map_old', year: 2025, title: 'Old' },
