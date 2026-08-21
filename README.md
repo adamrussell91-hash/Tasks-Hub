@@ -16,8 +16,8 @@ Personal task and project manager (Clare DeMind), sibling to Teaching Hub, Life 
 
 | Surface | Hostname |
 |---------|----------|
-| App | `https://tasks-hub.adam-russell.com` |
-| API | `https://tasks-api.adam-russell.com` |
+| App | `https://tasks-hub.adam-russell.com` (GitHub Pages) |
+| App + API | `https://tasks-api.adam-russell.com` (Netlify — same-origin, prefer this in Safari) |
 
 ## Run locally
 
@@ -30,7 +30,7 @@ Open [http://localhost:5175](http://localhost:5175).
 
 | | |
 |---|---|
-| Local passphrase | `tasks-hub-local` |
+| Local + production passphrase | `tasks-hub-local` (not `teaching-hub-local`) |
 | Seed | `fixtures/seed.json` (frameworks, Ethics Olympiad / Da Vinci templates, MindWorks + demo tasks) |
 
 Mock API seeds automatically. Production Blobs seed on first authenticated Functions request (`meta/seeded`), via `POST /api/seed`, or:
@@ -73,4 +73,6 @@ Until Functions redeploy, new routes (`/api/clare`, `/api/stall`, …) 404 and t
 npm run generate:auth
 ```
 
-Netlify already has SHA-256 of `tasks-hub-local` (Knowledge convention). The API accepts that or Teaching-style scrypt. Also set `SITE_ORIGIN=https://tasks-hub.adam-russell.com`.
+Netlify already has SHA-256 of `tasks-hub-local` (Knowledge convention). The API accepts that or Teaching-style scrypt. `SITE_ORIGIN` may be a comma-separated list; Pages and the Functions host are always allowed.
+
+Safari: if `tasks-hub.adam-russell.com` still shows “Not Secure” (cached GitHub Pages cert), sign in at `https://tasks-api.adam-russell.com` instead. Session cookie is `SameSite=Lax` (same-site under `adam-russell.com`).

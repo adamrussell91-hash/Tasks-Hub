@@ -26,7 +26,7 @@ Answers to Open Questions in `docs/specs/task-project-manager-hub-spec.md`.
 | Static SPA | GitHub Pages | `tasks-hub.adam-russell.com` |
 | API | Netlify Functions | `tasks-api.adam-russell.com` (site `artasks-hub`, temp `https://artasks-hub.netlify.app`) |
 
-Netlify env (already bootstrapped): `TASKS_HUB_PASSPHRASE_HASH` (SHA-256 of `tasks-hub-local`, Knowledge convention), `SESSION_SECRET`, `SITE_ORIGIN=https://tasks-hub.adam-russell.com`. Auth verifier accepts **both** SHA-256 hex and Teaching-style `scrypt$v1$…`.
+Netlify env (already bootstrapped): `TASKS_HUB_PASSPHRASE_HASH` (SHA-256 of `tasks-hub-local`, Knowledge convention), `SESSION_SECRET`, `SITE_ORIGIN=https://tasks-hub.adam-russell.com`. Pages and `https://tasks-api.adam-russell.com` are always allowed origins. Session cookie is `SameSite=Lax` (same-site subdomains). Auth verifier accepts **both** SHA-256 hex and Teaching-style `scrypt$v1$…`.
 
 Blobs seed: Functions `getTasksStore()` runs `seedIfEmpty` on first touch (`meta/seeded`). Manual: `NETLIFY_SITE_ID` + `NETLIFY_AUTH_TOKEN` → `npm run seed:blobs` (`FORCE_SEED=1` clears the marker).
 

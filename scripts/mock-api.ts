@@ -57,7 +57,7 @@ export function createMockApi({ seed }: MockApiOptions) {
     }
     if (path === '/api/auth' && method === 'POST') {
       const passphrase = (body as { passphrase?: string })?.passphrase;
-      if (passphrase === LOCAL_PASSPHRASE) {
+      if (typeof passphrase === 'string' && passphrase.trim() === LOCAL_PASSPHRASE) {
         authenticated = true;
         return json(200, { ok: true, data: { authenticated: true, expiresAt: Date.now() + 12 * 3600_000 } });
       }
