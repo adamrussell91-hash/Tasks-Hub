@@ -244,14 +244,18 @@ export function yearLinePoints(x: number): Array<{ x: number; y: number }> {
 }
 
 export function applyDateSpanToStation(station: MapStation, year: number): MapStation {
-  if (!station.starts_on) return station;
-  const y = dateToY(station.starts_on, year);
-  const endY = dateToY(station.ends_on || `${year}-12-31`, year);
+  if (!station.starts_on && !station.ends_on) return station;
+  const start = station.starts_on || station.ends_on || `${year}-01-01`;
+  const end = station.ends_on || station.starts_on || `${year}-12-31`;
+  const y = dateToY(start, year);
+  const endY = dateToY(end, year);
   const minH = estimateVerticalLabel(station.label).h + 28;
   return {
     ...station,
+    starts_on: station.starts_on || start,
+    ends_on: station.ends_on || end,
     y,
-    height: Math.max(minH, endY - y)
+    height: Math.max(minH, Math.max(24, endY - y))
   };
 }
 
@@ -703,10 +707,11 @@ function placeTick(
   const station = stations.find((item) => item.id === attach.station_id);
   const line = lines.find((item) => item.id === station?.line_id);
   if (!station || !line) return null;
-  const port = nearestPort(station.ports, attach.side, station.y + station.h * attach.offset);
-  const x0 = port?.x ?? station.x + (attach.side === 'left' ? -station.w / 2 : station.w / 2);
-  const y0 = port?.y ?? station.y + station.h * attach.offset;
+  const dateY = tick.starts_on ? dateToY(tick.starts_on, year) : station.y + station.h * attach.offset;
+  const port = nearestPort(station.ports, attach.side, dateY);
   const dir = attach.side === 'left' ? -1 : 1;
+  const x0 = port?.x ?? station.x + dir * (station.w / 2);
+  const y0 = port?.y ?? Math.min(station.y + station.h, Math.max(station.y, dateY));
   return finishTick(
     tick,
     line.id,
@@ -714,7 +719,7 @@ function placeTick(
     x0,
     y0,
     x0 + dir * MAP_EVENT_STEM,
-    y0,
+    dateY,
     attach.side
   );
 }
@@ -882,7 +887,7 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
     let from: ConnectorPort | null = null;
     if (attach.kind === 'station') {
       const station = stations.find((item) => item.id === attach.station_id);
-      from = station ? nearestPort(station.ports, attach.side, tick.y0) : null;
+      from = station ? nearestPort(station.ports, attach.side, tick.cy) : null;
     } else if (attach.kind === 'event') {
       const host = ticks.find((item) => item.id === attach.event_id);
       from = host?.ports.find((port) => port.side === attach.side) ?? host?.ports[0] ?? null;

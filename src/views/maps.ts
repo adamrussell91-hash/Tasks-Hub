@@ -237,10 +237,6 @@ function horizontalText(
   return text;
 }
 
-function diamondPath(cx: number, cy: number, r: number): string {
-  return `M ${cx} ${cy - r} L ${cx + r} ${cy} L ${cx} ${cy + r} L ${cx - r} ${cy} Z`;
-}
-
 function portDot(x: number, y: number, id: string, color: string): SVGCircleElement {
   return svgEl('circle', {
     cx: String(x),
@@ -421,7 +417,7 @@ function renderMapSvg(
           y: String(station.y),
           width: String(station.w),
           height: String(station.h),
-          rx: '14',
+          rx: String(station.w / 2),
           fill: fillOf(station.color),
           stroke: stationColor,
           'stroke-width': '3.5',
@@ -446,8 +442,10 @@ function renderMapSvg(
         'data-id': tick.id
       });
       g.append(
-        svgEl('path', {
-          d: diamondPath(tick.cx, tick.cy, 14),
+        svgEl('circle', {
+          cx: String(tick.cx),
+          cy: String(tick.cy),
+          r: '14',
           fill: 'var(--paper)',
           stroke: tickColor,
           'stroke-width': '3.5',
@@ -632,8 +630,9 @@ function textInput(value: string, aria: string): HTMLInputElement {
 }
 
 function dateInput(value: string, aria: string): HTMLInputElement {
-  const input = textInput(value, aria);
+  const input = textInput('', aria);
   input.type = 'date';
+  input.value = value;
   return input;
 }
 
@@ -1044,7 +1043,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         }
         const save = el('button', 'btn btn--primary', 'Save');
         save.type = 'button';
-        save.addEventListener('click', () => {
+        save.addEventListener('click', async () => {
           item.label = name.value.trim() || item.label;
           item.starts_on = start.value || null;
           item.ends_on = selectedStation ? end.value || null : end.value || start.value || null;
@@ -1052,6 +1051,8 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
           if (selectedStation) {
             const next = applyDateSpanToStation(selectedStation, year);
+            selectedStation.starts_on = next.starts_on;
+            selectedStation.ends_on = next.ends_on;
             selectedStation.y = next.y;
             selectedStation.height = next.height;
           } else if (selectedTick) {
@@ -1064,7 +1065,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
             const next = applyDateToTickAttach(selectedTick, year);
             selectedTick.attach = next.attach;
           }
-          void persist();
+          await persist();
           paint();
         });
         const del = el('button', 'btn btn--ghost', 'Delete');

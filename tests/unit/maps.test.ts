@@ -165,6 +165,43 @@ describe('year layout', () => {
     const layout = layoutMap(mindWorks2026Map());
     expect(layout.terms.map((t) => t.id)).toEqual(['T1', 'T2', 'T3', 'T4', 'E']);
     expect(layout.lines.map((l) => l.letter).sort()).toEqual(['E', 'I', 'J', 'R']);
+    const sixMonths = applyDateSpanToStation(
+      { ...later, starts_on: '2026-01-27', ends_on: '2026-07-27', height: 10 },
+      year
+    );
+    const short = applyDateSpanToStation(
+      { ...later, starts_on: '2026-01-27', ends_on: '2026-02-27', height: 10 },
+      year
+    );
+    expect(sixMonths.height).toBeGreaterThan(short.height + 100);
+  });
+
+  it('connects a late competition to its program even when the date is past the station', () => {
+    const base = mindWorks2026Map();
+    const ydp = base.stations.find((station) => station.id === 'st_ydp')!;
+    const layout = layoutMap({
+      ...base,
+      ticks: [
+        ...base.ticks,
+        {
+          id: 'tk_late',
+          label: 'Late showcase',
+          attach: { kind: 'station', station_id: 'st_ydp', side: 'right', offset: 0.5 },
+          stroke: 'solid',
+          connects_to: null,
+          starts_on: '2026-11-15',
+          ends_on: null,
+          link: null
+        }
+      ]
+    });
+    const station = layout.stations.find((item) => item.id === 'st_ydp')!;
+    const tick = layout.ticks.find((item) => item.id === 'tk_late')!;
+    const link = layout.connectors.find((item) => item.id === 'link-tk_late');
+    expect(ydp.ends_on).toBe('2026-04-10');
+    expect(tick.cy).toBeGreaterThan(station.y + station.h);
+    expect(link?.from.ownerId).toBe('st_ydp');
+    expect(link?.to.ownerId).toBe('tk_late');
   });
 
   it('gives a term-length program weekly ports on both sides', () => {
@@ -299,7 +336,7 @@ describe('year layout', () => {
     expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(1);
   });
 
-  it('keeps competition chips in a column beside the diamond', () => {
+  it('keeps competition chips in a column beside the circle', () => {
     const layout = layoutMap(mindWorks2026Map());
     for (const tick of layout.ticks) {
       expect(tick.labelBox.x).toBeGreaterThan(tick.cx);
@@ -390,5 +427,6 @@ describe('export', () => {
     expect(html).toContain('Young Diplomats Program');
     expect(html).toContain('#f68620');
     expect(html).not.toContain('r="4"');
+    expect(html).toMatch(/<circle cx="[\d.]+" cy="[\d.]+" r="14"/);
   });
 });
