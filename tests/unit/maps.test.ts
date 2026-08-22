@@ -21,7 +21,9 @@ import {
   boxesOverlap,
   dateToY,
   eventPorts,
+  labelHitsForeignLine,
   layoutMap,
+  lineStrokeBox,
   placeBox,
   schoolTerms,
   spanWeeks,
@@ -194,6 +196,44 @@ describe('year layout', () => {
       { width: layout.width, height: layout.height }
     );
     expect(boxes.some((box) => boxesOverlap(box, placed))).toBe(false);
+  });
+
+  it('keeps event chips horizontal and off every other line', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    expect(layout.ticks.length).toBeGreaterThan(0);
+    expect(layout.ticks.every((tick) => tick.labelBox.w > tick.labelBox.h)).toBe(true);
+    expect(labelHitsForeignLine(layout)).toBe(false);
+    for (const tick of layout.ticks) {
+      for (const line of layout.lines) {
+        if (line.id === tick.lineId) continue;
+        expect(boxesOverlap(tick.labelBox, lineStrokeBox(line))).toBe(false);
+      }
+    }
+  });
+
+  it('slides a later line right when the first line grows a wide event', () => {
+    const base = mindWorks2026Map();
+    const packed = layoutMap(base);
+    const grown = layoutMap({
+      ...base,
+      ticks: [
+        ...base.ticks,
+        {
+          id: 'tk_wide',
+          label: 'A very long festival of ideas and public speaking',
+          attach: { kind: 'line', line_id: 'line_justice', y: 220 },
+          stroke: 'solid',
+          connects_to: null,
+          starts_on: '2026-03-12',
+          ends_on: null,
+          link: null
+        }
+      ]
+    });
+    const firstI = packed.lines.find((line) => line.id === 'line_innovation')!.x;
+    const grownI = grown.lines.find((line) => line.id === 'line_innovation')!.x;
+    expect(grownI).toBeGreaterThan(firstI);
+    expect(labelHitsForeignLine(grown)).toBe(false);
   });
 });
 

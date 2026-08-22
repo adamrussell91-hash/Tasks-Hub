@@ -99,9 +99,62 @@ function verticalText(
   return text;
 }
 
+function horizontalText(
+  x: number,
+  y: number,
+  label: string,
+  className: string,
+  fill: string
+): SVGTextElement {
+  const text = svgEl('text', {
+    x: String(x),
+    y: String(y),
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle',
+    class: className,
+    fill
+  });
+  text.textContent = label;
+  return text;
+}
+
+function diamondPath(cx: number, cy: number, r: number): string {
+  return `M ${cx} ${cy - r} L ${cx + r} ${cy} L ${cx} ${cy + r} L ${cx - r} ${cy} Z`;
+}
+
+function portDot(x: number, y: number, id: string, color: string): SVGCircleElement {
+  return svgEl('circle', {
+    cx: String(x),
+    cy: String(y),
+    r: '4',
+    fill: 'var(--paper)',
+    stroke: color,
+    class: 'map-port',
+    'data-port': id
+  });
+}
+
+function connectorPath(d: string, color: string, dash: boolean): SVGPathElement {
+  const path = svgEl('path', {
+    d,
+    fill: 'none',
+    stroke: color,
+    'stroke-width': '3',
+    class: 'map-connector'
+  });
+  if (dash) path.setAttribute('stroke-dasharray', '5 4');
+  return path;
+}
+
+function ownerLineId(layout: MapCanvasLayout, ownerId: string, owner: string): string | null {
+  if (owner === 'line') return ownerId;
+  if (owner === 'station') return layout.stations.find((item) => item.id === ownerId)?.line_id ?? null;
+  return layout.ticks.find((item) => item.id === ownerId)?.lineId ?? null;
+}
+
 const lastLineX = new Map<string, number>();
 
-function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: string | null, showPorts: boolean): void {
+function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: string | null): void {
   host.replaceChildren();
   host.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
   const root = svgEl('g', { class: 'map-root' });
@@ -136,18 +189,7 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
     root.append(disc);
   }
 
-  for (const connector of layout.connectors) {
-    const path = svgEl('path', {
-      d: connector.path,
-      fill: 'none',
-      stroke: strokeOf(connector.color),
-      'stroke-width': '3',
-      class: 'map-connector'
-    });
-    if (connector.dash) path.setAttribute('stroke-dasharray', '5 4');
-    root.append(path);
-  }
-
+  const localConnectors = new Set<string>();
   for (const line of layout.lines) {
     const color = strokeOf(line.color);
     const group = svgEl('g', {
@@ -182,7 +224,7 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
     );
     const letter = svgEl('text', {
       x: String(line.disc.cx),
-      y: String(line.disc.cy + 7),
+      y: String(line.disc.cy + 8),
       'text-anchor': 'middle',
       class: 'map-line-letter',
       fill: 'var(--paper)'
@@ -190,6 +232,14 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
     letter.textContent = line.letter;
     head.append(letter);
     group.append(head);
+
+    for (const connector of layout.connectors) {
+      const fromLine = ownerLineId(layout, connector.from.ownerId, connector.from.owner);
+      const toLine = ownerLineId(layout, connector.to.ownerId, connector.to.owner);
+      if (fromLine !== line.id || toLine !== line.id) continue;
+      localConnectors.add(connector.id);
+      group.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash));
+    }
 
     for (const station of layout.stations.filter((item) => item.line_id === line.id)) {
       const stationColor = strokeOf(station.color);
@@ -214,16 +264,19 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
           y: String(station.y),
           width: String(station.w),
           height: String(station.h),
-          rx: String(station.w / 2),
+          rx: '14',
           fill: fillOf(station.color),
           stroke: stationColor,
-          'stroke-width': '4',
+          'stroke-width': '3.5',
           class: 'map-station__body'
         })
       );
       g.append(
         verticalText(station.x, station.y + station.h / 2, station.label, 'map-station__label', stationColor)
       );
+      for (const port of station.ports) {
+        g.append(portDot(port.x, port.y, port.id, stationColor));
+      }
       group.append(g);
     }
 
@@ -234,10 +287,8 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
         'data-id': tick.id
       });
       g.append(
-        svgEl('circle', {
-          cx: String(tick.cx),
-          cy: String(tick.cy),
-          r: '9',
+        svgEl('path', {
+          d: diamondPath(tick.cx, tick.cy, 14),
           fill: 'var(--paper)',
           stroke: tickColor,
           'stroke-width': '3.5',
@@ -245,7 +296,17 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
         })
       );
       g.append(
-        verticalText(
+        svgEl('rect', {
+          x: String(tick.labelBox.x),
+          y: String(tick.labelBox.y),
+          width: String(tick.labelBox.w),
+          height: String(tick.labelBox.h),
+          rx: '8',
+          class: 'map-tick__chip'
+        })
+      );
+      g.append(
+        horizontalText(
           tick.labelBox.x + tick.labelBox.w / 2,
           tick.labelBox.y + tick.labelBox.h / 2,
           tick.label,
@@ -253,6 +314,9 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
           tickColor
         )
       );
+      for (const port of tick.ports) {
+        g.append(portDot(port.x, port.y, port.id, tickColor));
+      }
       group.append(g);
     }
     root.append(group);
@@ -263,18 +327,12 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
     }
   }
 
-  if (showPorts) {
-    for (const port of layout.ports) {
-      root.append(
-        svgEl('circle', {
-          cx: String(port.x),
-          cy: String(port.y),
-          r: '3',
-          class: 'map-port',
-          'data-port': port.id
-        })
-      );
-    }
+  for (const connector of layout.connectors) {
+    if (localConnectors.has(connector.id)) continue;
+    root.insertBefore(
+      connectorPath(connector.path, strokeOf(connector.color), connector.dash),
+      root.querySelector('.map-line-group')
+    );
   }
 
   host.append(root);
@@ -474,7 +532,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       viewBox: `0 0 ${layout.width} ${layout.height}`,
       'aria-label': `${current.title} · ${year} calendar year`
     });
-    renderMapSvg(svg, layout, selectedId, mode === 'edit');
+    renderMapSvg(svg, layout, selectedId);
     const root = svg.querySelector('.map-root');
     if (root) (root as SVGGElement).setAttribute('transform', `scale(${zoom})`);
 

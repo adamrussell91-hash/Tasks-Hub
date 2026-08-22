@@ -8,13 +8,16 @@ export function lineX(line: { points: Point[] }): number {
 export const MAP_YEAR_TOP = 168;
 export const MAP_YEAR_BOTTOM = 1380;
 export const MAP_LEFT = 88;
-export const MAP_LINE_GAP = 280;
-export const MAP_FIRST_LINE_X = 210;
-export const MAP_DISC_R = 20;
-export const MAP_STATION_W = 40;
-export const MAP_TICK_R = 9;
-export const MAP_LABEL_PAD = 10;
-export const MAP_PORT_GAP = 36;
+export const MAP_LINE_GAP = 320;
+export const MAP_FIRST_LINE_X = 260;
+export const MAP_DISC_R = 30;
+export const MAP_STATION_W = 52;
+export const MAP_TICK_R = 14;
+export const MAP_LABEL_PAD = 20;
+export const MAP_PORT_GAP = 72;
+export const MAP_EVENT_STEM = 76;
+export const MAP_CHIP_PAD = 6;
+export const MAP_LINE_STROKE = 8;
 
 export type TermId = 'T1' | 'T2' | 'T3' | 'T4' | 'E';
 export type PortSide = 'left' | 'right' | 'top' | 'bottom';
@@ -165,11 +168,11 @@ export function spanWeeks(startsOn: string | null, endsOn: string | null, year: 
 }
 
 export function estimateVerticalLabel(text: string, fontSize = 12): { w: number; h: number } {
-  return { w: fontSize + 4, h: Math.max(fontSize, text.length * fontSize * 0.68) };
+  return { w: fontSize + 6, h: Math.max(fontSize, text.length * fontSize * 0.72) };
 }
 
 export function estimateHorizontalLabel(text: string, fontSize = 12): { w: number; h: number } {
-  return { w: Math.max(fontSize, text.length * fontSize * 0.62), h: fontSize + 6 };
+  return { w: Math.max(fontSize, text.length * fontSize * 0.64), h: fontSize + 8 };
 }
 
 export function boxesOverlap(a: LabelBox, b: LabelBox, pad = MAP_LABEL_PAD): boolean {
@@ -186,13 +189,13 @@ export function placeBox(
   occupied: LabelBox[],
   canvas: { width: number; height: number }
 ): LabelBox {
-  const ys = [0, 16, -16, 32, -32, 48, -48, 64, -64, 80, -80, 96, -96];
-  const xs = [0, 20, -20, 40, -40, 60, -60, 80, -80];
+  const ys = [0, 18, -18, 36, -36, 54, -54, 72, -72, 96, -96, 120, -120, 150, -150];
+  const xs = [0, 24, -24, 48, -48, 72, -72, 104, -104, 140, -140];
   for (const dy of ys) {
     for (const dx of xs) {
       const box: LabelBox = {
         ...preferred,
-        x: Math.min(canvas.width - preferred.w - 8, Math.max(8, preferred.x + dx)),
+        x: Math.min(Math.max(canvas.width, preferred.x + preferred.w + 160) - preferred.w - 8, Math.max(8, preferred.x + dx)),
         y: Math.min(canvas.height - preferred.h - 8, Math.max(8, preferred.y + dy))
       };
       if (!occupied.some((other) => other.id !== box.id && boxesOverlap(box, other))) {
@@ -200,7 +203,12 @@ export function placeBox(
       }
     }
   }
-  return preferred;
+  const right = occupied.reduce((max, box) => Math.max(max, box.x + box.w), MAP_FIRST_LINE_X);
+  return {
+    ...preferred,
+    x: right + MAP_LABEL_PAD,
+    y: Math.min(canvas.height - preferred.h - 8, Math.max(8, preferred.y))
+  };
 }
 
 export function nextLineX(lines: MapLine[]): number {
@@ -276,6 +284,27 @@ export function eventPorts(tick: { id: string; cx: number; cy: number; r?: numbe
   ];
 }
 
+export function eventMarkBox(tick: { id: string; cx: number; cy: number }): LabelBox {
+  return {
+    id: `mark-${tick.id}`,
+    x: tick.cx - MAP_TICK_R,
+    y: tick.cy - MAP_TICK_R,
+    w: MAP_TICK_R * 2,
+    h: MAP_TICK_R * 2
+  };
+}
+
+export function lineStrokeBox(line: { id: string; x: number; y0: number; y1: number }): LabelBox {
+  const half = MAP_LINE_STROKE / 2 + 4;
+  return {
+    id: `line-${line.id}`,
+    x: line.x - half,
+    y: line.y0,
+    w: half * 2,
+    h: line.y1 - line.y0
+  };
+}
+
 export function nearestPort(ports: ConnectorPort[], side: PortSide, y: number): ConnectorPort | null {
   const onSide = ports.filter((port) => port.side === side);
   if (!onSide.length) return null;
@@ -289,6 +318,50 @@ export function orthogonalPath(from: { x: number; y: number }, to: { x: number; 
   return `M ${from.x} ${from.y} H ${mid} V ${to.y} H ${to.x}`;
 }
 
+function stripHits(
+  y: number,
+  x0: number,
+  x1: number,
+  obstacles: LabelBox[],
+  pad: number
+): boolean {
+  const left = Math.min(x0, x1);
+  const right = Math.max(x0, x1);
+  return obstacles.some(
+    (box) =>
+      y >= box.y - pad &&
+      y <= box.y + box.h + pad &&
+      !(box.x + box.w + pad <= left || right + pad <= box.x)
+  );
+}
+
+export function routedOrthogonalPath(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  obstacles: LabelBox[],
+  pad = 8
+): string {
+  if (Math.abs(from.y - to.y) < 1 && !stripHits(from.y, from.x, to.x, obstacles, pad)) {
+    return `M ${from.x} ${from.y} H ${to.x}`;
+  }
+  if (Math.abs(from.x - to.x) < 1) return `M ${from.x} ${from.y} V ${to.y}`;
+  if (!stripHits(from.y, from.x, to.x, obstacles, pad)) {
+    return `M ${from.x} ${from.y} H ${to.x} V ${to.y}`;
+  }
+  if (!stripHits(to.y, from.x, to.x, obstacles, pad)) {
+    return `M ${from.x} ${from.y} V ${to.y} H ${to.x}`;
+  }
+  for (let step = 1; step < 48; step += 1) {
+    for (const y of [from.y - step * 12, from.y + step * 12, to.y - step * 12, to.y + step * 12]) {
+      if (y < MAP_YEAR_TOP || y > MAP_YEAR_BOTTOM) continue;
+      if (!stripHits(y, from.x, to.x, obstacles, pad)) {
+        return `M ${from.x} ${from.y} V ${y} H ${to.x} V ${to.y}`;
+      }
+    }
+  }
+  return orthogonalPath(from, to);
+}
+
 function oppositeSide(side: PortSide): PortSide {
   if (side === 'left') return 'right';
   if (side === 'right') return 'left';
@@ -300,17 +373,20 @@ function labelForSide(
   tick: { id: string; cx: number; cy: number; label: string },
   side: PortSide
 ): LabelBox {
-  const size = estimateVerticalLabel(tick.label, 12);
+  const size = estimateHorizontalLabel(tick.label, 12);
+  const w = size.w + MAP_CHIP_PAD * 2;
+  const h = size.h + MAP_CHIP_PAD * 2;
+  const gap = 22;
   if (side === 'right') {
-    return { id: `tk-${tick.id}`, x: tick.cx + MAP_TICK_R + 8, y: tick.cy - size.h / 2, w: size.w, h: size.h };
+    return { id: `tk-${tick.id}`, x: tick.cx + MAP_TICK_R + gap, y: tick.cy - h / 2, w, h };
   }
   if (side === 'left') {
-    return { id: `tk-${tick.id}`, x: tick.cx - MAP_TICK_R - 8 - size.w, y: tick.cy - size.h / 2, w: size.w, h: size.h };
+    return { id: `tk-${tick.id}`, x: tick.cx - MAP_TICK_R - gap - w, y: tick.cy - h / 2, w, h };
   }
   if (side === 'top') {
-    return { id: `tk-${tick.id}`, x: tick.cx - size.w / 2, y: tick.cy - MAP_TICK_R - 8 - size.h, w: size.w, h: size.h };
+    return { id: `tk-${tick.id}`, x: tick.cx - w / 2, y: tick.cy - MAP_TICK_R - gap - h, w, h };
   }
-  return { id: `tk-${tick.id}`, x: tick.cx - size.w / 2, y: tick.cy + MAP_TICK_R + 8, w: size.w, h: size.h };
+  return { id: `tk-${tick.id}`, x: tick.cx - w / 2, y: tick.cy + MAP_TICK_R + gap, w, h };
 }
 
 function shiftX(
@@ -366,14 +442,7 @@ function exclusiveBoxes(
     });
   }
   for (const tick of ticks) {
-    boxes.push({
-      id: `mark-${tick.id}`,
-      x: tick.cx - MAP_TICK_R,
-      y: tick.cy - MAP_TICK_R,
-      w: MAP_TICK_R * 2,
-      h: MAP_TICK_R * 2
-    });
-    boxes.push(tick.labelBox);
+    boxes.push(eventMarkBox(tick), tick.labelBox);
   }
   return boxes;
 }
@@ -402,13 +471,7 @@ function lineContentBox(
     });
   }
   for (const tick of ticks.filter((item) => item.lineId === line.id)) {
-    parts.push(tick.labelBox, {
-      id: `mark-${tick.id}`,
-      x: tick.cx - MAP_TICK_R,
-      y: tick.cy - MAP_TICK_R,
-      w: MAP_TICK_R * 2,
-      h: MAP_TICK_R * 2
-    });
+    parts.push(tick.labelBox, eventMarkBox(tick));
   }
   const x0 = Math.min(...parts.map((p) => p.x));
   const y0 = Math.min(...parts.map((p) => p.y));
@@ -422,26 +485,36 @@ function packLines(lines: LaidLine[], stations: LaidStation[], ticks: LaidTick[]
   let cursor = MAP_FIRST_LINE_X;
   for (const line of ordered) {
     const box = lineContentBox(line, stations, ticks);
-    const left = box.x;
-    const need = cursor - left;
+    const need = cursor - box.x;
     if (need > 0) shiftX(line, stations, ticks, need);
     const after = lineContentBox(line, stations, ticks);
     cursor = after.x + after.w + MAP_PORT_GAP;
   }
 }
 
-function resolveTickLabel(tick: LaidTick, occupied: LabelBox[], canvas: { width: number; height: number }): void {
-  const sides: PortSide[] = ['right', 'left', 'top', 'bottom'];
+function preferredLabelSides(outward: PortSide): PortSide[] {
+  const opposite = outward === 'left' ? 'right' : 'left';
+  return [outward, 'top', 'bottom', opposite];
+}
+
+function resolveTickLabel(
+  tick: LaidTick,
+  occupied: LabelBox[],
+  canvas: { width: number; height: number },
+  obstacles: LabelBox[]
+): void {
+  const outward: PortSide = tick.cx >= tick.x0 ? 'right' : 'left';
+  const sides = preferredLabelSides(outward);
   for (const side of sides) {
     const box = labelForSide(tick, side);
-    const others = occupied.filter((item) => item.id !== box.id);
+    const others = [...occupied, ...obstacles].filter((item) => item.id !== box.id && item.id !== `mark-${tick.id}`);
     if (!others.some((item) => boxesOverlap(box, item))) {
       tick.labelBox = box;
       tick.labelSide = side;
       return;
     }
   }
-  tick.labelBox = placeBox(tick.labelBox, occupied, canvas);
+  tick.labelBox = placeBox(tick.labelBox, [...occupied, ...obstacles], canvas);
 }
 
 function matchLine(connectsTo: string | null, lines: LaidLine[]): LaidLine | null {
@@ -587,7 +660,7 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
       lineId,
       x0,
       y0,
-      cx: x0 + dir * 56,
+      cx: x0 + dir * MAP_EVENT_STEM,
       cy: y0,
       dash: tick.stroke === 'dotted',
       connects_to: tick.connects_to,
@@ -602,20 +675,25 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
 
   packLines(lines, stations, ticks);
 
-  let width = Math.max(1100, ...lines.map((line) => line.x + 260));
+  let width = Math.max(1200, ...lines.map((line) => line.x + 320));
   const height = yearBottom + 80;
   const canvas = { width, height };
 
-  for (let pass = 0; pass < 4; pass += 1) {
+  for (let pass = 0; pass < 6; pass += 1) {
     const occupied = exclusiveBoxes(terms, lines, stations, ticks);
+    const obstacles = lines.map((line) => lineStrokeBox(line));
     for (const tick of ticks) {
-      resolveTickLabel(tick, occupied, canvas);
+      resolveTickLabel(tick, occupied, canvas, obstacles);
       const idx = occupied.findIndex((box) => box.id === tick.labelBox.id);
       if (idx >= 0) occupied[idx] = tick.labelBox;
       else occupied.push(tick.labelBox);
     }
     packLines(lines, stations, ticks);
-    width = Math.max(width, ...lines.map((line) => line.x + 260), ...ticks.map((tick) => tick.labelBox.x + tick.labelBox.w + 40));
+    width = Math.max(
+      width,
+      ...lines.map((line) => line.x + 320),
+      ...ticks.map((tick) => tick.labelBox.x + tick.labelBox.w + 48)
+    );
     canvas.width = width;
   }
 
@@ -623,6 +701,7 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
   for (const tick of ticks) tick.ports = eventPorts(tick);
 
   const connectors: LaidConnector[] = [];
+  const pathObstacles = exclusiveBoxes(terms, lines, stations, ticks);
   for (const tick of ticks) {
     const raw = map.ticks.find((item) => item.id === tick.id);
     const attach = raw?.attach;
@@ -647,12 +726,14 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
     }
     const toSide = from?.side ? oppositeSide(from.side === 'top' || from.side === 'bottom' ? 'right' : from.side) : 'left';
     const to = tick.ports.find((port) => port.side === toSide) ?? tick.ports[2] ?? null;
+    const ownIds = new Set([tick.labelBox.id, `mark-${tick.id}`, attach.kind === 'station' ? `st-${attach.station_id}` : '']);
+    const blocked = pathObstacles.filter((box) => !ownIds.has(box.id));
     if (from && to) {
       connectors.push({
         id: `link-${tick.id}`,
         from,
         to,
-        path: orthogonalPath(from, to),
+        path: routedOrthogonalPath(from, to, blocked),
         color: tick.color,
         dash: tick.dash
       });
@@ -673,7 +754,7 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
         id: `cross-${tick.id}`,
         from: out,
         to: dest,
-        path: orthogonalPath(out, dest),
+        path: routedOrthogonalPath(out, dest, blocked.filter((box) => box.id !== `disc-${other.id}`)),
         color: other.color,
         dash: true
       });
@@ -699,6 +780,14 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
     connectors,
     boxes
   };
+}
+
+export function labelHitsForeignLine(layout: MapCanvasLayout): boolean {
+  return layout.ticks.some((tick) =>
+    layout.lines.some(
+      (line) => line.id !== tick.lineId && boxesOverlap(tick.labelBox, lineStrokeBox(line))
+    )
+  );
 }
 
 export const LINE_COLORS: MapColorToken[] = [

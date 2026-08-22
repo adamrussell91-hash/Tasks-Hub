@@ -174,16 +174,23 @@ function renderExportSvg(map: TransitMap): string {
       );
     }
     parts.push(
-      `<rect x="${station.x - station.w / 2}" y="${station.y}" width="${station.w}" height="${station.h}" rx="${station.w / 2}" fill="${fill}" stroke="${color}" stroke-width="4"/>`,
+      `<rect x="${station.x - station.w / 2}" y="${station.y}" width="${station.w}" height="${station.h}" rx="14" fill="${fill}" stroke="${color}" stroke-width="3.5"/>`,
       `<text transform="rotate(-90 ${station.x} ${station.y + station.h / 2})" x="${station.x}" y="${station.y + station.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}" font-weight="600">${escapeHtml(station.label)}</text>`
     );
+    for (const port of station.ports) {
+      parts.push(`<circle cx="${port.x}" cy="${port.y}" r="4" fill="#fbf8f2" stroke="${color}" stroke-width="1.5"/>`);
+    }
   }
   for (const tick of layout.ticks) {
     const color = COLOR[tick.color] ?? COLOR.wave!;
     parts.push(
-      `<circle cx="${tick.cx}" cy="${tick.cy}" r="9" fill="#fbf8f2" stroke="${color}" stroke-width="3.5"/>`,
-      `<text transform="rotate(-90 ${tick.labelBox.x + tick.labelBox.w / 2} ${tick.labelBox.y + tick.labelBox.h / 2})" x="${tick.labelBox.x + tick.labelBox.w / 2}" y="${tick.labelBox.y + tick.labelBox.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}">${escapeHtml(tick.label)}</text>`
+      `<path d="M ${tick.cx} ${tick.cy - 14} L ${tick.cx + 14} ${tick.cy} L ${tick.cx} ${tick.cy + 14} L ${tick.cx - 14} ${tick.cy} Z" fill="#fbf8f2" stroke="${color}" stroke-width="3.5"/>`,
+      `<rect x="${tick.labelBox.x}" y="${tick.labelBox.y}" width="${tick.labelBox.w}" height="${tick.labelBox.h}" rx="8" fill="#fbf8f2"/>`,
+      `<text x="${tick.labelBox.x + tick.labelBox.w / 2}" y="${tick.labelBox.y + tick.labelBox.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}" font-weight="600">${escapeHtml(tick.label)}</text>`
     );
+    for (const port of tick.ports) {
+      parts.push(`<circle cx="${port.x}" cy="${port.y}" r="4" fill="#fbf8f2" stroke="${color}" stroke-width="1.5"/>`);
+    }
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="100%" height="100%">${parts.join('')}</svg>`;
 }

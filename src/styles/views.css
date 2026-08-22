@@ -1072,8 +1072,8 @@ select.hub-filter {
 .map-key__disc {
   display: inline-grid;
   place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 999px;
   color: var(--paper);
   font-size: var(--text-sm);
@@ -1146,7 +1146,7 @@ select.hub-filter {
 }
 
 .map-line-group {
-  transition: transform 0.4s ease;
+  transition: transform 0.45s ease;
 }
 
 .map-connector {
@@ -1157,8 +1157,11 @@ select.hub-filter {
 
 .map-port {
   fill: var(--paper);
-  stroke: var(--muted);
-  stroke-width: 1.25;
+  stroke-width: 1.5;
+}
+
+.map-tick__chip {
+  fill: var(--paper);
 }
 
 .map-line-letter {
@@ -1248,6 +1251,10 @@ select.hub-filter {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .map-line-group {
+    transition: none;
+  }
+
   .orbit-spin,
   .branch-edge,
   .branch-node,
