@@ -17,6 +17,7 @@ import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { findStallCandidates } from '@/domain/stall';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -52,7 +53,7 @@ function renderTaskRow(
     el('span', 'chip', task.domain),
     el('span', 'chip chip--muted', task.status.replace('_', ' '))
   );
-  if (task.due_date) meta.append(el('span', 'chip chip--muted', `Due ${task.due_date.slice(0, 10)}`));
+  if (task.due_date) meta.append(el('span', 'chip chip--muted', `Due ${formatDisplayDate(task.due_date)}`));
   if (task.framework_used) meta.append(el('span', 'chip', 'framework'));
 
   const actions = el('div', 'task-row__actions');
@@ -192,7 +193,7 @@ export async function renderWeekView(canvas: HTMLElement): Promise<void> {
     const title = el(
       'h3',
       'week-col__title',
-      day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })
+      `${day.toLocaleDateString('en-AU', { weekday: 'short' })} ${formatDisplayDate(day)}`
     );
     col.append(title);
     if (pinch) {
@@ -204,7 +205,7 @@ export async function renderWeekView(canvas: HTMLElement): Promise<void> {
       const item = el('button', 'week-chip', task.title);
       item.type = 'button';
       item.dataset.domain = task.domain;
-      item.setAttribute('aria-label', `${task.title}, ${task.priority}, due ${task.due_date?.slice(0, 10) ?? 'undated'}`);
+      item.setAttribute('aria-label', `${task.title}, ${task.priority}, due ${task.due_date ? formatDisplayDate(task.due_date) : 'undated'}`);
       item.addEventListener('click', () => {
         preview.hidden = false;
         preview.replaceChildren(
@@ -213,7 +214,7 @@ export async function renderWeekView(canvas: HTMLElement): Promise<void> {
           el(
             'p',
             'graph-preview__meta',
-            [task.priority, task.due_date ? `Due ${task.due_date.slice(0, 10)}` : null, task.status.replace('_', ' ')]
+            [task.priority, task.due_date ? `Due ${formatDisplayDate(task.due_date)}` : null, task.status.replace('_', ' ')]
               .filter(Boolean)
               .join(' · ')
           )
@@ -261,7 +262,7 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
     const meta = el('div', 'task-row__meta');
     meta.append(
       el('span', 'chip', project.title),
-      el('span', 'chip chip--muted', milestone.due_date?.slice(0, 10) ?? '')
+      el('span', 'chip chip--muted', milestone.due_date ? formatDisplayDate(milestone.due_date) : '')
     );
     row.append(el('h3', 'task-row__title', milestone.title), meta);
     stack.append(row);
@@ -272,7 +273,7 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
     meta.append(
       el('span', 'chip', project.title),
       el('span', 'chip', 'key date'),
-      el('span', 'chip chip--muted', due_date.slice(0, 10))
+      el('span', 'chip chip--muted', formatDisplayDate(due_date))
     );
     row.append(el('h3', 'task-row__title', label), meta);
     stack.append(row);
@@ -444,7 +445,7 @@ function renderProjectClosureCard(
     el(
       'span',
       'chip chip--muted',
-      `baseline ${variance.baseline_end_date?.slice(0, 10) ?? '—'} → now ${variance.derived_end_date?.slice(0, 10) ?? '—'}`
+      `baseline ${variance.baseline_end_date ? formatDisplayDate(variance.baseline_end_date) : '—'} → now ${variance.derived_end_date ? formatDisplayDate(variance.derived_end_date) : '—'}`
     )
   );
 
@@ -538,7 +539,7 @@ function renderStalledCard(
     el(
       'span',
       'chip chip--muted',
-      project.stall_flagged_at ? `flagged ${project.stall_flagged_at.slice(0, 10)}` : 'flagged'
+      project.stall_flagged_at ? `flagged ${formatDisplayDate(project.stall_flagged_at)}` : 'flagged'
     )
   );
 

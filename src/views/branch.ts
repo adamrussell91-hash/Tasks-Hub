@@ -3,6 +3,7 @@ import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { layoutProjectBranch, type BranchNode } from '@/domain/branch';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -20,7 +21,7 @@ function showPreview(preview: HTMLElement, node: BranchNode, task?: Task): void 
   const meta =
     node.kind === 'project'
       ? node.id
-      : [task?.status, task?.priority, task?.due_date?.slice(0, 10)].filter(Boolean).join(' · ');
+      : [task?.status, task?.priority, task?.due_date ? formatDisplayDate(task.due_date) : null].filter(Boolean).join(' · ');
   preview.replaceChildren(
     el('p', 'graph-preview__eyebrow', node.kind),
     el('h3', 'graph-preview__title', node.label),

@@ -1,6 +1,7 @@
 import type { ExcursionTemplate } from '@/schemas/templates';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, parseDue, startOfDay, toDateKey } from '@/domain/queries';
 
 export type AdminTaskKind =
@@ -111,12 +112,8 @@ export function buildExcursionPlan(
   if (!event) throw new Error(`Invalid event_date: ${input.event_date}`);
   const eventDay = startOfDay(event);
   const eventKey = toDateKey(eventDay);
-  const eventLabel = eventDay.toLocaleDateString(undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  const weekday = eventDay.toLocaleDateString('en-AU', { weekday: 'long' });
+  const eventLabel = `${weekday} ${formatDisplayDate(eventDay)}`;
   const group = input.student_group_reference?.trim() || '';
   const leads = template.default_lead_times;
 

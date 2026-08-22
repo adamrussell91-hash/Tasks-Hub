@@ -1,5 +1,6 @@
 import type { StressFlag } from '@/schemas/stress';
 import { tasksApi } from '@/services/client-api';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderLoadError } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -23,7 +24,7 @@ function renderFlag(flag: StressFlag): HTMLElement {
   for (const agent of flag.routed_to) {
     meta.append(el('span', 'chip chip--muted', agent));
   }
-  meta.append(el('span', 'chip', flag.created_at.slice(0, 10)));
+  meta.append(el('span', 'chip', formatDisplayDate(flag.created_at)));
   row.append(meta);
   if (flag.recurrence_note) {
     row.append(el('p', 'task-row__desc', flag.recurrence_note));
