@@ -1,6 +1,7 @@
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { domainFill, layoutOrbit, type OrbitBody } from '@/domain/orbit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -25,7 +26,7 @@ function showPreview(preview: HTMLElement, body: OrbitBody): void {
       [
         body.domain ?? '—',
         body.priority !== '—' ? body.priority : null,
-        body.due_date ? `due ${body.due_date.slice(0, 10)}` : null
+        body.due_date ? `due ${formatDisplayDate(body.due_date)}` : null
       ]
         .filter(Boolean)
         .join(' · ')

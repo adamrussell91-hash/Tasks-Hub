@@ -1,5 +1,6 @@
 import type { Task } from '@/schemas/task';
 import type { Project, Milestone } from '@/schemas/project';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, parseDue, startOfDay, toDateKey } from '@/domain/queries';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -186,7 +187,7 @@ export function layoutGantt(
 }
 
 export function formatTick(date: Date): string {
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return formatDisplayDate(date);
 }
 
 export { toDateKey };

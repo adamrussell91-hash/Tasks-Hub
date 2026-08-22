@@ -3,6 +3,7 @@ import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { openTasks, toDateKey } from '@/domain/queries';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { showConfirmWrite } from '@/views/feedback';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -54,7 +55,7 @@ function renderCard(
   card.append(el('h3', 'board-card__title', task.title));
   const meta = el('div', 'board-card__meta');
   meta.append(el('span', 'chip', task.domain), el('span', 'chip chip--muted', task.priority));
-  if (task.due_date) meta.append(el('span', 'chip chip--muted', task.due_date.slice(0, 10)));
+  if (task.due_date) meta.append(el('span', 'chip chip--muted', formatDisplayDate(task.due_date)));
   if (task.depends_on.length) {
     meta.append(el('span', 'chip chip--muted', `${task.depends_on.length} deps`));
   }

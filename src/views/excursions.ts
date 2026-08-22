@@ -3,6 +3,7 @@ import type { Task } from '@/schemas/task';
 import type { ExcursionTemplate } from '@/schemas/templates';
 import { tasksApi } from '@/services/client-api';
 import { buildExcursionPlan, formatLeadTimes } from '@/domain/excursion';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, toDateKey } from '@/domain/queries';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -97,7 +98,7 @@ function renderExcursionCard(
   const meta = el('div', 'task-row__meta');
   meta.append(
     el('span', 'chip', tplName),
-    el('span', 'chip chip--muted', project.current_end_date ?? 'no date'),
+    el('span', 'chip chip--muted', project.current_end_date ? formatDisplayDate(project.current_end_date) : 'no date'),
     el('span', 'chip chip--muted', `${project.generated_admin_tasks.length} admin tasks`)
   );
   row.append(meta);
@@ -148,7 +149,7 @@ function renderDetail(
     for (const [label, date] of rows) {
       if (!date) continue;
       const li = el('li');
-      li.append(el('span', 'chip', label), el('span', 'chip chip--muted', date));
+      li.append(el('span', 'chip', label), el('span', 'chip chip--muted', formatDisplayDate(date)));
       list.append(li);
     }
     keys.append(list);
@@ -169,7 +170,7 @@ function renderDetail(
       );
       const meta = row.querySelector('.task-row__meta')!;
       meta.append(
-        el('span', 'chip chip--muted', task.due_date?.slice(0, 10) ?? 'undated'),
+        el('span', 'chip chip--muted', task.due_date ? formatDisplayDate(task.due_date) : 'undated'),
         el('span', 'chip', task.priority),
         el('span', 'chip chip--muted', task.source)
       );
@@ -242,7 +243,7 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
         event_date: eventDate.value,
         student_group_reference: group.value
       });
-      preview.textContent = `Will schedule ${plan.admin_tasks.length} tasks · permission ${plan.key_dates.permission_note_due} · risk ${plan.key_dates.risk_assessment_due} · event ${plan.event_date}`;
+      preview.textContent = `Will schedule ${plan.admin_tasks.length} tasks · permission ${formatDisplayDate(plan.key_dates.permission_note_due)} · risk ${formatDisplayDate(plan.key_dates.risk_assessment_due)} · event ${formatDisplayDate(plan.event_date)}`;
     } catch {
       preview.textContent = '';
     }
@@ -283,7 +284,7 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
     });
     showConfirm(
       confirmHost,
-      `Create “${name}” (${tpl.name}) on ${plan.event_date}? This will add ${plan.admin_tasks.length} dated admin tasks and draft the permission note + staff email.`,
+      `Create “${name}” (${tpl.name}) on ${formatDisplayDate(plan.event_date)}? This will add ${plan.admin_tasks.length} dated admin tasks and draft the permission note + staff email.`,
       async () => {
         const result = await tasksApi.createExcursionFromTemplate({
           excursion_template_id: tpl.id,
