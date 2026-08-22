@@ -153,8 +153,9 @@ function renderExportSvg(map: TransitMap): string {
   }
   for (const connector of layout.connectors) {
     const color = COLOR[connector.color] ?? COLOR.wave!;
+    const opacity = connector.under ? ' stroke-opacity="0.72"' : '';
     parts.push(
-      `<path d="${connector.path}" fill="none" stroke="${color}" stroke-width="3"${connector.dash ? ' stroke-dasharray="5 4"' : ''}/>`
+      `<path d="${connector.path}" fill="none" stroke="${color}" stroke-width="3"${connector.dash ? ' stroke-dasharray="5 4"' : ''}${opacity}/>`
     );
   }
   for (const line of layout.lines) {

@@ -1155,6 +1155,10 @@ select.hub-filter {
   stroke-linejoin: round;
 }
 
+.map-connector--under {
+  stroke-opacity: 0.72;
+}
+
 .map-port {
   fill: var(--paper);
   stroke-width: 1.5;

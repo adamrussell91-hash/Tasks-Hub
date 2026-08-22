@@ -70,6 +70,11 @@ export const TickAttachSchema = z.discriminatedUnion('kind', [
     station_id: z.string().min(1),
     side: z.enum(['left', 'right']),
     offset: z.number().min(0).max(1).default(0.5)
+  }),
+  z.object({
+    kind: z.literal('event'),
+    event_id: z.string().min(1),
+    side: z.enum(['left', 'right', 'top', 'bottom']).default('right')
   })
 ]);
 

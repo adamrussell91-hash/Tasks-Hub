@@ -71,6 +71,101 @@ function findLine(map: TransitMap, id: string): MapLine | undefined {
   return map.lines.find((l) => l.id === id);
 }
 
+function lineForTick(map: TransitMap, tick: MapTick | undefined): MapLine | undefined {
+  if (!tick) return undefined;
+  if (tick.attach.kind === 'line') return findLine(map, tick.attach.line_id);
+  if (tick.attach.kind === 'station') {
+    const stationId = tick.attach.station_id;
+    const station = map.stations.find((item) => item.id === stationId);
+    return station ? findLine(map, station.line_id) : undefined;
+  }
+  const hostId = tick.attach.event_id;
+  return lineForTick(
+    map,
+    map.ticks.find((item) => item.id === hostId)
+  );
+}
+
+function fillTargetSelect(
+  select: HTMLSelectElement,
+  map: TransitMap,
+  opts: { includeBlank?: string; skipId?: string | null; selected?: string }
+): void {
+  select.replaceChildren();
+  if (opts.includeBlank !== undefined) {
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = opts.includeBlank;
+    select.append(blank);
+  }
+  const lines = document.createElement('optgroup');
+  lines.label = 'Lines';
+  for (const item of map.lines) {
+    const opt = document.createElement('option');
+    opt.value = `line:${item.id}`;
+    opt.textContent = `${item.letter} · ${item.name}`;
+    if (opts.selected === opt.value) opt.selected = true;
+    lines.append(opt);
+  }
+  select.append(lines);
+  const stations = document.createElement('optgroup');
+  stations.label = 'Stations';
+  for (const item of map.stations) {
+    const line = findLine(map, item.line_id);
+    const opt = document.createElement('option');
+    opt.value = `station:${item.id}`;
+    opt.textContent = `${line?.letter ?? '?'} · ${item.label}`;
+    if (opts.selected === opt.value) opt.selected = true;
+    stations.append(opt);
+  }
+  select.append(stations);
+  const events = document.createElement('optgroup');
+  events.label = 'Competitions';
+  for (const item of map.ticks) {
+    if (item.id === opts.skipId) continue;
+    const opt = document.createElement('option');
+    opt.value = `event:${item.id}`;
+    opt.textContent = item.label;
+    if (opts.selected === opt.value) opt.selected = true;
+    events.append(opt);
+  }
+  select.append(events);
+}
+
+function attachSelectValue(tick: MapTick): string {
+  if (tick.attach.kind === 'station') return `station:${tick.attach.station_id}`;
+  if (tick.attach.kind === 'event') return `event:${tick.attach.event_id}`;
+  return `line:${tick.attach.line_id}`;
+}
+
+function connectSelectValue(map: TransitMap, connectsTo: string | null): string {
+  if (!connectsTo) return '';
+  const text = connectsTo.toLowerCase();
+  const event = map.ticks.find(
+    (tick) => tick.id.toLowerCase() === text || tick.label.toLowerCase() === text || text.includes(tick.label.toLowerCase())
+  );
+  if (event) return `event:${event.id}`;
+  const line = map.lines.find(
+    (item) => text.includes(item.name.toLowerCase()) || text.includes(item.id.toLowerCase())
+  );
+  return line ? `line:${line.id}` : '';
+}
+
+function parseAttachValue(value: string, fallbackLineId: string, fallbackY: number): MapTick['attach'] {
+  const [kind, id] = value.split(':');
+  if (kind === 'station' && id) return { kind: 'station', station_id: id, side: 'right', offset: 0.5 };
+  if (kind === 'event' && id) return { kind: 'event', event_id: id, side: 'right' };
+  return { kind: 'line', line_id: id || fallbackLineId, y: fallbackY };
+}
+
+function parseConnectValue(value: string, map: TransitMap): string | null {
+  if (!value) return null;
+  const [kind, id] = value.split(':');
+  if (kind === 'event') return map.ticks.find((tick) => tick.id === id)?.label ?? id ?? null;
+  if (kind === 'line') return map.lines.find((item) => item.id === id)?.name ?? null;
+  return null;
+}
+
 function svgEl<K extends keyof SVGElementTagNameMap>(
   tag: K,
   attrs: Record<string, string>
@@ -151,13 +246,13 @@ function portDot(x: number, y: number, id: string, color: string): SVGCircleElem
   });
 }
 
-function connectorPath(d: string, color: string, dash: boolean): SVGPathElement {
+function connectorPath(d: string, color: string, dash: boolean, under = false): SVGPathElement {
   const path = svgEl('path', {
     d,
     fill: 'none',
     stroke: color,
     'stroke-width': '3',
-    class: 'map-connector'
+    class: under ? 'map-connector map-connector--under' : 'map-connector'
   });
   if (dash) path.setAttribute('stroke-dasharray', '5 4');
   return path;
@@ -207,6 +302,12 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
   }
 
   const localConnectors = new Set<string>();
+  for (const connector of layout.connectors) {
+    if (!connector.under) continue;
+    localConnectors.add(connector.id);
+    root.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash, true));
+  }
+
   for (const line of layout.lines) {
     const color = strokeOf(line.color);
     const group = svgEl('g', {
@@ -251,11 +352,12 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
     group.append(head);
 
     for (const connector of layout.connectors) {
+      if (connector.under) continue;
       const fromLine = ownerLineId(layout, connector.from.ownerId, connector.from.owner);
       const toLine = ownerLineId(layout, connector.to.ownerId, connector.to.owner);
       if (fromLine !== line.id || toLine !== line.id) continue;
       localConnectors.add(connector.id);
-      group.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash));
+      group.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash, false));
     }
 
     for (const station of layout.stations.filter((item) => item.line_id === line.id)) {
@@ -619,16 +721,9 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       preview.hidden = false;
       const kind = selectedStation ? 'Station' : 'Event';
       const item = selectedStation ?? selectedTick!;
-      const tickAttach = selectedTick?.attach;
       const line = selectedStation
         ? findLine(current, selectedStation.line_id)
-        : tickAttach?.kind === 'line'
-          ? findLine(current, tickAttach.line_id)
-          : findLine(
-              current,
-              current.stations.find((s) => tickAttach?.kind === 'station' && s.id === tickAttach.station_id)
-                ?.line_id ?? ''
-            );
+        : lineForTick(current, selectedTick);
       preview.append(el('p', 'graph-preview__eyebrow', kind), el('h3', 'graph-preview__title', item.label));
       const dates = [item.starts_on, item.ends_on]
         .filter(Boolean)
@@ -664,6 +759,21 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           if (item.link?.id === project.id) opt.selected = true;
           link.append(opt);
         }
+        const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
+        attachTo.setAttribute('aria-label', 'Attach to');
+        const also = el('select', 'hub-filter') as HTMLSelectElement;
+        also.setAttribute('aria-label', 'Also connect to');
+        if (selectedTick) {
+          fillTargetSelect(attachTo, current, {
+            skipId: selectedTick.id,
+            selected: attachSelectValue(selectedTick)
+          });
+          fillTargetSelect(also, current, {
+            includeBlank: 'No extra connection',
+            skipId: selectedTick.id,
+            selected: connectSelectValue(current, selectedTick.connects_to)
+          });
+        }
         const save = el('button', 'btn btn--primary', 'Save');
         save.type = 'button';
         save.addEventListener('click', () => {
@@ -677,6 +787,12 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
             selectedStation.y = next.y;
             selectedStation.height = next.height;
           } else if (selectedTick) {
+            selectedTick.attach = parseAttachValue(
+              attachTo.value,
+              current.lines[0]?.id ?? '',
+              selectedTick.attach.kind === 'line' ? selectedTick.attach.y : 200
+            );
+            selectedTick.connects_to = parseConnectValue(also.value, current);
             const next = applyDateToTickAttach(selectedTick, year);
             selectedTick.attach = next.attach;
           }
@@ -697,6 +813,9 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         form.append(name);
         form.append(selectedStation ? field('Starts', start) : field('Date', start));
         if (selectedStation) form.append(field('Ends', end));
+        if (selectedTick) {
+          form.append(field('Attach to', attachTo), field('Also connect to', also));
+        }
         form.append(link, save, del);
         preview.append(form);
       }
@@ -746,7 +865,7 @@ function renderDraftForm(
   const copy = {
     line: 'A new vertical line for the calendar year, from T1 through E.',
     station: 'A program on one line. Start and end dates place it on the year.',
-    event: 'A competition or one-off. The date is the station on the year.'
+    event: 'A competition. Attach it to a line, a station, or another competition’s border.'
   };
   card.append(
     el('p', 'page-header__eyebrow', 'Proposed write'),
@@ -776,12 +895,20 @@ function renderDraftForm(
   }
   const start = dateInput(terms.t1, kind === 'event' ? 'Date' : 'Starts');
   const end = dateInput(terms.e, 'Ends');
+  const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
+  attachTo.setAttribute('aria-label', 'Attach to');
+  fillTargetSelect(attachTo, map, {
+    selected: map.lines[0] ? `line:${map.lines[0].id}` : ''
+  });
+  const also = el('select', 'hub-filter') as HTMLSelectElement;
+  also.setAttribute('aria-label', 'Also connect to');
+  fillTargetSelect(also, map, { includeBlank: 'No extra connection' });
 
   if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color));
   else if (kind === 'station') {
     card.append(field('Name', name), field('Line', line), field('Starts', start), field('Ends', end));
   } else {
-    card.append(field('Name', name), field('Line', line), field('Date', start));
+    card.append(field('Name', name), field('Attach to', attachTo), field('Also connect to', also), field('Date', start));
   }
 
   const actions = el('div', 'confirm-card__actions');
@@ -831,9 +958,9 @@ function renderDraftForm(
       const draftTick: MapTick = {
         id: newId('tk'),
         label: title,
-        attach: { kind: 'line', line_id: line.value || map.lines[0]!.id, y: 200 },
+        attach: parseAttachValue(attachTo.value, map.lines[0]!.id, 200),
         stroke: 'solid',
-        connects_to: null,
+        connects_to: parseConnectValue(also.value, map),
         starts_on: start.value || terms.t1,
         ends_on: null,
         link: null

@@ -24,10 +24,12 @@ import {
   labelHitsForeignLine,
   layoutMap,
   lineStrokeBox,
+  matchConnectTarget,
   placeBox,
   schoolTerms,
   spanWeeks,
   stationPorts,
+  underpassLaneY,
   wrapEventLines
 } from '@/domain/maps-layout';
 import { mapsOrSeed } from '@/views/maps';
@@ -80,13 +82,17 @@ describe('crossings', () => {
 });
 
 describe('ticks', () => {
-  it('attaches to a line or a station side', () => {
+  it('attaches to a line, a station side, or another event port', () => {
     const onLine = attachTick({ kind: 'line', line_id: 'j', y: 120 });
     const onStation = attachTick({ kind: 'station', station_id: 'st_ydp', side: 'right', offset: 0.4 });
+    const onEvent = attachTick({ kind: 'event', event_id: 'tk_locke', side: 'bottom' });
     expect(onLine.kind).toBe('line');
     expect(onStation.kind).toBe('station');
+    expect(onEvent.kind).toBe('event');
     if (onStation.kind !== 'station') throw new Error('expected station attach');
     expect(onStation.side).toBe('right');
+    if (onEvent.kind !== 'event') throw new Error('expected event attach');
+    expect(onEvent.side).toBe('bottom');
   });
 });
 
@@ -118,6 +124,10 @@ describe('MindWorks 2026 seed', () => {
     );
     expect(map.ticks.some((t) => t.attach.kind === 'line')).toBe(true);
     expect(map.ticks.some((t) => t.attach.kind === 'station')).toBe(true);
+    expect(map.ticks.some((t) => t.attach.kind === 'event')).toBe(true);
+    expect(map.ticks.some((t) => t.connects_to && /MUNA|Locke|Innovation|Reasoning|Justice/i.test(t.connects_to))).toBe(
+      true
+    );
     expect(map.lines.find((l) => l.letter === 'J')?.color).toBe('navy');
     expect(map.stations.every((s) => s.starts_on && s.ends_on)).toBe(true);
   });
@@ -175,6 +185,38 @@ describe('year layout', () => {
   it('gives an event four cardinal ports', () => {
     const ports = eventPorts({ id: 'tk', cx: 80, cy: 80 });
     expect(ports.map((p) => p.side).sort()).toEqual(['bottom', 'left', 'right', 'top']);
+  });
+
+  it('connects a competition to another competition’s border', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    const eventToEvent = layout.connectors.filter(
+      (link) => link.from.owner === 'event' && link.to.owner === 'event'
+    );
+    expect(eventToEvent.length).toBeGreaterThan(0);
+    const moot = layout.ticks.find((tick) => tick.id === 'tk_moot');
+    const locke = layout.ticks.find((tick) => tick.id === 'tk_locke');
+    expect(moot && locke).toBeTruthy();
+    expect(layout.connectors.some((link) => link.id.includes('tk_moot') && link.id.includes('tk_locke') || (link.from.ownerId === 'tk_locke' && link.to.ownerId === 'tk_moot') || (link.from.ownerId === 'tk_moot' && link.to.ownerId === 'tk_locke'))).toBe(true);
+    const target = matchConnectTarget('Rotary MUNA', layout.lines, layout.ticks);
+    expect(target?.kind).toBe('event');
+  });
+
+  it('sends a crossing connector below other elements, not over them', () => {
+    const wall = { id: 'wall', x: 40, y: 80, w: 20, h: 100 };
+    const from = { x: 10, y: 90 };
+    const to = { x: 120, y: 95 };
+    const y = underpassLaneY(from, to, [wall], 8);
+    expect(y).toBeGreaterThanOrEqual(Math.max(from.y, to.y));
+    expect(y).toBeGreaterThanOrEqual(wall.y + wall.h);
+    const layout = layoutMap(mindWorks2026Map());
+    const under = layout.connectors.filter((link) => link.under);
+    expect(under.length).toBeGreaterThan(0);
+    for (const link of under) {
+      const match = /V ([\d.]+) H/.exec(link.path);
+      if (!match) continue;
+      const lane = Number(match[1]);
+      expect(lane).toBeGreaterThanOrEqual(Math.min(link.from.y, link.to.y) - 1);
+    }
   });
 
   it('connects events through ports and keeps line groups packed', () => {

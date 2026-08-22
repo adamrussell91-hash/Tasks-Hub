@@ -101,32 +101,35 @@ export function mindWorks2026Map(): TransitMap {
         'John Locke Essay Competition',
         { kind: 'station', station_id: 'st_mock', side: 'right', offset: 0.25 },
         '2026-08-05',
-        { connects_to: 'Connects to Reasoning' }
+        { connects_to: 'Reasoning' }
       ),
       tick(
         'tk_moot',
         'Bond University Mooting',
-        { kind: 'station', station_id: 'st_mock', side: 'right', offset: 0.7 },
+        { kind: 'event', event_id: 'tk_locke', side: 'bottom' },
         '2026-09-10',
-        { stroke: 'dotted' }
+        { stroke: 'dotted', connects_to: 'Justice' }
       ),
       tick(
         'tk_davinci',
         'da Vinci Decathlon',
         { kind: 'line', line_id: 'line_innovation', y: 260 },
-        '2026-05-22'
+        '2026-05-22',
+        { connects_to: 'Rotary MUNA' }
       ),
       tick(
         'tk_unsw',
         'UNSW Mathematics Competition',
-        { kind: 'line', line_id: 'line_innovation', y: 300 },
-        '2026-08-18'
+        { kind: 'event', event_id: 'tk_davinci', side: 'bottom' },
+        '2026-08-18',
+        { connects_to: 'Innovation' }
       ),
       tick(
         'tk_evatt',
         'UN Evatt Competition',
         { kind: 'station', station_id: 'st_advocacy', side: 'right', offset: 0.55 },
-        '2026-08-01'
+        '2026-08-01',
+        { connects_to: 'Rotary MUNA' }
       )
     ]
   });

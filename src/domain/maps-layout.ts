@@ -55,6 +55,7 @@ export type LaidConnector = {
   path: string;
   color: MapColorToken;
   dash: boolean;
+  under: boolean;
 };
 
 export type LaidLine = {
@@ -369,15 +370,37 @@ export function routedOrthogonalPath(
   if (!stripHits(to.y, from.x, to.x, obstacles, pad)) {
     return `M ${from.x} ${from.y} V ${to.y} H ${to.x}`;
   }
-  for (let step = 1; step < 48; step += 1) {
-    for (const y of [from.y - step * 12, from.y + step * 12, to.y - step * 12, to.y + step * 12]) {
-      if (y < MAP_YEAR_TOP || y > MAP_YEAR_BOTTOM) continue;
-      if (!stripHits(y, from.x, to.x, obstacles, pad)) {
-        return `M ${from.x} ${from.y} V ${y} H ${to.x} V ${to.y}`;
-      }
-    }
+  return underpassPath(from, to, obstacles, pad);
+}
+
+export function underpassLaneY(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  obstacles: LabelBox[],
+  pad = 10
+): number {
+  const startY = Math.max(from.y, to.y);
+  if (!stripHits(startY, from.x, to.x, obstacles, pad)) return startY;
+  for (let y = startY + 12; y <= MAP_YEAR_BOTTOM + 48; y += 12) {
+    if (!stripHits(y, from.x, to.x, obstacles, pad)) return y;
   }
-  return orthogonalPath(from, to);
+  const left = Math.min(from.x, to.x);
+  const right = Math.max(from.x, to.x);
+  const crossed = obstacles.filter((box) => !(box.x + box.w < left || box.x > right));
+  const floor = crossed.reduce((max, box) => Math.max(max, box.y + box.h + pad), startY);
+  return Math.min(MAP_YEAR_BOTTOM + 48, floor);
+}
+
+export function underpassPath(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  obstacles: LabelBox[],
+  pad = 10
+): string {
+  if (Math.abs(from.x - to.x) < 1) return `M ${from.x} ${from.y} V ${to.y}`;
+  const y = underpassLaneY(from, to, obstacles, pad);
+  if (Math.abs(from.y - y) < 1 && Math.abs(to.y - y) < 1) return `M ${from.x} ${from.y} H ${to.x}`;
+  return `M ${from.x} ${from.y} V ${y} H ${to.x} V ${to.y}`;
 }
 
 function oppositeSide(side: PortSide): PortSide {
@@ -562,12 +585,134 @@ function resolveTickLabel(
   tick.labelBox = placeBox(tick.labelBox, [...occupied, ...obstacles], canvas);
 }
 
-function matchLine(connectsTo: string | null, lines: LaidLine[]): LaidLine | null {
+export function matchLine(connectsTo: string | null, lines: LaidLine[]): LaidLine | null {
   if (!connectsTo) return null;
   const text = connectsTo.toLowerCase();
   return (
     lines.find((line) => text.includes(line.name.toLowerCase()) || text.includes(` ${line.letter.toLowerCase()}`)) ??
     null
+  );
+}
+
+export type ConnectTarget =
+  | { kind: 'event'; tick: LaidTick }
+  | { kind: 'line'; line: LaidLine };
+
+export function matchConnectTarget(
+  connectsTo: string | null,
+  lines: LaidLine[],
+  ticks: LaidTick[]
+): ConnectTarget | null {
+  if (!connectsTo) return null;
+  const text = connectsTo.trim().toLowerCase();
+  const byId = ticks.find((tick) => tick.id.toLowerCase() === text);
+  if (byId) return { kind: 'event', tick: byId };
+  const exact = ticks.find((tick) => tick.label.toLowerCase() === text);
+  if (exact) return { kind: 'event', tick: exact };
+  const partial = ticks.find((tick) => tick.label.length >= 6 && text.includes(tick.label.toLowerCase()));
+  if (partial) return { kind: 'event', tick: partial };
+  const line = matchLine(connectsTo, lines);
+  return line ? { kind: 'line', line } : null;
+}
+
+function finishTick(
+  tick: MapTick,
+  lineId: string,
+  color: MapColorToken,
+  x0: number,
+  y0: number,
+  cx: number,
+  cy: number,
+  labelSide: PortSide
+): LaidTick {
+  const laid: LaidTick = {
+    id: tick.id,
+    label: tick.label,
+    color,
+    lineId,
+    x0,
+    y0,
+    cx,
+    cy,
+    dash: tick.stroke === 'dotted',
+    connects_to: tick.connects_to,
+    labelBox: { id: `tk-${tick.id}`, x: 0, y: 0, w: 10, h: 10 },
+    labelSide,
+    ports: []
+  };
+  laid.labelBox = labelForSide(laid, labelSide);
+  laid.ports = eventPorts(laid);
+  return laid;
+}
+
+function placeTick(
+  raw: MapTick,
+  year: number,
+  yearTop: number,
+  lines: LaidLine[],
+  stations: LaidStation[],
+  placed: LaidTick[]
+): LaidTick | null {
+  const tick = applyDateToTickAttach(raw, year);
+  const attach = tick.attach;
+  if (attach.kind === 'event') {
+    const host = placed.find((item) => item.id === attach.event_id);
+    if (!host) return null;
+    const port = host.ports.find((item) => item.side === attach.side) ?? host.ports[0]!;
+    const side = attach.side;
+    if (side === 'top' || side === 'bottom') {
+      const dir = side === 'bottom' ? 1 : -1;
+      return finishTick(
+        tick,
+        host.lineId,
+        host.color,
+        port.x,
+        port.y,
+        port.x,
+        port.y + dir * MAP_EVENT_STEM,
+        host.labelSide
+      );
+    }
+    const dir = side === 'left' ? -1 : 1;
+    return finishTick(
+      tick,
+      host.lineId,
+      host.color,
+      port.x,
+      port.y,
+      port.x + dir * MAP_EVENT_STEM,
+      port.y,
+      side
+    );
+  }
+  if (attach.kind === 'line') {
+    const line = lines.find((item) => item.id === attach.line_id);
+    const lineIndex = lines.findIndex((item) => item.id === attach.line_id);
+    if (!line) return null;
+    const y0 = tick.starts_on ? dateToY(tick.starts_on, year) : remapLegacyY(attach.y);
+    let side: PortSide = 'right';
+    if (lineIndex <= 0) side = 'left';
+    else if (lineIndex >= lines.length - 1) side = 'right';
+    else side = lineIndex < lines.length / 2 ? 'right' : 'left';
+    const dir = side === 'left' ? -1 : 1;
+    return finishTick(tick, line.id, line.color, line.x, y0, line.x + dir * MAP_EVENT_STEM, y0, side);
+  }
+  const station = stations.find((item) => item.id === attach.station_id);
+  const line = lines.find((item) => item.id === station?.line_id);
+  if (!station || !line) return null;
+  const port = nearestPort(station.ports, attach.side, station.y + station.h * attach.offset);
+  const x0 = port?.x ?? station.x + (attach.side === 'left' ? -station.w / 2 : station.w / 2);
+  const y0 = port?.y ?? station.y + station.h * attach.offset;
+  const dir = attach.side === 'left' ? -1 : 1;
+  return finishTick(
+    tick,
+    line.id,
+    line.color,
+    x0,
+    y0,
+    x0 + dir * MAP_EVENT_STEM,
+    y0,
+    attach.side
   );
 }
 
@@ -670,56 +815,31 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
   const stations = assignStationLanes(drafted);
 
   const ticks: LaidTick[] = [];
-  for (const raw of map.ticks) {
-    const tick = applyDateToTickAttach(raw, year);
-    const attach = tick.attach;
-    let lineId = '';
-    let x0 = MAP_FIRST_LINE_X;
-    let y0 = yearTop;
-    let color: MapColorToken = 'wave';
-    let side: PortSide = 'right';
-    if (attach.kind === 'line') {
-      const line = lines.find((item) => item.id === attach.line_id);
-      const lineIndex = lines.findIndex((item) => item.id === attach.line_id);
-      if (!line) continue;
-      lineId = line.id;
-      x0 = line.x;
-      y0 = tick.starts_on ? dateToY(tick.starts_on, year) : remapLegacyY(attach.y);
-      color = line.color;
-      if (lineIndex <= 0) side = 'left';
-      else if (lineIndex >= lines.length - 1) side = 'right';
-      else side = lineIndex < lines.length / 2 ? 'right' : 'left';
-    } else {
-      const station = stations.find((item) => item.id === attach.station_id);
-      const source = map.stations.find((item) => item.id === attach.station_id);
-      const line = lines.find((item) => item.id === source?.line_id);
-      if (!station || !line) continue;
-      lineId = line.id;
-      side = attach.side;
-      const port = nearestPort(station.ports, attach.side, station.y + station.h * attach.offset);
-      x0 = port?.x ?? station.x + (attach.side === 'left' ? -station.w / 2 : station.w / 2);
-      y0 = port?.y ?? station.y + station.h * attach.offset;
-      color = line.color;
+  const pending = [...map.ticks];
+  let spins = 0;
+  while (pending.length && spins < map.ticks.length + 3) {
+    spins += 1;
+    const leftover: MapTick[] = [];
+    for (const raw of pending) {
+      const laid = placeTick(raw, year, yearTop, lines, stations, ticks);
+      if (laid) ticks.push(laid);
+      else leftover.push(raw);
     }
-    const dir = side === 'left' ? -1 : 1;
-    const laid: LaidTick = {
-      id: tick.id,
-      label: tick.label,
-      color,
-      lineId,
-      x0,
-      y0,
-      cx: x0 + dir * MAP_EVENT_STEM,
-      cy: y0,
-      dash: tick.stroke === 'dotted',
-      connects_to: tick.connects_to,
-      labelBox: { id: `tk-${tick.id}`, x: 0, y: 0, w: 10, h: 10 },
-      labelSide: side === 'left' ? 'left' : 'right',
-      ports: []
-    };
-    laid.labelBox = labelForSide(laid, laid.labelSide);
-    laid.ports = eventPorts(laid);
-    ticks.push(laid);
+    if (leftover.length === pending.length) {
+      for (const raw of leftover) {
+        const fallback = placeTick(
+          { ...raw, attach: { kind: 'line', line_id: lines[0]?.id ?? '', y: 200 } },
+          year,
+          yearTop,
+          lines,
+          stations,
+          ticks
+        );
+        if (fallback) ticks.push(fallback);
+      }
+      break;
+    }
+    pending.splice(0, pending.length, ...leftover);
   }
   separateEventMarks(ticks);
 
@@ -760,6 +880,9 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
     if (attach.kind === 'station') {
       const station = stations.find((item) => item.id === attach.station_id);
       from = station ? nearestPort(station.ports, attach.side, tick.y0) : null;
+    } else if (attach.kind === 'event') {
+      const host = ticks.find((item) => item.id === attach.event_id);
+      from = host?.ports.find((port) => port.side === attach.side) ?? host?.ports[0] ?? null;
     } else {
       const line = lines.find((item) => item.id === attach.line_id);
       if (line) {
@@ -774,22 +897,31 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
         };
       }
     }
-    const toSide = from?.side ? oppositeSide(from.side === 'top' || from.side === 'bottom' ? 'right' : from.side) : 'left';
+    const toSide = from?.side ? oppositeSide(from.side) : 'left';
     const to = tick.ports.find((port) => port.side === toSide) ?? tick.ports[2] ?? null;
-    const ownIds = new Set([tick.labelBox.id, `mark-${tick.id}`, attach.kind === 'station' ? `st-${attach.station_id}` : '']);
+    const ownIds = new Set([
+      tick.labelBox.id,
+      `mark-${tick.id}`,
+      attach.kind === 'station' ? `st-${attach.station_id}` : '',
+      attach.kind === 'event' ? `mark-${attach.event_id}` : '',
+      attach.kind === 'event' ? `tk-${attach.event_id}` : ''
+    ]);
     const blocked = pathObstacles.filter((box) => !ownIds.has(box.id));
     if (from && to) {
+      const crosses = Math.abs(from.x - to.x) > MAP_EVENT_STEM + 8;
       connectors.push({
         id: `link-${tick.id}`,
         from,
         to,
-        path: routedOrthogonalPath(from, to, blocked),
+        path: crosses ? underpassPath(from, to, blocked) : routedOrthogonalPath(from, to, blocked),
         color: tick.color,
-        dash: tick.dash
+        dash: tick.dash,
+        under: crosses
       });
     }
-    const other = matchLine(tick.connects_to, lines);
-    if (other) {
+    const target = matchConnectTarget(tick.connects_to, lines, ticks.filter((item) => item.id !== tick.id));
+    if (target?.kind === 'line') {
+      const other = target.line;
       const out = nearestPort(tick.ports, other.x >= tick.cx ? 'right' : 'left', tick.cy) ?? tick.ports[3]!;
       const dest: ConnectorPort = {
         id: `${other.id}:in:${tick.id}`,
@@ -804,9 +936,28 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
         id: `cross-${tick.id}`,
         from: out,
         to: dest,
-        path: routedOrthogonalPath(out, dest, blocked.filter((box) => box.id !== `disc-${other.id}`)),
+        path: underpassPath(out, dest, blocked.filter((box) => box.id !== `disc-${other.id}` && box.id !== `line-${other.id}`)),
         color: other.color,
-        dash: true
+        dash: true,
+        under: true
+      });
+    } else if (target?.kind === 'event') {
+      const other = target.tick;
+      const toward: PortSide = other.cx >= tick.cx ? 'right' : 'left';
+      const out = nearestPort(tick.ports, toward, tick.cy) ?? tick.ports[3]!;
+      const dest = nearestPort(other.ports, oppositeSide(toward), tick.cy) ?? other.ports[2]!;
+      connectors.push({
+        id: `event-${tick.id}-${other.id}`,
+        from: out,
+        to: dest,
+        path: underpassPath(
+          out,
+          dest,
+          blocked.filter((box) => box.id !== other.labelBox.id && box.id !== `mark-${other.id}`)
+        ),
+        color: other.color,
+        dash: true,
+        under: true
       });
     }
   }
