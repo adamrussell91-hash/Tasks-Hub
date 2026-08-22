@@ -69,17 +69,8 @@ function renderTaskRow(
   }
   const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
   done.type = 'button';
-  done.addEventListener('click', async () => {
-    done.disabled = true;
-    const label = done.textContent;
-    done.textContent = 'Saving…';
-    try {
-      await onToggle(task);
-    } catch (err) {
-      done.disabled = false;
-      done.textContent = label;
-      row.append(el('p', 'empty-state', errorMessage(err)));
-    }
+  done.addEventListener('click', () => {
+    onToggle(task);
   });
   actions.append(done);
   if (onDelete) {

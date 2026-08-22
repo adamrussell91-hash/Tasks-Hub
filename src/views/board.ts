@@ -5,6 +5,7 @@ import { openTasks } from '@/domain/queries';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { showConfirmWrite } from '@/views/feedback';
+import { requestToggleDone } from '@/views/dashboard';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -96,9 +97,6 @@ function renderCard(
     const done = el('button', 'btn btn--primary', 'Done');
     done.type = 'button';
     done.addEventListener('click', () => {
-      done.disabled = true;
-      done.textContent = 'Saving…';
-      card.dataset.status = 'done';
       onMove(task, 'done');
     });
     actions.append(done);
@@ -189,6 +187,10 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
           projects,
           confirmHost,
           async (t, status) => {
+            if (status === 'done') {
+              requestToggleDone(confirmHost, t, () => renderBoardView(canvas));
+              return;
+            }
             try {
               await tasksApi.updateTask(t.id, { status });
               await renderBoardView(canvas);
