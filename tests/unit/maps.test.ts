@@ -25,6 +25,8 @@ import {
   layoutMap,
   lineStrokeBox,
   matchConnectTarget,
+  moveLine,
+  normalizeLineColors,
   placeBox,
   schoolTerms,
   spanWeeks,
@@ -129,6 +131,9 @@ describe('MindWorks 2026 seed', () => {
       true
     );
     expect(map.lines.find((l) => l.letter === 'J')?.color).toBe('navy');
+    expect(map.lines.find((l) => l.letter === 'I')?.color).toBe('high-sea');
+    expect(map.lines.find((l) => l.letter === 'E')?.color).toBe('success');
+    expect(map.lines.find((l) => l.letter === 'R')?.color).toBe('lilac');
     expect(map.stations.every((s) => s.starts_on && s.ends_on)).toBe(true);
   });
 });
@@ -269,7 +274,7 @@ describe('year layout', () => {
         ...base.ticks,
         {
           id: 'tk_wide',
-          label: 'A very long festival of ideas and public speaking',
+          label: 'SupercalifragilisticexpialidociousFestivalOfIdeasChampionship',
           attach: { kind: 'line', line_id: 'line_justice', y: 220 },
           stroke: 'solid',
           connects_to: null,
@@ -283,6 +288,50 @@ describe('year layout', () => {
     const grownI = grown.lines.find((line) => line.id === 'line_innovation')!.x;
     expect(grownI).toBeGreaterThan(firstI);
     expect(labelHitsForeignLine(grown)).toBe(false);
+  });
+
+  it('keeps every line lane the same width', () => {
+    const xs = layoutMap(mindWorks2026Map())
+      .lines.map((line) => line.x)
+      .sort((a, b) => a - b);
+    const gaps = xs.slice(1).map((x, index) => x - xs[index]!);
+    expect(gaps.length).toBeGreaterThan(1);
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(1);
+  });
+
+  it('keeps competition chips in a column beside the diamond', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    for (const tick of layout.ticks) {
+      expect(tick.labelBox.x).toBeGreaterThan(tick.cx);
+      expect(Math.abs(tick.labelBox.x - (tick.cx + 36))).toBeLessThan(8);
+    }
+  });
+
+  it('moves a line and its lane left or right', () => {
+    const map = mindWorks2026Map();
+    const ids = map.lines.map((line) => line.id);
+    const shifted = moveLine(map.lines, 'line_innovation', -1);
+    expect(shifted.map((line) => line.id)).toEqual([
+      'line_innovation',
+      'line_justice',
+      ...ids.slice(2)
+    ]);
+    const laid = layoutMap({ ...map, lines: shifted });
+    const justice = laid.lines.find((line) => line.id === 'line_justice')!;
+    const innovation = laid.lines.find((line) => line.id === 'line_innovation')!;
+    expect(innovation.x).toBeLessThan(justice.x);
+    expect(laid.stations.filter((station) => station.line_id === 'line_innovation').every((station) => station.lineX === innovation.x)).toBe(
+      true
+    );
+  });
+
+  it('repaints stored Innovation ink as High Sea', () => {
+    const dirty = mindWorks2026Map();
+    dirty.lines = dirty.lines.map((line) =>
+      line.letter === 'I' ? { ...line, color: 'high-sea-ink' as const } : line
+    );
+    expect(normalizeLineColors(dirty).lines.find((line) => line.letter === 'I')?.color).toBe('high-sea');
+    expect(mapsOrSeed([dirty])[0]!.lines.find((line) => line.letter === 'I')?.color).toBe('high-sea');
   });
 });
 
@@ -339,5 +388,7 @@ describe('export', () => {
     expect(html).not.toContain('+ Program');
     expect(html).not.toContain('hub-rail');
     expect(html).toContain('Young Diplomats Program');
+    expect(html).toContain('#f68620');
+    expect(html).not.toContain('r="4"');
   });
 });

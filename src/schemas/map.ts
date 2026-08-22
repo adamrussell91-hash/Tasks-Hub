@@ -6,6 +6,7 @@ export const MapColorTokenSchema = z.enum([
   'wave',
   'success',
   'lilac',
+  'high-sea',
   'high-sea-ink',
   'marine',
   'navy',

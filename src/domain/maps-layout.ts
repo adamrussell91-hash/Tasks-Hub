@@ -6,16 +6,17 @@ export function lineX(line: { points: Point[] }): number {
 }
 
 export const MAP_YEAR_TOP = 168;
-export const MAP_YEAR_BOTTOM = 1380;
+export const MAP_YEAR_BOTTOM = 1680;
 export const MAP_LEFT = 88;
-export const MAP_LINE_GAP = 320;
-export const MAP_FIRST_LINE_X = 260;
+export const MAP_LINE_GAP = 280;
+export const MAP_FIRST_LINE_X = 200;
 export const MAP_DISC_R = 30;
 export const MAP_STATION_W = 52;
 export const MAP_TICK_R = 14;
-export const MAP_LABEL_PAD = 20;
-export const MAP_PORT_GAP = 108;
-export const MAP_EVENT_STEM = 92;
+export const MAP_LABEL_PAD = 16;
+export const MAP_PORT_GAP = 36;
+export const MAP_LANE_MIN = 248;
+export const MAP_EVENT_STEM = 64;
 export const MAP_CHIP_PAD = 6;
 export const MAP_LINE_STROKE = 8;
 
@@ -518,8 +519,8 @@ function separateEventMarks(ticks: LaidTick[]): void {
   const ordered = [...ticks].sort((a, b) => a.cy - b.cy || a.cx - b.cx);
   for (let i = 0; i < ordered.length; i += 1) {
     const tick = ordered[i]!;
-    const dir = tick.cx >= tick.x0 ? 1 : -1;
-    let lane = 0;
+    const side: PortSide = tick.cx >= tick.x0 ? 'right' : 'left';
+    let steps = 0;
     while (
       ordered.slice(0, i).some((other) =>
         boxesOverlap(eventMarkBox(tick), eventMarkBox(other)) ||
@@ -528,34 +529,51 @@ function separateEventMarks(ticks: LaidTick[]): void {
         boxesOverlap(eventMarkBox(tick), other.labelBox)
       )
     ) {
-      lane += 1;
-      tick.cx = tick.x0 + dir * (MAP_EVENT_STEM + lane * (MAP_TICK_R * 2 + 40));
-      tick.labelBox = labelForSide(tick, tick.cx >= tick.x0 ? 'right' : 'left');
-      if (lane > 6) {
-        tick.cy += 28;
-        tick.labelBox = labelForSide(tick, tick.cx >= tick.x0 ? 'right' : 'left');
-      }
-      if (lane > 12) break;
+      steps += 1;
+      tick.cy += 22;
+      tick.labelBox = labelForSide(tick, side);
+      if (steps > 16) break;
     }
     tick.ports = eventPorts(tick);
   }
 }
 
+function laneNeed(line: LaidLine, stations: LaidStation[], ticks: LaidTick[]): number {
+  const box = lineContentBox(line, stations, ticks);
+  const left = Math.max(0, line.x - box.x);
+  const right = Math.max(0, box.x + box.w - line.x);
+  return Math.max(MAP_LANE_MIN, left + right + MAP_PORT_GAP);
+}
+
 function packLines(lines: LaidLine[], stations: LaidStation[], ticks: LaidTick[]): void {
+  if (!lines.length) return;
   const ordered = [...lines].sort((a, b) => a.x - b.x);
+  const laneW = Math.max(MAP_LANE_MIN, ...ordered.map((line) => laneNeed(line, stations, ticks)));
   let cursor = MAP_FIRST_LINE_X;
   for (const line of ordered) {
-    const box = lineContentBox(line, stations, ticks);
-    const need = cursor - box.x;
-    if (need > 0) shiftX(line, stations, ticks, need);
-    const after = lineContentBox(line, stations, ticks);
-    cursor = after.x + after.w + MAP_PORT_GAP;
+    shiftX(line, stations, ticks, cursor - line.x);
+    cursor += laneW;
   }
 }
 
-function preferredLabelSides(outward: PortSide): PortSide[] {
-  const opposite = outward === 'left' ? 'right' : 'left';
-  return [outward, 'top', 'bottom', opposite];
+export function moveLine(lines: MapLine[], id: string, delta: -1 | 1): MapLine[] {
+  const index = lines.findIndex((line) => line.id === id);
+  const next = index + delta;
+  if (index < 0 || next < 0 || next >= lines.length) return lines;
+  const copy = [...lines];
+  const [item] = copy.splice(index, 1);
+  copy.splice(next, 0, item!);
+  return copy;
+}
+
+export function normalizeLineColors(map: TransitMap): TransitMap {
+  const lines = map.lines.map((line) => {
+    if (line.letter.toUpperCase() === 'I' && line.color === 'high-sea-ink') {
+      return { ...line, color: 'high-sea' as const };
+    }
+    return line;
+  });
+  return { ...map, lines };
 }
 
 function resolveTickLabel(
@@ -564,18 +582,16 @@ function resolveTickLabel(
   canvas: { width: number; height: number },
   obstacles: LabelBox[]
 ): void {
-  const outward: PortSide = tick.cx >= tick.x0 ? 'right' : 'left';
-  const sides = preferredLabelSides(outward);
-  for (const side of sides) {
-    const box = labelForSide(tick, side);
-    const others = [...occupied, ...obstacles].filter((item) => item.id !== box.id && item.id !== `mark-${tick.id}`);
-    if (!others.some((item) => boxesOverlap(box, item))) {
-      tick.labelBox = box;
-      tick.labelSide = side;
-      return;
-    }
+  const side: PortSide = tick.cx >= tick.x0 ? 'right' : 'left';
+  let box = labelForSide(tick, side);
+  const others = [...occupied, ...obstacles].filter((item) => item.id !== box.id && item.id !== `mark-${tick.id}`);
+  let steps = 0;
+  while (others.some((item) => boxesOverlap(box, item)) && steps < 28) {
+    box = { ...box, y: Math.min(canvas.height - box.h - 8, box.y + 18) };
+    steps += 1;
   }
-  tick.labelBox = placeBox(tick.labelBox, [...occupied, ...obstacles], canvas);
+  tick.labelBox = box;
+  tick.labelSide = side;
 }
 
 export function matchLine(connectsTo: string | null, lines: LaidLine[]): LaidLine | null {
@@ -680,15 +696,9 @@ function placeTick(
   }
   if (attach.kind === 'line') {
     const line = lines.find((item) => item.id === attach.line_id);
-    const lineIndex = lines.findIndex((item) => item.id === attach.line_id);
     if (!line) return null;
     const y0 = tick.starts_on ? dateToY(tick.starts_on, year) : remapLegacyY(attach.y);
-    let side: PortSide = 'right';
-    if (lineIndex <= 0) side = 'left';
-    else if (lineIndex >= lines.length - 1) side = 'right';
-    else side = lineIndex < lines.length / 2 ? 'right' : 'left';
-    const dir = side === 'left' ? -1 : 1;
-    return finishTick(tick, line.id, line.color, line.x, y0, line.x + dir * MAP_EVENT_STEM, y0, side);
+    return finishTick(tick, line.id, line.color, line.x, y0, line.x + MAP_EVENT_STEM, y0, 'right');
   }
   const station = stations.find((item) => item.id === attach.station_id);
   const line = lines.find((item) => item.id === station?.line_id);
@@ -986,10 +996,11 @@ export function labelHitsForeignLine(layout: MapCanvasLayout): boolean {
 
 export const LINE_COLORS: MapColorToken[] = [
   'navy',
-  'high-sea-ink',
+  'high-sea',
   'success',
   'lilac',
   'wave',
+  'high-sea-ink',
   'marine',
   'depth'
 ];

@@ -1069,6 +1069,11 @@ select.hub-filter {
   color: var(--ink);
 }
 
+.map-key__item .hub-icon-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
 .map-key__disc {
   display: inline-grid;
   place-items: center;
@@ -1100,15 +1105,34 @@ select.hub-filter {
   background: var(--cotton);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  min-height: 28rem;
-  overflow: auto;
+  min-height: 56rem;
+  height: calc(100vh - 14rem);
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-stage.is-panning,
+.map-stage.is-panning .map-svg {
+  cursor: grabbing;
+}
+
+.map-stage.is-joining,
+.map-stage.is-joining .map-svg {
+  cursor: crosshair;
+}
+
+.map-stage.is-edit .map-station,
+.map-stage.is-edit .map-tick,
+.map-stage.is-edit .map-line-group--track {
+  cursor: grab;
 }
 
 .map-svg {
   display: block;
   width: 100%;
-  min-height: 48rem;
-  height: 70vh;
+  height: 100%;
+  min-height: 56rem;
 }
 
 .map-zoom {

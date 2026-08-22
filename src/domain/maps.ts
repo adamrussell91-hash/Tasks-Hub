@@ -125,6 +125,7 @@ const COLOR: Record<string, string> = {
   wave: '#376fb7',
   success: '#2f7a4f',
   lilac: '#5d4e70',
+  'high-sea': '#f68620',
   'high-sea-ink': '#a85a0c',
   marine: '#142b51',
   navy: '#17375e',
@@ -135,6 +136,7 @@ const FILL: Record<string, string> = {
   wave: '#dceafa',
   success: '#dce8d8',
   lilac: '#e8e0ef',
+  'high-sea': '#f1e2b6',
   'high-sea-ink': '#f3e4c8',
   marine: '#dceafa',
   navy: '#dceafa',
@@ -156,7 +158,7 @@ function renderExportSvg(map: TransitMap): string {
     parts.push(
       `<line x1="${line.x}" y1="${line.y0}" x2="${line.x}" y2="${line.y1}" stroke="${color}" stroke-width="8"/>`,
       `<circle cx="${line.disc.cx}" cy="${line.disc.cy}" r="${line.disc.r}" fill="${color}"/>`,
-      `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="#fbf8f2" font-weight="700">${escapeHtml(line.letter)}</text>`
+      `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="${line.color === 'high-sea' ? '#0a1536' : '#fbf8f2'}" font-weight="700">${escapeHtml(line.letter)}</text>`
     );
   }
   for (const connector of layout.connectors) {
@@ -178,9 +180,6 @@ function renderExportSvg(map: TransitMap): string {
       `<rect x="${station.x - station.w / 2}" y="${station.y}" width="${station.w}" height="${station.h}" rx="14" fill="${fill}" stroke="${color}" stroke-width="3.5"/>`,
       `<text transform="rotate(-90 ${station.x} ${station.y + station.h / 2})" x="${station.x}" y="${station.y + station.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}" font-weight="600">${escapeHtml(station.label)}</text>`
     );
-    for (const port of station.ports) {
-      parts.push(`<circle cx="${port.x}" cy="${port.y}" r="4" fill="#fbf8f2" stroke="${color}" stroke-width="1.5"/>`);
-    }
   }
   for (const tick of layout.ticks) {
     const color = COLOR[tick.color] ?? COLOR.wave!;
@@ -194,9 +193,6 @@ function renderExportSvg(map: TransitMap): string {
         })
         .join('')}</text>`
     );
-    for (const port of tick.ports) {
-      parts.push(`<circle cx="${port.x}" cy="${port.y}" r="4" fill="#fbf8f2" stroke="${color}" stroke-width="1.5"/>`);
-    }
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="100%" height="100%">${parts.join('')}</svg>`;
 }

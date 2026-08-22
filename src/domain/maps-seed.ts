@@ -72,7 +72,7 @@ export function mindWorks2026Map(): TransitMap {
     updated_at: STAMP,
     lines: [
       col('line_justice', 'Justice', 'J', 'navy', 200),
-      col('line_innovation', 'Innovation', 'I', 'high-sea-ink', 440),
+      col('line_innovation', 'Innovation', 'I', 'high-sea', 440),
       col('line_expression', 'Expression', 'E', 'success', 680),
       col('line_reasoning', 'Reasoning', 'R', 'lilac', 920)
     ],
