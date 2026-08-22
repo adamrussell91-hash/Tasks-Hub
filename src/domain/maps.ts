@@ -157,8 +157,8 @@ function renderExportSvg(map: TransitMap): string {
     const color = COLOR[line.color] ?? COLOR.wave!;
     parts.push(
       `<line x1="${line.x}" y1="${line.y0}" x2="${line.x}" y2="${line.y1}" stroke="${color}" stroke-width="8"/>`,
-      `<circle cx="${line.disc.cx}" cy="${line.disc.cy}" r="${line.disc.r}" fill="${color}"/>`,
-      `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="${line.color === 'high-sea' ? '#0a1536' : '#fbf8f2'}" font-weight="700">${escapeHtml(line.letter)}</text>`
+      `<circle cx="${line.disc.cx}" cy="${line.disc.cy}" r="${line.disc.r}" fill="${line.color === 'high-sea' ? '#f1e2b6' : color}"${line.color === 'high-sea' ? ` stroke="${color}" stroke-width="3"` : ''}/>`,
+      `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="${line.color === 'high-sea' ? '#a85a0c' : '#fbf8f2'}" font-weight="700">${escapeHtml(line.letter)}</text>`
     );
   }
   for (const connector of layout.connectors) {

@@ -274,7 +274,18 @@ function ownerLineId(layout: MapCanvasLayout, ownerId: string, owner: string): s
 const lastLineX = new Map<string, number>();
 
 function letterFill(color: MapColorToken): string {
-  return color === 'high-sea' ? 'var(--depth)' : 'var(--paper)';
+  return color === 'high-sea' ? 'var(--high-sea-ink)' : 'var(--paper)';
+}
+
+function discFill(color: MapColorToken): string {
+  return color === 'high-sea' ? 'var(--pastel-gold)' : strokeOf(color);
+}
+
+function slideLine(node: SVGElement, prev: number | undefined, x: number): void {
+  if (prev == null || prev === x) return;
+  node.setAttribute('transform', `translate(${prev - x} 0)`);
+  const reset = () => node.setAttribute('transform', 'translate(0 0)');
+  requestAnimationFrame(() => requestAnimationFrame(reset));
 }
 
 function renderMapSvg(
@@ -325,9 +336,7 @@ function renderMapSvg(
       'data-line': line.id
     });
     const prev = lastLineX.get(line.id);
-    if (prev != null && prev !== line.x) {
-      track.setAttribute('transform', `translate(${prev - line.x} 0)`);
-    }
+    slideLine(track, prev, line.x);
     track.append(
       svgEl('line', {
         x1: String(line.x),
@@ -340,15 +349,18 @@ function renderMapSvg(
       })
     );
     const head = svgEl('g', { class: 'map-line-head' });
-    head.append(
-      svgEl('circle', {
-        cx: String(line.disc.cx),
-        cy: String(line.disc.cy),
-        r: String(line.disc.r),
-        fill: color,
-        class: 'map-line-disc'
-      })
-    );
+    const disc = svgEl('circle', {
+      cx: String(line.disc.cx),
+      cy: String(line.disc.cy),
+      r: String(line.disc.r),
+      fill: discFill(line.color),
+      class: 'map-line-disc'
+    });
+    if (line.color === 'high-sea') {
+      disc.setAttribute('stroke', color);
+      disc.setAttribute('stroke-width', '3');
+    }
+    head.append(disc);
     const letter = svgEl('text', {
       x: String(line.disc.cx),
       y: String(line.disc.cy + 8),
@@ -374,9 +386,7 @@ function renderMapSvg(
       'data-line': line.id
     });
     const prev = lastLineX.get(line.id);
-    if (prev != null && prev !== line.x) {
-      group.setAttribute('transform', `translate(${prev - line.x} 0)`);
-    }
+    slideLine(group, prev, line.x);
     lastLineX.set(line.id, line.x);
 
     for (const connector of layout.connectors) {
@@ -472,11 +482,6 @@ function renderMapSvg(
       group.append(g);
     }
     root.append(group);
-    if (prev != null && prev !== line.x) {
-      requestAnimationFrame(() => {
-        group.setAttribute('transform', 'translate(0 0)');
-      });
-    }
   }
 
   for (const connector of layout.connectors) {
@@ -532,7 +537,7 @@ function hitMap(layout: MapCanvasLayout, x: number, y: number, showPorts: boolea
     if (Math.hypot(x - line.disc.cx, y - line.disc.cy) <= line.disc.r + 6) {
       return { kind: 'line', id: line.id };
     }
-    if (Math.abs(x - line.x) <= 12 && y >= line.y0 - 8 && y <= line.y1 + 8) {
+    if (showPorts && Math.abs(x - line.x) <= 12 && y >= line.y0 - 8 && y <= line.y1 + 8) {
       return { kind: 'line', id: line.id };
     }
   }
@@ -633,6 +638,7 @@ function dateInput(value: string, aria: string): HTMLInputElement {
 }
 
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
+  lastLineX.clear();
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading maps…'));
   const [listed, projects] = await Promise.all([
     tasksApi.listMaps().catch(() => [] as TransitMap[]),
@@ -793,16 +799,21 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       right.type = 'button';
       right.setAttribute('aria-label', `Move ${line.name} right`);
       right.disabled = index === current.lines.length - 1;
-      const shift = async (delta: -1 | 1) => {
+      const shift = (delta: -1 | 1) => {
         current.lines = moveLine(current.lines, line.id, delta);
-        await persist();
         paint();
+        void persist();
       };
       left.addEventListener('click', () => void shift(-1));
       right.addEventListener('click', () => void shift(1));
       const mark = el('span', 'map-key__disc', line.letter);
-      mark.style.background = strokeOf(line.color);
-      if (line.color === 'high-sea') mark.style.color = 'var(--depth)';
+      if (line.color === 'high-sea') {
+        mark.style.background = 'var(--pastel-gold)';
+        mark.style.color = 'var(--high-sea-ink)';
+        mark.style.boxShadow = 'inset 0 0 0 2px var(--high-sea)';
+      } else {
+        mark.style.background = strokeOf(line.color);
+      }
       item.append(left, mark, el('span', 'map-key__name', `${line.name} Line`), right);
       key.append(item);
     }
@@ -812,6 +823,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     const svg = svgEl('svg', {
       class: 'map-svg',
       viewBox: `0 0 ${layout.width} ${layout.height}`,
+      preserveAspectRatio: 'xMinYMin slice',
       'aria-label': `${current.title} · ${year} calendar year`
     });
     renderMapSvg(svg, layout, selectedId, joining);
