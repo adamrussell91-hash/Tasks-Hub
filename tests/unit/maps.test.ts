@@ -20,9 +20,12 @@ import {
   applyDateSpanToStation,
   boxesOverlap,
   dateToY,
+  eventPorts,
   layoutMap,
   placeBox,
-  schoolTerms
+  schoolTerms,
+  spanWeeks,
+  stationPorts
 } from '@/domain/maps-layout';
 import { mapsOrSeed } from '@/views/maps';
 
@@ -144,6 +147,37 @@ describe('year layout', () => {
     const layout = layoutMap(mindWorks2026Map());
     expect(layout.terms.map((t) => t.id)).toEqual(['T1', 'T2', 'T3', 'T4', 'E']);
     expect(layout.lines.map((l) => l.letter).sort()).toEqual(['E', 'I', 'J', 'R']);
+  });
+
+  it('gives a term-length program weekly ports on both sides', () => {
+    expect(spanWeeks('2026-01-27', '2026-04-10', 2026)).toBe(10);
+    const ports = stationPorts({
+      id: 'st_term',
+      x: 200,
+      y: 100,
+      w: 40,
+      h: 200,
+      weeks: 10
+    });
+    expect(ports.filter((p) => p.side === 'left')).toHaveLength(10);
+    expect(ports.filter((p) => p.side === 'right')).toHaveLength(10);
+  });
+
+  it('gives an event four cardinal ports', () => {
+    const ports = eventPorts({ id: 'tk', cx: 80, cy: 80 });
+    expect(ports.map((p) => p.side).sort()).toEqual(['bottom', 'left', 'right', 'top']);
+  });
+
+  it('connects events through ports and keeps line groups packed', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    expect(layout.connectors.length).toBeGreaterThan(0);
+    const mock = layout.stations.find((s) => s.id === 'st_mock');
+    expect(mock?.weeks).toBeGreaterThanOrEqual(10);
+    expect(mock?.ports.filter((p) => p.side === 'left')).toHaveLength(mock!.weeks);
+    const xs = layout.lines.map((line) => line.x).sort((a, b) => a - b);
+    for (let i = 1; i < xs.length; i += 1) {
+      expect(xs[i]! - xs[i - 1]!).toBeGreaterThan(80);
+    }
   });
 
   it('never leaves two label boxes overlapping', () => {

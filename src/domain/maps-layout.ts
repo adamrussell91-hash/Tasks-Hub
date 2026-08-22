@@ -8,14 +8,17 @@ export function lineX(line: { points: Point[] }): number {
 export const MAP_YEAR_TOP = 168;
 export const MAP_YEAR_BOTTOM = 1380;
 export const MAP_LEFT = 88;
-export const MAP_LINE_GAP = 240;
-export const MAP_FIRST_LINE_X = 200;
+export const MAP_LINE_GAP = 280;
+export const MAP_FIRST_LINE_X = 210;
 export const MAP_DISC_R = 20;
 export const MAP_STATION_W = 40;
-export const MAP_TICK_R = 8;
-export const MAP_LABEL_PAD = 8;
+export const MAP_TICK_R = 9;
+export const MAP_LABEL_PAD = 10;
+export const MAP_PORT_GAP = 36;
 
 export type TermId = 'T1' | 'T2' | 'T3' | 'T4' | 'E';
+export type PortSide = 'left' | 'right' | 'top' | 'bottom';
+export type PortOwner = 'station' | 'event' | 'line';
 
 export type TermBand = {
   id: TermId;
@@ -30,6 +33,25 @@ export type LabelBox = {
   y: number;
   w: number;
   h: number;
+};
+
+export type ConnectorPort = {
+  id: string;
+  ownerId: string;
+  owner: PortOwner;
+  side: PortSide;
+  index: number;
+  x: number;
+  y: number;
+};
+
+export type LaidConnector = {
+  id: string;
+  from: ConnectorPort;
+  to: ConnectorPort;
+  path: string;
+  color: MapColorToken;
+  dash: boolean;
 };
 
 export type LaidLine = {
@@ -54,6 +76,8 @@ export type LaidStation = {
   w: number;
   h: number;
   lane: number;
+  weeks: number;
+  ports: ConnectorPort[];
   in_stroke: MapStation['in_stroke'];
   out_stroke: MapStation['out_stroke'];
 };
@@ -62,6 +86,7 @@ export type LaidTick = {
   id: string;
   label: string;
   color: MapColorToken;
+  lineId: string;
   x0: number;
   y0: number;
   cx: number;
@@ -69,6 +94,8 @@ export type LaidTick = {
   dash: boolean;
   connects_to: string | null;
   labelBox: LabelBox;
+  labelSide: PortSide;
+  ports: ConnectorPort[];
 };
 
 export type MapCanvasLayout = {
@@ -81,6 +108,8 @@ export type MapCanvasLayout = {
   lines: LaidLine[];
   stations: LaidStation[];
   ticks: LaidTick[];
+  ports: ConnectorPort[];
+  connectors: LaidConnector[];
   boxes: LabelBox[];
 };
 
@@ -126,6 +155,13 @@ function remapLegacyY(y: number, yearTop = MAP_YEAR_TOP, yearBottom = MAP_YEAR_B
   const oldBottom = 1040;
   const t = Math.min(1, Math.max(0, (y - oldTop) / (oldBottom - oldTop)));
   return yearTop + t * (yearBottom - yearTop);
+}
+
+export function spanWeeks(startsOn: string | null, endsOn: string | null, year: number): number {
+  const start = parseDue(startsOn) ?? new Date(year, 0, 1);
+  const end = parseDue(endsOn) ?? start;
+  const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+  return Math.max(1, Math.round(days / 7));
 }
 
 export function estimateVerticalLabel(text: string, fontSize = 12): { w: number; h: number } {
@@ -179,10 +215,7 @@ export function yearLinePoints(x: number): Array<{ x: number; y: number }> {
   ];
 }
 
-export function applyDateSpanToStation(
-  station: MapStation,
-  year: number
-): MapStation {
+export function applyDateSpanToStation(station: MapStation, year: number): MapStation {
   if (!station.starts_on) return station;
   const y = dateToY(station.starts_on, year);
   const endY = dateToY(station.ends_on || `${year}-12-31`, year);
@@ -202,85 +235,129 @@ export function applyDateToTickAttach(tick: MapTick, year: number): MapTick {
   };
 }
 
-export function layoutMap(map: TransitMap): MapCanvasLayout {
-  const year = map.year ?? new Date().getFullYear();
-  const yearTop = MAP_YEAR_TOP;
-  const yearBottom = MAP_YEAR_BOTTOM;
-  const termsRaw = schoolTerms(year);
-  const terms: TermBand[] = [
-    { id: 'T1', label: 'T1', date: termsRaw.t1, y: dateToY(termsRaw.t1, year) },
-    { id: 'T2', label: 'T2', date: termsRaw.t2, y: dateToY(termsRaw.t2, year) },
-    { id: 'T3', label: 'T3', date: termsRaw.t3, y: dateToY(termsRaw.t3, year) },
-    { id: 'T4', label: 'T4', date: termsRaw.t4, y: dateToY(termsRaw.t4, year) },
-    { id: 'E', label: 'E', date: termsRaw.e, y: dateToY(termsRaw.e, year) }
+export function stationPorts(station: {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  weeks: number;
+}): ConnectorPort[] {
+  const weeks = Math.max(1, station.weeks);
+  const inset = Math.min(18, station.h / 6);
+  const top = station.y + inset;
+  const bottom = station.y + station.h - inset;
+  const span = Math.max(1, bottom - top);
+  const ports: ConnectorPort[] = [];
+  for (const side of ['left', 'right'] as const) {
+    for (let index = 0; index < weeks; index += 1) {
+      const t = weeks === 1 ? 0.5 : index / (weeks - 1);
+      ports.push({
+        id: `${station.id}:${side}:${index}`,
+        ownerId: station.id,
+        owner: 'station',
+        side,
+        index,
+        x: side === 'left' ? station.x - station.w / 2 : station.x + station.w / 2,
+        y: top + t * span
+      });
+    }
+  }
+  return ports;
+}
+
+export function eventPorts(tick: { id: string; cx: number; cy: number; r?: number }): ConnectorPort[] {
+  const r = tick.r ?? MAP_TICK_R;
+  return [
+    { id: `${tick.id}:top`, ownerId: tick.id, owner: 'event', side: 'top', index: 0, x: tick.cx, y: tick.cy - r },
+    { id: `${tick.id}:bottom`, ownerId: tick.id, owner: 'event', side: 'bottom', index: 0, x: tick.cx, y: tick.cy + r },
+    { id: `${tick.id}:left`, ownerId: tick.id, owner: 'event', side: 'left', index: 0, x: tick.cx - r, y: tick.cy },
+    { id: `${tick.id}:right`, ownerId: tick.id, owner: 'event', side: 'right', index: 0, x: tick.cx + r, y: tick.cy }
   ];
+}
 
-  const lines: LaidLine[] = map.lines.map((line) => {
-    const x = lineX(line);
-    return {
-      id: line.id,
-      name: line.name,
-      letter: line.letter,
-      color: line.color,
-      x,
-      y0: yearTop,
-      y1: yearBottom,
-      disc: { cx: x, cy: yearTop - 48, r: MAP_DISC_R }
-    };
-  });
+export function nearestPort(ports: ConnectorPort[], side: PortSide, y: number): ConnectorPort | null {
+  const onSide = ports.filter((port) => port.side === side);
+  if (!onSide.length) return null;
+  return onSide.reduce((best, port) => (Math.abs(port.y - y) < Math.abs(best.y - y) ? port : best));
+}
 
-  const drafted: LaidStation[] = map.stations.map((raw) => {
-    const dated = applyDateSpanToStation(raw, year);
-    const line = map.lines.find((item) => item.id === dated.line_id);
-    const x = line ? lineX(line) : MAP_FIRST_LINE_X;
-    const y = dated.starts_on ? dated.y : remapLegacyY(dated.y);
-    const minH = estimateVerticalLabel(dated.label).h + 28;
-    const h = dated.starts_on
-      ? Math.max(minH, dated.height)
-      : Math.max(minH, remapLegacyY(dated.y + dated.height) - y);
-    return {
-      id: dated.id,
-      line_id: dated.line_id,
-      label: dated.label,
-      color: line?.color ?? 'wave',
-      lineX: x,
-      x,
-      y,
-      w: MAP_STATION_W,
-      h,
-      lane: 0,
-      in_stroke: dated.in_stroke,
-      out_stroke: dated.out_stroke
-    };
-  });
-  const stations = assignStationLanes(drafted);
+export function orthogonalPath(from: { x: number; y: number }, to: { x: number; y: number }): string {
+  if (Math.abs(from.y - to.y) < 1) return `M ${from.x} ${from.y} H ${to.x}`;
+  if (Math.abs(from.x - to.x) < 1) return `M ${from.x} ${from.y} V ${to.y}`;
+  const mid = from.x + (to.x - from.x) / 2;
+  return `M ${from.x} ${from.y} H ${mid} V ${to.y} H ${to.x}`;
+}
 
-  const width = Math.max(1100, ...lines.map((line) => line.x + 220), MAP_FIRST_LINE_X + 220);
-  const height = yearBottom + 80;
-  const occupied: LabelBox[] = [];
+function oppositeSide(side: PortSide): PortSide {
+  if (side === 'left') return 'right';
+  if (side === 'right') return 'left';
+  if (side === 'top') return 'bottom';
+  return 'top';
+}
 
+function labelForSide(
+  tick: { id: string; cx: number; cy: number; label: string },
+  side: PortSide
+): LabelBox {
+  const size = estimateVerticalLabel(tick.label, 12);
+  if (side === 'right') {
+    return { id: `tk-${tick.id}`, x: tick.cx + MAP_TICK_R + 8, y: tick.cy - size.h / 2, w: size.w, h: size.h };
+  }
+  if (side === 'left') {
+    return { id: `tk-${tick.id}`, x: tick.cx - MAP_TICK_R - 8 - size.w, y: tick.cy - size.h / 2, w: size.w, h: size.h };
+  }
+  if (side === 'top') {
+    return { id: `tk-${tick.id}`, x: tick.cx - size.w / 2, y: tick.cy - MAP_TICK_R - 8 - size.h, w: size.w, h: size.h };
+  }
+  return { id: `tk-${tick.id}`, x: tick.cx - size.w / 2, y: tick.cy + MAP_TICK_R + 8, w: size.w, h: size.h };
+}
+
+function shiftX(
+  line: LaidLine,
+  stations: LaidStation[],
+  ticks: LaidTick[],
+  dx: number
+): void {
+  if (!dx) return;
+  line.x += dx;
+  line.disc.cx += dx;
+  for (const station of stations) {
+    if (station.line_id !== line.id) continue;
+    station.lineX += dx;
+    station.x += dx;
+    for (const port of station.ports) port.x += dx;
+  }
+  for (const tick of ticks) {
+    if (tick.lineId !== line.id) continue;
+    tick.x0 += dx;
+    tick.cx += dx;
+    tick.labelBox.x += dx;
+    for (const port of tick.ports) port.x += dx;
+  }
+}
+
+function exclusiveBoxes(
+  terms: TermBand[],
+  lines: LaidLine[],
+  stations: LaidStation[],
+  ticks: LaidTick[]
+): LabelBox[] {
+  const boxes: LabelBox[] = [];
   for (const term of terms) {
-    occupied.push({ id: `term-${term.id}`, x: 10, y: term.y - 16, w: 36, h: 32 });
+    boxes.push({ id: `term-${term.id}`, x: 18, y: term.y - 16, w: 36, h: 32 });
   }
   for (const line of lines) {
-    occupied.push({
+    boxes.push({
       id: `disc-${line.id}`,
       x: line.disc.cx - line.disc.r,
       y: line.disc.cy - line.disc.r,
       w: line.disc.r * 2,
       h: line.disc.r * 2
     });
-    const name = estimateHorizontalLabel(line.name, 13);
-    occupied.push({
-      id: `linename-${line.id}`,
-      x: line.disc.cx + line.disc.r + 8,
-      y: line.disc.cy - name.h / 2,
-      w: name.w,
-      h: name.h
-    });
   }
   for (const station of stations) {
-    occupied.push({
+    boxes.push({
       id: `st-${station.id}`,
       x: station.x - station.w / 2,
       y: station.y,
@@ -288,69 +365,93 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
       h: station.h
     });
   }
-
-  const ticks: LaidTick[] = [];
-  for (const raw of map.ticks) {
-    const tick = applyDateToTickAttach(raw, year);
-    const attach = tick.attach;
-    let x0 = MAP_FIRST_LINE_X;
-    let y0 = yearTop;
-    let color: MapColorToken = 'wave';
-    if (attach.kind === 'line') {
-      const line = map.lines.find((item) => item.id === attach.line_id);
-      if (!line) continue;
-      x0 = lineX(line);
-      y0 = tick.starts_on ? dateToY(tick.starts_on, year) : remapLegacyY(attach.y);
-      color = line.color;
-    } else {
-      const station = stations.find((item) => item.id === attach.station_id);
-      const source = map.stations.find((item) => item.id === attach.station_id);
-      const line = map.lines.find((item) => item.id === source?.line_id);
-      if (!station || !line) continue;
-      x0 = station.x + (attach.side === 'left' ? -station.w / 2 : station.w / 2);
-      y0 = station.y + station.h * attach.offset;
-      color = line.color;
-    }
-    const preferRight = attach.kind === 'station' ? attach.side !== 'left' : true;
-    const dir = preferRight ? 1 : -1;
-    const cx = x0 + dir * 28;
-    const cy = y0;
-    const size = estimateVerticalLabel(tick.label, 12);
-    const preferred: LabelBox = {
-      id: `tk-${tick.id}`,
-      x: dir > 0 ? cx + MAP_TICK_R + 6 : cx - MAP_TICK_R - 6 - size.w,
-      y: cy - size.h / 2,
-      w: size.w,
-      h: size.h
-    };
-    const labelBox = placeBox(preferred, occupied, { width, height });
-    occupied.push(labelBox);
-    ticks.push({
-      id: tick.id,
-      label: tick.label,
-      color,
-      x0,
-      y0,
-      cx,
-      cy,
-      dash: tick.stroke === 'dotted',
-      connects_to: tick.connects_to,
-      labelBox
+  for (const tick of ticks) {
+    boxes.push({
+      id: `mark-${tick.id}`,
+      x: tick.cx - MAP_TICK_R,
+      y: tick.cy - MAP_TICK_R,
+      w: MAP_TICK_R * 2,
+      h: MAP_TICK_R * 2
     });
+    boxes.push(tick.labelBox);
   }
-
-  return { width, height, year, yearTop, yearBottom, terms, lines, stations, ticks, boxes: occupied };
+  return boxes;
 }
 
-export const LINE_COLORS: MapColorToken[] = [
-  'navy',
-  'high-sea-ink',
-  'success',
-  'lilac',
-  'wave',
-  'marine',
-  'depth'
-];
+function lineContentBox(
+  line: LaidLine,
+  stations: LaidStation[],
+  ticks: LaidTick[]
+): LabelBox {
+  const parts: LabelBox[] = [
+    {
+      id: `disc-${line.id}`,
+      x: line.disc.cx - line.disc.r,
+      y: line.disc.cy - line.disc.r,
+      w: line.disc.r * 2 + 8,
+      h: line.disc.r * 2 + 24
+    }
+  ];
+  for (const station of stations.filter((item) => item.line_id === line.id)) {
+    parts.push({
+      id: station.id,
+      x: station.x - station.w / 2,
+      y: station.y,
+      w: station.w,
+      h: station.h
+    });
+  }
+  for (const tick of ticks.filter((item) => item.lineId === line.id)) {
+    parts.push(tick.labelBox, {
+      id: `mark-${tick.id}`,
+      x: tick.cx - MAP_TICK_R,
+      y: tick.cy - MAP_TICK_R,
+      w: MAP_TICK_R * 2,
+      h: MAP_TICK_R * 2
+    });
+  }
+  const x0 = Math.min(...parts.map((p) => p.x));
+  const y0 = Math.min(...parts.map((p) => p.y));
+  const x1 = Math.max(...parts.map((p) => p.x + p.w));
+  const y1 = Math.max(...parts.map((p) => p.y + p.h));
+  return { id: `group-${line.id}`, x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+function packLines(lines: LaidLine[], stations: LaidStation[], ticks: LaidTick[]): void {
+  const ordered = [...lines].sort((a, b) => a.x - b.x);
+  let cursor = MAP_FIRST_LINE_X;
+  for (const line of ordered) {
+    const box = lineContentBox(line, stations, ticks);
+    const left = box.x;
+    const need = cursor - left;
+    if (need > 0) shiftX(line, stations, ticks, need);
+    const after = lineContentBox(line, stations, ticks);
+    cursor = after.x + after.w + MAP_PORT_GAP;
+  }
+}
+
+function resolveTickLabel(tick: LaidTick, occupied: LabelBox[], canvas: { width: number; height: number }): void {
+  const sides: PortSide[] = ['right', 'left', 'top', 'bottom'];
+  for (const side of sides) {
+    const box = labelForSide(tick, side);
+    const others = occupied.filter((item) => item.id !== box.id);
+    if (!others.some((item) => boxesOverlap(box, item))) {
+      tick.labelBox = box;
+      tick.labelSide = side;
+      return;
+    }
+  }
+  tick.labelBox = placeBox(tick.labelBox, occupied, canvas);
+}
+
+function matchLine(connectsTo: string | null, lines: LaidLine[]): LaidLine | null {
+  if (!connectsTo) return null;
+  const text = connectsTo.toLowerCase();
+  return (
+    lines.find((line) => text.includes(line.name.toLowerCase()) || text.includes(` ${line.letter.toLowerCase()}`)) ??
+    null
+  );
+}
 
 function assignStationLanes(stations: LaidStation[]): LaidStation[] {
   const byLine = new Map<string, LaidStation[]>();
@@ -378,17 +479,237 @@ function assignStationLanes(stations: LaidStation[]): LaidStation[] {
       ) {
         lane += 1;
       }
-      const shifted = {
+      const shifted: LaidStation = {
         ...station,
         lane,
-        x: station.lineX + lane * 52
+        x: station.lineX + lane * 52,
+        ports: []
       };
+      shifted.ports = stationPorts(shifted);
       lanes.push(shifted);
       out.push(shifted);
     }
   }
   return out;
 }
+
+export function layoutMap(map: TransitMap): MapCanvasLayout {
+  const year = map.year ?? new Date().getFullYear();
+  const yearTop = MAP_YEAR_TOP;
+  const yearBottom = MAP_YEAR_BOTTOM;
+  const termsRaw = schoolTerms(year);
+  const terms: TermBand[] = [
+    { id: 'T1', label: 'T1', date: termsRaw.t1, y: dateToY(termsRaw.t1, year) },
+    { id: 'T2', label: 'T2', date: termsRaw.t2, y: dateToY(termsRaw.t2, year) },
+    { id: 'T3', label: 'T3', date: termsRaw.t3, y: dateToY(termsRaw.t3, year) },
+    { id: 'T4', label: 'T4', date: termsRaw.t4, y: dateToY(termsRaw.t4, year) },
+    { id: 'E', label: 'E', date: termsRaw.e, y: dateToY(termsRaw.e, year) }
+  ];
+
+  const lines: LaidLine[] = map.lines.map((line, index) => {
+    const x = MAP_FIRST_LINE_X + index * MAP_LINE_GAP;
+    return {
+      id: line.id,
+      name: line.name,
+      letter: line.letter,
+      color: line.color,
+      x,
+      y0: yearTop,
+      y1: yearBottom,
+      disc: { cx: x, cy: yearTop - 48, r: MAP_DISC_R }
+    };
+  });
+
+  const drafted: LaidStation[] = map.stations.map((raw) => {
+    const dated = applyDateSpanToStation(raw, year);
+    const line = lines.find((item) => item.id === dated.line_id);
+    const x = line?.x ?? MAP_FIRST_LINE_X;
+    const y = dated.starts_on ? dated.y : remapLegacyY(dated.y);
+    const minH = estimateVerticalLabel(dated.label).h + 28;
+    const h = dated.starts_on
+      ? Math.max(minH, dated.height)
+      : Math.max(minH, remapLegacyY(dated.y + dated.height) - y);
+    const weeks = spanWeeks(dated.starts_on, dated.ends_on, year);
+    const station: LaidStation = {
+      id: dated.id,
+      line_id: dated.line_id,
+      label: dated.label,
+      color: line?.color ?? 'wave',
+      lineX: x,
+      x,
+      y,
+      w: MAP_STATION_W,
+      h,
+      lane: 0,
+      weeks,
+      ports: [],
+      in_stroke: dated.in_stroke,
+      out_stroke: dated.out_stroke
+    };
+    station.ports = stationPorts(station);
+    return station;
+  });
+  const stations = assignStationLanes(drafted);
+
+  const ticks: LaidTick[] = [];
+  for (const raw of map.ticks) {
+    const tick = applyDateToTickAttach(raw, year);
+    const attach = tick.attach;
+    let lineId = '';
+    let x0 = MAP_FIRST_LINE_X;
+    let y0 = yearTop;
+    let color: MapColorToken = 'wave';
+    let side: PortSide = 'right';
+    if (attach.kind === 'line') {
+      const line = lines.find((item) => item.id === attach.line_id);
+      if (!line) continue;
+      lineId = line.id;
+      x0 = line.x;
+      y0 = tick.starts_on ? dateToY(tick.starts_on, year) : remapLegacyY(attach.y);
+      color = line.color;
+    } else {
+      const station = stations.find((item) => item.id === attach.station_id);
+      const source = map.stations.find((item) => item.id === attach.station_id);
+      const line = lines.find((item) => item.id === source?.line_id);
+      if (!station || !line) continue;
+      lineId = line.id;
+      side = attach.side;
+      const port = nearestPort(station.ports, attach.side, station.y + station.h * attach.offset);
+      x0 = port?.x ?? station.x + (attach.side === 'left' ? -station.w / 2 : station.w / 2);
+      y0 = port?.y ?? station.y + station.h * attach.offset;
+      color = line.color;
+    }
+    const dir = side === 'left' ? -1 : 1;
+    const laid: LaidTick = {
+      id: tick.id,
+      label: tick.label,
+      color,
+      lineId,
+      x0,
+      y0,
+      cx: x0 + dir * 56,
+      cy: y0,
+      dash: tick.stroke === 'dotted',
+      connects_to: tick.connects_to,
+      labelBox: { id: `tk-${tick.id}`, x: 0, y: 0, w: 10, h: 10 },
+      labelSide: side === 'left' ? 'left' : 'right',
+      ports: []
+    };
+    laid.labelBox = labelForSide(laid, laid.labelSide);
+    laid.ports = eventPorts(laid);
+    ticks.push(laid);
+  }
+
+  packLines(lines, stations, ticks);
+
+  let width = Math.max(1100, ...lines.map((line) => line.x + 260));
+  const height = yearBottom + 80;
+  const canvas = { width, height };
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    const occupied = exclusiveBoxes(terms, lines, stations, ticks);
+    for (const tick of ticks) {
+      resolveTickLabel(tick, occupied, canvas);
+      const idx = occupied.findIndex((box) => box.id === tick.labelBox.id);
+      if (idx >= 0) occupied[idx] = tick.labelBox;
+      else occupied.push(tick.labelBox);
+    }
+    packLines(lines, stations, ticks);
+    width = Math.max(width, ...lines.map((line) => line.x + 260), ...ticks.map((tick) => tick.labelBox.x + tick.labelBox.w + 40));
+    canvas.width = width;
+  }
+
+  for (const station of stations) station.ports = stationPorts(station);
+  for (const tick of ticks) tick.ports = eventPorts(tick);
+
+  const connectors: LaidConnector[] = [];
+  for (const tick of ticks) {
+    const raw = map.ticks.find((item) => item.id === tick.id);
+    const attach = raw?.attach;
+    if (!attach) continue;
+    let from: ConnectorPort | null = null;
+    if (attach.kind === 'station') {
+      const station = stations.find((item) => item.id === attach.station_id);
+      from = station ? nearestPort(station.ports, attach.side, tick.y0) : null;
+    } else {
+      const line = lines.find((item) => item.id === attach.line_id);
+      if (line) {
+        from = {
+          id: `${line.id}:week:${Math.round(tick.y0)}`,
+          ownerId: line.id,
+          owner: 'line',
+          side: tick.cx >= line.x ? 'right' : 'left',
+          index: 0,
+          x: line.x,
+          y: tick.y0
+        };
+      }
+    }
+    const toSide = from?.side ? oppositeSide(from.side === 'top' || from.side === 'bottom' ? 'right' : from.side) : 'left';
+    const to = tick.ports.find((port) => port.side === toSide) ?? tick.ports[2] ?? null;
+    if (from && to) {
+      connectors.push({
+        id: `link-${tick.id}`,
+        from,
+        to,
+        path: orthogonalPath(from, to),
+        color: tick.color,
+        dash: tick.dash
+      });
+    }
+    const other = matchLine(tick.connects_to, lines);
+    if (other) {
+      const out = nearestPort(tick.ports, other.x >= tick.cx ? 'right' : 'left', tick.cy) ?? tick.ports[3]!;
+      const dest: ConnectorPort = {
+        id: `${other.id}:in:${tick.id}`,
+        ownerId: other.id,
+        owner: 'line',
+        side: other.x >= tick.cx ? 'left' : 'right',
+        index: 0,
+        x: other.x,
+        y: tick.cy
+      };
+      connectors.push({
+        id: `cross-${tick.id}`,
+        from: out,
+        to: dest,
+        path: orthogonalPath(out, dest),
+        color: other.color,
+        dash: true
+      });
+    }
+  }
+
+  const ports = [
+    ...stations.flatMap((station) => station.ports),
+    ...ticks.flatMap((tick) => tick.ports)
+  ];
+  const boxes = exclusiveBoxes(terms, lines, stations, ticks);
+  return {
+    width,
+    height,
+    year,
+    yearTop,
+    yearBottom,
+    terms,
+    lines,
+    stations,
+    ticks,
+    ports,
+    connectors,
+    boxes
+  };
+}
+
+export const LINE_COLORS: MapColorToken[] = [
+  'navy',
+  'high-sea-ink',
+  'success',
+  'lilac',
+  'wave',
+  'marine',
+  'depth'
+];
 
 export function nextLineLetter(lines: MapLine[]): string {
   const used = new Set(lines.map((line) => line.letter.toUpperCase()));

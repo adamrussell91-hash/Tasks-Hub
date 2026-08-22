@@ -151,13 +151,18 @@ function renderExportSvg(map: TransitMap): string {
       `<text x="36" y="${term.y + 4}" text-anchor="middle" font-size="11" fill="#fbf8f2" font-weight="600">${term.label}</text>`
     );
   }
+  for (const connector of layout.connectors) {
+    const color = COLOR[connector.color] ?? COLOR.wave!;
+    parts.push(
+      `<path d="${connector.path}" fill="none" stroke="${color}" stroke-width="3"${connector.dash ? ' stroke-dasharray="5 4"' : ''}/>`
+    );
+  }
   for (const line of layout.lines) {
     const color = COLOR[line.color] ?? COLOR.wave!;
     parts.push(
       `<line x1="${line.x}" y1="${line.y0}" x2="${line.x}" y2="${line.y1}" stroke="${color}" stroke-width="8"/>`,
       `<circle cx="${line.disc.cx}" cy="${line.disc.cy}" r="${line.disc.r}" fill="${color}"/>`,
-      `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="#fbf8f2" font-weight="700">${escapeHtml(line.letter)}</text>`,
-      `<text x="${line.disc.cx + line.disc.r + 10}" y="${line.disc.cy + 5}" font-size="14" fill="${color}" font-weight="600">${escapeHtml(line.name)}</text>`
+      `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="#fbf8f2" font-weight="700">${escapeHtml(line.letter)}</text>`
     );
   }
   for (const station of layout.stations) {
@@ -176,8 +181,7 @@ function renderExportSvg(map: TransitMap): string {
   for (const tick of layout.ticks) {
     const color = COLOR[tick.color] ?? COLOR.wave!;
     parts.push(
-      `<line x1="${tick.x0}" y1="${tick.y0}" x2="${tick.cx}" y2="${tick.cy}" stroke="${color}" stroke-width="3"${tick.dash ? ' stroke-dasharray="4 3"' : ''}/>`,
-      `<circle cx="${tick.cx}" cy="${tick.cy}" r="8" fill="#fbf8f2" stroke="${color}" stroke-width="3.5"/>`,
+      `<circle cx="${tick.cx}" cy="${tick.cy}" r="9" fill="#fbf8f2" stroke="${color}" stroke-width="3.5"/>`,
       `<text transform="rotate(-90 ${tick.labelBox.x + tick.labelBox.w / 2} ${tick.labelBox.y + tick.labelBox.h / 2})" x="${tick.labelBox.x + tick.labelBox.w / 2}" y="${tick.labelBox.y + tick.labelBox.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}">${escapeHtml(tick.label)}</text>`
     );
   }

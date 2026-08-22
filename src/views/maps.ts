@@ -99,7 +99,9 @@ function verticalText(
   return text;
 }
 
-function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: string | null): void {
+const lastLineX = new Map<string, number>();
+
+function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: string | null, showPorts: boolean): void {
   host.replaceChildren();
   host.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
   const root = svgEl('g', { class: 'map-root' });
@@ -134,9 +136,30 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
     root.append(disc);
   }
 
+  for (const connector of layout.connectors) {
+    const path = svgEl('path', {
+      d: connector.path,
+      fill: 'none',
+      stroke: strokeOf(connector.color),
+      'stroke-width': '3',
+      class: 'map-connector'
+    });
+    if (connector.dash) path.setAttribute('stroke-dasharray', '5 4');
+    root.append(path);
+  }
+
   for (const line of layout.lines) {
     const color = strokeOf(line.color);
-    root.append(
+    const group = svgEl('g', {
+      class: 'map-line-group',
+      'data-line': line.id
+    });
+    const prev = lastLineX.get(line.id);
+    if (prev != null && prev !== line.x) {
+      group.setAttribute('transform', `translate(${prev - line.x} 0)`);
+    }
+    lastLineX.set(line.id, line.x);
+    group.append(
       svgEl('line', {
         x1: String(line.x),
         y1: String(line.y0),
@@ -165,101 +188,93 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
       fill: 'var(--paper)'
     });
     letter.textContent = line.letter;
-    const name = svgEl('text', {
-      x: String(line.disc.cx + line.disc.r + 10),
-      y: String(line.disc.cy + 5),
-      class: 'map-line-name',
-      fill: color
-    });
-    name.textContent = line.name;
-    head.append(letter, name);
-    root.append(head);
+    head.append(letter);
+    group.append(head);
+
+    for (const station of layout.stations.filter((item) => item.line_id === line.id)) {
+      const stationColor = strokeOf(station.color);
+      const g = svgEl('g', {
+        class: `map-station${selectedId === station.id ? ' is-selected' : ''}`,
+        'data-id': station.id
+      });
+      if (station.lane > 0) {
+        g.append(
+          svgEl('path', {
+            d: `M ${station.lineX} ${station.y} H ${station.x} V ${station.y + 18}`,
+            fill: 'none',
+            stroke: stationColor,
+            'stroke-width': '6',
+            class: 'map-station__jog'
+          })
+        );
+      }
+      g.append(
+        svgEl('rect', {
+          x: String(station.x - station.w / 2),
+          y: String(station.y),
+          width: String(station.w),
+          height: String(station.h),
+          rx: String(station.w / 2),
+          fill: fillOf(station.color),
+          stroke: stationColor,
+          'stroke-width': '4',
+          class: 'map-station__body'
+        })
+      );
+      g.append(
+        verticalText(station.x, station.y + station.h / 2, station.label, 'map-station__label', stationColor)
+      );
+      group.append(g);
+    }
+
+    for (const tick of layout.ticks.filter((item) => item.lineId === line.id)) {
+      const tickColor = strokeOf(tick.color);
+      const g = svgEl('g', {
+        class: `map-tick${selectedId === tick.id ? ' is-selected' : ''}`,
+        'data-id': tick.id
+      });
+      g.append(
+        svgEl('circle', {
+          cx: String(tick.cx),
+          cy: String(tick.cy),
+          r: '9',
+          fill: 'var(--paper)',
+          stroke: tickColor,
+          'stroke-width': '3.5',
+          class: 'map-tick__mark'
+        })
+      );
+      g.append(
+        verticalText(
+          tick.labelBox.x + tick.labelBox.w / 2,
+          tick.labelBox.y + tick.labelBox.h / 2,
+          tick.label,
+          'map-tick__label',
+          tickColor
+        )
+      );
+      group.append(g);
+    }
+    root.append(group);
+    if (prev != null && prev !== line.x) {
+      requestAnimationFrame(() => {
+        group.setAttribute('transform', 'translate(0 0)');
+      });
+    }
   }
 
-  for (const station of layout.stations) {
-    const color = strokeOf(station.color);
-    const g = svgEl('g', {
-      class: `map-station${selectedId === station.id ? ' is-selected' : ''}`,
-      'data-id': station.id
-    });
-    if (station.lane > 0) {
-      g.append(
-        svgEl('path', {
-          d: `M ${station.lineX} ${station.y} H ${station.x} V ${station.y + 18}`,
-          fill: 'none',
-          stroke: color,
-          'stroke-width': '6',
-          class: 'map-station__jog'
+  if (showPorts) {
+    for (const port of layout.ports) {
+      root.append(
+        svgEl('circle', {
+          cx: String(port.x),
+          cy: String(port.y),
+          r: '3',
+          class: 'map-port',
+          'data-port': port.id
         })
       );
     }
-    g.append(
-      svgEl('rect', {
-        x: String(station.x - station.w / 2),
-        y: String(station.y),
-        width: String(station.w),
-        height: String(station.h),
-        rx: String(station.w / 2),
-        fill: fillOf(station.color),
-        stroke: color,
-        'stroke-width': '4',
-        class: 'map-station__body'
-      })
-    );
-    g.append(
-      verticalText(station.x, station.y + station.h / 2, station.label, 'map-station__label', color)
-    );
-    root.append(g);
-  }
-
-  for (const tick of layout.ticks) {
-    const color = strokeOf(tick.color);
-    const g = svgEl('g', {
-      class: `map-tick${selectedId === tick.id ? ' is-selected' : ''}`,
-      'data-id': tick.id
-    });
-    const stem = svgEl('line', {
-      x1: String(tick.x0),
-      y1: String(tick.y0),
-      x2: String(tick.cx),
-      y2: String(tick.cy),
-      stroke: color,
-      'stroke-width': '3',
-      class: 'map-tick__stem'
-    });
-    if (tick.dash) stem.setAttribute('stroke-dasharray', '4 3');
-    g.append(
-      stem,
-      svgEl('circle', {
-        cx: String(tick.cx),
-        cy: String(tick.cy),
-        r: '8',
-        fill: 'var(--paper)',
-        stroke: color,
-        'stroke-width': '3.5',
-        class: 'map-tick__mark'
-      })
-    );
-    g.append(
-      verticalText(
-        tick.labelBox.x + tick.labelBox.w / 2,
-        tick.labelBox.y + tick.labelBox.h / 2,
-        tick.label,
-        'map-tick__label',
-        color
-      )
-    );
-    if (tick.connects_to) {
-      const note = svgEl('text', {
-        x: String(tick.labelBox.x + tick.labelBox.w + 8),
-        y: String(tick.labelBox.y + 12),
-        class: 'map-tick__note',
-        fill: color
-      });
-      note.textContent = tick.connects_to;
-      g.append(note);
-    }
-    root.append(g);
   }
 
   host.append(root);
@@ -459,7 +474,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       viewBox: `0 0 ${layout.width} ${layout.height}`,
       'aria-label': `${current.title} · ${year} calendar year`
     });
-    renderMapSvg(svg, layout, selectedId);
+    renderMapSvg(svg, layout, selectedId, mode === 'edit');
     const root = svg.querySelector('.map-root');
     if (root) (root as SVGGElement).setAttribute('transform', `scale(${zoom})`);
 
