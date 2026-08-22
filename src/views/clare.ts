@@ -2,7 +2,7 @@ import type { TaskDomain } from '@/schemas/task';
 import type { FrameworkEntry } from '@/schemas/templates';
 import type { ClareProposal } from '@/domain/clare';
 import { tasksApi } from '@/services/client-api';
-import { preferredDomains, toDateKey } from '@/domain/queries';
+import { preferredDomains } from '@/domain/queries';
 import { renderLoadError } from '@/views/feedback';
 
 const SKIP_REASONING_KEY = 'tasks-hub-clare-skip-reasoning';
@@ -54,13 +54,6 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
   const frameworks = templates.frameworks as FrameworkEntry[];
 
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Tell Clare what needs doing. She picks a framework, proposes a time estimate, and learns from your overrides.'
-    )
-  );
 
   const prefs = el('div', 'clare-prefs');
   const skipLabel = el('label', 'clare-prefs__skip');
@@ -73,16 +66,16 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
   canvas.append(prefs);
 
   const form = el('form', 'clare-form');
-  const title = el('input', 'sign-in__input') as HTMLInputElement;
+  const title = el('input', 'hub-search') as HTMLInputElement;
   title.placeholder = 'What needs doing?';
   title.required = true;
   title.setAttribute('aria-label', 'Task');
 
-  const domain = el('select', 'quick-add__select') as HTMLSelectElement;
+  const domain = el('select', 'hub-filter') as HTMLSelectElement;
   domain.setAttribute('aria-label', 'Domain');
   domainOptions(domain, preferredDomains()[0] ?? 'teaching');
 
-  const priority = el('select', 'quick-add__select') as HTMLSelectElement;
+  const priority = el('select', 'hub-filter') as HTMLSelectElement;
   priority.setAttribute('aria-label', 'Priority');
   for (const p of ['medium', 'high', 'urgent', 'low'] as const) {
     const opt = document.createElement('option');
@@ -91,7 +84,7 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
     priority.append(opt);
   }
 
-  const due = el('input', 'sign-in__input') as HTMLInputElement;
+  const due = el('input', 'hub-search') as HTMLInputElement;
   due.type = 'date';
   due.setAttribute('aria-label', 'Due date');
 
@@ -154,7 +147,7 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
         title: text,
         domain: domain.value,
         priority: priority.value,
-        due_date: due.value || toDateKey(new Date())
+        due_date: due.value || null
       });
       paintProposal(proposalHost, confirmHost, proposal, frameworks, () => {
         title.value = '';
@@ -201,7 +194,7 @@ function paintProposal(
 
   const estimateRow = el('div', 'clare-estimate');
   estimateRow.append(el('span', 'chip chip--muted', `Clare: ${proposal.proposed_minutes}m`));
-  const minutes = el('input', 'sign-in__input') as HTMLInputElement;
+  const minutes = el('input', 'hub-search') as HTMLInputElement;
   minutes.type = 'number';
   minutes.min = '5';
   minutes.step = '5';
@@ -210,7 +203,7 @@ function paintProposal(
   estimateRow.append(el('span', undefined, 'Your estimate'), minutes, el('span', undefined, 'min'));
   card.append(estimateRow);
 
-  const fwSelect = el('select', 'quick-add__select') as HTMLSelectElement;
+  const fwSelect = el('select', 'hub-filter') as HTMLSelectElement;
   fwSelect.setAttribute('aria-label', 'Framework');
   for (const fw of frameworks) {
     const opt = document.createElement('option');
@@ -284,4 +277,5 @@ function showConfirm(
   actions.append(discard, confirm);
   card.append(actions);
   host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }

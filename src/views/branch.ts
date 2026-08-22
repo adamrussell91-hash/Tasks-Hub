@@ -4,6 +4,8 @@ import { tasksApi } from '@/services/client-api';
 import { layoutProjectBranch, type BranchNode } from '@/domain/branch';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import { renderGraphFamilyPills } from '@/views/stretch-pills';
+import { renderTaskEditor } from '@/views/task-editor';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -32,10 +34,11 @@ function showPreview(preview: HTMLElement, node: BranchNode, task?: Task): void 
 function mountBranch(
   host: HTMLElement,
   project: Project,
-  tasks: Task[]
+  tasks: Task[],
+  projects: Project[]
 ): void {
   host.replaceChildren();
-  const layout = layoutProjectBranch(project, tasks);
+  const layout = layoutProjectBranch(project, tasks, { colWidth: 260 });
   if (layout.nodes.length <= 1) {
     host.append(
       el(
@@ -101,7 +104,7 @@ function mountBranch(
     rect.setAttribute('y', String(node.y));
     rect.setAttribute('rx', '10');
     rect.setAttribute('ry', '10');
-    rect.setAttribute('width', '160');
+    rect.setAttribute('width', '220');
     rect.setAttribute('height', '36');
     rect.setAttribute('class', 'branch-node__shape');
 
@@ -109,9 +112,23 @@ function mountBranch(
     text.setAttribute('x', String(node.x + 12));
     text.setAttribute('y', String(node.y + 23));
     text.setAttribute('class', 'branch-node__label');
-    text.textContent = node.label.slice(0, 22);
+    text.setAttribute('title', node.label);
+    text.textContent = node.label.length > 26 ? `${node.label.slice(0, 25)}…` : node.label;
 
-    const select = () => showPreview(preview, node, byId.get(node.id));
+    const select = () => {
+      showPreview(preview, node, byId.get(node.id));
+      const task = byId.get(node.id);
+      if (task) {
+        const edit = el('button', 'btn btn--ghost', 'Edit');
+        edit.type = 'button';
+        edit.addEventListener('click', () => {
+          renderTaskEditor(preview, task, projects, () =>
+            mountBranch(host, project, tasks, projects)
+          );
+        });
+        preview.append(edit);
+      }
+    };
     g.addEventListener('click', select);
     g.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -156,13 +173,7 @@ export async function renderBranchView(canvas: HTMLElement): Promise<void> {
   const active = projects.filter((p) => p.status !== 'archived_dead');
 
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'One project at a time — parent links as solid branches, depends_on as dashed edges.'
-    )
-  );
+  canvas.append(renderGraphFamilyPills('branch'));
 
   if (!active.length) {
     canvas.append(el('p', 'empty-state', 'No active projects to branch.'));
@@ -191,7 +202,7 @@ export async function renderBranchView(canvas: HTMLElement): Promise<void> {
 
   const paint = () => {
     const project = active.find((p) => p.id === projectId) ?? preferred;
-    mountBranch(host, project, tasks);
+    mountBranch(host, project, tasks, active);
   };
   paint();
 }

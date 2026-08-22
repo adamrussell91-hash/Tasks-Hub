@@ -2,6 +2,7 @@ import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { buildProjectGanttRows, formatTick, layoutGantt, type GanttLayout } from '@/domain/gantt';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
+import { renderTaskEditor } from '@/views/task-editor';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -134,13 +135,6 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
   );
 
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Project-level timeline with dependency lines. Pick a project — hub-wide Gantt stays out of scope.'
-    )
-  );
 
   if (!datedProjects.length) {
     canvas.append(
@@ -173,7 +167,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
   legend.append(
     el('span', 'chip', 'task bar'),
     el('span', 'chip chip--muted', '◆ milestone'),
-    el('span', 'chip chip--muted', 'curve = depends_on')
+    el('span', 'chip chip--muted', 'curve = blocked by')
   );
   canvas.append(legend);
 
@@ -198,6 +192,21 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
         el('td', undefined, row.kind),
         el('td', undefined, row.status)
       );
+      if (row.kind === 'task') {
+        tr.tabIndex = 0;
+        tr.setAttribute('role', 'button');
+        const open = () => {
+          const task = tasks.find((t) => t.id === row.id);
+          if (task) renderTaskEditor(host, task, projects, () => void renderGanttView(canvas));
+        };
+        tr.addEventListener('click', open);
+        tr.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            open();
+          }
+        });
+      }
       body.append(tr);
     }
     table.append(body);

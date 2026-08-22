@@ -10,8 +10,16 @@ import {
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
+import { hashQuery } from '@/shell/shell';
+import { renderGraphFamilyPills } from '@/views/stretch-pills';
+import { renderTaskEditor } from '@/views/task-editor';
 
 type GraphMode = 'blockers' | 'workstreams';
+
+function tokenColor(name: string, fallback: string): string {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
 
 type GraphNode = {
   id: string;
@@ -111,7 +119,7 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
         'p',
         'empty-state',
         mode === 'blockers'
-          ? 'No dependency edges match this filter. Clear search or add depends_on on tasks.'
+          ? 'No blocked-by links match this filter. Clear search or add a blocker on a task.'
           : 'No project workstreams match this filter. Assign tasks to a project.'
       )
     );
@@ -170,7 +178,7 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
       const t = typeof link.target === 'object' ? link.target : null;
       if (!s || !t || s.x == null || t.x == null || s.y == null || t.y == null) continue;
       ctx.strokeStyle =
-        link.kind === 'blocker' ? 'rgba(155, 44, 44, 0.45)' : 'rgba(55, 111, 183, 0.35)';
+        link.kind === 'blocker' ? tokenColor('--danger-line', 'rgba(155, 44, 44, 0.28)') : tokenColor('--wave', '#376fb7');
       ctx.beginPath();
       ctx.moveTo(s.x, s.y);
       ctx.lineTo(t.x, t.y);
@@ -183,15 +191,15 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
       ctx.beginPath();
       ctx.fillStyle =
         node.kind === 'project'
-          ? '#17375e'
+          ? tokenColor('--navy', '#17375e')
           : node.id === selected || node === hover
-            ? '#376fb7'
-            : '#244f7c';
+            ? tokenColor('--wave', '#376fb7')
+            : tokenColor('--navy-2', '#244f7c');
       ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
       ctx.fill();
       if (node.id === selected || node === hover) {
-        ctx.fillStyle = '#13233a';
-        ctx.font = '12px Inter, sans-serif';
+        ctx.fillStyle = tokenColor('--ink', '#13233a');
+        ctx.font = `${getComputedStyle(document.documentElement).getPropertyValue('--text-xs') || '12px'} ${getComputedStyle(document.documentElement).getPropertyValue('--font-ui') || 'Inter, sans-serif'}`;
         ctx.fillText(node.label.slice(0, 28), node.x + r + 6, node.y + 4);
       }
     }
@@ -200,7 +208,7 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
   function nodeAt(mx: number, my: number): GraphNode | null {
     for (const node of simNodes) {
       if (node.x == null || node.y == null) continue;
-      const r = node.kind === 'project' ? 18 : 14;
+      const r = node.kind === 'project' ? 22 : 18;
       if (Math.hypot(node.x - mx, node.y - my) <= r) return node;
     }
     return null;
@@ -214,6 +222,19 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
       el('h3', 'graph-preview__title', node.label),
       el('p', 'graph-preview__meta', node.domain ?? node.id)
     );
+    if (node.kind === 'task') {
+      const task = tasks.find((t) => t.id === node.id);
+      if (task) {
+        const edit = el('button', 'btn btn--ghost', 'Edit');
+        edit.type = 'button';
+        edit.addEventListener('click', () => {
+          renderTaskEditor(preview, task, projects, () => {
+            location.hash = '#/board';
+          });
+        });
+        preview.append(edit);
+      }
+    }
     draw();
   }
 
@@ -258,28 +279,16 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading graph…'));
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
 
-  let mode: GraphMode = 'blockers';
+  let mode: GraphMode = hashQuery().get('mode') === 'workstreams' ? 'workstreams' : 'blockers';
   canvas.replaceChildren();
-  canvas.append(
-    el('p', 'view-lede', 'Dependency and project structure. Search / select / preview borrowed from Knowledge Hub.')
-  );
 
   const toolbar = el('div', 'graph-toolbar');
-  const modes = el('div', 'hub-pills');
-  modes.setAttribute('role', 'group');
-  modes.setAttribute('aria-label', 'Graph mode');
-  const blockersBtn = el('button', 'hub-pills__btn is-active', 'Blockers');
-  blockersBtn.type = 'button';
-  blockersBtn.setAttribute('aria-pressed', 'true');
-  const workBtn = el('button', 'hub-pills__btn', 'Workstreams');
-  workBtn.type = 'button';
-  workBtn.setAttribute('aria-pressed', 'false');
-  modes.append(blockersBtn, workBtn);
+  toolbar.append(renderGraphFamilyPills('graph', mode));
   const search = el('input', 'hub-search') as HTMLInputElement;
   search.type = 'search';
   search.placeholder = 'Filter nodes…';
   search.setAttribute('aria-label', 'Filter graph');
-  toolbar.append(modes, search);
+  toolbar.append(search);
   canvas.append(toolbar);
 
   const host = el('div', 'graph-host');
@@ -293,26 +302,9 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
     const filteredProjects = q
       ? projects.filter((p) => p.title.toLowerCase().includes(q))
       : projects;
-    // Keep linked partners for blockers when filtering
     mountGraph(host, filteredTasks.length ? filteredTasks : tasks, filteredProjects, mode);
   };
 
-  blockersBtn.addEventListener('click', () => {
-    mode = 'blockers';
-    blockersBtn.classList.add('is-active');
-    blockersBtn.setAttribute('aria-pressed', 'true');
-    workBtn.classList.remove('is-active');
-    workBtn.setAttribute('aria-pressed', 'false');
-    paint();
-  });
-  workBtn.addEventListener('click', () => {
-    mode = 'workstreams';
-    workBtn.classList.add('is-active');
-    workBtn.setAttribute('aria-pressed', 'true');
-    blockersBtn.classList.remove('is-active');
-    blockersBtn.setAttribute('aria-pressed', 'false');
-    paint();
-  });
   search.addEventListener('input', () => paint());
   paint();
 }

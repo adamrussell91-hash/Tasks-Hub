@@ -305,6 +305,7 @@ function showConfirm(host: HTMLElement, summary: string, onConfirm: () => Promis
   actions.append(cancel, confirm);
   card.append(actions);
   host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
@@ -379,24 +380,39 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     toolbar.append(select, pills, exportBtn, newBtn);
 
     if (mode === 'edit') {
-      const addLine = el('button', 'btn btn--ghost', '+ Line');
-      const addProg = el('button', 'btn btn--ghost', '+ Program');
-      const addComp = el('button', 'btn btn--ghost', '+ Competition');
+      const addLine = el('button', place === 'line' ? 'btn btn--primary' : 'btn btn--ghost', '+ Line');
+      const addProg = el('button', place === 'program' ? 'btn btn--primary' : 'btn btn--ghost', '+ Program');
+      const addComp = el('button', place === 'competition' ? 'btn btn--primary' : 'btn btn--ghost', '+ Competition');
       addLine.type = 'button';
       addProg.type = 'button';
       addComp.type = 'button';
+      addLine.setAttribute('aria-pressed', place === 'line' ? 'true' : 'false');
+      addProg.setAttribute('aria-pressed', place === 'program' ? 'true' : 'false');
+      addComp.setAttribute('aria-pressed', place === 'competition' ? 'true' : 'false');
       addLine.addEventListener('click', () => {
-        place = 'line';
+        place = place === 'line' ? 'idle' : 'line';
+        paint();
       });
       addProg.addEventListener('click', () => {
-        place = 'program';
+        place = place === 'program' ? 'idle' : 'program';
+        paint();
       });
       addComp.addEventListener('click', () => {
-        place = 'competition';
+        place = place === 'competition' ? 'idle' : 'competition';
+        paint();
       });
       toolbar.append(addLine, addProg, addComp);
     }
     canvas.append(toolbar);
+    if (mode === 'edit' && place !== 'idle') {
+      const hint =
+        place === 'line'
+          ? 'Click the map to place a new line.'
+          : place === 'program'
+            ? 'Click a line to add a program station.'
+            : 'Click a line or station to add a competition.';
+      canvas.append(el('p', 'canvas-status', hint));
+    }
 
     const stage = el('div', 'map-stage');
     const svg = svgEl('svg', {
