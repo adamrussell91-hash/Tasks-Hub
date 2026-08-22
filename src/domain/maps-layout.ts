@@ -14,8 +14,8 @@ export const MAP_DISC_R = 30;
 export const MAP_STATION_W = 52;
 export const MAP_TICK_R = 14;
 export const MAP_LABEL_PAD = 20;
-export const MAP_PORT_GAP = 72;
-export const MAP_EVENT_STEM = 76;
+export const MAP_PORT_GAP = 108;
+export const MAP_EVENT_STEM = 92;
 export const MAP_CHIP_PAD = 6;
 export const MAP_LINE_STROKE = 8;
 
@@ -635,11 +635,15 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
     let side: PortSide = 'right';
     if (attach.kind === 'line') {
       const line = lines.find((item) => item.id === attach.line_id);
+      const lineIndex = lines.findIndex((item) => item.id === attach.line_id);
       if (!line) continue;
       lineId = line.id;
       x0 = line.x;
       y0 = tick.starts_on ? dateToY(tick.starts_on, year) : remapLegacyY(attach.y);
       color = line.color;
+      if (lineIndex <= 0) side = 'left';
+      else if (lineIndex >= lines.length - 1) side = 'right';
+      else side = lineIndex < lines.length / 2 ? 'right' : 'left';
     } else {
       const station = stations.find((item) => item.id === attach.station_id);
       const source = map.stations.find((item) => item.id === attach.station_id);
