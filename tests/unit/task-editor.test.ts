@@ -87,7 +87,7 @@ describe('requestToggleDone', () => {
     host.querySelector<HTMLButtonElement>('.btn--primary')?.click();
     await vi.waitFor(() => {
       expect(tasksApi.recordClareActual).toHaveBeenCalledWith('task_audit', 55);
+      expect(onDone).toHaveBeenCalledTimes(1);
     });
-    expect(onDone).toHaveBeenCalledTimes(1);
   });
 });
