@@ -86,7 +86,7 @@ These are not opinions. They are the kit. Cite the rule in the defect.
 - Left rail: `--rail-width: 15rem`. Brand is `<a class="hub-rail__brand" href="#/board">Tasks Hub</a>`, CSS uppercase, `--text-2xs`. Brand click always returns to Board.
 - Every primary destination is `.hub-rail__link`: **distinct** 18px outline icon + title-case label. **No** one shared path for every item. **No** coloured dots. **No** `text-transform: uppercase` on item labels.
 - Eighteen flat destinations is an IA problem. Kit allows `.hub-rail__section` (Home, Plan, Views, Work, Network, Tools). If the rail scrolls on a laptop, say so and propose a section map — do not propose a narrower rail.
-- Refresh and sign out are `.hub-icon-btn` icons inside `.hub-utilities` at the **canvas** top-right, then `.hub-mark` (`icons/tasks.svg`). Copy `design-kit/snippets/hub-utilities.html`. An empty 2rem button with `aria-label="Sign out"` and **no SVG** is a fail. A missing Refresh control is a fail. Labelled pill Sign out / Refresh is a fail.
+- Refresh and sign out are `.hub-icon-btn` icons inside `.hub-utilities` at the **canvas** top-right. Copy `design-kit/snippets/hub-utilities.html`. An empty 2rem button with `aria-label="Sign out"` and **no SVG** is a fail. A missing Refresh control is a fail. Labelled pill Sign out / Refresh is a fail.
 - Hub tile is **not** on the rail.
 
 ### Forms and filters
@@ -119,7 +119,7 @@ Prefix any record you create `[UX-AUDIT]`. Discard destructive confirms on real 
 
 Use the locked gate as the reference.
 
-- Structure: tile `.sign-in__mark` (`icons/tasks.svg`) → brand `Tasks Hub` → title `Sign in` → label `Passphrase` → `#sign-in-passphrase` → submit `Sign in`.
+- Structure: brand `Tasks Hub` → title `Sign in` → label `Passphrase` → `#sign-in-passphrase` → submit `Sign in`. No `.sign-in__mark` / `.hub-mark`.
 - **No** supporting line, purpose copy, privacy note, or extra row.
 - Enter submits (`<form novalidate>`, `type="submit"`). Empty → **Enter your passphrase.** Wrong → **Invalid passphrase**.
 - Judge the card as a user: wash, glass, focus, keyboard, phone width.

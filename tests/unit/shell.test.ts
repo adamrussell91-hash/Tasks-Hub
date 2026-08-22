@@ -46,7 +46,7 @@ describe('hub shell chrome', () => {
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps utilities followed by the hub tile after re-rendering header actions', () => {
+  it('keeps utilities last in header actions and no hub tile', () => {
     const root = document.createElement('div');
     const refs = renderHubShell(root, { onLogout: vi.fn(), onRefresh: vi.fn() });
     const extra = document.createElement('button');
@@ -62,8 +62,8 @@ describe('hub shell chrome', () => {
 
     const actions = [...refs.headerActions.children].map((el) => el.className);
     expect(actions[0]).toContain('btn');
-    expect(actions.at(-2)).toBe('hub-utilities');
-    expect(actions.at(-1)).toBe('hub-mark');
+    expect(actions.at(-1)).toBe('hub-utilities');
+    expect(refs.pageHeader.querySelector('.hub-mark')).toBeNull();
     expect(refs.logoutButton?.getAttribute('aria-label')).toBe('Sign out');
   });
 
