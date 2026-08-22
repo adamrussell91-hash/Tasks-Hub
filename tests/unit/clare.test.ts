@@ -81,6 +81,13 @@ describe('clare estimates + calibration', () => {
     expect(applied.note).toMatch(/add about/i);
   });
 
+  it('uses Adam-facing copy while still learning', () => {
+    const empty = emptyCalibration('teaching', '2026-08-16T00:00:00.000Z');
+    const applied = applyCalibration(60, empty);
+    expect(applied.note).toBe('Estimate will get sharper the more you use Clare.');
+    expect(applied.note).not.toMatch(/negotiations/i);
+  });
+
   it('builds a full proposal', () => {
     const proposal = buildProposal(
       { title: 'Draft unit overview', domain: 'teaching', priority: 'high' },

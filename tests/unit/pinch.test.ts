@@ -46,6 +46,8 @@ describe('pinch points', () => {
     expect(hit!.task_count).toBeGreaterThanOrEqual(3);
     expect(hit!.shrink.length).toBeGreaterThan(0);
     expect(hit!.shrink.some((s) => s.kind === 'defer' || s.kind === 'delegate')).toBe(true);
+    expect(hit!.summary).toContain('17/08/26');
+    expect(hit!.summary).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
   it('marks denser days overloaded', () => {
