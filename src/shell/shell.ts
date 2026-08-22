@@ -137,16 +137,6 @@ function mountUtilities(refs: HubShellRefs): HTMLElement {
   return utilities;
 }
 
-function hubMark(): HTMLImageElement {
-  const mark = document.createElement('img');
-  mark.className = 'hub-mark';
-  mark.src = new URL('icons/tasks.svg', document.baseURI).href;
-  mark.alt = '';
-  mark.width = 32;
-  mark.height = 32;
-  return mark;
-}
-
 /** Shell from design-kit/snippets/shell.html — Tasks brand + labeled rail. */
 export function renderHubShell(root: HTMLElement, options: HubShellOptions = {}): HubShellRefs {
   root.replaceChildren();
@@ -203,7 +193,7 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
     refreshButton
   };
 
-  headerActions.append(mountUtilities(refs), hubMark());
+  headerActions.append(mountUtilities(refs));
   pageHeader.append(headerActions);
   canvasWrap.append(pageHeader, canvas);
   layout.append(rail, canvasWrap);
@@ -268,7 +258,7 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   refs.pageHeader.append(copy);
   refs.headerActions.replaceChildren();
   if (config.actions) refs.headerActions.append(config.actions);
-  refs.headerActions.append(mountUtilities(refs), hubMark());
+  refs.headerActions.append(mountUtilities(refs));
   refs.pageHeader.append(refs.headerActions);
 }
 
