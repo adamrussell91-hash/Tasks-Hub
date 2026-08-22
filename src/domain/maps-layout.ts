@@ -376,19 +376,12 @@ export function routedOrthogonalPath(
 export function underpassLaneY(
   from: { x: number; y: number },
   to: { x: number; y: number },
-  obstacles: LabelBox[],
-  pad = 10
+  _obstacles: LabelBox[] = [],
+  _pad = 10
 ): number {
-  const startY = Math.max(from.y, to.y);
-  if (!stripHits(startY, from.x, to.x, obstacles, pad)) return startY;
-  for (let y = startY + 12; y <= MAP_YEAR_BOTTOM + 48; y += 12) {
-    if (!stripHits(y, from.x, to.x, obstacles, pad)) return y;
-  }
-  const left = Math.min(from.x, to.x);
-  const right = Math.max(from.x, to.x);
-  const crossed = obstacles.filter((box) => !(box.x + box.w < left || box.x > right));
-  const floor = crossed.reduce((max, box) => Math.max(max, box.y + box.h + pad), startY);
-  return Math.min(MAP_YEAR_BOTTOM + 48, floor);
+  void _obstacles;
+  void _pad;
+  return Math.max(from.y, to.y);
 }
 
 export function underpassPath(

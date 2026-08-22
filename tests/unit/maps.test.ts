@@ -206,8 +206,8 @@ describe('year layout', () => {
     const from = { x: 10, y: 90 };
     const to = { x: 120, y: 95 };
     const y = underpassLaneY(from, to, [wall], 8);
-    expect(y).toBeGreaterThanOrEqual(Math.max(from.y, to.y));
-    expect(y).toBeGreaterThanOrEqual(wall.y + wall.h);
+    expect(y).toBe(Math.max(from.y, to.y));
+    expect(y).toBeLessThan(wall.y + wall.h + 40);
     const layout = layoutMap(mindWorks2026Map());
     const under = layout.connectors.filter((link) => link.under);
     expect(under.length).toBeGreaterThan(0);

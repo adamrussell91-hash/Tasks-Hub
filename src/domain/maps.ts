@@ -151,19 +151,19 @@ function renderExportSvg(map: TransitMap): string {
       `<text x="36" y="${term.y + 4}" text-anchor="middle" font-size="11" fill="#fbf8f2" font-weight="600">${term.label}</text>`
     );
   }
-  for (const connector of layout.connectors) {
-    const color = COLOR[connector.color] ?? COLOR.wave!;
-    const opacity = connector.under ? ' stroke-opacity="0.72"' : '';
-    parts.push(
-      `<path d="${connector.path}" fill="none" stroke="${color}" stroke-width="3"${connector.dash ? ' stroke-dasharray="5 4"' : ''}${opacity}/>`
-    );
-  }
   for (const line of layout.lines) {
     const color = COLOR[line.color] ?? COLOR.wave!;
     parts.push(
       `<line x1="${line.x}" y1="${line.y0}" x2="${line.x}" y2="${line.y1}" stroke="${color}" stroke-width="8"/>`,
       `<circle cx="${line.disc.cx}" cy="${line.disc.cy}" r="${line.disc.r}" fill="${color}"/>`,
       `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="#fbf8f2" font-weight="700">${escapeHtml(line.letter)}</text>`
+    );
+  }
+  for (const connector of layout.connectors) {
+    const color = COLOR[connector.color] ?? COLOR.wave!;
+    const opacity = connector.under ? ' stroke-opacity="0.9"' : '';
+    parts.push(
+      `<path d="${connector.path}" fill="none" stroke="${color}" stroke-width="3"${connector.dash ? ' stroke-dasharray="5 4"' : ''}${opacity}/>`
     );
   }
   for (const station of layout.stations) {

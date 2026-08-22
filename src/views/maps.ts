@@ -302,24 +302,17 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
   }
 
   const localConnectors = new Set<string>();
-  for (const connector of layout.connectors) {
-    if (!connector.under) continue;
-    localConnectors.add(connector.id);
-    root.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash, true));
-  }
-
   for (const line of layout.lines) {
     const color = strokeOf(line.color);
-    const group = svgEl('g', {
-      class: 'map-line-group',
+    const track = svgEl('g', {
+      class: 'map-line-group map-line-group--track',
       'data-line': line.id
     });
     const prev = lastLineX.get(line.id);
     if (prev != null && prev !== line.x) {
-      group.setAttribute('transform', `translate(${prev - line.x} 0)`);
+      track.setAttribute('transform', `translate(${prev - line.x} 0)`);
     }
-    lastLineX.set(line.id, line.x);
-    group.append(
+    track.append(
       svgEl('line', {
         x1: String(line.x),
         y1: String(line.y0),
@@ -349,7 +342,26 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
     });
     letter.textContent = line.letter;
     head.append(letter);
-    group.append(head);
+    track.append(head);
+    root.append(track);
+  }
+
+  for (const connector of layout.connectors) {
+    if (!connector.under) continue;
+    localConnectors.add(connector.id);
+    root.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash, true));
+  }
+
+  for (const line of layout.lines) {
+    const group = svgEl('g', {
+      class: 'map-line-group',
+      'data-line': line.id
+    });
+    const prev = lastLineX.get(line.id);
+    if (prev != null && prev !== line.x) {
+      group.setAttribute('transform', `translate(${prev - line.x} 0)`);
+    }
+    lastLineX.set(line.id, line.x);
 
     for (const connector of layout.connectors) {
       if (connector.under) continue;
