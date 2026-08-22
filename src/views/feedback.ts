@@ -66,6 +66,7 @@ export function showConfirmWrite(
   actions.append(discard, confirm);
   card.append(actions);
   host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 export async function withBusy<T>(
