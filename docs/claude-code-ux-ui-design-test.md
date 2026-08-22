@@ -2,6 +2,8 @@
 
 **How to use:** paste everything below the line into Claude Code. The first action is to open the **website**, not to find a git repo. This is a **design / usability audit**, not the functional regression in `docs/chatgpt-live-regression-test.md`.
 
+**Filled run:** [`docs/claude-code-ux-ui-design-report.md`](claude-code-ux-ui-design-report.md) — 2026-08-22 production (`tasks-api`). Use that file to implement; re-run this prompt only for a later pass.
+
 The site has real usability and design problems. The job is to use it as Adam would, collect every specific defect, and return a technically specific report another agent can implement from.
 
 Do not fix anything in the same run unless Adam explicitly asks. Report first.

@@ -6,7 +6,7 @@ Personal task and project manager (Clare DeMind), sibling to Teaching Hub, Life 
 **Decisions:** [`docs/DECISIONS.md`](docs/DECISIONS.md)  
 **Design kit:** [`design-kit/AGENTS.md`](design-kit/AGENTS.md) + [`design-kit/TASKS.md`](design-kit/TASKS.md) — canonical kit on `main`, Board home, Graph rail.  
 **Cloud agent notes:** [`AGENTS.md`](AGENTS.md)  
-**Claude Code UX/UI audit:** [`docs/claude-code-ux-ui-design-test.md`](docs/claude-code-ux-ui-design-test.md) — paste into Claude Code; first action is open the website (not find a git repo). Functional live regression is still [`docs/chatgpt-live-regression-test.md`](docs/chatgpt-live-regression-test.md).
+**Claude Code UX/UI audit:** prompt [`docs/claude-code-ux-ui-design-test.md`](docs/claude-code-ux-ui-design-test.md) · filled 2026-08-22 report [`docs/claude-code-ux-ui-design-report.md`](docs/claude-code-ux-ui-design-report.md). Functional live regression is still [`docs/chatgpt-live-regression-test.md`](docs/chatgpt-live-regression-test.md).
 
 ## Stack
 
