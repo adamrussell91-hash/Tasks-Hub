@@ -1,15 +1,20 @@
-import type { MapLine, MapStation, MapTick, TransitMap } from '@/schemas/map';
+import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap } from '@/schemas/map';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
+import { exportMapHtml, pickCurrentYearMap } from '@/domain/maps';
 import {
-  crossingKind,
-  exportMapHtml,
-  lineX,
-  pickCurrentYearMap,
-  segmentCrossings,
-  stationLineCuts
-} from '@/domain/maps';
+  applyDateSpanToStation,
+  applyDateToTickAttach,
+  layoutMap,
+  LINE_COLORS,
+  nextLineLetter,
+  nextLineX,
+  schoolTerms,
+  yearLinePoints,
+  type MapCanvasLayout
+} from '@/domain/maps-layout';
 import { mindWorks2026Map } from '@/domain/maps-seed';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 
 export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] {
   return maps && maps.length > 0 ? maps : [mindWorks2026Map()];
@@ -30,7 +35,7 @@ function newId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
 }
 
-const COLOR_VAR: Record<string, string> = {
+const STROKE_VAR: Record<MapColorToken, string> = {
   wave: 'var(--wave)',
   success: 'var(--success)',
   lilac: 'var(--pastel-lilac-ink)',
@@ -40,7 +45,7 @@ const COLOR_VAR: Record<string, string> = {
   depth: 'var(--depth)'
 };
 
-const FILL_VAR: Record<string, string> = {
+const FILL_VAR: Record<MapColorToken, string> = {
   wave: 'var(--pastel-blue)',
   success: 'var(--pastel-sage)',
   lilac: 'var(--pastel-lilac)',
@@ -51,76 +56,18 @@ const FILL_VAR: Record<string, string> = {
 };
 
 type Mode = 'view' | 'edit';
-type Place = 'idle' | 'line' | 'program' | 'competition';
+type DraftKind = 'line' | 'station' | 'event' | null;
 
-function lineColor(line: MapLine): string {
-  return COLOR_VAR[line.color] ?? 'var(--wave)';
+function strokeOf(color: MapColorToken): string {
+  return STROKE_VAR[color];
 }
 
-function lineFill(line: MapLine): string {
-  return FILL_VAR[line.color] ?? 'var(--pastel-blue)';
+function fillOf(color: MapColorToken): string {
+  return FILL_VAR[color];
 }
 
 function findLine(map: TransitMap, id: string): MapLine | undefined {
   return map.lines.find((l) => l.id === id);
-}
-
-function nearestLine(map: TransitMap, x: number, y: number): MapLine | null {
-  let best: MapLine | null = null;
-  let dist = 22;
-  for (const line of map.lines) {
-    const lx = lineX(line);
-    const yMin = Math.min(...line.points.map((p) => p.y));
-    const yMax = Math.max(...line.points.map((p) => p.y));
-    if (y < yMin - 10 || y > yMax + 10) continue;
-    const d = Math.abs(x - lx);
-    if (d < dist) {
-      dist = d;
-      best = line;
-    }
-  }
-  return best;
-}
-
-function nearestStation(map: TransitMap, x: number, y: number): MapStation | null {
-  for (const station of map.stations) {
-    const line = findLine(map, station.line_id);
-    if (!line) continue;
-    const lx = lineX(line);
-    if (x >= lx - 32 && x <= lx + 32 && y >= station.y && y <= station.y + station.height) {
-      return station;
-    }
-  }
-  return null;
-}
-
-function nearestTick(map: TransitMap, x: number, y: number): MapTick | null {
-  for (const tick of map.ticks) {
-    const pos = tickPosition(map, tick);
-    if (!pos) continue;
-    if (Math.hypot(x - pos.cx, y - pos.cy) < 14) return tick;
-  }
-  return null;
-}
-
-function tickPosition(map: TransitMap, tick: MapTick): { x0: number; y0: number; cx: number; cy: number } | null {
-  if (tick.attach.kind === 'line') {
-    const line = findLine(map, tick.attach.line_id);
-    if (!line) return null;
-    const x0 = lineX(line);
-    const y0 = tick.attach.y;
-    return { x0, y0, cx: x0 + 48, cy: y0 };
-  }
-  const attach = tick.attach;
-  if (attach.kind !== 'station') return null;
-  const station = map.stations.find((s) => s.id === attach.station_id);
-  if (!station) return null;
-  const line = findLine(map, station.line_id);
-  if (!line) return null;
-  const x0 = lineX(line) + (attach.side === 'left' ? -28 : 28);
-  const y0 = station.y + station.height * attach.offset;
-  const dir = attach.side === 'left' ? -1 : 1;
-  return { x0, y0, cx: x0 + dir * 40, cy: y0 };
 }
 
 function svgEl<K extends keyof SVGElementTagNameMap>(
@@ -132,137 +79,182 @@ function svgEl<K extends keyof SVGElementTagNameMap>(
   return node;
 }
 
-function renderMapSvg(
-  host: SVGSVGElement,
-  map: TransitMap,
-  selectedId: string | null
-): void {
+function verticalText(
+  x: number,
+  y: number,
+  label: string,
+  className: string,
+  fill: string
+): SVGTextElement {
+  const text = svgEl('text', {
+    x: String(x),
+    y: String(y),
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle',
+    transform: `rotate(-90 ${x} ${y})`,
+    class: className,
+    fill
+  });
+  text.textContent = label;
+  return text;
+}
+
+function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: string | null): void {
   host.replaceChildren();
+  host.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
   const root = svgEl('g', { class: 'map-root' });
-  const crossings = segmentCrossings(map.lines, map.stations);
-  const tunnels = crossings.filter((c) => crossingKind(c, map.stations) === 'tunnel');
 
-  for (const line of map.lines) {
-    const color = lineColor(line);
-    const stations = map.stations.filter((s) => s.line_id === line.id);
-    const cuts = stationLineCuts(line, stations);
-    const lx = lineX(line);
-    for (const cut of cuts) {
-      const gaps = tunnels.filter((t) => Math.abs(t.point.x - lx) < 1 && t.point.y > cut.y0 && t.point.y < cut.y1);
-      const ys = [cut.y0, ...gaps.map((g) => g.point.y), cut.y1].sort((a, b) => a - b);
-      for (let i = 0; i < ys.length - 1; i += 1) {
-        const y0 = ys[i]!;
-        const y1 = ys[i + 1]!;
-        if (gaps.some((g) => g.point.y === y0 || g.point.y === y1) && y1 - y0 < 16) {
-          continue;
-        }
-        if (gaps.some((g) => Math.abs(g.point.y - (y0 + y1) / 2) < 8)) continue;
-        const path = svgEl('line', {
-          x1: String(lx),
-          y1: String(y0),
-          x2: String(lx),
-          y2: String(y1),
-          stroke: color,
-          'stroke-width': '8',
-          class: 'map-line'
-        });
-        root.append(path);
-      }
-    }
-
-    const letter = svgEl('text', {
-      x: String(lx),
-      y: '28',
+  for (const term of layout.terms) {
+    root.append(
+      svgEl('line', {
+        x1: '72',
+        y1: String(term.y),
+        x2: String(layout.width - 24),
+        y2: String(term.y),
+        class: 'map-term__rule'
+      })
+    );
+    const disc = svgEl('g', { class: 'map-term' });
+    disc.append(
+      svgEl('circle', {
+        cx: '36',
+        cy: String(term.y),
+        r: '15',
+        class: 'map-term__disc'
+      })
+    );
+    const label = svgEl('text', {
+      x: '36',
+      y: String(term.y + 5),
       'text-anchor': 'middle',
-      class: 'map-line-letter'
+      class: 'map-term__label'
     });
-    letter.textContent = line.letter;
-    root.append(letter);
+    label.textContent = term.label;
+    disc.append(label);
+    root.append(disc);
   }
 
-  for (const station of map.stations) {
-    const line = findLine(map, station.line_id);
-    if (!line) continue;
-    const lx = lineX(line);
+  for (const line of layout.lines) {
+    const color = strokeOf(line.color);
+    root.append(
+      svgEl('line', {
+        x1: String(line.x),
+        y1: String(line.y0),
+        x2: String(line.x),
+        y2: String(line.y1),
+        stroke: color,
+        'stroke-width': '8',
+        class: 'map-line'
+      })
+    );
+    const head = svgEl('g', { class: 'map-line-head' });
+    head.append(
+      svgEl('circle', {
+        cx: String(line.disc.cx),
+        cy: String(line.disc.cy),
+        r: String(line.disc.r),
+        fill: color,
+        class: 'map-line-disc'
+      })
+    );
+    const letter = svgEl('text', {
+      x: String(line.disc.cx),
+      y: String(line.disc.cy + 7),
+      'text-anchor': 'middle',
+      class: 'map-line-letter',
+      fill: 'var(--paper)'
+    });
+    letter.textContent = line.letter;
+    const name = svgEl('text', {
+      x: String(line.disc.cx + line.disc.r + 10),
+      y: String(line.disc.cy + 5),
+      class: 'map-line-name',
+      fill: color
+    });
+    name.textContent = line.name;
+    head.append(letter, name);
+    root.append(head);
+  }
+
+  for (const station of layout.stations) {
+    const color = strokeOf(station.color);
     const g = svgEl('g', {
       class: `map-station${selectedId === station.id ? ' is-selected' : ''}`,
       'data-id': station.id
     });
+    if (station.lane > 0) {
+      g.append(
+        svgEl('path', {
+          d: `M ${station.lineX} ${station.y} H ${station.x} V ${station.y + 18}`,
+          fill: 'none',
+          stroke: color,
+          'stroke-width': '6',
+          class: 'map-station__jog'
+        })
+      );
+    }
     g.append(
       svgEl('rect', {
-        x: String(lx - 28),
+        x: String(station.x - station.w / 2),
         y: String(station.y),
-        width: '56',
-        height: String(station.height),
-        rx: '28',
-        fill: lineFill(line),
-        stroke: lineColor(line),
+        width: String(station.w),
+        height: String(station.h),
+        rx: String(station.w / 2),
+        fill: fillOf(station.color),
+        stroke: color,
         'stroke-width': '4',
         class: 'map-station__body'
       })
     );
-    const label = svgEl('text', {
-      x: String(lx),
-      y: String(station.y + station.height / 2),
-      'text-anchor': 'middle',
-      class: 'map-station__label'
-    });
-    label.textContent = station.label;
-    g.append(label);
+    g.append(
+      verticalText(station.x, station.y + station.h / 2, station.label, 'map-station__label', color)
+    );
     root.append(g);
   }
 
-  for (const tick of map.ticks) {
-    const pos = tickPosition(map, tick);
-    const attach = tick.attach;
-    const line =
-      attach.kind === 'line'
-        ? findLine(map, attach.line_id)
-        : findLine(
-            map,
-            map.stations.find((s) => attach.kind === 'station' && s.id === attach.station_id)?.line_id ??
-              ''
-          );
-    if (!pos || !line) continue;
-    const color = lineColor(line);
+  for (const tick of layout.ticks) {
+    const color = strokeOf(tick.color);
     const g = svgEl('g', {
       class: `map-tick${selectedId === tick.id ? ' is-selected' : ''}`,
       'data-id': tick.id
     });
     const stem = svgEl('line', {
-      x1: String(pos.x0),
-      y1: String(pos.y0),
-      x2: String(pos.cx),
-      y2: String(pos.cy),
+      x1: String(tick.x0),
+      y1: String(tick.y0),
+      x2: String(tick.cx),
+      y2: String(tick.cy),
       stroke: color,
       'stroke-width': '3',
       class: 'map-tick__stem'
     });
-    if (tick.stroke === 'dotted') stem.setAttribute('stroke-dasharray', '4 3');
+    if (tick.dash) stem.setAttribute('stroke-dasharray', '4 3');
     g.append(
       stem,
       svgEl('circle', {
-        cx: String(pos.cx),
-        cy: String(pos.cy),
-        r: '7',
+        cx: String(tick.cx),
+        cy: String(tick.cy),
+        r: '8',
         fill: 'var(--paper)',
         stroke: color,
-        'stroke-width': '3'
+        'stroke-width': '3.5',
+        class: 'map-tick__mark'
       })
     );
-    const label = svgEl('text', {
-      x: String(pos.cx + 10),
-      y: String(pos.cy - 4),
-      class: 'map-tick__label',
-      transform: `rotate(-32 ${pos.cx + 10} ${pos.cy - 4})`
-    });
-    label.textContent = tick.label;
-    g.append(label);
+    g.append(
+      verticalText(
+        tick.labelBox.x + tick.labelBox.w / 2,
+        tick.labelBox.y + tick.labelBox.h / 2,
+        tick.label,
+        'map-tick__label',
+        color
+      )
+    );
     if (tick.connects_to) {
       const note = svgEl('text', {
-        x: String(pos.cx + 10),
-        y: String(pos.cy + 18),
-        class: 'map-tick__note'
+        x: String(tick.labelBox.x + tick.labelBox.w + 8),
+        y: String(tick.labelBox.y + 12),
+        class: 'map-tick__note',
+        fill: color
       });
       note.textContent = tick.connects_to;
       g.append(note);
@@ -308,6 +300,25 @@ function showConfirm(host: HTMLElement, summary: string, onConfirm: () => Promis
   card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
+function field(label: string, control: HTMLElement): HTMLElement {
+  const wrap = el('label', 'map-field');
+  wrap.append(el('span', 'map-field__label', label), control);
+  return wrap;
+}
+
+function textInput(value: string, aria: string): HTMLInputElement {
+  const input = el('input', 'hub-search') as HTMLInputElement;
+  input.value = value;
+  input.setAttribute('aria-label', aria);
+  return input;
+}
+
+function dateInput(value: string, aria: string): HTMLInputElement {
+  const input = textInput(value, aria);
+  input.type = 'date';
+  return input;
+}
+
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading maps…'));
   const [listed, projects] = await Promise.all([
@@ -315,10 +326,10 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     tasksApi.listProjects().catch(() => [] as Project[])
   ]);
   const maps = mapsOrSeed(listed);
-  const year = new Date().getFullYear();
-  let current = pickCurrentYearMap(maps, year) ?? maps[0]!;
+  const yearNow = new Date().getFullYear();
+  let current = pickCurrentYearMap(maps, yearNow) ?? maps[0]!;
   let mode: Mode = 'edit';
-  let place: Place = 'idle';
+  let draft: DraftKind = null;
   let selectedId: string | null = null;
   let zoom = 1;
   let toast = '';
@@ -326,6 +337,9 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   const excursions = projects.filter((p) => p.type === 'excursion');
 
   const paint = () => {
+    const year = current.year ?? yearNow;
+    const terms = schoolTerms(year);
+    const layout = layoutMap(current);
     canvas.replaceChildren();
     const toolbar = el('div', 'map-toolbar');
     const select = el('select', 'hub-filter') as HTMLSelectElement;
@@ -354,7 +368,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     editBtn.type = 'button';
     viewBtn.addEventListener('click', () => {
       mode = 'view';
-      place = 'idle';
+      draft = null;
       paint();
     });
     editBtn.addEventListener('click', () => {
@@ -370,7 +384,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     const newBtn = el('button', 'btn btn--primary', 'New map');
     newBtn.type = 'button';
     newBtn.addEventListener('click', async () => {
-      const created = await tasksApi.createMap({ title: 'Untitled map' });
+      const created = await tasksApi.createMap({ title: 'Untitled map', year });
       maps.push(created);
       current = created;
       mode = 'edit';
@@ -380,47 +394,72 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     toolbar.append(select, pills, exportBtn, newBtn);
 
     if (mode === 'edit') {
-      const addLine = el('button', place === 'line' ? 'btn btn--primary' : 'btn btn--ghost', '+ Line');
-      const addProg = el('button', place === 'program' ? 'btn btn--primary' : 'btn btn--ghost', '+ Program');
-      const addComp = el('button', place === 'competition' ? 'btn btn--primary' : 'btn btn--ghost', '+ Competition');
+      const addLine = el('button', draft === 'line' ? 'btn btn--primary' : 'btn btn--ghost', '+ Line');
+      const addStation = el(
+        'button',
+        draft === 'station' ? 'btn btn--primary' : 'btn btn--ghost',
+        '+ Station'
+      );
+      const addEvent = el('button', draft === 'event' ? 'btn btn--primary' : 'btn btn--ghost', '+ Event');
       addLine.type = 'button';
-      addProg.type = 'button';
-      addComp.type = 'button';
-      addLine.setAttribute('aria-pressed', place === 'line' ? 'true' : 'false');
-      addProg.setAttribute('aria-pressed', place === 'program' ? 'true' : 'false');
-      addComp.setAttribute('aria-pressed', place === 'competition' ? 'true' : 'false');
+      addStation.type = 'button';
+      addEvent.type = 'button';
       addLine.addEventListener('click', () => {
-        place = place === 'line' ? 'idle' : 'line';
+        draft = draft === 'line' ? null : 'line';
         paint();
       });
-      addProg.addEventListener('click', () => {
-        place = place === 'program' ? 'idle' : 'program';
+      addStation.addEventListener('click', () => {
+        draft = draft === 'station' ? null : 'station';
         paint();
       });
-      addComp.addEventListener('click', () => {
-        place = place === 'competition' ? 'idle' : 'competition';
+      addEvent.addEventListener('click', () => {
+        draft = draft === 'event' ? null : 'event';
         paint();
       });
-      toolbar.append(addLine, addProg, addComp);
+      toolbar.append(addLine, addStation, addEvent);
     }
     canvas.append(toolbar);
-    if (mode === 'edit' && place !== 'idle') {
-      const hint =
-        place === 'line'
-          ? 'Click the map to place a new line.'
-          : place === 'program'
-            ? 'Click a line to add a program station.'
-            : 'Click a line or station to add a competition.';
-      canvas.append(el('p', 'canvas-status', hint));
+
+    const confirmHost = el('div', 'map-confirm');
+    canvas.append(confirmHost);
+    if (mode === 'edit' && draft) {
+      renderDraftForm(
+        confirmHost,
+        current,
+        year,
+        terms,
+        draft,
+        (next) => {
+          current = next;
+          draft = null;
+          void persist();
+          paint();
+        },
+        () => {
+          draft = null;
+          paint();
+        }
+      );
     }
+
+    const key = el('div', 'map-key');
+    key.setAttribute('aria-label', 'Map key');
+    for (const line of current.lines) {
+      const item = el('span', 'map-key__item');
+      const mark = el('span', 'map-key__disc', line.letter);
+      mark.style.background = strokeOf(line.color);
+      item.append(mark, el('span', 'map-key__name', `${line.name} Line`));
+      key.append(item);
+    }
+    canvas.append(key);
 
     const stage = el('div', 'map-stage');
     const svg = svgEl('svg', {
       class: 'map-svg',
-      viewBox: '0 0 900 1100',
-      'aria-label': current.title
+      viewBox: `0 0 ${layout.width} ${layout.height}`,
+      'aria-label': `${current.title} · ${year} calendar year`
     });
-    renderMapSvg(svg, current, selectedId);
+    renderMapSvg(svg, layout, selectedId);
     const root = svg.querySelector('.map-root');
     if (root) (root as SVGGElement).setAttribute('transform', `scale(${zoom})`);
 
@@ -448,91 +487,34 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     zoomBar.append(out, reset, inn);
     stage.append(svg, zoomBar);
 
-    svg.addEventListener('wheel', (event) => {
-      event.preventDefault();
-      zoom = Math.min(2.2, Math.max(0.5, zoom + (event.deltaY > 0 ? -0.08 : 0.08)));
-      const g = svg.querySelector('.map-root');
-      if (g) g.setAttribute('transform', `scale(${zoom})`);
-    }, { passive: false });
+    svg.addEventListener(
+      'wheel',
+      (event) => {
+        event.preventDefault();
+        zoom = Math.min(2.2, Math.max(0.5, zoom + (event.deltaY > 0 ? -0.08 : 0.08)));
+        const g = svg.querySelector('.map-root');
+        if (g) g.setAttribute('transform', `scale(${zoom})`);
+      },
+      { passive: false }
+    );
 
-    const toMapPoint = (event: PointerEvent) => {
+    svg.addEventListener('pointerdown', (event) => {
       const pt = svg.createSVGPoint();
       pt.x = event.clientX;
       pt.y = event.clientY;
       const ctm = svg.getScreenCTM();
-      if (!ctm) return { x: 0, y: 0 };
+      if (!ctm) return;
       const loc = pt.matrixTransform(ctm.inverse());
-      return { x: loc.x / zoom, y: loc.y / zoom };
-    };
-
-    svg.addEventListener('pointerdown', (event) => {
-      const { x, y } = toMapPoint(event);
-      if (mode === 'edit' && place === 'line') {
-        const nx = Math.round(x / 20) * 20;
-        current.lines.push({
-          id: newId('line'),
-          name: 'New line',
-          letter: 'N',
-          color: 'wave',
-          points: [
-            { x: nx, y: 40 },
-            { x: nx, y: 1040 }
-          ]
-        });
-        place = 'idle';
-        void persist();
-        paint();
-        return;
-      }
-      if (mode === 'edit' && place === 'program') {
-        const line = nearestLine(current, x, y);
-        if (line) {
-          current.stations.push({
-            id: newId('st'),
-            line_id: line.id,
-            label: 'New program',
-            y: Math.round(y - 44),
-            height: 88,
-            in_stroke: 'solid',
-            out_stroke: 'solid',
-            link: null
-          });
-          place = 'idle';
-          void persist();
-          paint();
-        }
-        return;
-      }
-      if (mode === 'edit' && place === 'competition') {
-        const station = nearestStation(current, x, y);
-        const line = nearestLine(current, x, y);
-        if (station) {
-          current.ticks.push({
-            id: newId('tk'),
-            label: 'New competition',
-            attach: { kind: 'station', station_id: station.id, side: x >= lineX(findLine(current, station.line_id)!) ? 'right' : 'left', offset: 0.5 },
-            stroke: 'solid',
-            connects_to: null,
-            link: null
-          });
-        } else if (line) {
-          current.ticks.push({
-            id: newId('tk'),
-            label: 'New competition',
-            attach: { kind: 'line', line_id: line.id, y },
-            stroke: 'solid',
-            connects_to: null,
-            link: null
-          });
-        }
-        place = 'idle';
-        void persist();
-        paint();
-        return;
-      }
-
-      const tick = nearestTick(current, x, y);
-      const station = nearestStation(current, x, y);
+      const x = loc.x / zoom;
+      const y = loc.y / zoom;
+      const tick = layout.ticks.find((item) => Math.hypot(x - item.cx, y - item.cy) < 16);
+      const station = layout.stations.find(
+        (item) =>
+          x >= item.x - item.w / 2 - 6 &&
+          x <= item.x + item.w / 2 + 6 &&
+          y >= item.y &&
+          y <= item.y + item.h
+      );
       selectedId = tick?.id ?? station?.id ?? null;
       paint();
     });
@@ -544,7 +526,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     const selectedTick = current.ticks.find((t) => t.id === selectedId);
     if (selectedStation || selectedTick) {
       preview.hidden = false;
-      const kind = selectedStation ? 'Program' : 'Competition';
+      const kind = selectedStation ? 'Station' : 'Event';
       const item = selectedStation ?? selectedTick!;
       const tickAttach = selectedTick?.attach;
       const line = selectedStation
@@ -557,21 +539,27 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
                 ?.line_id ?? ''
             );
       preview.append(el('p', 'graph-preview__eyebrow', kind), el('h3', 'graph-preview__title', item.label));
-      preview.append(el('p', 'graph-preview__meta', line ? `On ${line.name}` : item.id));
-      const linked = item.link
-        ? projects.find((p) => p.id === item.link!.id)
-        : null;
+      const dates = [item.starts_on, item.ends_on]
+        .filter(Boolean)
+        .map((d) => formatDisplayDate(d!))
+        .join(' → ');
+      preview.append(
+        el(
+          'p',
+          'graph-preview__meta',
+          [line ? `${line.letter} ${line.name}` : null, dates || null].filter(Boolean).join(' · ')
+        )
+      );
+      const linked = item.link ? projects.find((p) => p.id === item.link!.id) : null;
       if (linked) {
-        const open = el('p', 'graph-preview__meta', `Open linked project → ${linked.title}`);
-        preview.append(open);
+        preview.append(el('p', 'graph-preview__meta', `Linked project → ${linked.title}`));
       }
 
       if (mode === 'edit') {
         const form = el('div', 'map-drawer');
-        const name = document.createElement('input');
-        name.className = 'hub-search';
-        name.value = item.label;
-        name.setAttribute('aria-label', 'Name');
+        const name = textInput(item.label, 'Name');
+        const start = dateInput(item.starts_on ?? terms.t1, 'Starts');
+        const end = dateInput(item.ends_on ?? item.starts_on ?? terms.e, 'Ends');
         const link = document.createElement('select');
         link.className = 'hub-filter';
         const none = document.createElement('option');
@@ -589,8 +577,18 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         save.type = 'button';
         save.addEventListener('click', () => {
           item.label = name.value.trim() || item.label;
+          item.starts_on = start.value || null;
+          item.ends_on = selectedStation ? end.value || null : end.value || start.value || null;
           const [type, id] = link.value.split(':');
           item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
+          if (selectedStation) {
+            const next = applyDateSpanToStation(selectedStation, year);
+            selectedStation.y = next.y;
+            selectedStation.height = next.height;
+          } else if (selectedTick) {
+            const next = applyDateToTickAttach(selectedTick, year);
+            selectedTick.attach = next.attach;
+          }
           void persist();
           paint();
         });
@@ -605,16 +603,16 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
             paint();
           });
         });
-        form.append(name, link, save, del);
+        form.append(name);
+        form.append(selectedStation ? field('Starts', start) : field('Date', start));
+        if (selectedStation) form.append(field('Ends', end));
+        form.append(link, save, del);
         preview.append(form);
       }
     } else {
       preview.hidden = true;
     }
     canvas.append(preview);
-
-    const confirmHost = el('div', 'map-confirm');
-    canvas.append(confirmHost);
     if (toast) canvas.append(el('p', 'canvas-status', toast));
   };
 
@@ -638,4 +636,123 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   }
 
   paint();
+}
+
+function renderDraftForm(
+  host: HTMLElement,
+  map: TransitMap,
+  year: number,
+  terms: ReturnType<typeof schoolTerms>,
+  kind: Exclude<DraftKind, null>,
+  onApply: (map: TransitMap) => void,
+  onCancel: () => void
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Add to map');
+  const titles = { line: 'Add line', station: 'Add station', event: 'Add event' };
+  const copy = {
+    line: 'A new vertical line for the calendar year, from T1 through E.',
+    station: 'A program on one line. Start and end dates place it on the year.',
+    event: 'A competition or one-off. The date is the station on the year.'
+  };
+  card.append(
+    el('p', 'page-header__eyebrow', 'Proposed write'),
+    el('h2', 'page-header__title', titles[kind]),
+    el('p', 'page-header__supporting', `${copy[kind]} Do not apply until Confirm.`)
+  );
+
+  const name = textInput('', 'Name');
+  name.placeholder = kind === 'line' ? 'Justice' : kind === 'station' ? 'Young Diplomats Program' : 'Rotary MUNA';
+  const letter = textInput(nextLineLetter(map.lines), 'Letter');
+  letter.maxLength = 4;
+  const color = el('select', 'hub-filter') as HTMLSelectElement;
+  color.setAttribute('aria-label', 'Colour');
+  for (const token of LINE_COLORS) {
+    const opt = document.createElement('option');
+    opt.value = token;
+    opt.textContent = token.replace('-', ' ');
+    color.append(opt);
+  }
+  const line = el('select', 'hub-filter') as HTMLSelectElement;
+  line.setAttribute('aria-label', 'Line');
+  for (const item of map.lines) {
+    const opt = document.createElement('option');
+    opt.value = item.id;
+    opt.textContent = `${item.letter} · ${item.name}`;
+    line.append(opt);
+  }
+  const start = dateInput(terms.t1, kind === 'event' ? 'Date' : 'Starts');
+  const end = dateInput(terms.e, 'Ends');
+
+  if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color));
+  else if (kind === 'station') {
+    card.append(field('Name', name), field('Line', line), field('Starts', start), field('Ends', end));
+  } else {
+    card.append(field('Name', name), field('Line', line), field('Date', start));
+  }
+
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  discard.type = 'button';
+  confirm.type = 'button';
+  discard.addEventListener('click', () => onCancel());
+  confirm.addEventListener('click', () => {
+    const title = name.value.trim();
+    if (!title) {
+      host.append(el('p', 'empty-state', 'Add a name.'));
+      return;
+    }
+    if (kind === 'line') {
+      const x = nextLineX(map.lines);
+      map.lines.push({
+        id: newId('line'),
+        name: title,
+        letter: (letter.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
+        color: (color.value as MapColorToken) || 'navy',
+        points: yearLinePoints(x)
+      });
+    } else if (kind === 'station') {
+      if (!map.lines.length) {
+        host.append(el('p', 'empty-state', 'Add a line first.'));
+        return;
+      }
+      const draftStation: MapStation = {
+        id: newId('st'),
+        line_id: line.value || map.lines[0]!.id,
+        label: title,
+        y: 80,
+        height: 110,
+        in_stroke: 'solid',
+        out_stroke: 'solid',
+        starts_on: start.value || terms.t1,
+        ends_on: end.value || terms.e,
+        link: null
+      };
+      map.stations.push(applyDateSpanToStation(draftStation, year));
+    } else {
+      if (!map.lines.length) {
+        host.append(el('p', 'empty-state', 'Add a line first.'));
+        return;
+      }
+      const draftTick: MapTick = {
+        id: newId('tk'),
+        label: title,
+        attach: { kind: 'line', line_id: line.value || map.lines[0]!.id, y: 200 },
+        stroke: 'solid',
+        connects_to: null,
+        starts_on: start.value || terms.t1,
+        ends_on: null,
+        link: null
+      };
+      map.ticks.push(applyDateToTickAttach(draftTick, year));
+    }
+    onApply(map);
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }

@@ -16,6 +16,14 @@ import {
   stationLineCuts
 } from '@/domain/maps';
 import { mindWorks2026Map } from '@/domain/maps-seed';
+import {
+  applyDateSpanToStation,
+  boxesOverlap,
+  dateToY,
+  layoutMap,
+  placeBox,
+  schoolTerms
+} from '@/domain/maps-layout';
 import { mapsOrSeed } from '@/views/maps';
 
 describe('map schema', () => {
@@ -104,6 +112,54 @@ describe('MindWorks 2026 seed', () => {
     );
     expect(map.ticks.some((t) => t.attach.kind === 'line')).toBe(true);
     expect(map.ticks.some((t) => t.attach.kind === 'station')).toBe(true);
+    expect(map.lines.find((l) => l.letter === 'J')?.color).toBe('navy');
+    expect(map.stations.every((s) => s.starts_on && s.ends_on)).toBe(true);
+  });
+});
+
+describe('year layout', () => {
+  it('maps dates onto the calendar year and draws T1–T4 plus E', () => {
+    const year = 2026;
+    const terms = schoolTerms(year);
+    const t1 = dateToY(terms.t1, year);
+    const e = dateToY(terms.e, year);
+    expect(t1).toBeLessThan(dateToY(terms.t2, year));
+    expect(dateToY(terms.t4, year)).toBeLessThan(e);
+    const later = applyDateSpanToStation(
+      {
+        id: 'st_x',
+        line_id: 'line_justice',
+        label: 'Later program',
+        y: 0,
+        height: 10,
+        in_stroke: 'solid',
+        out_stroke: 'solid',
+        starts_on: '2026-10-12',
+        ends_on: '2026-12-17',
+        link: null
+      },
+      year
+    );
+    expect(later.y).toBeGreaterThan(t1);
+    const layout = layoutMap(mindWorks2026Map());
+    expect(layout.terms.map((t) => t.id)).toEqual(['T1', 'T2', 'T3', 'T4', 'E']);
+    expect(layout.lines.map((l) => l.letter).sort()).toEqual(['E', 'I', 'J', 'R']);
+  });
+
+  it('never leaves two label boxes overlapping', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    const boxes = layout.boxes;
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        expect(boxesOverlap(boxes[i]!, boxes[j]!)).toBe(false);
+      }
+    }
+    const placed = placeBox(
+      { id: 'probe', x: boxes[0]!.x, y: boxes[0]!.y, w: 20, h: 20 },
+      boxes,
+      { width: layout.width, height: layout.height }
+    );
+    expect(boxes.some((box) => boxesOverlap(box, placed))).toBe(false);
   });
 });
 
