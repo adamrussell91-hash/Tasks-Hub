@@ -18,7 +18,10 @@ import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { findStallCandidates } from '@/domain/stall';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
+import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
+import type { TaskDomain, TaskPriority } from '@/schemas/task';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -38,7 +41,8 @@ function priorityClass(p: Task['priority']): string {
 function renderTaskRow(
   task: Task,
   onToggle: (t: Task) => void,
-  onDelete?: (t: Task) => void
+  onDelete?: (t: Task) => void,
+  onEdit?: (t: Task) => void
 ): HTMLElement {
   const row = el('article', 'task-row');
   row.dataset.domain = task.domain;
@@ -57,19 +61,16 @@ function renderTaskRow(
   if (task.framework_used) meta.append(el('span', 'chip', 'framework'));
 
   const actions = el('div', 'task-row__actions');
+  if (onEdit) {
+    const edit = el('button', 'btn btn--ghost', 'Edit');
+    edit.type = 'button';
+    edit.addEventListener('click', () => onEdit(task));
+    actions.append(edit);
+  }
   const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
   done.type = 'button';
-  done.addEventListener('click', async () => {
-    done.disabled = true;
-    const label = done.textContent;
-    done.textContent = 'Saving…';
-    try {
-      await onToggle(task);
-    } catch (err) {
-      done.disabled = false;
-      done.textContent = label;
-      row.append(el('p', 'empty-state', errorMessage(err)));
-    }
+  done.addEventListener('click', () => {
+    onToggle(task);
   });
   actions.append(done);
   if (onDelete) {
@@ -97,27 +98,86 @@ function confirmDeleteTask(host: HTMLElement, task: Task, reload: () => Promise<
   );
 }
 
-async function toggleDone(task: Task): Promise<void> {
-  if (task.status === 'done') {
-    await tasksApi.updateTask(task.id, { status: 'open' });
+export async function markTaskOpen(task: Task): Promise<void> {
+  await tasksApi.updateTask(task.id, { status: 'open' });
+}
+
+export async function markTaskDone(task: Task, actualMinutes?: number): Promise<void> {
+  if (actualMinutes != null && !Number.isNaN(actualMinutes)) {
+    await tasksApi.recordClareActual(task.id, actualMinutes);
     return;
-  }
-  if (task.estimated_duration && task.actual_duration == null) {
-    const raw = window.prompt(
-      `How long did “${task.title}” actually take? (minutes, estimate was ${task.estimated_duration})`,
-      String(task.estimated_duration)
-    );
-    if (raw !== null && raw.trim() !== '' && !Number.isNaN(Number(raw))) {
-      await tasksApi.recordClareActual(task.id, Number(raw));
-      return;
-    }
   }
   await tasksApi.updateTask(task.id, { status: 'done' });
 }
 
+/** Done that needs an actual: confirm card. Discard / cancel leaves status unchanged. */
+export function requestToggleDone(
+  host: HTMLElement,
+  task: Task,
+  onDone: () => Promise<void>
+): void {
+  if (task.status === 'done') {
+    void markTaskOpen(task).then(onDone).catch((err) => {
+      host.append(el('p', 'empty-state', errorMessage(err)));
+    });
+    return;
+  }
+  if (!(task.estimated_duration && task.actual_duration == null)) {
+    void markTaskDone(task).then(onDone).catch((err) => {
+      host.append(el('p', 'empty-state', errorMessage(err)));
+    });
+    return;
+  }
+
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm done');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'page-header__title', `Done — ${task.title}`));
+  card.append(
+    el(
+      'p',
+      'page-header__supporting',
+      `Clare guessed ${task.estimated_duration} minutes. Discard leaves this task open.`
+    )
+  );
+  const minutes = el('input', 'hub-search') as HTMLInputElement;
+  minutes.type = 'number';
+  minutes.min = '1';
+  minutes.step = '5';
+  minutes.value = String(task.estimated_duration);
+  minutes.setAttribute('aria-label', 'Actual minutes');
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    const value = Number(minutes.value);
+    if (!value || Number.isNaN(value)) {
+      host.append(el('p', 'empty-state', 'Enter actual minutes, or Discard.'));
+      return;
+    }
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await markTaskDone(task, value);
+      await onDone();
+    } catch (err) {
+      host.replaceChildren(el('p', 'empty-state', errorMessage(err)));
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(minutes, actions);
+  host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
 export async function renderDayView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const tasks = await tasksApi.listTasks();
+  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
   const today = new Date();
   const list = adaptiveTodayTasks(tasks, today);
   const prefs = preferredDomains(today);
@@ -126,7 +186,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   const intro = el(
     'p',
     'view-lede',
-    `Adaptive focus: ${prefs.join(', ')} · ${toDateKey(today)}`
+    `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`
   );
   canvas.append(intro);
 
@@ -143,28 +203,26 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   renderPressureStrips(pressure, tasks, today, () => void renderDayView(canvas));
   canvas.append(pressure);
 
-  const form = renderQuickAdd(() => void renderDayView(canvas));
-  canvas.append(form);
+  const confirmHost = el('div', 'task-confirm');
+  canvas.append(renderQuickAdd(() => void renderDayView(canvas)));
+  canvas.append(confirmHost);
 
   if (!list.length) {
     canvas.append(el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.'));
     return;
   }
-  const confirmHost = el('div', 'task-confirm');
   const stack = el('div', 'task-stack');
   for (const task of list) {
     stack.append(
       renderTaskRow(
         task,
-        async (t) => {
-          await toggleDone(t);
-          await renderDayView(canvas);
-        },
-        (t) => confirmDeleteTask(confirmHost, t, () => renderDayView(canvas))
+        (t) => requestToggleDone(confirmHost, t, () => renderDayView(canvas)),
+        (t) => confirmDeleteTask(confirmHost, t, () => renderDayView(canvas)),
+        (t) => renderTaskEditor(confirmHost, t, projects, () => void renderDayView(canvas))
       )
     );
   }
-  canvas.append(stack, confirmHost);
+  canvas.append(stack);
 }
 
 export async function renderWeekView(canvas: HTMLElement): Promise<void> {
@@ -200,13 +258,14 @@ export async function renderWeekView(canvas: HTMLElement): Promise<void> {
       col.append(el('span', 'chip', pinch.severity === 'overloaded' ? 'overloaded' : 'watch'));
     }
     const dayTasks = tasksForDay(tasks, day);
-    if (!dayTasks.length) col.append(el('p', 'empty-state empty-state--compact', '—'));
+    if (!dayTasks.length) col.append(el('p', 'empty-state empty-state--compact', 'Nothing due.'));
     for (const task of dayTasks) {
       const item = el('button', 'week-chip', task.title);
       item.type = 'button';
       item.dataset.domain = task.domain;
       item.setAttribute('aria-label', `${task.title}, ${task.priority}, due ${task.due_date ? formatDisplayDate(task.due_date) : 'undated'}`);
-      item.addEventListener('click', () => {
+      item.addEventListener('click', async () => {
+        const projects = await tasksApi.listProjects().catch(() => [] as Project[]);
         preview.hidden = false;
         preview.replaceChildren(
           el('p', 'graph-preview__eyebrow', task.domain),
@@ -219,17 +278,17 @@ export async function renderWeekView(canvas: HTMLElement): Promise<void> {
               .join(' · ')
           )
         );
+        const edit = el('button', 'btn btn--ghost', 'Edit');
+        edit.type = 'button';
+        edit.addEventListener('click', () => {
+          renderTaskEditor(preview, task, projects, () => void renderWeekView(canvas));
+        });
         const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
         done.type = 'button';
-        done.addEventListener('click', async () => {
-          try {
-            await toggleDone(task);
-            await renderWeekView(canvas);
-          } catch (err) {
-            preview.append(el('p', 'empty-state', errorMessage(err)));
-          }
+        done.addEventListener('click', () => {
+          requestToggleDone(preview, task, () => renderWeekView(canvas));
         });
-        preview.append(done);
+        preview.append(edit, done);
       });
       col.append(item);
     }
@@ -281,16 +340,71 @@ export async function renderMonthView(canvas: HTMLElement): Promise<void> {
   canvas.append(stack);
 }
 
+let backlogDomain: TaskDomain | 'all' = 'all';
+let backlogPriority: TaskPriority | 'all' = 'all';
+let backlogTag = '';
+
 export async function renderListView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const tasks = await tasksApi.listTasks();
-  const list = backlogTasks(tasks);
+  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  const tags = [...new Set(tasks.flatMap((t) => t.tags))].sort();
+  let list = backlogTasks(tasks);
+  if (backlogDomain !== 'all') list = list.filter((t) => t.domain === backlogDomain);
+  if (backlogPriority !== 'all') list = list.filter((t) => t.priority === backlogPriority);
+  if (backlogTag) list = list.filter((t) => t.tags.includes(backlogTag));
   canvas.replaceChildren();
-  canvas.append(el('p', 'view-lede', 'Open tasks without a due date, filterable later by domain/tag/priority.'));
+
+  const filters = el('div', 'board-filter');
+  filters.append(
+    createHubFilter({
+      key: 'Domain',
+      label: 'Domain',
+      defaultValue: 'all',
+      options: [
+        { value: 'all', label: 'All domains' },
+        ...(['teaching', 'life', 'wedding', 'health', 'other'] as const).map((d) => ({
+          value: d,
+          label: d
+        }))
+      ],
+      value: backlogDomain,
+      onChange: (value) => {
+        backlogDomain = value as TaskDomain | 'all';
+        void renderListView(canvas);
+      }
+    }).el,
+    createHubFilter({
+      key: 'Priority',
+      label: 'Priority',
+      defaultValue: 'all',
+      options: [
+        { value: 'all', label: 'All priorities' },
+        ...(['urgent', 'high', 'medium', 'low'] as const).map((p) => ({ value: p, label: p }))
+      ],
+      value: backlogPriority,
+      onChange: (value) => {
+        backlogPriority = value as TaskPriority | 'all';
+        void renderListView(canvas);
+      }
+    }).el,
+    createHubFilter({
+      key: 'Tag',
+      label: 'Tag',
+      defaultValue: '',
+      options: [{ value: '', label: 'All tags' }, ...tags.map((tag) => ({ value: tag, label: tag }))],
+      value: backlogTag,
+      onChange: (value) => {
+        backlogTag = value;
+        void renderListView(canvas);
+      }
+    }).el
+  );
+  canvas.append(filters);
   canvas.append(renderQuickAdd(() => void renderListView(canvas)));
   const confirmHost = el('div', 'task-confirm');
+  canvas.append(confirmHost);
   if (!list.length) {
-    canvas.append(el('p', 'empty-state', 'Backlog is clear.'), confirmHost);
+    canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
     return;
   }
   const stack = el('div', 'task-stack');
@@ -298,15 +412,13 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
     stack.append(
       renderTaskRow(
         task,
-        async (t) => {
-          await toggleDone(t);
-          await renderListView(canvas);
-        },
-        (t) => confirmDeleteTask(confirmHost, t, () => renderListView(canvas))
+        (t) => requestToggleDone(confirmHost, t, () => renderListView(canvas)),
+        (t) => confirmDeleteTask(confirmHost, t, () => renderListView(canvas)),
+        (t) => renderTaskEditor(confirmHost, t, projects, () => void renderListView(canvas))
       )
     );
   }
-  canvas.append(stack, confirmHost);
+  canvas.append(stack);
 }
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
@@ -332,17 +444,11 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   }
 
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Programs and arcs. Quiet projects (6+ weeks) flag as stalled — revive, Frankenstein, or bury with a reason. Finished work closes with a short retrospective against its baseline end date.'
-    )
-  );
   if (flagWarning) canvas.append(el('p', 'empty-state', flagWarning));
 
   const stallConfirmHost = el('div', 'stall-confirm');
   const closureConfirmHost = el('div', 'closure-confirm');
+  canvas.append(closureConfirmHost, stallConfirmHost);
   const candidateIds = new Set(
     findStallCandidates(projects, tasks).map((c) => c.project.id)
   );
@@ -365,7 +471,7 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
         )
       );
     }
-    canvas.append(stallStack, stallConfirmHost);
+    canvas.append(stallStack);
   }
 
   canvas.append(el('h2', 'section-title', 'Active & revived'));
@@ -378,7 +484,7 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     );
   }
   if (!live.length) stack.append(el('p', 'empty-state', 'No active projects.'));
-  canvas.append(stack, closureConfirmHost);
+  canvas.append(stack);
 
   if (closed.length) {
     canvas.append(el('h2', 'section-title', 'Closed, buried & frankensteined'));
@@ -474,7 +580,7 @@ function showCloseConfirm(
   card.setAttribute('aria-label', 'Confirm closure');
   card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
   card.append(el('h2', 'closure-confirm__title', `Close ${project.title}`));
-  const reason = el('input', 'sign-in__input') as HTMLInputElement;
+  const reason = el('input', 'hub-search') as HTMLInputElement;
   reason.placeholder = 'Short retrospective (required)';
   reason.setAttribute('aria-label', 'Retrospective');
   const slipText =
@@ -513,6 +619,7 @@ function showCloseConfirm(
   actions.append(discard, confirm);
   card.append(actions);
   host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function renderStalledCard(
@@ -543,11 +650,11 @@ function renderStalledCard(
     )
   );
 
-  const reason = el('input', 'sign-in__input') as HTMLInputElement;
+  const reason = el('input', 'hub-search') as HTMLInputElement;
   reason.placeholder = 'Short reason (required)';
   reason.setAttribute('aria-label', `Reason for ${project.title}`);
 
-  const merge = el('select', 'quick-add__select') as HTMLSelectElement;
+  const merge = el('select', 'hub-filter') as HTMLSelectElement;
   merge.setAttribute('aria-label', 'Frankenstein into');
   const blank = document.createElement('option');
   blank.value = '';
@@ -703,14 +810,20 @@ function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): voi
     host.append(
       renderTaskRow(
         task,
-        async (t) => {
-          await toggleDone(t);
-          await refreshSearch(host);
+        (t) => {
+          const confirmHost = host.parentElement?.querySelector('.task-confirm');
+          if (!(confirmHost instanceof HTMLElement)) return;
+          requestToggleDone(confirmHost, t, () => refreshSearch(host));
         },
         (t) => {
           const confirmHost = host.parentElement?.querySelector('.task-confirm');
           if (!(confirmHost instanceof HTMLElement)) return;
           confirmDeleteTask(confirmHost, t, () => refreshSearch(host));
+        },
+        (t) => {
+          const confirmHost = host.parentElement?.querySelector('.task-confirm');
+          if (!(confirmHost instanceof HTMLElement)) return;
+          renderTaskEditor(confirmHost, t, projects, () => void refreshSearch(host));
         }
       )
     );
@@ -748,6 +861,7 @@ function showTemplateConfirm(
   actions.append(discard, confirm);
   card.append(actions);
   host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
@@ -760,13 +874,6 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     return;
   }
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Start from a template. Writes go through a confirm card — nothing is created on the first click.'
-    )
-  );
   const confirmHost = el('div', 'template-confirm');
 
   canvas.append(el('h2', 'section-title', 'Task templates'));
@@ -802,7 +909,7 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     use.type = 'button';
     use.addEventListener('click', () => {
       if (pt.type === 'excursion' && pt.excursion_template_id) {
-        location.hash = '#/excursions';
+        location.hash = `#/excursions?template=${encodeURIComponent(pt.excursion_template_id)}`;
         return;
       }
       showTemplateConfirm(
@@ -825,7 +932,7 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     const use = el('button', 'btn btn--primary', 'Use');
     use.type = 'button';
     use.addEventListener('click', () => {
-      location.hash = '#/excursions';
+      location.hash = `#/excursions?template=${encodeURIComponent(et.id)}`;
     });
     actions.append(use);
     row.append(
@@ -837,39 +944,4 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     projStack.append(row);
   }
   canvas.append(projStack, confirmHost);
-}
-
-function renderQuickAdd(onCreated: () => void): HTMLElement {
-  const form = el('form', 'quick-add');
-  const title = el('input', 'sign-in__input') as HTMLInputElement;
-  title.placeholder = 'New task title';
-  title.required = true;
-  const domain = el('select', 'quick-add__select') as HTMLSelectElement;
-  for (const d of ['teaching', 'life', 'wedding', 'health', 'other'] as const) {
-    const opt = document.createElement('option');
-    opt.value = d;
-    opt.textContent = d;
-    domain.append(opt);
-  }
-  const submit = el('button', 'btn btn--primary', 'Add');
-  submit.type = 'submit';
-  form.append(title, domain, submit);
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    submit.disabled = true;
-    try {
-      await tasksApi.createTask({
-        title: title.value.trim(),
-        domain: domain.value,
-        due_date: toDateKey(new Date())
-      });
-      title.value = '';
-      onCreated();
-    } catch (err) {
-      form.append(el('p', 'empty-state', errorMessage(err)));
-    } finally {
-      submit.disabled = false;
-    }
-  });
-  return form;
 }

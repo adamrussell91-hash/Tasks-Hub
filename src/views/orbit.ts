@@ -3,6 +3,8 @@ import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { domainFill, layoutOrbit, type OrbitBody } from '@/domain/orbit';
+import { renderGraphFamilyPills } from '@/views/stretch-pills';
+import { renderTaskEditor } from '@/views/task-editor';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -15,7 +17,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function showPreview(preview: HTMLElement, body: OrbitBody): void {
+function showPreview(preview: HTMLElement, body: OrbitBody, tasks: Task[]): void {
   preview.hidden = false;
   preview.replaceChildren(
     el('p', 'graph-preview__eyebrow', body.kind),
@@ -32,6 +34,21 @@ function showPreview(preview: HTMLElement, body: OrbitBody): void {
         .join(' · ')
     )
   );
+  if (body.kind === 'task') {
+    const task = tasks.find((t) => t.id === body.id);
+    if (task) {
+      const edit = el('button', 'btn btn--ghost', 'Edit');
+      edit.type = 'button';
+      edit.addEventListener('click', () => {
+        void tasksApi.listProjects().then((projects) => {
+          renderTaskEditor(preview, task, projects, () => {
+            location.hash = '#/board';
+          });
+        });
+      });
+      preview.append(edit);
+    }
+  }
 }
 
 function mountOrbit(host: HTMLElement, tasks: Task[], projects: Project[]): void {
@@ -111,7 +128,7 @@ function mountOrbit(host: HTMLElement, tasks: Task[], projects: Project[]): void
     planet.setAttribute('stroke-width', body.kind === 'project' ? '2.25' : '1.25');
     planet.setAttribute('class', 'orbit-planet');
 
-    const select = () => showPreview(preview, body);
+    const select = () => showPreview(preview, body, tasks);
     g.addEventListener('click', select);
     g.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -160,7 +177,7 @@ function mountOrbit(host: HTMLElement, tasks: Task[], projects: Project[]): void
     const item = el('li');
     const btn = el('button', 'btn btn--ghost', `${body.kind}: ${body.label}`);
     btn.type = 'button';
-    btn.addEventListener('click', () => showPreview(preview, body));
+    btn.addEventListener('click', () => showPreview(preview, body, tasks));
     item.append(btn);
     list.append(item);
   }
@@ -174,13 +191,7 @@ export async function renderOrbitView(canvas: HTMLElement): Promise<void> {
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
 
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Closest bodies are most urgent (due date + priority). Size ≈ effort; colour ≈ domain.'
-    )
-  );
+  canvas.append(renderGraphFamilyPills('orbit'));
   const host = el('div', 'orbit-host graph-host');
   canvas.append(host);
   mountOrbit(host, tasks, projects);

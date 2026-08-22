@@ -43,17 +43,17 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   board: {
     eyebrow: 'Home',
     title: 'Board',
-    supporting: 'Tasks and projects as Teaching-density tiles.'
+    supporting: 'Everything on your plate, grouped by status.'
   },
   clare: {
     eyebrow: 'Negotiate',
     title: 'Clare DeMind',
-    supporting: 'Propose duration and framework — confirm before write.'
+    supporting: 'Tell Clare what needs doing. She proposes a time and a way in.'
   },
   graph: {
     eyebrow: 'Structure',
     title: 'Graph',
-    supporting: 'Blockers and workstreams — Knowledge-style search, select, preview.'
+    supporting: 'See what’s blocking what.'
   },
   maps: {
     eyebrow: 'Pathways',
@@ -63,42 +63,42 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   gantt: {
     eyebrow: 'Schedule',
     title: 'Gantt',
-    supporting: 'Project timeline from due dates and dependencies.'
+    supporting: 'Pick a project to see its timeline.'
   },
   orbit: {
-    eyebrow: 'Stretch',
+    eyebrow: 'Explore',
     title: 'Orbit',
     supporting: 'Adam at the centre — urgency pulls work closer.'
   },
   branch: {
-    eyebrow: 'Stretch',
+    eyebrow: 'Explore',
     title: 'Branch',
-    supporting: 'One project’s parent tree and depends_on edges.'
+    supporting: 'How one project’s tasks link together.'
   },
   constellation: {
-    eyebrow: 'Stretch',
+    eyebrow: 'Explore',
     title: 'Sky',
-    supporting: 'Constellation metaphor — completions light stars, not a task list.'
+    supporting: 'Completions light stars — not a task list.'
   },
   day: {
     eyebrow: 'Focus',
     title: 'Today',
-    supporting: 'Adaptive domain focus, pinch pressure, and due-soon.'
+    supporting: 'What needs you now, with pinch and due-soon cues.'
   },
   week: {
     eyebrow: 'Shape',
     title: 'Week',
-    supporting: 'Due work with pinch watch / overload cues.'
+    supporting: 'Due work with pinch watch and overload cues.'
   },
   month: {
     eyebrow: 'Horizon',
     title: 'Month',
-    supporting: 'Milestones and excursion key dates.'
+    supporting: 'Milestones and excursion key dates this month.'
   },
   list: {
     eyebrow: 'Inbox',
     title: 'Backlog',
-    supporting: 'Open tasks without a due date.'
+    supporting: 'Open tasks with no due date yet.'
   },
   search: {
     eyebrow: 'Find',
@@ -108,12 +108,12 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   templates: {
     eyebrow: 'Reuse',
     title: 'Templates',
-    supporting: 'Start from a template or grow the library from real work.'
+    supporting: 'Start from a template — you’ll always confirm before anything’s created.'
   },
   projects: {
     eyebrow: 'Arcs',
     title: 'Projects',
-    supporting: 'Stall revive / Frankenstein / bury, or close with planned-vs-actual.'
+    supporting: 'Deal with a stalled project, or close out a finished one.'
   },
   excursions: {
     eyebrow: 'Events',
@@ -122,12 +122,12 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   },
   stress: {
     eyebrow: 'Network',
-    title: 'StressFlags',
-    supporting: 'Pattern flags routed to Hammond, Penelope, and Vera inboxes.'
+    title: 'Network',
+    supporting: 'Pressure flags routed to Hammond, Penelope, and Vera.'
   },
   corey: {
     eyebrow: 'Share',
-    title: 'Corey capacity',
+    title: 'Corey',
     supporting: 'Read-only availability — no task titles on the public link.'
   }
 };
@@ -205,10 +205,11 @@ async function bootApp(root: HTMLElement): Promise<void> {
     onLogout: async () => {
       await logout();
       await boot(root);
-    }
+    },
+    onRefresh: () => void paint()
   });
 
-  const paint = async () => {
+  async function paint() {
     window.scrollTo(0, 0);
     const canvasWrap = shell.canvas.closest('.hub-canvas');
     if (canvasWrap instanceof HTMLElement) canvasWrap.scrollTop = 0;
@@ -224,7 +225,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
       renderPageHeader(shell, {
         eyebrow: 'Missing',
         title: 'Page not found',
-        supporting: 'Unknown route — the URL was not rewritten to Board.'
+        supporting: 'That page doesn’t exist.'
       });
       renderNotFound(shell.canvas, location.hash);
       return;
@@ -237,7 +238,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
     } catch (err) {
       renderLoadError(shell.canvas, err, () => void paint(), `Could not load ${HEADERS[view].title}`);
     }
-  };
+  }
 
   window.addEventListener('hashchange', () => {
     void paint();

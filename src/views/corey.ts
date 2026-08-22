@@ -61,13 +61,6 @@ export async function renderCoreyView(canvas: HTMLElement): Promise<void> {
 
 function paintCorey(canvas: HTMLElement, snapshot: CapacitySnapshot, share: CapacityShare): void {
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Workload shape only — share this with Corey. The public link never shows task titles or detail.'
-    )
-  );
 
   const hero = el('div', 'capacity-hero');
   hero.append(el('p', 'page-header__eyebrow', `Overall · ${snapshot.overall}`));
@@ -101,7 +94,7 @@ function paintCorey(canvas: HTMLElement, snapshot: CapacitySnapshot, share: Capa
   const shareBox = el('div', 'capacity-share');
   shareBox.append(el('h2', 'section-title', 'Share with Corey'));
   const url = shareUrl(share.token);
-  const input = el('input', 'sign-in__input') as HTMLInputElement;
+  const input = el('input', 'hub-search') as HTMLInputElement;
   input.readOnly = true;
   input.value = url;
   input.setAttribute('aria-label', 'Share URL');

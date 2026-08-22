@@ -115,7 +115,7 @@ export function applyCalibration(
     return {
       minutes: baseMinutes,
       note: calibration
-        ? 'Still learning your overrides — need a couple more negotiations.'
+        ? 'Estimate will get sharper the more you use Clare.'
         : null
     };
   }

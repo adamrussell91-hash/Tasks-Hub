@@ -1,20 +1,5 @@
 /* Tasks Hub view surfaces — closed tokens only */
 
-.skip-link {
-  position: absolute;
-  left: -999px;
-  top: 0;
-  z-index: 100;
-  padding: var(--space-2) var(--space-3);
-  background: var(--navy);
-  color: var(--on-dark);
-}
-
-.skip-link:focus {
-  left: var(--space-2);
-  top: var(--space-2);
-}
-
 .view-lede {
   margin: 0 0 var(--space-4);
   color: var(--muted);
@@ -179,29 +164,23 @@
   align-items: center;
 }
 
-.quick-add .sign-in__input,
-.search-form .sign-in__input {
+.quick-add .hub-search,
+.search-form .hub-search,
+.clare-form .hub-search,
+.excursion-form .hub-search,
+.capacity-share .hub-search {
   flex: 1 1 16rem;
   min-width: 12rem;
 }
 
-.quick-add__select {
-  font: inherit;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
+select.hub-filter {
+  appearance: auto;
+  cursor: pointer;
 }
 
-@media (max-width: 960px) {
-  .week-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .board-grid {
-    grid-template-columns: 1fr;
-  }
+.task-editor__notes {
+  min-height: 5rem;
+  resize: vertical;
 }
 
 .board-grid {
@@ -209,6 +188,13 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--hub-tile-gap, var(--space-4));
   align-items: start;
+}
+
+@media (max-width: 720px) {
+  .week-grid,
+  .board-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .board-col {
@@ -278,7 +264,7 @@
   align-items: center;
 }
 
-.graph-toolbar .sign-in__input {
+.graph-toolbar .hub-search {
   flex: 1 1 14rem;
   min-width: 10rem;
 }
@@ -385,13 +371,13 @@
 
 .gantt-tick {
   fill: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-2xs);
 }
 
 .gantt-row-label {
   fill: var(--ink);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
 }
 
 .gantt-bar {
@@ -438,8 +424,8 @@
   margin: 0 0 var(--space-2);
 }
 
-.excursion-form .sign-in__input,
-.excursion-form .quick-add__select {
+.excursion-form .hub-search,
+.excursion-form .hub-filter {
   min-width: 12rem;
   flex: 1 1 12rem;
 }
@@ -525,7 +511,7 @@
   margin-bottom: var(--space-4);
 }
 
-.clare-form .sign-in__input {
+.clare-form .hub-search {
   flex: 1 1 16rem;
   min-width: 12rem;
 }
@@ -577,7 +563,7 @@
   gap: var(--space-2);
 }
 
-.clare-estimate .sign-in__input {
+.clare-estimate .hub-search {
   width: 6rem;
 }
 
@@ -816,7 +802,7 @@
   flex: 1 0 100%;
 }
 
-.capacity-share .sign-in__input {
+.capacity-share .hub-search {
   flex: 1 1 16rem;
   min-width: 12rem;
 }
@@ -902,16 +888,16 @@
 .orbit-label,
 .orbit-centre__label {
   fill: var(--navy);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 12px;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
   pointer-events: none;
 }
 
 .orbit-centre__label {
   fill: var(--on-dark);
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-caps);
 }
 
 .branch-project-select {
@@ -980,8 +966,8 @@
 
 .branch-node__label {
   fill: var(--navy);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 12px;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
   pointer-events: none;
 }
 
@@ -995,7 +981,7 @@
 }
 
 .constellation-haze {
-  fill: rgba(168, 90, 12, 0.12);
+  fill: var(--warning-surface);
   animation: constellation-breathe 4.5s ease-in-out infinite;
 }
 
@@ -1055,8 +1041,8 @@
 
 .constellation-fill {
   fill: var(--on-dark);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 12px;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
   opacity: 0.85;
 }
 
@@ -1068,19 +1054,61 @@
   margin-bottom: var(--space-4);
 }
 
+.map-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+
+.map-key__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.map-key__disc {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  color: var(--paper);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.map-key__name {
+  font-weight: var(--weight-medium);
+}
+
+.map-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.map-field__label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
 .map-stage {
   position: relative;
   background: var(--cotton);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   min-height: 28rem;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .map-svg {
   display: block;
   width: 100%;
-  height: 36rem;
+  min-height: 48rem;
+  height: 70vh;
 }
 
 .map-zoom {
@@ -1092,37 +1120,77 @@
 }
 
 .map-line-letter,
+.map-line-name,
 .map-tick__label,
 .map-tick__note,
-.map-station__label {
+.map-station__label,
+.map-term__label {
   font-family: Inter, ui-sans-serif, sans-serif;
-  fill: var(--ink);
   pointer-events: none;
 }
 
-.map-line-letter {
-  font-size: var(--text-2xs);
-  letter-spacing: var(--tracking-wide);
+.map-term__rule {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 5;
+}
+
+.map-term__disc {
   fill: var(--muted);
 }
 
-.map-station__label {
-  font-size: var(--text-2xs);
+.map-term__label {
+  fill: var(--paper);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
 }
 
+.map-line-group {
+  transition: transform 0.45s ease;
+}
+
+.map-connector {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.map-connector--under {
+  stroke-opacity: 0.9;
+}
+
+.map-port {
+  fill: var(--paper);
+  stroke-width: 1.5;
+}
+
+.map-tick__chip {
+  fill: var(--paper);
+}
+
+.map-line-letter {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+
+.map-line-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.map-station__label,
 .map-tick__label {
   font-size: var(--text-xs);
-  fill: var(--muted);
+  font-weight: var(--weight-semibold);
 }
 
 .map-tick__note {
   font-size: var(--text-2xs);
-  fill: var(--pastel-lilac-ink);
 }
 
 .map-station.is-selected .map-station__body,
-.map-tick.is-selected circle {
-  stroke: var(--high-sea);
+.map-tick.is-selected .map-tick__mark {
+  stroke: var(--wave);
 }
 
 .map-preview {
@@ -1187,6 +1255,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .map-line-group {
+    transition: none;
+  }
+
   .orbit-spin,
   .branch-edge,
   .branch-node,

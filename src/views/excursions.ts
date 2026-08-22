@@ -5,6 +5,7 @@ import { tasksApi } from '@/services/client-api';
 import { buildExcursionPlan, formatLeadTimes } from '@/domain/excursion';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, toDateKey } from '@/domain/queries';
+import { hashQuery } from '@/shell/shell';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -23,16 +24,21 @@ function defaultEventDate(): string {
 
 function showConfirm(
   host: HTMLElement,
+  title: string,
   summary: string,
   onConfirm: () => Promise<void>
 ): void {
   host.replaceChildren();
-  const card = el('div', 'confirm-card');
-  card.append(el('p', undefined, summary));
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm change');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'page-header__title', title));
+  card.append(el('p', 'page-header__supporting', `${summary} Do not apply until Confirm.`));
   const actions = el('div', 'confirm-card__actions');
-  const cancel = el('button', 'btn btn--ghost', 'Cancel');
+  const cancel = el('button', 'btn btn--ghost', 'Discard');
   cancel.type = 'button';
-  const ok = el('button', 'btn btn--decisive', 'Create excursion');
+  const ok = el('button', 'btn btn--primary', 'Confirm');
   ok.type = 'button';
   cancel.addEventListener('click', () => host.replaceChildren());
   ok.addEventListener('click', async () => {
@@ -52,6 +58,7 @@ function showConfirm(
   actions.append(cancel, ok);
   card.append(actions);
   host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function renderDrafts(project: Project): HTMLElement {
@@ -194,39 +201,37 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   const excursions = projects.filter((p) => p.type === 'excursion');
 
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Pick a competition template, set the event date, and admin tasks schedule themselves from lead times.'
-    )
-  );
 
   const form = el('form', 'excursion-form');
   form.append(el('h2', 'section-title', 'New excursion'));
 
-  const templateSelect = el('select', 'quick-add__select') as HTMLSelectElement;
+  const prefillId = hashQuery().get('template');
+
+  const templateSelect = el('select', 'hub-filter') as HTMLSelectElement;
   templateSelect.setAttribute('aria-label', 'Excursion template');
   templateSelect.required = true;
   for (const t of templates) {
     const opt = document.createElement('option');
     opt.value = t.id;
-    opt.textContent = `${t.name} (${formatLeadTimes(t)})`;
+    opt.textContent = t.name;
+    if (t.id === prefillId) opt.selected = true;
     templateSelect.append(opt);
   }
 
-  const title = el('input', 'sign-in__input') as HTMLInputElement;
+  const title = el('input', 'hub-search') as HTMLInputElement;
   title.placeholder = 'Excursion title';
   title.required = true;
   title.setAttribute('aria-label', 'Title');
+  const prefillTpl = templates.find((t) => t.id === prefillId);
+  if (prefillTpl && !title.value) title.value = prefillTpl.name;
 
-  const eventDate = el('input', 'sign-in__input') as HTMLInputElement;
+  const eventDate = el('input', 'hub-search') as HTMLInputElement;
   eventDate.type = 'date';
   eventDate.required = true;
   eventDate.value = defaultEventDate();
   eventDate.setAttribute('aria-label', 'Event date');
 
-  const group = el('input', 'sign-in__input') as HTMLInputElement;
+  const group = el('input', 'hub-search') as HTMLInputElement;
   group.placeholder = 'Student group (e.g. Year 10 Ethics team)';
   group.setAttribute('aria-label', 'Student group');
 
@@ -243,7 +248,7 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
         event_date: eventDate.value,
         student_group_reference: group.value
       });
-      preview.textContent = `Will schedule ${plan.admin_tasks.length} tasks · permission ${formatDisplayDate(plan.key_dates.permission_note_due)} · risk ${formatDisplayDate(plan.key_dates.risk_assessment_due)} · event ${formatDisplayDate(plan.event_date)}`;
+      preview.textContent = `Will schedule ${plan.admin_tasks.length} tasks · ${formatLeadTimes(tpl)} · permission ${formatDisplayDate(plan.key_dates.permission_note_due)} · risk ${formatDisplayDate(plan.key_dates.risk_assessment_due)} · event ${formatDisplayDate(plan.event_date)}`;
     } catch {
       preview.textContent = '';
     }
@@ -284,7 +289,8 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
     });
     showConfirm(
       confirmHost,
-      `Create “${name}” (${tpl.name}) on ${formatDisplayDate(plan.event_date)}? This will add ${plan.admin_tasks.length} dated admin tasks and draft the permission note + staff email.`,
+      `Create “${name}”`,
+      `${tpl.name} on ${formatDisplayDate(plan.event_date)}. This will add ${plan.admin_tasks.length} dated admin tasks and draft the permission note + staff email.`,
       async () => {
         const result = await tasksApi.createExcursionFromTemplate({
           excursion_template_id: tpl.id,

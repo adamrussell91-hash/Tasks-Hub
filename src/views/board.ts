@@ -1,10 +1,12 @@
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
-import { openTasks, toDateKey } from '@/domain/queries';
+import { openTasks } from '@/domain/queries';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { showConfirmWrite } from '@/views/feedback';
+import { requestToggleDone } from '@/views/dashboard';
+import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -19,11 +21,11 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 type BoardColumnId = 'todo' | 'in_progress' | 'blocked' | 'done';
 
-const COLUMNS: Array<{ id: BoardColumnId; title: string; statuses: Task['status'][] }> = [
-  { id: 'todo', title: 'To do', statuses: ['open', 'deferred'] },
-  { id: 'in_progress', title: 'In progress', statuses: ['in_progress'] },
-  { id: 'blocked', title: 'Blocked', statuses: [] },
-  { id: 'done', title: 'Done', statuses: ['done'] }
+const COLUMNS: Array<{ id: BoardColumnId; title: string; empty: string; statuses: Task['status'][] }> = [
+  { id: 'todo', title: 'To do', empty: 'Nothing waiting.', statuses: ['open', 'deferred'] },
+  { id: 'in_progress', title: 'In progress', empty: 'Nothing in progress right now.', statuses: ['in_progress'] },
+  { id: 'blocked', title: 'Blocked', empty: 'Nothing blocked.', statuses: [] },
+  { id: 'done', title: 'Done', empty: 'Nothing done yet.', statuses: ['done'] }
 ];
 
 /** Session-scoped project filter for Kanban (spec: project-scoped board). */
@@ -46,13 +48,27 @@ function columnFor(task: Task, byId: Map<string, Task>): BoardColumnId {
 
 function renderCard(
   task: Task,
+  projects: Project[],
+  editorHost: HTMLElement,
   onMove: (task: Task, status: Task['status']) => void,
-  onDelete: (task: Task) => void
+  onDelete: (task: Task) => void,
+  onReload: () => void
 ): HTMLElement {
   const card = el('article', 'board-card');
   card.dataset.domain = task.domain;
   card.dataset.status = task.status;
-  card.append(el('h3', 'board-card__title', task.title));
+  const title = el('h3', 'board-card__title', task.title);
+  title.tabIndex = 0;
+  title.setAttribute('role', 'button');
+  const openEdit = () => renderTaskEditor(editorHost, task, projects, onReload);
+  title.addEventListener('click', openEdit);
+  title.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openEdit();
+    }
+  });
+  card.append(title);
   const meta = el('div', 'board-card__meta');
   meta.append(el('span', 'chip', task.domain), el('span', 'chip chip--muted', task.priority));
   if (task.due_date) meta.append(el('span', 'chip chip--muted', formatDisplayDate(task.due_date)));
@@ -62,6 +78,10 @@ function renderCard(
   card.append(meta);
 
   const actions = el('div', 'board-card__actions');
+  const edit = el('button', 'btn btn--ghost', 'Edit');
+  edit.type = 'button';
+  edit.addEventListener('click', openEdit);
+  actions.append(edit);
   if (task.status !== 'in_progress' && task.status !== 'done') {
     const start = el('button', 'btn btn--secondary', 'Start');
     start.type = 'button';
@@ -77,9 +97,6 @@ function renderCard(
     const done = el('button', 'btn btn--primary', 'Done');
     done.type = 'button';
     done.addEventListener('click', () => {
-      done.disabled = true;
-      done.textContent = 'Saving…';
-      card.dataset.status = 'done';
       onMove(task, 'done');
     });
     actions.append(done);
@@ -130,7 +147,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     el(
       'p',
       'view-lede',
-      `Board · ${openTasks(scoped).length} open in scope · ${projects.filter((p) => p.status === 'active').length} active projects · ${toDateKey(new Date())}`
+      `${openTasks(scoped).length} open in scope · ${projects.filter((p) => p.status === 'active').length} active projects · ${formatDisplayDate(new Date())}`
     )
   );
 
@@ -152,13 +169,8 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   filterRow.append(scope.el);
   canvas.append(filterRow);
 
-  const form = renderQuickAdd(
-    () => void renderBoardView(canvas),
-    boardProjectFilter === 'all' ? null : boardProjectFilter
-  );
-  canvas.append(form);
-
   const confirmHost = el('div', 'board-confirm');
+  canvas.append(renderQuickAdd(() => void renderBoardView(canvas), boardProjectFilter === 'all' ? null : boardProjectFilter));
   canvas.append(confirmHost);
 
   const board = el('div', 'board-grid');
@@ -167,12 +179,18 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     section.append(el('h2', 'board-col__title', col.title));
     const stack = el('div', 'board-col__stack');
     const items = scoped.filter((t) => columnFor(t, byId) === col.id);
-    if (!items.length) stack.append(el('p', 'empty-state empty-state--compact', '—'));
+    if (!items.length) stack.append(el('p', 'empty-state empty-state--compact', col.empty));
     for (const task of items) {
       stack.append(
         renderCard(
           task,
+          projects,
+          confirmHost,
           async (t, status) => {
+            if (status === 'done') {
+              requestToggleDone(confirmHost, t, () => renderBoardView(canvas));
+              return;
+            }
             try {
               await tasksApi.updateTask(t.id, { status });
               await renderBoardView(canvas);
@@ -197,7 +215,8 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
               },
               'Delete'
             );
-          }
+          },
+          () => void renderBoardView(canvas)
         )
       );
     }
@@ -205,42 +224,6 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     board.append(section);
   }
   canvas.append(board);
-}
-
-function renderQuickAdd(onCreated: () => void, projectId: string | null): HTMLElement {
-  const form = el('form', 'quick-add');
-  const title = el('input', 'sign-in__input') as HTMLInputElement;
-  title.placeholder = 'New task on the board';
-  title.required = true;
-  const domain = el('select', 'quick-add__select') as HTMLSelectElement;
-  for (const d of ['teaching', 'life', 'wedding', 'health', 'other'] as const) {
-    const opt = document.createElement('option');
-    opt.value = d;
-    opt.textContent = d;
-    domain.append(opt);
-  }
-  const submit = el('button', 'btn btn--primary', 'Add');
-  submit.type = 'submit';
-  form.append(title, domain, submit);
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    submit.disabled = true;
-    try {
-      await tasksApi.createTask({
-        title: title.value.trim(),
-        domain: domain.value,
-        due_date: toDateKey(new Date()),
-        parent_project_id: projectId
-      });
-      title.value = '';
-      onCreated();
-    } catch (err) {
-      form.append(el('p', 'empty-state', err instanceof Error ? err.message : 'Create failed'));
-    } finally {
-      submit.disabled = false;
-    }
-  });
-  return form;
 }
 
 export type { Project };

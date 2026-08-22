@@ -1,17 +1,64 @@
 import { TransitMapSchema, type TransitMap } from '@/schemas/map';
+import { yearLinePoints } from '@/domain/maps-layout';
 
 const STAMP = '2026-08-20T00:00:00.000Z';
 
-function col(id: string, name: string, letter: string, color: TransitMap['lines'][number]['color'], x: number) {
+function col(
+  id: string,
+  name: string,
+  letter: string,
+  color: TransitMap['lines'][number]['color'],
+  x: number
+) {
   return {
     id,
     name,
     letter,
     color,
-    points: [
-      { x, y: 40 },
-      { x, y: 1040 }
-    ]
+    points: yearLinePoints(x)
+  };
+}
+
+function station(
+  id: string,
+  line_id: string,
+  label: string,
+  starts_on: string,
+  ends_on: string,
+  extras: Partial<TransitMap['stations'][number]> = {}
+) {
+  return {
+    id,
+    line_id,
+    label,
+    y: 80,
+    height: 110,
+    in_stroke: 'solid' as const,
+    out_stroke: 'solid' as const,
+    starts_on,
+    ends_on,
+    link: null,
+    ...extras
+  };
+}
+
+function tick(
+  id: string,
+  label: string,
+  attach: TransitMap['ticks'][number]['attach'],
+  starts_on: string,
+  extras: Partial<TransitMap['ticks'][number]> = {}
+) {
+  return {
+    id,
+    label,
+    attach,
+    stroke: 'solid' as const,
+    connects_to: null,
+    starts_on,
+    ends_on: null,
+    link: null,
+    ...extras
   };
 }
 
@@ -24,142 +71,66 @@ export function mindWorks2026Map(): TransitMap {
     created_at: STAMP,
     updated_at: STAMP,
     lines: [
-      col('line_justice', 'Justice', 'J', 'wave', 120),
-      col('line_innovation', 'Innovation', 'I', 'success', 340),
-      col('line_expression', 'Expression', 'E', 'lilac', 560),
-      col('line_reasoning', 'Reasoning', 'R', 'high-sea-ink', 780)
+      col('line_justice', 'Justice', 'J', 'navy', 200),
+      col('line_innovation', 'Innovation', 'I', 'high-sea-ink', 440),
+      col('line_expression', 'Expression', 'E', 'success', 680),
+      col('line_reasoning', 'Reasoning', 'R', 'lilac', 920)
     ],
     stations: [
-      {
-        id: 'st_ydp',
-        line_id: 'line_justice',
-        label: 'Young Diplomats Program',
-        y: 80,
-        height: 110,
-        in_stroke: 'solid',
-        out_stroke: 'solid',
-        link: null
-      },
-      {
-        id: 'st_advocacy',
-        line_id: 'line_justice',
-        label: 'Diplomacy and Advocacy',
-        y: 240,
-        height: 110,
-        in_stroke: 'solid',
-        out_stroke: 'solid',
-        link: null
-      },
-      {
-        id: 'st_mock',
-        line_id: 'line_justice',
-        label: 'NSW Law Society Mock Trial',
-        y: 420,
-        height: 110,
-        in_stroke: 'dotted',
-        out_stroke: 'solid',
-        link: null
-      },
-      {
-        id: 'st_ycl',
-        line_id: 'line_innovation',
-        label: 'Young Creators Lab',
-        y: 80,
-        height: 110,
-        in_stroke: 'solid',
-        out_stroke: 'solid',
-        link: null
-      },
-      {
-        id: 'st_future',
-        line_id: 'line_innovation',
-        label: 'Future Solutions Lab',
-        y: 420,
-        height: 110,
-        in_stroke: 'solid',
-        out_stroke: 'solid',
-        link: null
-      },
-      {
-        id: 'st_studio',
-        line_id: 'line_expression',
-        label: 'StudioGAT',
-        y: 80,
-        height: 110,
-        in_stroke: 'solid',
-        out_stroke: 'solid',
-        link: null
-      },
-      {
-        id: 'st_psych',
-        line_id: 'line_reasoning',
-        label: 'Foundations Psychology',
-        y: 80,
-        height: 110,
-        in_stroke: 'solid',
-        out_stroke: 'solid',
-        link: null
-      },
-      {
-        id: 'st_ethics',
-        line_id: 'line_reasoning',
-        label: 'Foundations Ethics and Philosophy',
-        y: 240,
-        height: 110,
-        in_stroke: 'solid',
-        out_stroke: 'solid',
-        link: null
-      }
+      station('st_ydp', 'line_justice', 'Young Diplomats Program', '2026-01-27', '2026-04-10'),
+      station('st_advocacy', 'line_justice', 'Diplomacy and Advocacy', '2026-04-27', '2026-07-03'),
+      station('st_mock', 'line_justice', 'NSW Law Society Mock Trial', '2026-07-20', '2026-10-30', {
+        in_stroke: 'dotted'
+      }),
+      station('st_ycl', 'line_innovation', 'Young Creators Lab', '2026-01-27', '2026-07-03'),
+      station('st_future', 'line_innovation', 'Future Solutions Lab', '2026-07-20', '2026-12-17'),
+      station('st_studio', 'line_expression', 'StudioGAT', '2026-01-27', '2026-12-17'),
+      station('st_psych', 'line_reasoning', 'Foundations Psychology', '2026-01-27', '2026-07-03'),
+      station(
+        'st_ethics',
+        'line_reasoning',
+        'Foundations Ethics and Philosophy',
+        '2026-07-20',
+        '2026-12-17'
+      )
     ],
     ticks: [
-      {
-        id: 'tk_muna',
-        label: 'Rotary MUNA',
-        attach: { kind: 'line', line_id: 'line_justice', y: 200 },
-        stroke: 'solid',
-        connects_to: null,
-        link: null
-      },
-      {
-        id: 'tk_locke',
-        label: 'John Locke Essay Competition',
-        attach: { kind: 'station', station_id: 'st_mock', side: 'right', offset: 0.35 },
-        stroke: 'solid',
-        connects_to: 'Connects to Reasoning',
-        link: null
-      },
-      {
-        id: 'tk_moot',
-        label: 'Bond University Mooting',
-        attach: { kind: 'station', station_id: 'st_mock', side: 'right', offset: 0.7 },
-        stroke: 'dotted',
-        connects_to: null,
-        link: null
-      },
-      {
-        id: 'tk_davinci',
-        label: 'da Vinci Decathlon',
-        attach: { kind: 'line', line_id: 'line_innovation', y: 260 },
-        stroke: 'solid',
-        connects_to: null,
-        link: null
-      },
-      {
-        id: 'tk_unsw',
-        label: 'UNSW Mathematics Competition',
-        attach: { kind: 'line', line_id: 'line_innovation', y: 300 },
-        stroke: 'solid',
-        connects_to: null,
-        link: null
-      },
-      {
-        id: 'tk_evatt',
-        label: 'UN Evatt Competition',
-        attach: { kind: 'station', station_id: 'st_advocacy', side: 'right', offset: 0.45 },
-        stroke: 'solid',
-        connects_to: null,
-        link: null
-      }
+      tick('tk_muna', 'Rotary MUNA', { kind: 'line', line_id: 'line_justice', y: 200 }, '2026-05-15'),
+      tick(
+        'tk_locke',
+        'John Locke Essay Competition',
+        { kind: 'station', station_id: 'st_mock', side: 'right', offset: 0.25 },
+        '2026-08-05',
+        { connects_to: 'Reasoning' }
+      ),
+      tick(
+        'tk_moot',
+        'Bond University Mooting',
+        { kind: 'event', event_id: 'tk_locke', side: 'bottom' },
+        '2026-09-10',
+        { stroke: 'dotted', connects_to: 'Justice' }
+      ),
+      tick(
+        'tk_davinci',
+        'da Vinci Decathlon',
+        { kind: 'line', line_id: 'line_innovation', y: 260 },
+        '2026-05-22',
+        { connects_to: 'Rotary MUNA' }
+      ),
+      tick(
+        'tk_unsw',
+        'UNSW Mathematics Competition',
+        { kind: 'event', event_id: 'tk_davinci', side: 'bottom' },
+        '2026-08-18',
+        { connects_to: 'Innovation' }
+      ),
+      tick(
+        'tk_evatt',
+        'UN Evatt Competition',
+        { kind: 'station', station_id: 'st_advocacy', side: 'right', offset: 0.55 },
+        '2026-08-01',
+        { connects_to: 'Rotary MUNA' }
+      )
     ]
   });
 }

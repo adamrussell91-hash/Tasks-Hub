@@ -54,6 +54,8 @@ export const StationSchema = z.object({
   height: z.number().positive().default(88),
   in_stroke: LineStrokeSchema.default('solid'),
   out_stroke: LineStrokeSchema.default('solid'),
+  starts_on: z.string().nullable().default(null),
+  ends_on: z.string().nullable().default(null),
   link: MapLinkSchema
 });
 
@@ -68,6 +70,11 @@ export const TickAttachSchema = z.discriminatedUnion('kind', [
     station_id: z.string().min(1),
     side: z.enum(['left', 'right']),
     offset: z.number().min(0).max(1).default(0.5)
+  }),
+  z.object({
+    kind: z.literal('event'),
+    event_id: z.string().min(1),
+    side: z.enum(['left', 'right', 'top', 'bottom']).default('right')
   })
 ]);
 
@@ -77,6 +84,8 @@ export const TickSchema = z.object({
   attach: TickAttachSchema,
   stroke: LineStrokeSchema.default('solid'),
   connects_to: z.string().nullable().default(null),
+  starts_on: z.string().nullable().default(null),
+  ends_on: z.string().nullable().default(null),
   link: MapLinkSchema
 });
 

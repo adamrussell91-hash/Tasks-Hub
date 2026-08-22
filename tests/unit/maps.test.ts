@@ -16,6 +16,22 @@ import {
   stationLineCuts
 } from '@/domain/maps';
 import { mindWorks2026Map } from '@/domain/maps-seed';
+import {
+  applyDateSpanToStation,
+  boxesOverlap,
+  dateToY,
+  eventPorts,
+  labelHitsForeignLine,
+  layoutMap,
+  lineStrokeBox,
+  matchConnectTarget,
+  placeBox,
+  schoolTerms,
+  spanWeeks,
+  stationPorts,
+  underpassLaneY,
+  wrapEventLines
+} from '@/domain/maps-layout';
 import { mapsOrSeed } from '@/views/maps';
 
 describe('map schema', () => {
@@ -66,13 +82,17 @@ describe('crossings', () => {
 });
 
 describe('ticks', () => {
-  it('attaches to a line or a station side', () => {
+  it('attaches to a line, a station side, or another event port', () => {
     const onLine = attachTick({ kind: 'line', line_id: 'j', y: 120 });
     const onStation = attachTick({ kind: 'station', station_id: 'st_ydp', side: 'right', offset: 0.4 });
+    const onEvent = attachTick({ kind: 'event', event_id: 'tk_locke', side: 'bottom' });
     expect(onLine.kind).toBe('line');
     expect(onStation.kind).toBe('station');
+    expect(onEvent.kind).toBe('event');
     if (onStation.kind !== 'station') throw new Error('expected station attach');
     expect(onStation.side).toBe('right');
+    if (onEvent.kind !== 'event') throw new Error('expected event attach');
+    expect(onEvent.side).toBe('bottom');
   });
 });
 
@@ -104,6 +124,165 @@ describe('MindWorks 2026 seed', () => {
     );
     expect(map.ticks.some((t) => t.attach.kind === 'line')).toBe(true);
     expect(map.ticks.some((t) => t.attach.kind === 'station')).toBe(true);
+    expect(map.ticks.some((t) => t.attach.kind === 'event')).toBe(true);
+    expect(map.ticks.some((t) => t.connects_to && /MUNA|Locke|Innovation|Reasoning|Justice/i.test(t.connects_to))).toBe(
+      true
+    );
+    expect(map.lines.find((l) => l.letter === 'J')?.color).toBe('navy');
+    expect(map.stations.every((s) => s.starts_on && s.ends_on)).toBe(true);
+  });
+});
+
+describe('year layout', () => {
+  it('maps dates onto the calendar year and draws T1–T4 plus E', () => {
+    const year = 2026;
+    const terms = schoolTerms(year);
+    const t1 = dateToY(terms.t1, year);
+    const e = dateToY(terms.e, year);
+    expect(t1).toBeLessThan(dateToY(terms.t2, year));
+    expect(dateToY(terms.t4, year)).toBeLessThan(e);
+    const later = applyDateSpanToStation(
+      {
+        id: 'st_x',
+        line_id: 'line_justice',
+        label: 'Later program',
+        y: 0,
+        height: 10,
+        in_stroke: 'solid',
+        out_stroke: 'solid',
+        starts_on: '2026-10-12',
+        ends_on: '2026-12-17',
+        link: null
+      },
+      year
+    );
+    expect(later.y).toBeGreaterThan(t1);
+    const layout = layoutMap(mindWorks2026Map());
+    expect(layout.terms.map((t) => t.id)).toEqual(['T1', 'T2', 'T3', 'T4', 'E']);
+    expect(layout.lines.map((l) => l.letter).sort()).toEqual(['E', 'I', 'J', 'R']);
+  });
+
+  it('gives a term-length program weekly ports on both sides', () => {
+    expect(spanWeeks('2026-01-27', '2026-04-10', 2026)).toBe(10);
+    const ports = stationPorts({
+      id: 'st_term',
+      x: 200,
+      y: 100,
+      w: 40,
+      h: 200,
+      weeks: 10
+    });
+    expect(ports.filter((p) => p.side === 'left')).toHaveLength(10);
+    expect(ports.filter((p) => p.side === 'right')).toHaveLength(10);
+  });
+
+  it('wraps long event names so chips stay compact', () => {
+    const lines = wrapEventLines('International Philosophy Olympiad selection workshop and public showcase');
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.every((line) => line.length <= 26)).toBe(true);
+  });
+
+  it('gives an event four cardinal ports', () => {
+    const ports = eventPorts({ id: 'tk', cx: 80, cy: 80 });
+    expect(ports.map((p) => p.side).sort()).toEqual(['bottom', 'left', 'right', 'top']);
+  });
+
+  it('connects a competition to another competition’s border', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    const eventToEvent = layout.connectors.filter(
+      (link) => link.from.owner === 'event' && link.to.owner === 'event'
+    );
+    expect(eventToEvent.length).toBeGreaterThan(0);
+    const moot = layout.ticks.find((tick) => tick.id === 'tk_moot');
+    const locke = layout.ticks.find((tick) => tick.id === 'tk_locke');
+    expect(moot && locke).toBeTruthy();
+    expect(layout.connectors.some((link) => link.id.includes('tk_moot') && link.id.includes('tk_locke') || (link.from.ownerId === 'tk_locke' && link.to.ownerId === 'tk_moot') || (link.from.ownerId === 'tk_moot' && link.to.ownerId === 'tk_locke'))).toBe(true);
+    const target = matchConnectTarget('Rotary MUNA', layout.lines, layout.ticks);
+    expect(target?.kind).toBe('event');
+  });
+
+  it('sends a crossing connector below other elements, not over them', () => {
+    const wall = { id: 'wall', x: 40, y: 80, w: 20, h: 100 };
+    const from = { x: 10, y: 90 };
+    const to = { x: 120, y: 95 };
+    const y = underpassLaneY(from, to, [wall], 8);
+    expect(y).toBe(Math.max(from.y, to.y));
+    expect(y).toBeLessThan(wall.y + wall.h + 40);
+    const layout = layoutMap(mindWorks2026Map());
+    const under = layout.connectors.filter((link) => link.under);
+    expect(under.length).toBeGreaterThan(0);
+    for (const link of under) {
+      const match = /V ([\d.]+) H/.exec(link.path);
+      if (!match) continue;
+      const lane = Number(match[1]);
+      expect(lane).toBeGreaterThanOrEqual(Math.min(link.from.y, link.to.y) - 1);
+    }
+  });
+
+  it('connects events through ports and keeps line groups packed', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    expect(layout.connectors.length).toBeGreaterThan(0);
+    const mock = layout.stations.find((s) => s.id === 'st_mock');
+    expect(mock?.weeks).toBeGreaterThanOrEqual(10);
+    expect(mock?.ports.filter((p) => p.side === 'left')).toHaveLength(mock!.weeks);
+    const xs = layout.lines.map((line) => line.x).sort((a, b) => a - b);
+    for (let i = 1; i < xs.length; i += 1) {
+      expect(xs[i]! - xs[i - 1]!).toBeGreaterThan(80);
+    }
+  });
+
+  it('never leaves two label boxes overlapping', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    const boxes = layout.boxes;
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        expect(boxesOverlap(boxes[i]!, boxes[j]!)).toBe(false);
+      }
+    }
+    const placed = placeBox(
+      { id: 'probe', x: boxes[0]!.x, y: boxes[0]!.y, w: 20, h: 20 },
+      boxes,
+      { width: layout.width, height: layout.height }
+    );
+    expect(boxes.some((box) => boxesOverlap(box, placed))).toBe(false);
+  });
+
+  it('keeps event chips horizontal and off every other line', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    expect(layout.ticks.length).toBeGreaterThan(0);
+    expect(layout.ticks.every((tick) => tick.labelBox.w > tick.labelBox.h)).toBe(true);
+    expect(labelHitsForeignLine(layout)).toBe(false);
+    for (const tick of layout.ticks) {
+      for (const line of layout.lines) {
+        if (line.id === tick.lineId) continue;
+        expect(boxesOverlap(tick.labelBox, lineStrokeBox(line))).toBe(false);
+      }
+    }
+  });
+
+  it('slides a later line right when the first line grows a wide event', () => {
+    const base = mindWorks2026Map();
+    const packed = layoutMap(base);
+    const grown = layoutMap({
+      ...base,
+      ticks: [
+        ...base.ticks,
+        {
+          id: 'tk_wide',
+          label: 'A very long festival of ideas and public speaking',
+          attach: { kind: 'line', line_id: 'line_justice', y: 220 },
+          stroke: 'solid',
+          connects_to: null,
+          starts_on: '2026-03-12',
+          ends_on: null,
+          link: null
+        }
+      ]
+    });
+    const firstI = packed.lines.find((line) => line.id === 'line_innovation')!.x;
+    const grownI = grown.lines.find((line) => line.id === 'line_innovation')!.x;
+    expect(grownI).toBeGreaterThan(firstI);
+    expect(labelHitsForeignLine(grown)).toBe(false);
   });
 });
 

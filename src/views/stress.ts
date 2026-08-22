@@ -60,13 +60,6 @@ export async function renderStressView(canvas: HTMLElement): Promise<void> {
   }
 
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Clare raises textured StressFlags into agent inboxes (Hammond → Penelope → Vera). Write-on-create only — no sync fan-out yet.'
-    )
-  );
 
   const status = el('p', 'stress-scan-status');
   if (scanError) {
