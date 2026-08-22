@@ -1,4 +1,5 @@
 import type { MapStation, Point, TickAttach, TransitMap } from '@/schemas/map';
+import { layoutMap, MAP_LEFT } from '@/domain/maps-layout';
 
 export function isOrthogonalPath(points: Point[]): boolean {
   if (points.length < 2) return false;
@@ -130,26 +131,57 @@ const COLOR: Record<string, string> = {
   depth: '#0a1536'
 };
 
+const FILL: Record<string, string> = {
+  wave: '#dceafa',
+  success: '#dce8d8',
+  lilac: '#e8e0ef',
+  'high-sea-ink': '#f3e4c8',
+  marine: '#dceafa',
+  navy: '#dceafa',
+  depth: '#dceafa'
+};
+
 function renderExportSvg(map: TransitMap): string {
+  const layout = layoutMap(map);
   const parts: string[] = [];
-  for (const line of map.lines) {
-    const color = COLOR[line.color] ?? COLOR.wave!;
-    const stations = map.stations.filter((s) => s.line_id === line.id);
-    const cuts = stationLineCuts(line, stations);
-    for (const cut of cuts) {
-      parts.push(
-        `<line x1="${cut.x}" y1="${cut.y0}" x2="${cut.x}" y2="${cut.y1}" stroke="${color}" stroke-width="8"/>`
-      );
-    }
-    for (const station of stations) {
-      const x = line.points[0]!.x;
-      parts.push(
-        `<rect x="${x - 28}" y="${station.y}" width="56" height="${station.height}" rx="28" fill="#dceafa" stroke="${color}" stroke-width="4"/>`,
-        `<text x="${x}" y="${station.y + station.height / 2}" text-anchor="middle" font-size="11" fill="#294c71">${escapeHtml(station.label)}</text>`
-      );
-    }
+  for (const term of layout.terms) {
+    parts.push(
+      `<line x1="${MAP_LEFT}" y1="${term.y}" x2="${layout.width - 24}" y2="${term.y}" stroke="#6b7788" stroke-width="1.5" stroke-dasharray="6 5"/>`,
+      `<circle cx="36" cy="${term.y}" r="14" fill="#6b7788"/>`,
+      `<text x="36" y="${term.y + 4}" text-anchor="middle" font-size="11" fill="#fbf8f2" font-weight="600">${term.label}</text>`
+    );
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" width="100%" height="100%">${parts.join('')}</svg>`;
+  for (const line of layout.lines) {
+    const color = COLOR[line.color] ?? COLOR.wave!;
+    parts.push(
+      `<line x1="${line.x}" y1="${line.y0}" x2="${line.x}" y2="${line.y1}" stroke="${color}" stroke-width="8"/>`,
+      `<circle cx="${line.disc.cx}" cy="${line.disc.cy}" r="${line.disc.r}" fill="${color}"/>`,
+      `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="#fbf8f2" font-weight="700">${escapeHtml(line.letter)}</text>`,
+      `<text x="${line.disc.cx + line.disc.r + 10}" y="${line.disc.cy + 5}" font-size="14" fill="${color}" font-weight="600">${escapeHtml(line.name)}</text>`
+    );
+  }
+  for (const station of layout.stations) {
+    const color = COLOR[station.color] ?? COLOR.wave!;
+    const fill = FILL[station.color] ?? FILL.wave!;
+    if (station.lane > 0) {
+      parts.push(
+        `<path d="M ${station.lineX} ${station.y} H ${station.x} V ${station.y + 16}" fill="none" stroke="${color}" stroke-width="6"/>`
+      );
+    }
+    parts.push(
+      `<rect x="${station.x - station.w / 2}" y="${station.y}" width="${station.w}" height="${station.h}" rx="${station.w / 2}" fill="${fill}" stroke="${color}" stroke-width="4"/>`,
+      `<text transform="rotate(-90 ${station.x} ${station.y + station.h / 2})" x="${station.x}" y="${station.y + station.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}" font-weight="600">${escapeHtml(station.label)}</text>`
+    );
+  }
+  for (const tick of layout.ticks) {
+    const color = COLOR[tick.color] ?? COLOR.wave!;
+    parts.push(
+      `<line x1="${tick.x0}" y1="${tick.y0}" x2="${tick.cx}" y2="${tick.cy}" stroke="${color}" stroke-width="3"${tick.dash ? ' stroke-dasharray="4 3"' : ''}/>`,
+      `<circle cx="${tick.cx}" cy="${tick.cy}" r="8" fill="#fbf8f2" stroke="${color}" stroke-width="3.5"/>`,
+      `<text transform="rotate(-90 ${tick.labelBox.x + tick.labelBox.w / 2} ${tick.labelBox.y + tick.labelBox.h / 2})" x="${tick.labelBox.x + tick.labelBox.w / 2}" y="${tick.labelBox.y + tick.labelBox.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}">${escapeHtml(tick.label)}</text>`
+    );
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="100%" height="100%">${parts.join('')}</svg>`;
 }
 
 export function exportMapHtml(map: TransitMap): string {
@@ -185,9 +217,7 @@ export function emptyMapDraft(title = 'Untitled map'): Omit<
   return { title, year: null, lines: [], stations: [], ticks: [] };
 }
 
-export function lineX(line: { points: Point[] }): number {
-  return line.points[0]?.x ?? 0;
-}
+export { lineX } from '@/domain/maps-layout';
 
 export function stationAt(stations: MapStation[], id: string): MapStation | undefined {
   return stations.find((s) => s.id === id);

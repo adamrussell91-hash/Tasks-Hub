@@ -54,6 +54,8 @@ export const StationSchema = z.object({
   height: z.number().positive().default(88),
   in_stroke: LineStrokeSchema.default('solid'),
   out_stroke: LineStrokeSchema.default('solid'),
+  starts_on: z.string().nullable().default(null),
+  ends_on: z.string().nullable().default(null),
   link: MapLinkSchema
 });
 
@@ -77,6 +79,8 @@ export const TickSchema = z.object({
   attach: TickAttachSchema,
   stroke: LineStrokeSchema.default('solid'),
   connects_to: z.string().nullable().default(null),
+  starts_on: z.string().nullable().default(null),
+  ends_on: z.string().nullable().default(null),
   link: MapLinkSchema
 });
 
