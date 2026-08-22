@@ -172,7 +172,25 @@ export function estimateVerticalLabel(text: string, fontSize = 12): { w: number;
 }
 
 export function estimateHorizontalLabel(text: string, fontSize = 12): { w: number; h: number } {
-  return { w: Math.max(fontSize, text.length * fontSize * 0.64), h: fontSize + 8 };
+  const lines = wrapEventLines(text);
+  const longest = lines.reduce((max, line) => Math.max(max, line.length), 1);
+  return { w: Math.max(fontSize, longest * fontSize * 0.64), h: lines.length * (fontSize + 6) + 2 };
+}
+
+export function wrapEventLines(text: string, maxChars = 26): string[] {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return [text];
+  const lines: string[] = [];
+  let current = words[0]!;
+  for (const word of words.slice(1)) {
+    if (`${current} ${word}`.length <= maxChars) current = `${current} ${word}`;
+    else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  lines.push(current);
+  return lines;
 }
 
 export function boxesOverlap(a: LabelBox, b: LabelBox, pad = MAP_LABEL_PAD): boolean {

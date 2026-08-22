@@ -10,6 +10,7 @@ import {
   nextLineLetter,
   nextLineX,
   schoolTerms,
+  wrapEventLines,
   yearLinePoints,
   type MapCanvasLayout
 } from '@/domain/maps-layout';
@@ -104,8 +105,10 @@ function horizontalText(
   y: number,
   label: string,
   className: string,
-  fill: string
+  fill: string,
+  boxH: number
 ): SVGTextElement {
+  const lines = wrapEventLines(label);
   const text = svgEl('text', {
     x: String(x),
     y: String(y),
@@ -114,7 +117,21 @@ function horizontalText(
     class: className,
     fill
   });
-  text.textContent = label;
+  if (lines.length === 1) {
+    text.textContent = lines[0]!;
+    return text;
+  }
+  const lineH = 16;
+  const start = y - ((lines.length - 1) * lineH) / 2;
+  for (const [index, line] of lines.entries()) {
+    const tspan = svgEl('tspan', {
+      x: String(x),
+      y: String(start + index * lineH)
+    });
+    tspan.textContent = line;
+    text.append(tspan);
+  }
+  void boxH;
   return text;
 }
 
@@ -311,7 +328,8 @@ function renderMapSvg(host: SVGSVGElement, layout: MapCanvasLayout, selectedId: 
           tick.labelBox.y + tick.labelBox.h / 2,
           tick.label,
           'map-tick__label',
-          tickColor
+          tickColor,
+          tick.labelBox.h
         )
       );
       for (const port of tick.ports) {

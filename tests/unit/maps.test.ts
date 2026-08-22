@@ -27,7 +27,8 @@ import {
   placeBox,
   schoolTerms,
   spanWeeks,
-  stationPorts
+  stationPorts,
+  wrapEventLines
 } from '@/domain/maps-layout';
 import { mapsOrSeed } from '@/views/maps';
 
@@ -163,6 +164,12 @@ describe('year layout', () => {
     });
     expect(ports.filter((p) => p.side === 'left')).toHaveLength(10);
     expect(ports.filter((p) => p.side === 'right')).toHaveLength(10);
+  });
+
+  it('wraps long event names so chips stay compact', () => {
+    const lines = wrapEventLines('International Philosophy Olympiad selection workshop and public showcase');
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.every((line) => line.length <= 26)).toBe(true);
   });
 
   it('gives an event four cardinal ports', () => {

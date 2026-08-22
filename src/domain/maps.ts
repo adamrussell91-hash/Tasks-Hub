@@ -1,5 +1,5 @@
 import type { MapStation, Point, TickAttach, TransitMap } from '@/schemas/map';
-import { layoutMap, MAP_LEFT } from '@/domain/maps-layout';
+import { layoutMap, MAP_LEFT, wrapEventLines } from '@/domain/maps-layout';
 
 export function isOrthogonalPath(points: Point[]): boolean {
   if (points.length < 2) return false;
@@ -186,7 +186,12 @@ function renderExportSvg(map: TransitMap): string {
     parts.push(
       `<path d="M ${tick.cx} ${tick.cy - 14} L ${tick.cx + 14} ${tick.cy} L ${tick.cx} ${tick.cy + 14} L ${tick.cx - 14} ${tick.cy} Z" fill="#fbf8f2" stroke="${color}" stroke-width="3.5"/>`,
       `<rect x="${tick.labelBox.x}" y="${tick.labelBox.y}" width="${tick.labelBox.w}" height="${tick.labelBox.h}" rx="8" fill="#fbf8f2"/>`,
-      `<text x="${tick.labelBox.x + tick.labelBox.w / 2}" y="${tick.labelBox.y + tick.labelBox.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}" font-weight="600">${escapeHtml(tick.label)}</text>`
+      `<text x="${tick.labelBox.x + tick.labelBox.w / 2}" y="${tick.labelBox.y + tick.labelBox.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}" font-weight="600">${wrapEventLines(tick.label)
+        .map((line, index, all) => {
+          const y = tick.labelBox.y + tick.labelBox.h / 2 - ((all.length - 1) * 16) / 2 + index * 16;
+          return `<tspan x="${tick.labelBox.x + tick.labelBox.w / 2}" y="${y}">${escapeHtml(line)}</tspan>`;
+        })
+        .join('')}</text>`
     );
     for (const port of tick.ports) {
       parts.push(`<circle cx="${port.x}" cy="${port.y}" r="4" fill="#fbf8f2" stroke="${color}" stroke-width="1.5"/>`);
