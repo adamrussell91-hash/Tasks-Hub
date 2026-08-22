@@ -2,6 +2,7 @@ import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
 import type { StressPatternKind } from '@/schemas/stress';
 import { addDays, parseDue, startOfDay, tasksForDay, toDateKey } from '@/domain/queries';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 
 export type StressPattern = {
   pattern_kind: StressPatternKind;
@@ -39,7 +40,7 @@ export function detectOverlappingExcursions(projects: Project[]): StressPattern[
       const fingerprint = `overlap:${[a.project.id, b.project.id].sort().join('+')}`;
       out.push({
         pattern_kind: 'overlapping_excursions',
-        pattern_description: `${titles[0]} and ${titles[1]} land within the same fortnight (${toDateKey(a.date)} / ${toDateKey(b.date)}).`,
+        pattern_description: `${titles[0]} and ${titles[1]} land within the same fortnight (${formatDisplayDate(a.date)} / ${formatDisplayDate(b.date)}).`,
         source_project_or_task_id: a.project.id,
         fingerprint
       });
@@ -63,7 +64,7 @@ export function detectDensePinches(tasks: Task[], from: Date = new Date()): Stre
       .join('; ');
     out.push({
       pattern_kind: 'dense_pinch',
-      pattern_description: `${key} has ${dayTasks.length} open due items packing the day (${titles}${dayTasks.length > 3 ? '…' : ''}).`,
+      pattern_description: `${formatDisplayDate(day)} has ${dayTasks.length} open due items packing the day (${titles}${dayTasks.length > 3 ? '…' : ''}).`,
       source_project_or_task_id: dayTasks[0]?.id ?? null,
       fingerprint: `pinch:${key}:${dayTasks.length}`
     });

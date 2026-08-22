@@ -7,6 +7,7 @@ import {
   toDateKey,
   sortByPriorityThenDue
 } from '@/domain/queries';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 
 export type PinchSeverity = 'watch' | 'overloaded';
 
@@ -178,10 +179,12 @@ export function detectPinchPoints(
 
     const severity: PinchSeverity = overloaded ? 'overloaded' : 'watch';
     const date_key = toDateKey(day);
+    const todayKey = toDateKey(start);
+    const when = date_key === todayKey ? 'Today' : formatDisplayDate(day);
     const summary =
       severity === 'overloaded'
-        ? `${date_key} looks overloaded — ${dayTasks.length} tasks (~${estimated_minutes}m).`
-        : `${date_key} is packing up — ${dayTasks.length} tasks (~${estimated_minutes}m).`;
+        ? `${when} looks overloaded — ${dayTasks.length} tasks (~${estimated_minutes}m).`
+        : `${when} is packing up — ${dayTasks.length} tasks (~${estimated_minutes}m).`;
 
     pinches.push({
       date_key,
