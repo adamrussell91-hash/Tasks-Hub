@@ -362,13 +362,27 @@ describe('year layout', () => {
     );
   });
 
-  it('repaints stored Innovation ink as High Sea', () => {
+  it('pins Justice navy, Innovation High Sea, Expression success, Reasoning lilac', () => {
     const dirty = mindWorks2026Map();
-    dirty.lines = dirty.lines.map((line) =>
-      line.letter === 'I' ? { ...line, color: 'high-sea-ink' as const } : line
-    );
-    expect(normalizeLineColors(dirty).lines.find((line) => line.letter === 'I')?.color).toBe('high-sea');
-    expect(mapsOrSeed([dirty])[0]!.lines.find((line) => line.letter === 'I')?.color).toBe('high-sea');
+    dirty.lines = dirty.lines.map((line) => {
+      if (line.letter === 'J') return { ...line, color: 'lilac' as const };
+      if (line.letter === 'I') return { ...line, color: 'success' as const };
+      if (line.letter === 'E') return { ...line, color: 'lilac' as const };
+      if (line.letter === 'R') return { ...line, color: 'high-sea' as const };
+      return line;
+    });
+    const fixed = normalizeLineColors(dirty).lines;
+    expect(fixed.find((line) => line.letter === 'J')?.color).toBe('navy');
+    expect(fixed.find((line) => line.letter === 'I')?.color).toBe('high-sea');
+    expect(fixed.find((line) => line.letter === 'E')?.color).toBe('success');
+    expect(fixed.find((line) => line.letter === 'R')?.color).toBe('lilac');
+    const seeded = mapsOrSeed([dirty])[0]!.lines;
+    expect(seeded.map((line) => [line.letter, line.color])).toEqual([
+      ['J', 'navy'],
+      ['I', 'high-sea'],
+      ['E', 'success'],
+      ['R', 'lilac']
+    ]);
   });
 });
 

@@ -570,14 +570,35 @@ export function moveLine(lines: MapLine[], id: string, delta: -1 | 1): MapLine[]
   return copy;
 }
 
+export const CANONICAL_LINE_COLORS: Record<string, MapColorToken> = {
+  J: 'navy',
+  I: 'high-sea',
+  E: 'success',
+  R: 'lilac',
+  justice: 'navy',
+  innovation: 'high-sea',
+  expression: 'success',
+  reasoning: 'lilac'
+};
+
+export function canonicalLineColor(line: { letter: string; name: string }): MapColorToken | null {
+  const letter = line.letter.trim().toUpperCase();
+  if (CANONICAL_LINE_COLORS[letter]) return CANONICAL_LINE_COLORS[letter]!;
+  const name = line.name.trim().toLowerCase().replace(/\s+line$/, '');
+  return CANONICAL_LINE_COLORS[name] ?? null;
+}
+
 export function normalizeLineColors(map: TransitMap): TransitMap {
   const lines = map.lines.map((line) => {
-    if (line.letter.toUpperCase() === 'I' && line.color === 'high-sea-ink') {
-      return { ...line, color: 'high-sea' as const };
-    }
-    return line;
+    const color = canonicalLineColor(line);
+    return color && color !== line.color ? { ...line, color } : line;
   });
   return { ...map, lines };
+}
+
+export function lineColorsNeedWriteback(raw: TransitMap, normalized: TransitMap): boolean {
+  if (raw.lines.length !== normalized.lines.length) return true;
+  return raw.lines.some((line, index) => line.color !== normalized.lines[index]?.color);
 }
 
 function resolveTickLabel(

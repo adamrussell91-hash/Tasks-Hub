@@ -8,6 +8,7 @@ import {
   dateToY,
   layoutMap,
   LINE_COLORS,
+  lineColorsNeedWriteback,
   moveLine,
   nextLineLetter,
   nextLineX,
@@ -646,6 +647,20 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   const maps = mapsOrSeed(listed);
   const yearNow = new Date().getFullYear();
   let current = pickCurrentYearMap(maps, yearNow) ?? maps[0]!;
+  for (const map of maps) {
+    const raw = listed.find((item) => item.id === map.id);
+    if (!raw || !lineColorsNeedWriteback(raw, map)) continue;
+    void tasksApi
+      .updateMap(map.id, { title: map.title, year: map.year, lines: map.lines, stations: map.stations, ticks: map.ticks })
+      .then((saved) => {
+        const idx = maps.findIndex((item) => item.id === saved.id);
+        if (idx >= 0) maps[idx] = saved;
+        if (current.id === saved.id) current = saved;
+      })
+      .catch(() => {
+        /* keep the corrected colours on screen even if Blobs write fails */
+      });
+  }
   let mode: Mode = 'edit';
   let draft: DraftKind = null;
   let selectedId: string | null = null;
