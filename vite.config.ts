@@ -14,6 +14,9 @@ function mockApiPlugin(): Plugin {
       const seed = JSON.parse(
         readFileSync(path.resolve(__dirname, 'fixtures/seed.json'), 'utf-8')
       );
+      seed.programs = JSON.parse(
+        readFileSync(path.resolve(__dirname, 'fixtures/competitions.json'), 'utf-8')
+      );
       const api = createMockApi({ seed });
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/api/')) {

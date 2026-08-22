@@ -21,6 +21,13 @@ export const RAIL_ICON_PATHS: Record<string, string[]> = {
   list: ['M8 7h12', 'M8 12h12', 'M8 17h12', 'M5 7h.01', 'M5 12h.01', 'M5 17h.01'],
   projects: ['M4 8h6l2 2h8v10H4z'],
   excursions: ['M7 4v16', 'M7 5h10l-2.5 3L17 11H7'],
+  programs: [
+    'M8 20h8',
+    'M12 16v4',
+    'M7 5h10v6a5 5 0 0 1-10 0V5z',
+    'M7 5H4.8A1.8 1.8 0 0 0 6.6 7',
+    'M17 5h2.2A1.8 1.8 0 0 1 17.4 7'
+  ],
   stress: ['M4 13h4l2-6 3 10 2-4h5'],
   corey: ['M16 8a3 3 0 1 1-2.8 4', 'M8 12H4m0 0 2.5-2.5M4 12l2.5 2.5'],
   templates: ['M9 4h10v16H9z', 'M5 8h4', 'M5 8v12h8'],
