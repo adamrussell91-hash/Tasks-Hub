@@ -498,6 +498,33 @@ function lineContentBox(
   return { id: `group-${line.id}`, x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
+function separateEventMarks(ticks: LaidTick[]): void {
+  const ordered = [...ticks].sort((a, b) => a.cy - b.cy || a.cx - b.cx);
+  for (let i = 0; i < ordered.length; i += 1) {
+    const tick = ordered[i]!;
+    const dir = tick.cx >= tick.x0 ? 1 : -1;
+    let lane = 0;
+    while (
+      ordered.slice(0, i).some((other) =>
+        boxesOverlap(eventMarkBox(tick), eventMarkBox(other)) ||
+        boxesOverlap(tick.labelBox, other.labelBox) ||
+        boxesOverlap(tick.labelBox, eventMarkBox(other)) ||
+        boxesOverlap(eventMarkBox(tick), other.labelBox)
+      )
+    ) {
+      lane += 1;
+      tick.cx = tick.x0 + dir * (MAP_EVENT_STEM + lane * (MAP_TICK_R * 2 + 40));
+      tick.labelBox = labelForSide(tick, tick.cx >= tick.x0 ? 'right' : 'left');
+      if (lane > 6) {
+        tick.cy += 28;
+        tick.labelBox = labelForSide(tick, tick.cx >= tick.x0 ? 'right' : 'left');
+      }
+      if (lane > 12) break;
+    }
+    tick.ports = eventPorts(tick);
+  }
+}
+
 function packLines(lines: LaidLine[], stations: LaidStation[], ticks: LaidTick[]): void {
   const ordered = [...lines].sort((a, b) => a.x - b.x);
   let cursor = MAP_FIRST_LINE_X;
@@ -694,6 +721,7 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
     laid.ports = eventPorts(laid);
     ticks.push(laid);
   }
+  separateEventMarks(ticks);
 
   packLines(lines, stations, ticks);
 
