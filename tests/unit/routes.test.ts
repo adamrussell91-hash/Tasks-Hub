@@ -6,6 +6,17 @@ describe('hash routes', () => {
     expect(knownHubViews()).toContain('maps');
   });
 
+  it('includes Programs in the known rail views', () => {
+    expect(knownHubViews()).toContain('programs');
+  });
+
+  it('resolves #/programs to the programs view', () => {
+    location.hash = '#/programs';
+    expect(hashViewId()).toBe('programs');
+    expect(isKnownHashView()).toBe(true);
+    expect(parseHashRoute()).toBe('programs');
+  });
+
   it('resolves #/maps to the maps view', () => {
     location.hash = '#/maps';
     expect(hashViewId()).toBe('maps');

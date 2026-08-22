@@ -13,7 +13,7 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@netlify/blobs"]
-  included_files = ["config/clare-protocol.md", "fixtures/seed.json"]
+  included_files = ["config/clare-protocol.md", "fixtures/seed.json", "fixtures/competitions.json"]
 
 # Functions own /api/*. Everything else is the Vite SPA so tasks-api
 # is a same-origin app, not the old "Functions only" stub.
