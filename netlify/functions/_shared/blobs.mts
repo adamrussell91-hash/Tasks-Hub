@@ -23,6 +23,7 @@ export function loadSeed(): SeedData {
     throw new Error('bundled fixtures/seed.json has no tasks — refusing to seed');
   }
   if (!seed.programs?.length) {
+    // Git fixture is the catalogue source of truth — never Notion.
     seed.programs = competitionsFixture as SeedData['programs'];
   }
   return seed;

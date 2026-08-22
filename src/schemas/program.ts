@@ -131,7 +131,6 @@ export const ProgramSchema = z.object({
   registration_window: text,
   not_available_nsw: z.boolean().default(false),
   not_available_reason: text,
-  notion_url: nullableText,
   created_at: z.string(),
   updated_at: z.string()
 });
@@ -156,8 +155,7 @@ export const ProgramCreateSchema = ProgramSchema.omit({
   registration_link: true,
   registration_window: true,
   not_available_nsw: true,
-  not_available_reason: true,
-  notion_url: true
+  not_available_reason: true
 }).extend({
   name: z.string().trim().min(1)
 });

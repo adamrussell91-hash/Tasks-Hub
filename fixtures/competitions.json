@@ -1,7 +1,7 @@
 [
   {
     "schema_version": 1,
-    "id": "prog_9dbcf2da7304c751",
+    "id": "prog_abbmun-abbotsleigh-model-united-nations-conference",
     "name": "ABBMUN (Abbotsleigh Model United Nations Conference)",
     "types": [
       "Event"
@@ -28,13 +28,12 @@
     "registration_window": "Usually closes mid-March",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847680729dbcf2da7304c751",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a41df4d4018e1124",
+    "id": "prog_abstract-art-competition",
     "name": "Abstract Art Competition",
     "types": [
       "Competition"
@@ -62,13 +61,12 @@
     "registration_window": "Entries usually due early June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768138a41df4d4018e1124",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_82db20bd0491a64f",
+    "id": "prog_afs-global-you-changemaker",
     "name": "AFS Global You Changemaker",
     "types": [
       "Program"
@@ -91,13 +89,12 @@
     "registration_window": "Monthly cohorts run year round; choose preferred dates after registering",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/51e756d4e3b247fe82db20bd0491a64f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_85fccd3655c150ad",
+    "id": "prog_alhr-school-student-forum-on-human-rights",
     "name": "ALHR School Student Forum on Human Rights",
     "types": [
       "Event"
@@ -123,13 +120,12 @@
     "registration_window": "Schools nominate students ahead of the September forum",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476808a85fccd3655c150ad",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a2ee663d614b61be",
+    "id": "prog_amoc-senior-contest",
     "name": "AMOC Senior Contest",
     "types": [
       "Competition"
@@ -153,13 +149,12 @@
     "registration_window": "By invitation, based on prior AMT results",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c20e46f974944971a2ee663d614b61be",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9ea15bde53f35242",
+    "id": "prog_ansto-think-science",
     "name": "ANSTO Think Science",
     "types": [
       "Competition"
@@ -190,13 +185,12 @@
     "registration_window": "Registrations usually open around February",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/753210e40ac94ff09ea15bde53f35242",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_afa9daaeb5870b4d",
+    "id": "prog_anthology-short-story-competition",
     "name": "Anthology Short Story Competition",
     "types": [
       "Competition"
@@ -223,13 +217,12 @@
     "registration_window": "Entries usually due early July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768156afa9daaeb5870b4d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a9a8d26cf57a161e",
+    "id": "prog_anthology-travel-writing-competition",
     "name": "Anthology Travel Writing Competition",
     "types": [
       "Competition"
@@ -256,13 +249,12 @@
     "registration_window": "Entries usually due end of November",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681c7a9a8d26cf57a161e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9b2695c4f2325972",
+    "id": "prog_anu-stem-challenges",
     "name": "ANU STEM Challenges",
     "types": [
       "Program"
@@ -292,13 +284,12 @@
     "registration_window": "Rolling weekly challenges; join any time during the season",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/f894e1117f844bf39b2695c4f2325972",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_92a5c3df7a25681a",
+    "id": "prog_apa-topss-competition",
     "name": "APA TOPSS Competition",
     "types": [
       "Competition"
@@ -325,13 +316,12 @@
     "registration_window": "Entries usually due around March",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f8476817592a5c3df7a25681a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_92570dc032ccf187",
+    "id": "prog_apsmo-maths-explorer-years-3-4",
     "name": "APSMO – Maths Explorer (Years 3 & 4)",
     "types": [
       "Program"
@@ -355,13 +345,12 @@
     "registration_window": "Register before Term 2; papers run May to September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e145d74a092c402a92570dc032ccf187",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_aae3176e0977db5d",
+    "id": "prog_apsmo-maths-games-junior-years-5-6",
     "name": "APSMO – Maths Games (Junior, Years 5 & 6)",
     "types": [
       "Program"
@@ -385,13 +374,12 @@
     "registration_window": "Register before Term 2; papers run May to September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3d3b3743fa6e463aaae3176e0977db5d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_aea00edc792ba729",
+    "id": "prog_apsmo-maths-olympiad",
     "name": "APSMO Maths Olympiad",
     "types": [
       "Competition"
@@ -415,13 +403,12 @@
     "registration_window": "Register before Term 2; contests run May to September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/cb39a5338c434284aea00edc792ba729",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_81485b3dd52182f2",
+    "id": "prog_asx-schools-sharemarket-game",
     "name": "ASX Schools Sharemarket Game",
     "types": [
       "Competition"
@@ -450,13 +437,12 @@
     "registration_window": "Two game windows per year (~10 weeks each)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c30fda8fbcc6473081485b3dd52182f2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ab45e554951b0cb2",
+    "id": "prog_atyp-drama-ensembles",
     "name": "ATYP Drama Ensembles",
     "types": [
       "Program"
@@ -482,13 +468,12 @@
     "registration_window": "Weekly term ensembles; early bird discounts",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c333c7ec5a1c46f5ab45e554951b0cb2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b314bcf485a3b018",
+    "id": "prog_atyp-holiday-workshops",
     "name": "ATYP Holiday Workshops",
     "types": [
       "Program"
@@ -514,13 +499,12 @@
     "registration_window": "School holiday workshops across the year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/33771910df1848edb314bcf485a3b018",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b3f9fbb0bf109b4d",
+    "id": "prog_australasian-philosothon-online-hybrid",
     "name": "Australasian Philosothon (Online / Hybrid)",
     "types": [
       "Competition"
@@ -548,13 +532,12 @@
     "registration_window": "Register ahead of the late-August event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d3712a4794794ad4b3f9fbb0bf109b4d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b504cd7e65c9ccf2",
+    "id": "prog_australian-and-new-zealand-brain-bee-challenge-abbc",
     "name": "Australian and New Zealand Brain Bee Challenge ABBC",
     "types": [
       "Competition"
@@ -578,13 +561,12 @@
     "registration_window": "Register before the Round 1 window (around March)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/aaebc94d0385448cb504cd7e65c9ccf2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8b5117308abd6bcb",
+    "id": "prog_australian-economics-and-business-studies-competition-ae",
     "name": "Australian Economics and Business Studies Competition (AEBSC)",
     "types": [
       "Competition"
@@ -609,13 +591,12 @@
     "registration_window": "Register before the annual assessment date",
     "not_available_nsw": false,
     "not_available_reason": "Cancelled",
-    "notion_url": "https://app.notion.com/9ffa7813ec1c449d8b5117308abd6bcb",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8243acd6090a835d",
+    "id": "prog_australian-economics-olympiad-aeo",
     "name": "Australian Economics Olympiad (AEO)",
     "types": [
       "Competition"
@@ -642,13 +623,12 @@
     "registration_window": "Register before the May sitting",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/8b921c3928814e878243acd6090a835d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a36307828b18bfbf",
+    "id": "prog_australian-geography-competition-agc",
     "name": "Australian Geography Competition AGC",
     "types": [
       "Competition"
@@ -676,13 +656,12 @@
     "registration_window": "Usually late January – early May",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/68333c180e9b4d40a36307828b18bfbf",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_accaf08e2bb7cfcf",
+    "id": "prog_australian-history-competition-ahc",
     "name": "Australian History Competition AHC",
     "types": [
       "Competition"
@@ -708,13 +687,12 @@
     "registration_window": "Registrations usually close around March",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/9e978a1e91c94feeaccaf08e2bb7cfcf",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ab5faffad3b0a252",
+    "id": "prog_australian-informatics-olympiad-aio",
     "name": "Australian Informatics Olympiad AIO",
     "types": [
       "Competition"
@@ -743,13 +721,12 @@
     "registration_window": "Register via AMT before the late-August contest",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/19198fedaa7344d4ab5faffad3b0a252",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bfd01e4ae2921137",
+    "id": "prog_australian-intermediate-mathematics-olympiad-aimo",
     "name": "Australian Intermediate Mathematics Olympiad (AIMO)",
     "types": [
       "Competition"
@@ -775,13 +752,12 @@
     "registration_window": "Entries usually close early September; sat mid-September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/21defce0bbe44cf8bfd01e4ae2921137",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ada9a3a07ed19791",
+    "id": "prog_australian-mathematical-olympiad-amo-amo-summer-amo-wint",
     "name": "Australian Mathematical Olympiad (AMO) — AMO Summer, AMO Winter and AMO Finals",
     "types": [
       "Competition"
@@ -808,13 +784,12 @@
     "registration_window": "By invitation from AMOC State Directors",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/a774cdaa05584db4ada9a3a07ed19791",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9852344384bf7f91",
+    "id": "prog_australian-mathematics-competition-amc",
     "name": "Australian Mathematics Competition AMC",
     "types": [
       "Competition"
@@ -846,13 +821,12 @@
     "registration_window": "Register via AMT before the early-August sitting",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/2374ae14d2684cf59852344384bf7f91",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a2a52c6972bd7a6c",
+    "id": "prog_australian-mental-health-awareness-essay-competition-amh",
     "name": "Australian Mental Health Awareness Essay Competition (AMHAEC)",
     "types": [
       "Competition"
@@ -881,13 +855,12 @@
     "registration_window": "Entries usually due mid-August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/80d8f79c53ad4c17a2a52c6972bd7a6c",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9099a7221e1b79af",
+    "id": "prog_australian-science-olympiad-exams-aso",
     "name": "Australian Science Olympiad Exams ASO",
     "types": [
       "Competition"
@@ -915,13 +888,12 @@
     "registration_window": "Register before the late July–August exam window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/7a1b6578ae1e4aa59099a7221e1b79af",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8475e93a5d3055bf",
+    "id": "prog_australian-science-olympiads-summer-school",
     "name": "Australian Science Olympiads Summer School",
     "types": [
       "Program"
@@ -946,13 +918,12 @@
     "registration_window": "By invitation following the ASO Exams (sat August)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/bbdb589c4b344ec68475e93a5d3055bf",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bd9a4ecba34c57a1",
+    "id": "prog_australian-space-design-competition-asdc",
     "name": "Australian Space Design Competition ASDC",
     "types": [
       "Competition"
@@ -980,13 +951,12 @@
     "registration_window": "Registrations run April to June; proposals due mid-year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/5d8d0d9c97054a5ebd9a4ecba34c57a1",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b226d0ae0d37f90d",
+    "id": "prog_australian-video-game-challenge",
     "name": "Australian Video Game Challenge",
     "types": [
       "Competition"
@@ -1019,13 +989,12 @@
     "registration_window": "Register before the mid-year submission deadline",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/cb8db1f582394c22b226d0ae0d37f90d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8300fe1bceeb8978",
+    "id": "prog_author-of-tomorrow-award",
     "name": "Author of Tomorrow Award",
     "types": [
       "Competition"
@@ -1054,13 +1023,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/cb711a848de849348300fe1bceeb8978",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_91d9fa6ca16802d7",
+    "id": "prog_bebras-computational-thinking-challenge",
     "name": "Bebras Computational Thinking Challenge",
     "types": [
       "Competition"
@@ -1093,13 +1061,12 @@
     "registration_window": "Register via AMT before the February–March challenge window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/08ed03ec13c542fd91d9fa6ca16802d7",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ac73b331ec43b2d0",
+    "id": "prog_best-australian-yarn",
     "name": "Best Australian Yarn",
     "types": [
       "Competition"
@@ -1128,13 +1095,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/905c0b4b82ea4b1aac73b331ec43b2d0",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_921a2c675ee24417",
+    "id": "prog_better-read-kids-competition",
     "name": "Better Read Kids Competition",
     "types": [
       "Competition"
@@ -1163,13 +1129,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3af688287db44d71921a2c675ee24417",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b84b49b32b75e57f",
+    "id": "prog_big-science-competition",
     "name": "Big Science Competition",
     "types": [
       "Competition"
@@ -1196,13 +1161,12 @@
     "registration_window": "Register before the May testing window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/5c3fc43ec8254cafb84b49b32b75e57f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b5baebff96e095f6",
+    "id": "prog_biotech-futures-challenge",
     "name": "BIOTech Futures Challenge",
     "types": [
       "Competition"
@@ -1232,13 +1196,12 @@
     "registration_window": "Registrations usually open May, close mid-July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/37bf794f847681dfb5baebff96e095f6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a006cd5a73fdc68a",
+    "id": "prog_black-and-white-photo-awards",
     "name": "Black and White Photo Awards",
     "types": [
       "Competition"
@@ -1266,13 +1229,12 @@
     "registration_window": "Entries usually due mid-June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f8476817da006cd5a73fdc68a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a0434d5552906879",
+    "id": "prog_blockly-comp",
     "name": "Blockly.Comp",
     "types": [
       "Competition"
@@ -1301,13 +1263,12 @@
     "registration_window": "Register via Grok Academy before the event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/5083d35dedbb41efa0434d5552906879",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a78cf3fb9cff9ccd",
+    "id": "prog_bond-uni-national-high-school-mooting-competition",
     "name": "Bond Uni National High School Mooting Competition",
     "types": [
       "Competition"
@@ -1332,13 +1293,12 @@
     "registration_window": "Register before the competition rounds",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/198f794f847680f1a78cf3fb9cff9ccd",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_acbbff905320e357",
+    "id": "prog_bond-university-film-television-awards-bufta",
     "name": "Bond University Film & Television Awards (BUFTA)",
     "types": [
       "Competition"
@@ -1362,13 +1322,12 @@
     "registration_window": "Entries usually close early October; awards in November",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/198f794f847680d1acbbff905320e357",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b19fcf6b3423e272",
+    "id": "prog_bond-university-high-school-model-united-nations-buhmun-",
     "name": "Bond University High School Model United Nations (BUHMUN) conference",
     "types": [
       "Event"
@@ -1396,13 +1355,12 @@
     "registration_window": "Register before the conference",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/198f794f84768006b19fcf6b3423e272",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8a65cad7fb362291",
+    "id": "prog_bond-university-research-and-statistics-in-psychology",
     "name": "Bond University Research and Statistics in Psychology",
     "types": [
       "Program"
@@ -1426,13 +1384,12 @@
     "registration_window": "Confirm dates with Bond University",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/198f794f847680ee8a65cad7fb362291",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9237cbf6d4a2bbef",
+    "id": "prog_bond-university-year-12-extension-program",
     "name": "Bond University Year 12 Extension Program",
     "types": [
       "Program"
@@ -1456,13 +1413,12 @@
     "registration_window": "Usually opens early in the year; runs around April",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/198f794f847680e09237cbf6d4a2bbef",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bef8c65e727d205d",
+    "id": "prog_brain-bee-bootcamp",
     "name": "Brain Bee Bootcamp",
     "types": [
       "Program"
@@ -1491,13 +1447,12 @@
     "registration_window": "Rolling enrolment across the 16-week season (roughly December to March)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/776c202b61654442bef8c65e727d205d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_89355af64ca81895",
+    "id": "prog_brain-essay-competition-oxford-academic",
     "name": "Brain Essay Competition (Oxford Academic)",
     "types": [
       "Competition"
@@ -1522,13 +1477,12 @@
     "registration_window": "Entries usually due around October",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/2ddccc34dc0c42c489355af64ca81895",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_aafffba6bc6458f1",
+    "id": "prog_brainways-quest-tutorials-sydney",
     "name": "BRAINways Quest Tutorials (Sydney)",
     "types": [
       "Program"
@@ -1559,13 +1513,12 @@
     "registration_window": "Enrolments opened 10 August 2026 and close 1 October 2026, or earlier once places fill",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/ebf2533b5ca24cc8aafffba6bc6458f1",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9ca1ebcc7a6badfc",
+    "id": "prog_british-psychology-olympiad-bpo",
     "name": "British Psychology Olympiad (BPO)",
     "types": [
       "Competition"
@@ -1591,13 +1544,12 @@
     "registration_window": "Register before the February first round",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f847681219ca1ebcc7a6badfc",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_963dc560d7beaa5e",
+    "id": "prog_busan-international-textile-design-competition",
     "name": "Busan International Textile Design Competition",
     "types": [
       "Competition"
@@ -1625,13 +1577,12 @@
     "registration_window": "Entries usually due early October",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768194963dc560d7beaa5e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a720498c2d99764c",
+    "id": "prog_cambridge-re-think-essay-competition-ccir",
     "name": "Cambridge Re:Think Essay Competition (CCIR)",
     "types": [
       "Competition"
@@ -1663,13 +1614,12 @@
     "registration_window": "Entries usually due around 10 May",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/725c4407d62a4107a720498c2d99764c",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a24f73237977d28e",
+    "id": "prog_cansw-latin-and-greek-reading-competition",
     "name": "CANSW Latin and Greek Reading Competition",
     "types": [
       "Competition"
@@ -1695,13 +1645,12 @@
     "registration_window": "Heats June–July; state finals August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/cb37b495330649a7a24f73237977d28e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ba87ac2f8aede8f2",
+    "id": "prog_carol-manners-essay-competition",
     "name": "Carol Manners Essay Competition",
     "types": [
       "Competition"
@@ -1725,13 +1674,12 @@
     "registration_window": "Submissions due around July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3a08040c55644eabba87ac2f8aede8f2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a3c1ca71777295cf",
+    "id": "prog_casecatalyst-virtual-case-competition",
     "name": "CaseCatalyst Virtual Case Competition",
     "types": [
       "Competition"
@@ -1758,13 +1706,12 @@
     "registration_window": "Entries usually close around April",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/63f104b1243e4d20a3c1ca71777295cf",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ab86c094d8a74f86",
+    "id": "prog_city-lights-art-challenge",
     "name": "City Lights Art Challenge",
     "types": [
       "Competition"
@@ -1792,13 +1739,12 @@
     "registration_window": "Entries usually due late May",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681e0ab86c094d8a74f86",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_804d0a88b0db756f",
+    "id": "prog_clta-latin-reading-competition-year-9",
     "name": "CLTA Latin Reading Competition (Year 9)",
     "types": [
       "Competition"
@@ -1823,13 +1769,12 @@
     "registration_window": "Register through CLTA ahead of the August event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/79030ccb74164934804d0a88b0db756f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_87703467c46a26ec",
+    "id": "prog_clta-year-8-latin-camp-classics-camp",
     "name": "CLTA Year 8 Latin Camp (Classics Camp)",
     "types": [
       "Program"
@@ -1853,13 +1798,12 @@
     "registration_window": "Usually Term 3–4; dates circulated to CLTA member schools",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/00c346d69c99413c87703467c46a26ec",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8d15e2e9b452cc75",
+    "id": "prog_coding-challenge",
     "name": "Coding Challenge",
     "types": [
       "Competition"
@@ -1889,13 +1833,12 @@
     "registration_window": "Register via Grok Academy before the event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/191f794f847680e58d15e2e9b452cc75",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a4ddfcd507d02224",
+    "id": "prog_color-open-call-2026-grid-photo-gallery",
     "name": "Color Open Call 2026 — Grid Photo Gallery",
     "types": [
       "Competition"
@@ -1923,13 +1866,12 @@
     "registration_window": "Entries usually due mid-June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768118a4ddfcd507d02224",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a8a1c2e7553f9ad2",
+    "id": "prog_computational-and-algorithmic-thinking-cat",
     "name": "Computational and Algorithmic Thinking CAT",
     "types": [
       "Competition"
@@ -1960,13 +1902,12 @@
     "registration_window": "Register via AMT before the March competition window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/ea52fd439c38438aa8a1c2e7553f9ad2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b1d1e3d0e1ed5e82",
+    "id": "prog_conrad-challenge",
     "name": "Conrad Challenge",
     "types": [
       "Competition"
@@ -1995,13 +1936,12 @@
     "registration_window": "Register before the entry rounds (usually from August)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/9784ae7a1b6445e1b1d1e3d0e1ed5e82",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a253d40b81f78e89",
+    "id": "prog_cordless-lamp-innovation-contest",
     "name": "Cordless Lamp Innovation Contest",
     "types": [
       "Competition"
@@ -2026,13 +1966,12 @@
     "registration_window": "Entries usually due late June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768135a253d40b81f78e89",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_95c0e743428e5e63",
+    "id": "prog_craig-silvey-award-for-young-writers",
     "name": "Craig Silvey Award for Young Writers",
     "types": [
       "Competition"
@@ -2065,13 +2004,12 @@
     "registration_window": "Closes mid August",
     "not_available_nsw": true,
     "not_available_reason": "Open to Western Australian school students only",
-    "notion_url": "https://app.notion.com/dee4144b8d404dd895c0e743428e5e63",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a379548b5b41eb2f",
+    "id": "prog_cyber-comp",
     "name": "Cyber Comp",
     "types": [
       "Competition"
@@ -2101,13 +2039,12 @@
     "registration_window": "Register via Grok Academy before the event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/ee8a1b270c0945c3a379548b5b41eb2f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8fbe6f55a750befe",
+    "id": "prog_da-vinci-decathlon",
     "name": "da Vinci Decathlon",
     "types": [
       "Competition"
@@ -2138,13 +2075,12 @@
     "registration_window": "Regionals in Term 2; register via host school beforehand",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d558ffa99a1d4ec58fbe6f55a750befe",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_81a2f7eca1cbe4a2",
+    "id": "prog_dmun-african-union-and-arab-league",
     "name": "DMUN African Union and Arab League",
     "types": [
       "Event"
@@ -2173,13 +2109,12 @@
     "registration_window": "Registrations close shortly before the late-September event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681f281a2f7eca1cbe4a2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8e83f091f3d85073",
+    "id": "prog_dmun-amhs",
     "name": "DMUN AMHS",
     "types": [
       "Event"
@@ -2209,13 +2144,12 @@
     "registration_window": "Registrations close shortly before the late-July event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f8476817a8e83f091f3d85073",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b233d9d5e47d1498",
+    "id": "prog_dmun-championship",
     "name": "DMUN Championship",
     "types": [
       "Event"
@@ -2245,13 +2179,12 @@
     "registration_window": "Registrations close shortly before the early-December event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768114b233d9d5e47d1498",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a983e3deaeda424b",
+    "id": "prog_dmun-conventions",
     "name": "DMUN Conventions",
     "types": [
       "Event"
@@ -2281,13 +2214,12 @@
     "registration_window": "Registrations close shortly before the September event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681cfa983e3deaeda424b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8ec4d91f26eda5ea",
+    "id": "prog_dmun-crisis",
     "name": "DMUN CRISIS",
     "types": [
       "Event"
@@ -2317,13 +2249,12 @@
     "registration_window": "Registrations close shortly before the late-October event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681dc8ec4d91f26eda5ea",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9525d119fa467da3",
+    "id": "prog_dmun-debate-forum",
     "name": "DMUN Debate Forum",
     "types": [
       "Event"
@@ -2352,13 +2283,12 @@
     "registration_window": "Registrations close shortly before the late-January event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681129525d119fa467da3",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_80292891c1f80ca9",
+    "id": "prog_dmun-innova-2026-the-dmun-foundation-innovation-forum",
     "name": "DMUN INNOVA 2026: The DMUN Foundation Innovation Forum",
     "types": [
       "Event"
@@ -2388,13 +2318,12 @@
     "registration_window": "Chairs: 1 Apr to 5 Jul 2026. Delegates: 5 Apr to 12 Jul 2026. Observers: 14 Aug 2025 to 11 Jul 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/f9621b0014c44c6a80292891c1f80ca9",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_afc04ed338921ca4",
+    "id": "prog_dmun-meu-dmun-model-european-union",
     "name": "DMUN MEU: DMUN Model European Union",
     "types": [
       "Event"
@@ -2421,13 +2350,12 @@
     "registration_window": "Registrations close shortly before the June event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/ebcfc75afb3e4f5eafc04ed338921ca4",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bddee021c39836d6",
+    "id": "prog_dmun-moot-court",
     "name": "DMUN Moot Court",
     "types": [
       "Event"
@@ -2453,13 +2381,12 @@
     "registration_window": "Registrations close shortly before the late-August event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768150bddee021c39836d6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b4f695cfce22a641",
+    "id": "prog_dmun-muners-forum",
     "name": "DMUN MUNers Forum",
     "types": [
       "Event"
@@ -2486,13 +2413,12 @@
     "registration_window": "Registrations close shortly before the August event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/28efe83298d74150b4f695cfce22a641",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bccdd35f24743d3e",
+    "id": "prog_dmun-pitch",
     "name": "DMUN PITCH",
     "types": [
       "Event"
@@ -2523,13 +2449,12 @@
     "registration_window": "Registrations close shortly before the mid-October event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681e1bccdd35f24743d3e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_90a5d2a48a719bf4",
+    "id": "prog_dmunln-dmun-model-league-of-nations",
     "name": "DMUNLN (DMUN Model League of Nations)",
     "types": [
       "Event"
@@ -2559,13 +2484,12 @@
     "registration_window": "Registrations close shortly before the April event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f8476819d90a5d2a48a719bf4",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_873cd7294f5acf10",
+    "id": "prog_dmunp-dmun-model-parliament-and-congress",
     "name": "DMUNP: DMUN Model Parliament and Congress",
     "types": [
       "Event"
@@ -2592,13 +2516,12 @@
     "registration_window": "Registrations close shortly before the June event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/00549f51c93042eb873cd7294f5acf10",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8fa7ac93d195d503",
+    "id": "prog_dorothea-mackellar-poetry-awards",
     "name": "Dorothea Mackellar Poetry Awards",
     "types": [
       "Competition"
@@ -2631,13 +2554,12 @@
     "registration_window": "Entries usually open March, close late June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/fa31b92eabc24ffc8fa7ac93d195d503",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_835d50cf08d54a3b",
+    "id": "prog_drama-scene",
     "name": "Drama Scene",
     "types": [
       "Program"
@@ -2663,13 +2585,12 @@
     "registration_window": "Wednesdays during term",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/2e2933191d334766835d50cf08d54a3b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ac3406373be6cc34",
+    "id": "prog_dymocks-beyond-words-creative-writing-competition",
     "name": "Dymocks Beyond Words Creative Writing Competition",
     "types": [
       "Competition"
@@ -2702,13 +2623,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/ec51427d9f4843cbac3406373be6cc34",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a6d85ffd51426310",
+    "id": "prog_ethical-explorations-day",
     "name": "Ethical Explorations Day",
     "types": [
       "Event"
@@ -2734,13 +2654,12 @@
     "registration_window": "Register through the host school before the event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/7f98f84664d646b8a6d85ffd51426310",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a125fde70df229dd",
+    "id": "prog_eureka",
     "name": "Eureka",
     "types": [
       "Competition"
@@ -2769,13 +2688,12 @@
     "registration_window": "Register before the competition window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/191f794f847680afa125fde70df229dd",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b33b49a15ae0b073",
+    "id": "prog_exploratory-latin-exam-ele",
     "name": "Exploratory Latin Exam (ELE)",
     "types": [
       "Competition"
@@ -2803,13 +2721,12 @@
     "registration_window": "Usually 1 November – 10 February",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/f956ee38e0d2438fb33b49a15ae0b073",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a5c6e349c6070a70",
+    "id": "prog_extracurricular-activity-excellence-eae-awards",
     "name": "Extracurricular Activity Excellence (EAE Awards)",
     "types": [
       "Award"
@@ -2837,13 +2754,12 @@
     "registration_window": "Open for nominations year round. Quarterly review cycles, alternating individual and team entries. Current submission window closes 15 November 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/9bb3161cefb64385a5c6e349c6070a70",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8e4bfe72eb498f03",
+    "id": "prog_faw-tasmania-beatrice-clarke-award-for-young-poets",
     "name": "FAW Tasmania Beatrice Clarke Award for Young Poets",
     "types": [
       "Competition"
@@ -2873,13 +2789,12 @@
     "registration_window": "Closes 31 August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/9c2b57679ca045e38e4bfe72eb498f03",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bb51e24716986999",
+    "id": "prog_first-robotics-competition-frc",
     "name": "FIRST Robotics Competition (FRC)",
     "types": [
       "Competition"
@@ -2909,13 +2824,12 @@
     "registration_window": "Register before the build season",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/b860c675b0804b5abb51e24716986999",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b762e571b8a34e51",
+    "id": "prog_first-tech-challenge-ftc",
     "name": "FIRST Tech Challenge (FTC)",
     "types": [
       "Competition"
@@ -2947,13 +2861,12 @@
     "registration_window": "Register before the season begins",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/1aea743b389441c7b762e571b8a34e51",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a573cb74241a5bad",
+    "id": "prog_free-thinkers-forum",
     "name": "Free-Thinkers Forum",
     "types": [
       "Event"
@@ -2980,13 +2893,12 @@
     "registration_window": "Book by end of Term 2. Student names, speech topic, teacher details and dietary requirements due Week 3, Term 3.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/7ac466cad089496da573cb74241a5bad",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_97b23e54eadeeb28",
+    "id": "prog_furious-fiction",
     "name": "Furious Fiction",
     "types": [
       "Competition"
@@ -3013,13 +2925,12 @@
     "registration_window": "First weekend of every month",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/8edaa457969b4e9897b23e54eadeeb28",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8e78a63c267a1d93",
+    "id": "prog_future-changemakers-program-harvard-student-agencies",
     "name": "Future Changemakers Program (Harvard Student Agencies)",
     "types": [
       "Program"
@@ -3043,13 +2954,12 @@
     "registration_window": "Cohorts run periodically; apply via the website",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3e6b9793388647d18e78a63c267a1d93",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a7a1a6d1e9a0df08",
+    "id": "prog_future-problem-solving-program-international-fpspi",
     "name": "Future Problem Solving Program International (FPSPI)",
     "types": [
       "Program"
@@ -3083,13 +2993,12 @@
     "registration_window": "Problem cycles run through the school year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/46e10d24e0594c7fa7a1a6d1e9a0df08",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_933aed18f911225d",
+    "id": "prog_future-psychscholars-competition",
     "name": "Future PsychScholars Competition",
     "types": [
       "Competition"
@@ -3115,13 +3024,12 @@
     "registration_window": "See website for competition rounds",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f847681f9933aed18f911225d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_94fee1a141f11772",
+    "id": "prog_future-psychscholars-openchallenge",
     "name": "Future PsychScholars OpenChallenge",
     "types": [
       "Competition"
@@ -3147,13 +3055,12 @@
     "registration_window": "Rolling challenges; see website for rounds",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f8476811e94fee1a141f11772",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_935cfb1cbc73ce6a",
+    "id": "prog_future-snack-design",
     "name": "Future Snack Design",
     "types": [
       "Competition"
@@ -3179,13 +3086,12 @@
     "registration_window": "Entries usually due mid-September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768155935cfb1cbc73ce6a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_917ced350d2fb3b3",
+    "id": "prog_g-a-t-e-w-a-y-s",
     "name": "G.A.T.E.W.A.Y.S",
     "types": [
       "Competition"
@@ -3214,13 +3120,12 @@
     "registration_window": "Schools register ahead of Term 4 event days",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/213f794f8476808d917ced350d2fb3b3",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bdef2c43f5b6c961",
+    "id": "prog_global-citizens-sdgs-challenge",
     "name": "Global Citizens SDGs Challenge",
     "types": [
       "Competition"
@@ -3250,13 +3155,12 @@
     "registration_window": "Register before the challenge period opens",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/db27bd0d03014cf0bdef2c43f5b6c961",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_87b3dc310bf390e1",
+    "id": "prog_global-impact-competition",
     "name": "Global Impact Competition",
     "types": [
       "Competition"
@@ -3285,13 +3189,12 @@
     "registration_window": "Entries usually due mid-June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f8476810887b3dc310bf390e1",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_985ac6834a132f2a",
+    "id": "prog_global-issues-problem-solving-competition",
     "name": "Global Issues Problem Solving Competition",
     "types": [
       "Competition"
@@ -3322,13 +3225,12 @@
     "registration_window": "Register before the mid-year problem cycle",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/18ef794f8476806b985ac6834a132f2a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b3c3f8f0921dfde4",
+    "id": "prog_global-quantum-mechanics-challenge",
     "name": "Global Quantum Mechanics Challenge",
     "types": [
       "Competition"
@@ -3357,13 +3259,12 @@
     "registration_window": "Entries usually due mid-June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f8476816bb3c3f8f0921dfde4",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_afb5e506df78da4e",
+    "id": "prog_golden-pin-concept-design-award",
     "name": "Golden Pin Concept Design Award",
     "types": [
       "Competition"
@@ -3389,13 +3290,12 @@
     "registration_window": "Entries usually due mid-June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681c7afb5e506df78da4e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8708829e3fd7b073",
+    "id": "prog_grc-high-school-case-competition",
     "name": "GRC High School Case Competition",
     "types": [
       "Competition"
@@ -3422,13 +3322,12 @@
     "registration_window": "Usually late March – late April",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/64a5940a1d7f4baa8708829e3fd7b073",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a2058c48601635c6",
+    "id": "prog_halogen-national-young-leaders-day-nyld",
     "name": "Halogen National Young Leaders Day (NYLD)",
     "types": [
       "Event"
@@ -3459,13 +3358,12 @@
     "registration_window": "Book before the capital-city event dates",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/59493cb0b6b94049a2058c48601635c6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_83fad0f5a5df7b0f",
+    "id": "prog_harvard-international-review-academic-writing-contest",
     "name": "Harvard International Review Academic Writing Contest",
     "types": [
       "Competition"
@@ -3495,13 +3393,12 @@
     "registration_window": "Three submission cycles per year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476815d83fad0f5a5df7b0f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b373ef02503e6202",
+    "id": "prog_harvard-model-united-nations-australia-hmun-australia",
     "name": "Harvard Model United Nations Australia (HMUN Australia)",
     "types": [
       "Event"
@@ -3529,13 +3426,12 @@
     "registration_window": "Apply before the May conference",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847680f5b373ef02503e6202",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a0be22301e5ac698",
+    "id": "prog_hatchlings-fiction-prize",
     "name": "Hatchlings Fiction Prize",
     "types": [
       "Competition"
@@ -3562,13 +3458,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3263c28c2d8749f6a0be22301e5ac698",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_955c3a531c966f3a",
+    "id": "prog_hatchlings-picture-book-prize",
     "name": "Hatchlings Picture Book Prize",
     "types": [
       "Competition"
@@ -3597,13 +3492,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/5e133a3be6ac4fab955c3a531c966f3a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9da84b56bdf4576f",
+    "id": "prog_have-sum-fun-online",
     "name": "Have Sum Fun Online",
     "types": [
       "Competition"
@@ -3633,13 +3527,12 @@
     "registration_window": "Multiple terms through the year; register before each round",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d50e59378f6d4bb99da84b56bdf4576f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8b60eb505bbe1f46",
+    "id": "prog_hex-high-accelerator-usyd-microcredential",
     "name": "HEX High Accelerator (USYD microcredential)",
     "types": [
       "Program"
@@ -3665,13 +3558,12 @@
     "registration_window": "Multiple intakes per year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/14ef794f847680cd8b60eb505bbe1f46",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a0d9d6196e7baec9",
+    "id": "prog_heywire-competition",
     "name": "Heywire Competition",
     "types": [
       "Competition"
@@ -3696,13 +3588,12 @@
     "registration_window": "Closes 1 September",
     "not_available_nsw": false,
     "not_available_reason": "Open to regional, rural and remote students aged 16 to 22 only",
-    "notion_url": "https://app.notion.com/c9faa008190048f3a0d9d6196e7baec9",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9c0547a2b0b8c864",
+    "id": "prog_high-school-global-case-competition-hcgcc",
     "name": "High School Global Case Competition (HCGCC)",
     "types": [
       "Competition"
@@ -3729,13 +3620,12 @@
     "registration_window": "Register before the mid-year qualifiers",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3669ac977bd646f69c0547a2b0b8c864",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ad440f35ca655106",
+    "id": "prog_hilarie-lindsay-young-writers-short-story-competition",
     "name": "Hilarie Lindsay Young Writers Short Story Competition",
     "types": [
       "Competition"
@@ -3768,13 +3658,12 @@
     "registration_window": "Closes 31 August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/5613cf64b5ad49dbad440f35ca655106",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a0fde427cb47778a",
+    "id": "prog_horizon-academic-essay-prize",
     "name": "Horizon Academic Essay Prize",
     "types": [
       "Competition"
@@ -3802,13 +3691,12 @@
     "registration_window": "Entries usually close around early February",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/9c94ea746cdc4623a0fde427cb47778a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_86d1c1a7c7ad0722",
+    "id": "prog_icas-international-competitions-and-assessments-for-scho",
     "name": "ICAS — International Competitions and Assessments for Schools",
     "types": [
       "Competition"
@@ -3844,13 +3732,12 @@
     "registration_window": "Schools register before the August–September sitting windows",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/2bdcfbea4526458b86d1c1a7c7ad0722",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8d9dd82fecc5cefa",
+    "id": "prog_ideathon-competition",
     "name": "Ideathon Competition",
     "types": [
       "Competition"
@@ -3879,13 +3766,12 @@
     "registration_window": "Usually runs around February–March",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d00f5e6cd674410e8d9dd82fecc5cefa",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_87bb5d52f7a2e34d",
+    "id": "prog_igem-international-genetically-engineered-machine",
     "name": "iGEM (International Genetically Engineered Machine)",
     "types": [
       "Competition"
@@ -3914,13 +3800,12 @@
     "registration_window": "Staged registration deadlines from February through mid-year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c6e04ddd8dc54c7887bb5d52f7a2e34d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_96a6ea9300f1bb99",
+    "id": "prog_ignite",
     "name": "Ignite",
     "types": [
       "Competition"
@@ -3949,13 +3834,12 @@
     "registration_window": "Register before the competition window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/191f794f847680ec96a6ea9300f1bb99",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_991dfe5710615905",
+    "id": "prog_imagination-theatre-create-theatre-workshop",
     "name": "Imagination Theatre Create Theatre Workshop",
     "types": [
       "Program"
@@ -3981,13 +3865,12 @@
     "registration_window": "Multiple holiday intakes across the year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/4a852232a5da4b29991dfe5710615905",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9de5062b27713706",
+    "id": "prog_imagination-theatre-term-classes",
     "name": "Imagination Theatre Term Classes",
     "types": [
       "Program"
@@ -4013,13 +3896,12 @@
     "registration_window": "Weekly term classes",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/f82a0cf5628a4b059de5062b27713706",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bff3dafefee25d84",
+    "id": "prog_immerse-education-essay-competition",
     "name": "Immerse Education Essay Competition",
     "types": [
       "Competition"
@@ -4050,13 +3932,12 @@
     "registration_window": "Two annual cycles; major deadlines around January and mid-year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/64deb0d7a8a14674bff3dafefee25d84",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8a568c220667e34c",
+    "id": "prog_improv-theatre-sydney-after-school-classes",
     "name": "Improv Theatre Sydney After School Classes",
     "types": [
       "Program"
@@ -4082,13 +3963,12 @@
     "registration_window": "Mondays, Terms 2 to 4",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c61b5a02e71747f58a568c220667e34c",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b28d214ca80e7196",
+    "id": "prog_improv-theatre-sydney-holiday-program",
     "name": "Improv Theatre Sydney Holiday Program",
     "types": [
       "Program"
@@ -4113,13 +3993,12 @@
     "registration_window": "January summer program and October spring workshop",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/0132065e8aeb4338b28d214ca80e7196",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_96745d1442a06f5d",
+    "id": "prog_indigo-teen-magazine",
     "name": "Indigo Teen Magazine",
     "types": [
       "Program"
@@ -4149,13 +4028,12 @@
     "registration_window": "Rolling submissions",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/23227a669e7b4f1596745d1442a06f5d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a13dd853ed217125",
+    "id": "prog_informed-civics-competition-rule-of-law-education-centre",
     "name": "Informed Civics Competition (Rule of Law Education Centre)",
     "types": [
       "Competition"
@@ -4182,13 +4060,12 @@
     "registration_window": "Submissions usually due around February",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f84768085a13dd853ed217125",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_930bf13958ba4ebd",
+    "id": "prog_innovation-in-complex-systems-microcredential",
     "name": "Innovation in Complex Systems Microcredential",
     "types": [
       "Program"
@@ -4214,13 +4091,12 @@
     "registration_window": "Arranged between UTS TD School and partner schools",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/197f794f847680b1930bf13958ba4ebd",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bfa7c4910dfa6ba6",
+    "id": "prog_ino-nexus-essay-contest-2026",
     "name": "INO-NEXUS Essay Contest 2026",
     "types": [
       "Competition"
@@ -4248,13 +4124,12 @@
     "registration_window": "Submissions due 24 June 2026 at 11:59pm EST",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c307a10ceb234503bfa7c4910dfa6ba6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_84503ac14984f528",
+    "id": "prog_insight-creative-writing-competition",
     "name": "Insight Creative Writing Competition",
     "types": [
       "Competition"
@@ -4283,13 +4158,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/b73eb7d40edf4d8584503ac14984f528",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a5ee23c9574f579c",
+    "id": "prog_international-academic-marathon-artithon",
     "name": "International Academic Marathon: Artithon",
     "types": [
       "Competition"
@@ -4317,13 +4191,12 @@
     "registration_window": "Closes 21 November 2026. Held 5 to 6 December 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/b34557c7b0504986a5ee23c9574f579c",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8a6d49ab20db93b2",
+    "id": "prog_international-academic-marathon-biothon",
     "name": "International Academic Marathon: Biothon",
     "types": [
       "Competition"
@@ -4352,13 +4225,12 @@
     "registration_window": "Closes 4 July 2026. Held 18 to 19 July 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e20e81072f4245908a6d49ab20db93b2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b224a7324eedd082",
+    "id": "prog_international-academic-marathon-chemithon",
     "name": "International Academic Marathon: Chemithon",
     "types": [
       "Competition"
@@ -4387,13 +4259,12 @@
     "registration_window": "Closes 1 August 2026. Held 15 to 16 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3da524f8ab664350b224a7324eedd082",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_888e836ea19bd17a",
+    "id": "prog_international-academic-marathon-econthon",
     "name": "International Academic Marathon: Econthon",
     "types": [
       "Competition"
@@ -4421,13 +4292,12 @@
     "registration_window": "Closes 7 November 2026. Held 21 to 22 November 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e2057bac3e874c3c888e836ea19bd17a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8cafc0306c8de30e",
+    "id": "prog_international-academic-marathon-geothon",
     "name": "International Academic Marathon: Geothon",
     "types": [
       "Competition"
@@ -4456,13 +4326,12 @@
     "registration_window": "Closes 26 September 2026. Held 10 to 11 October 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/4ad84fa74b14498c8cafc0306c8de30e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_95464cc1c09065bf",
+    "id": "prog_international-academic-marathon-historithon",
     "name": "International Academic Marathon: Historithon",
     "types": [
       "Competition"
@@ -4491,13 +4360,12 @@
     "registration_window": "Closes 10 October 2026. Held 24 to 25 October 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d0a92caebd71453195464cc1c09065bf",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8f527561c7b8a97c",
+    "id": "prog_international-academic-marathon-inforthon",
     "name": "International Academic Marathon: Inforthon",
     "types": [
       "Competition"
@@ -4526,13 +4394,12 @@
     "registration_window": "Closes 5 September 2026. Held 19 to 20 September 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/f8962e8e47e241a78f527561c7b8a97c",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8b518057e0544416",
+    "id": "prog_international-academic-marathon-literathon",
     "name": "International Academic Marathon: Literathon",
     "types": [
       "Competition"
@@ -4561,13 +4428,12 @@
     "registration_window": "Closes 28 November 2026. Held 12 to 13 December 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/ec09f5a830c04abc8b518057e0544416",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9452b52cf48cbd9c",
+    "id": "prog_international-academic-marathon-physithon",
     "name": "International Academic Marathon: Physithon",
     "types": [
       "Competition"
@@ -4596,13 +4462,12 @@
     "registration_window": "Closed for 2026 (closed 21 March 2026). Was held 4 to 5 April 2026. Recurs annually.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/89438718fc3046069452b52cf48cbd9c",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a71331df6f6df591",
+    "id": "prog_international-academic-marathon-psychothon",
     "name": "International Academic Marathon: Psychothon",
     "types": [
       "Competition"
@@ -4630,13 +4495,12 @@
     "registration_window": "Closes 19 September 2026. Held 3 to 4 October 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/edefdcd22d654fbca71331df6f6df591",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_999ec94ccc58000c",
+    "id": "prog_international-bipolar-foundation-teen-change-maker-essay",
     "name": "International Bipolar Foundation Teen Change-Maker Essay Contest",
     "types": [
       "Competition"
@@ -4665,13 +4529,12 @@
     "registration_window": "Usually opens mid-year, closes early January",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/4f197459f9ad465d999ec94ccc58000c",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bbeec12e9afa03a5",
+    "id": "prog_international-business-olympiad-ibo",
     "name": "International Business Olympiad (IBO)",
     "types": [
       "Competition"
@@ -4698,13 +4561,12 @@
     "registration_window": "Closes 15 July 2026. Grand Test 25 July 2026. International final 8 to 14 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/bc7c30f0c4764d4cbbeec12e9afa03a5",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9f35fc5992940c61",
+    "id": "prog_international-computer-science-competition",
     "name": "International Computer Science Competition",
     "types": [
       "Competition"
@@ -4733,13 +4595,12 @@
     "registration_window": "Entries usually due early July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681f09f35fc5992940c61",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_99a43b455d9942f0",
+    "id": "prog_international-environmental-olympiad-ienvo",
     "name": "International Environmental Olympiad (IEnvO)",
     "types": [
       "Competition"
@@ -4766,13 +4627,12 @@
     "registration_window": "Closes 29 July 2026. Grand Test and international final follow in the same cycle.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/62187ac554d8482099a43b455d9942f0",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b2d3093aa2d19709",
+    "id": "prog_international-finance-olympiad-ifo",
     "name": "International Finance Olympiad (IFO)",
     "types": [
       "Competition"
@@ -4799,13 +4659,12 @@
     "registration_window": "Closes 12 August 2026. Grand Test and international final follow in the same cycle.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/eee974f5c37f4aaeb2d3093aa2d19709",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_899cdbeae8146304",
+    "id": "prog_international-idea-award-for-universal-design",
     "name": "International Idea Award for Universal Design",
     "types": [
       "Competition"
@@ -4832,13 +4691,12 @@
     "registration_window": "Entries usually due late July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681ed899cdbeae8146304",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_92e32cb259d23ac3",
+    "id": "prog_international-mathematical-modeling-challenge-im2c",
     "name": "International Mathematical Modeling Challenge (IM²C)",
     "types": [
       "Competition"
@@ -4866,13 +4724,12 @@
     "registration_window": "Register before the February–March modelling window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/77e15988ea52412992e32cb259d23ac3",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ab55c1daf92f42c1",
+    "id": "prog_international-neuroscience-olympiad-ino",
     "name": "International Neuroscience Olympiad (INO)",
     "types": [
       "Competition"
@@ -4901,13 +4758,12 @@
     "registration_window": "Register directly via the INO website; essay deadline around May",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f8476815bab55c1daf92f42c1",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ac21dca38d464112",
+    "id": "prog_international-psychology-olympiad-ipsyo",
     "name": "International Psychology Olympiad (IPsyO)",
     "types": [
       "Competition"
@@ -4933,13 +4789,12 @@
     "registration_window": "Register before the Global Grand Test (dates on website)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f847681d5ac21dca38d464112",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a929de6c58b8de28",
+    "id": "prog_isda-debating-independent-schools-debating-association",
     "name": "ISDA Debating (Independent Schools' Debating Association)",
     "types": [
       "Competition"
@@ -4969,13 +4824,12 @@
     "registration_window": "Season runs Friday evenings, Terms 1–2",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847681cca929de6c58b8de28",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_86d8d62c79977ec5",
+    "id": "prog_iyna-ins-neuroethics-essay-contest",
     "name": "IYNA–INS Neuroethics Essay Contest",
     "types": [
       "Competition"
@@ -5003,13 +4857,12 @@
     "registration_window": "Entries usually due around July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f847681b686d8d62c79977ec5",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b3f6fa44e2358074",
+    "id": "prog_johns-hopkins-center-for-talented-youth-cty",
     "name": "Johns Hopkins Center for Talented Youth (CTY)",
     "types": [
       "Website"
@@ -5039,13 +4892,12 @@
     "registration_window": "Eligibility testing year-round; program intakes per session",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/14ef794f847680a5b3f6fa44e2358074",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a063eb05f64617cf",
+    "id": "prog_junior-science-olympiad-jso",
     "name": "Junior Science Olympiad JSO",
     "types": [
       "Competition"
@@ -5069,13 +4921,12 @@
     "registration_window": "Register before the June exam window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/0cd5394cddc54f34a063eb05f64617cf",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b613de8db528e534",
+    "id": "prog_junior-secondary-speaking-award",
     "name": "Junior Secondary Speaking Award",
     "types": [
       "Competition"
@@ -5101,13 +4952,12 @@
     "registration_window": "Local finals July–August; state final October",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847681d4b613de8db528e534",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a1060f59bbee29f2",
+    "id": "prog_junior-thinkers-conference",
     "name": "Junior Thinkers Conference",
     "types": [
       "Event"
@@ -5135,13 +4985,12 @@
     "registration_window": "Register ahead of the August conference",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/fd969ccba45940eca1060f59bbee29f2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b4bfe9a90e05698f",
+    "id": "prog_kangourou-sans-frontieres",
     "name": "Kangourou Sans Frontieres",
     "types": [
       "Competition"
@@ -5173,13 +5022,12 @@
     "registration_window": "Registrations close shortly before the late-March sitting window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/191f794f847680b0b4bfe9a90e05698f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ac8defd591d003a5",
+    "id": "prog_kevin-lee-latin-quiz",
     "name": "Kevin Lee Latin Quiz",
     "types": [
       "Competition"
@@ -5206,13 +5054,12 @@
     "registration_window": "Register through CLTA before the June quiz night",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/460175f399d2460dac8defd591d003a5",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9f06ce95ec838812",
+    "id": "prog_khni-dmun-youth-representatives",
     "name": "KHNI-DMUN Youth Representatives",
     "types": [
       "Program"
@@ -5236,13 +5083,12 @@
     "registration_window": "Competitive application; separate application per conference",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681b69f06ce95ec838812",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_83f1b4ce4fb058e6",
+    "id": "prog_kids-up-front",
     "name": "Kids Up Front",
     "types": [
       "Program"
@@ -5268,13 +5114,12 @@
     "registration_window": "Ongoing classes at multiple locations",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/1eced3cbfd7a4b4483f1b4ce4fb058e6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8e5d9d95ab498de9",
+    "id": "prog_kids-lit-quiz-australia",
     "name": "Kids' Lit Quiz Australia",
     "types": [
       "Competition"
@@ -5300,13 +5145,12 @@
     "registration_window": "Register before regional heats",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/402e9e2b88f247c88e5d9d95ab498de9",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9f50dbf1817db55d",
+    "id": "prog_landscapes-art-competition",
     "name": "Landscapes Art Competition",
     "types": [
       "Competition"
@@ -5334,13 +5178,12 @@
     "registration_window": "Entries usually due early June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681079f50dbf1817db55d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_98b7ca84146764fb",
+    "id": "prog_leadership-for-change-curriculum",
     "name": "Leadership for Change Curriculum",
     "types": [
       "Program"
@@ -5370,13 +5213,12 @@
     "registration_window": "Resources available from September; deliver flexibly across the term",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/8138cf70593d499098b7ca84146764fb",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b7160f637bcd08c6",
+    "id": "prog_leadership-for-change-prize",
     "name": "Leadership for Change Prize",
     "types": [
       "Competition"
@@ -5407,13 +5249,12 @@
     "registration_window": "Entries usually close mid November; winners announced early December",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/8a91fd2639c44a1bb7160f637bcd08c6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a25ddbdc430cd34b",
+    "id": "prog_leadership-livelesson",
     "name": "Leadership LiveLesson",
     "types": [
       "Event"
@@ -5443,13 +5284,12 @@
     "registration_window": "Register ahead of the October live lesson date",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/f39ed164179c4ee7a25ddbdc430cd34b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_923ef63e7dedf65a",
+    "id": "prog_lse-generate-global-innovation-challenge",
     "name": "LSE Generate Global Innovation Challenge",
     "types": [
       "Competition"
@@ -5478,13 +5318,12 @@
     "registration_window": "Entries usually due early August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f8476813b923ef63e7dedf65a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bdcc0302c3355777",
+    "id": "prog_marian-street-theatre-for-young-people-holiday-program",
     "name": "Marian Street Theatre for Young People Holiday Program",
     "types": [
       "Program"
@@ -5510,13 +5349,12 @@
     "registration_window": "Winter holiday program in July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/4eaf38d6206346d6bdcc0302c3355777",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_808ff6352d131d02",
+    "id": "prog_mat-problem-solving-competition",
     "name": "MAT Problem Solving Competition",
     "types": [
       "Competition"
@@ -5544,13 +5382,12 @@
     "registration_window": "Register before the competition window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/19ef794f8476806c808ff6352d131d02",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b338ef7d2c351fd6",
+    "id": "prog_maths-challenge",
     "name": "Maths Challenge",
     "types": [
       "Program"
@@ -5580,13 +5417,12 @@
     "registration_window": "Register via AMT before the autumn problem period",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/191f794f847680adb338ef7d2c351fd6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_af81eb3d45056a0e",
+    "id": "prog_maths-enrichment",
     "name": "Maths Enrichment",
     "types": [
       "Program"
@@ -5616,13 +5452,12 @@
     "registration_window": "Register via AMT before the enrichment period begins",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/191f794f8476800caf81eb3d45056a0e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ad4cdcf512d058e4",
+    "id": "prog_maths-games-senior-apsmo",
     "name": "Maths Games Senior (APSMO)",
     "types": [
       "Program"
@@ -5646,13 +5481,12 @@
     "registration_window": "Register before Term 2; papers run May to September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/198f794f84768085ad4cdcf512d058e4",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_af28c51de51d9d43",
+    "id": "prog_maths-olympiad-senior-division-apsmo",
     "name": "Maths Olympiad Senior Division (APSMO)",
     "types": [
       "Competition"
@@ -5676,13 +5510,12 @@
     "registration_window": "Register before Term 2; contests run May to September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/198f794f84768090af28c51de51d9d43",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bf4aba2ae1ded0d4",
+    "id": "prog_matific-maths-olympiad",
     "name": "Matific Maths Olympiad",
     "types": [
       "Competition"
@@ -5708,13 +5541,12 @@
     "registration_window": "Registration usually mid-June to early August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/77a374e229f140b8bf4aba2ae1ded0d4",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bb56284e6d64180a",
+    "id": "prog_medusa-mythology-exam",
     "name": "Medusa Mythology Exam",
     "types": [
       "Competition"
@@ -5741,13 +5573,12 @@
     "registration_window": "Registrations close in the weeks before the February–March window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/847626d90c36498ebb56284e6d64180a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9545caca5ef5c4e9",
+    "id": "prog_meeting-of-minds",
     "name": "Meeting of Minds",
     "types": [
       "Event"
@@ -5771,13 +5602,12 @@
     "registration_window": "Register via Humanitix ahead of the August event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/55ca74d1dfc84d949545caca5ef5c4e9",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b7bff0e422d609a6",
+    "id": "prog_micro-living-architecture-competition",
     "name": "Micro Living Architecture Competition",
     "types": [
       "Competition"
@@ -5803,13 +5633,12 @@
     "registration_window": "Entries usually due early December",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f84768132b7bff0e422d609a6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b6edf643ef39e91a",
+    "id": "prog_mindquest",
     "name": "Mindquest",
     "types": [
       "Program"
@@ -5838,13 +5667,12 @@
     "registration_window": "Register ahead of the July weekend",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/191f794f84768081b6edf643ef39e91a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8395ab1a30f5d889",
+    "id": "prog_minds-on-fire",
     "name": "Minds on Fire",
     "types": [
       "Event"
@@ -5869,13 +5697,12 @@
     "registration_window": "Closes 18 August 2026",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/aeebbbc45f364a638395ab1a30f5d889",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8942d122448825eb",
+    "id": "prog_minds-underground-psychology-essay-competition",
     "name": "Minds Underground Psychology Essay Competition",
     "types": [
       "Competition"
@@ -5901,13 +5728,12 @@
     "registration_window": "Entries usually due in April",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f847681328942d122448825eb",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ba6bfa696005a159",
+    "id": "prog_mock-mediation",
     "name": "Mock Mediation",
     "types": [
       "Competition"
@@ -5932,13 +5758,12 @@
     "registration_window": "Register before the competition season opens",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/18cf794f84768031ba6bfa696005a159",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9bd221c39a4ee812",
+    "id": "prog_mock-trial",
     "name": "Mock Trial",
     "types": [
       "Competition"
@@ -5966,13 +5791,12 @@
     "registration_window": "Register before the competition season opens",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/fd6b6590158043749bd221c39a4ee812",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b2be9cf3d5f80d3e",
+    "id": "prog_nan-manefield-young-writers-award",
     "name": "Nan Manefield Young Writers' Award",
     "types": [
       "Competition"
@@ -6001,13 +5825,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/682f6bf57906481ab2be9cf3d5f80d3e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_adf114370ecc685e",
+    "id": "prog_nasa-international-space-apps-challenge",
     "name": "NASA International Space Apps Challenge",
     "types": [
       "Competition"
@@ -6038,13 +5861,12 @@
     "registration_window": "Register before the annual October hackathon weekend",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/7097aef73e64473cadf114370ecc685e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b5c749dce2ac9980",
+    "id": "prog_national-classical-etymology-exam-ncee",
     "name": "National Classical Etymology Exam (NCEE)",
     "types": [
       "Competition"
@@ -6074,13 +5896,12 @@
     "registration_window": "Usually 1 September – 25 October",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/7defde6f6a524e02b5c749dce2ac9980",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9dd04209163b0f47",
+    "id": "prog_national-greek-exam-nge",
     "name": "National Greek Exam (NGE)",
     "types": [
       "Competition"
@@ -6108,13 +5929,12 @@
     "registration_window": "Registrations close before the March administration",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/2a5f7e01d42a457a9dd04209163b0f47",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b376c9d2ea94d934",
+    "id": "prog_national-hellenic-civilization-exam-nhce",
     "name": "National Hellenic Civilization Exam (NHCE)",
     "types": [
       "Competition"
@@ -6144,13 +5964,12 @@
     "registration_window": "Usually 1 November – 25 January",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/850b8a3e814347dcb376c9d2ea94d934",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_afd6fd5d98553900",
+    "id": "prog_national-history-challenge",
     "name": "National History Challenge",
     "types": [
       "Competition"
@@ -6179,13 +5998,12 @@
     "registration_window": "Entries usually close late August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476816cafd6fd5d98553900",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_97248bf5aa38787b",
+    "id": "prog_national-latin-exam-nle",
     "name": "National Latin Exam (NLE)",
     "types": [
       "Competition"
@@ -6215,13 +6033,12 @@
     "registration_window": "Registrations close before the February–March administration",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/98a5b352a573422497248bf5aa38787b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b1b4e34d69c60799",
+    "id": "prog_national-latin-vocabulary-exam-nlve",
     "name": "National Latin Vocabulary Exam (NLVE)",
     "types": [
       "Competition"
@@ -6251,13 +6068,12 @@
     "registration_window": "Usually 1 November – 25 January",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/092f6db786844731b1b4e34d69c60799",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b73b1b43e06548a2",
+    "id": "prog_national-pegasus-exam-pegasus-mythology",
     "name": "National Pegasus Exam (Pegasus Mythology)",
     "types": [
       "Competition"
@@ -6286,13 +6102,12 @@
     "registration_window": "Usually 1 September – 31 January",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e89b3194725242a4b73b1b43e06548a2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_90b32b4e736d3968",
+    "id": "prog_national-roman-civilization-exam-nrce",
     "name": "National Roman Civilization Exam (NRCE)",
     "types": [
       "Competition"
@@ -6323,13 +6138,12 @@
     "registration_window": "Registrations close late October; sat November–December",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c4ba28e6c3cf4b4890b32b4e736d3968",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8b907a2cd4dde171",
+    "id": "prog_national-schools-constitutional-convention-nscc",
     "name": "National Schools Constitutional Convention (NSCC)",
     "types": [
       "Event"
@@ -6354,13 +6168,12 @@
     "registration_window": "NSW delegates selected via the NSW Schools Constitutional Convention",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/de62aef7684949658b907a2cd4dde171",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a973fba4cb67ef2f",
+    "id": "prog_national-youth-parliament",
     "name": "National Youth Parliament",
     "types": [
       "Program"
@@ -6387,13 +6200,12 @@
     "registration_window": "Applications open earlier in the year for the August program",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f84768071a973fba4cb67ef2f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b2cc4c0321f66432",
+    "id": "prog_neuroscience-summer-program",
     "name": "Neuroscience Summer Program",
     "types": [
       "Program"
@@ -6422,13 +6234,12 @@
     "registration_window": "Applications usually open March, close mid-May",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/05e978f0db68411db2cc4c0321f66432",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b807825616aa76db",
+    "id": "prog_new-socratic-summit-stage-5",
     "name": "New Socratic Summit (Stage 5)",
     "types": [
       "Event"
@@ -6453,13 +6264,12 @@
     "registration_window": "Register via Humanitix ahead of the August event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e27dd18e7d6a4bb9b807825616aa76db",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_894c7b697c68b944",
+    "id": "prog_next-idea-to-advocate",
     "name": "Next Idea to Advocate",
     "types": [
       "Competition",
@@ -6488,13 +6298,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/a5b57871ce6c4838894c7b697c68b944",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8b15c1fd0b5e1a3d",
+    "id": "prog_next-idea-to-ecoplore",
     "name": "Next Idea to Ecoplore",
     "types": [
       "Competition",
@@ -6523,13 +6332,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d3cfa5511a7444668b15c1fd0b5e1a3d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bdfaaeddda9d06be",
+    "id": "prog_next-idea-to-illuminate",
     "name": "Next Idea to Illuminate",
     "types": [
       "Competition",
@@ -6557,13 +6365,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/27c5e8b3b56946dabdfaaeddda9d06be",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9b326f5d50d60d37",
+    "id": "prog_next-idea-to-invent",
     "name": "Next Idea to Invent",
     "types": [
       "Competition",
@@ -6591,13 +6398,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/170058505b614f399b326f5d50d60d37",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b7b6b6dd8a34669b",
+    "id": "prog_next-idea-to-probe",
     "name": "Next Idea to Probe",
     "types": [
       "Competition",
@@ -6625,13 +6431,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c77ba6c978744eb0b7b6b6dd8a34669b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a69711d8608d4dca",
+    "id": "prog_next-idea-to-research",
     "name": "Next Idea to Research",
     "types": [
       "Competition",
@@ -6659,13 +6464,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/b9f03ef9bc99473da69711d8608d4dca",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b058b30e8476415f",
+    "id": "prog_next-idea-to-venture",
     "name": "Next Idea to Venture",
     "types": [
       "Competition",
@@ -6693,13 +6497,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/7a8eb121f54f4f3bb058b30e8476415f",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b7fad2054e3cd786",
+    "id": "prog_next-responsible-idea",
     "name": "Next Responsible Idea",
     "types": [
       "Competition",
@@ -6728,13 +6531,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/267a5df523f84669b7fad2054e3cd786",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a79630d6ba0942bc",
+    "id": "prog_next-sustainable-idea",
     "name": "Next Sustainable Idea",
     "types": [
       "Competition",
@@ -6762,13 +6564,12 @@
     "registration_window": "Closes 31 July 2026. Final project submission 31 August 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e5b98858d46e4ce5a79630d6ba0942bc",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9470b04e86921964",
+    "id": "prog_nida-open-drama-school-years-7-to-10",
     "name": "NIDA Open Drama School (Years 7 to 10)",
     "types": [
       "Program"
@@ -6794,13 +6595,12 @@
     "registration_window": "Spring holiday intake; early bird discounts apply",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/6d03f73b51af4af69470b04e86921964",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9c79b4fdee922ece",
+    "id": "prog_nida-open-hitting-your-mark-screen-acting-years-7-to-10",
     "name": "NIDA Open: Hitting Your Mark Screen Acting (Years 7 to 10)",
     "types": [
       "Program"
@@ -6827,13 +6627,12 @@
     "registration_window": "Offered in the school holidays. When no class is on sale, join the NIDA Open waitlist to be notified of new dates.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/333f64f9cca243589c79b4fdee922ece",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8d32a4e4589cb2e5",
+    "id": "prog_nida-open-off-the-cuff-improvisation-years-7-to-10",
     "name": "NIDA Open: Off the Cuff Improvisation (Years 7 to 10)",
     "types": [
       "Program"
@@ -6859,13 +6658,12 @@
     "registration_window": "Offered in the school holidays. When no class is on sale, join the NIDA Open waitlist to be notified of new dates.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/b97ed16d933743128d32a4e4589cb2e5",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_98966a62ec0e4575",
+    "id": "prog_nillumbik-prize-for-contemporary-writing-youth",
     "name": "Nillumbik Prize for Contemporary Writing (Youth)",
     "types": [
       "Competition"
@@ -6894,13 +6692,12 @@
     "registration_window": "Closes 30 September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/348467d7fe614aa898966a62ec0e4575",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_afdc2eac419a1bdd",
+    "id": "prog_north-shore-historical-society-research-essay",
     "name": "North Shore Historical Society Research Essay",
     "types": [
       "Competition"
@@ -6930,13 +6727,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/b54b6f4129044253afdc2eac419a1bdd",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8145e77fdc0e0bd8",
+    "id": "prog_nsw-arts-unit-junior-drama-ensemble",
     "name": "NSW Arts Unit Junior Drama Ensemble",
     "types": [
       "Program"
@@ -6960,13 +6756,12 @@
     "registration_window": "Auditions February to March; ensemble runs from April",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/93d00a68b6e44cae8145e77fdc0e0bd8",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8abc4222fbf4ee81",
+    "id": "prog_nsw-arts-unit-state-drama-camp",
     "name": "NSW Arts Unit State Drama Camp",
     "types": [
       "Program"
@@ -6990,13 +6785,12 @@
     "registration_window": "Applications close March; camp runs late June to early July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/91f4e4f0c88845a38abc4222fbf4ee81",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_93d89963670922b7",
+    "id": "prog_nsw-parliament-secondary-schools-student-leadership-prog",
     "name": "NSW Parliament Secondary Schools Student Leadership Program",
     "types": [
       "Program",
@@ -7021,13 +6815,12 @@
     "registration_window": "Schools book throughout the school year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/a1c46ba615c2405c93d89963670922b7",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bb02cae49b1057a5",
+    "id": "prog_nsw-schools-constitutional-convention",
     "name": "NSW Schools Constitutional Convention",
     "types": [
       "Event"
@@ -7051,13 +6844,12 @@
     "registration_window": "Schools nominate students ahead of the November convention",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f84768080bb02cae49b1057a5",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_99a3c6ac10ff6ab7",
+    "id": "prog_nsw-youth-advisory-council-yac",
     "name": "NSW Youth Advisory Council (YAC)",
     "types": [
       "Program"
@@ -7086,13 +6878,12 @@
     "registration_window": "Applications open annually for one-year terms",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476805899a3c6ac10ff6ab7",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9211cf04b4d61684",
+    "id": "prog_nsw-youth-parliament-y-nsw",
     "name": "NSW Youth Parliament (Y NSW)",
     "types": [
       "Program"
@@ -7120,13 +6911,12 @@
     "registration_window": "Applications open early in the year; sitting week around October",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476801d9211cf04b4d61684",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a7bfd490482e1d7d",
+    "id": "prog_o-grady-drama",
     "name": "O'Grady Drama",
     "types": [
       "Program"
@@ -7152,13 +6942,12 @@
     "registration_window": "Ongoing youth theatre classes",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3a4e790b13084a72a7bfd490482e1d7d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_809efdfa409d06dc",
+    "id": "prog_ocean-content-contest",
     "name": "Ocean Content Contest",
     "types": [
       "Competition"
@@ -7187,13 +6976,12 @@
     "registration_window": "Entries usually due mid-June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681ad809efdfa409d06dc",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8451c1153d6848bd",
+    "id": "prog_odyssey-of-the-mind",
     "name": "Odyssey of the Mind",
     "types": [
       "Competition"
@@ -7229,13 +7017,12 @@
     "registration_window": "Register via local association before the season",
     "not_available_nsw": true,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e55df227ade04f028451c1153d6848bd",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a5fcba4a1690e618",
+    "id": "prog_outward-bound-australia-leadership-programs",
     "name": "Outward Bound Australia Leadership Programs",
     "types": [
       "Program"
@@ -7259,13 +7046,12 @@
     "registration_window": "Courses run year round; book ready made adventures or a custom school experience via the website",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/02f4917e6e974e89a5fcba4a1690e618",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a34bf87f435a74e0",
+    "id": "prog_ozclo-australian-computational-and-linguistics-olympiad",
     "name": "OzCLO (Australian Computational and Linguistics Olympiad)",
     "types": [
       "Competition"
@@ -7295,13 +7081,12 @@
     "registration_window": "Register before the Round 1 online contest",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/6bccf189cce24b1ca34bf87f435a74e0",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8711e8f63f9af2b1",
+    "id": "prog_para-assessment-future-psychscholars",
     "name": "PARA Assessment (Future PsychScholars)",
     "types": [
       "Program"
@@ -7327,13 +7112,12 @@
     "registration_window": "Monthly sittings; retakes permitted",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f847681138711e8f63f9af2b1",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8928e39129aa6e38",
+    "id": "prog_plain-english-speaking-award",
     "name": "Plain English Speaking Award",
     "types": [
       "Competition"
@@ -7359,13 +7143,12 @@
     "registration_window": "Local finals mid-year; state final later in the year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847681b78928e39129aa6e38",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b46ca8da1e218315",
+    "id": "prog_poem-forest",
     "name": "Poem Forest",
     "types": [
       "Competition"
@@ -7398,13 +7181,12 @@
     "registration_window": "Closes late September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/8248f48fbc2b4b80b46ca8da1e218315",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_aa63959cca2bb403",
+    "id": "prog_point-break-drama",
     "name": "Point Break Drama",
     "types": [
       "Program"
@@ -7430,13 +7212,12 @@
     "registration_window": "Term based classes",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/09c5df3428424204aa63959cca2bb403",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bbf6e1a027c6e5fc",
+    "id": "prog_premier-s-debating-challenge-years-11-12",
     "name": "Premier's Debating Challenge — Years 11 & 12",
     "types": [
       "Competition"
@@ -7461,13 +7242,12 @@
     "registration_window": "Rounds run through the year; state final in August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847681b1bbf6e1a027c6e5fc",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b21fda14e011ece2",
+    "id": "prog_premier-s-debating-challenge-years-7-8",
     "name": "Premier's Debating Challenge — Years 7 & 8",
     "types": [
       "Competition"
@@ -7492,13 +7272,12 @@
     "registration_window": "Rounds run through the year by zone",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f84768148b21fda14e011ece2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9463cc455457484a",
+    "id": "prog_premier-s-debating-challenge-years-9-10",
     "name": "Premier's Debating Challenge — Years 9 & 10",
     "types": [
       "Competition"
@@ -7523,13 +7302,12 @@
     "registration_window": "Rounds run through the year by zone",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847681f09463cc455457484a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bc3cd7ee78dfc660",
+    "id": "prog_prime-minister-s-spelling-bee",
     "name": "Prime Minister's Spelling Bee",
     "types": [
       "Competition"
@@ -7557,13 +7335,12 @@
     "registration_window": "School round usually runs late July to August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/68bcae6f540a4ae6bc3cd7ee78dfc660",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bd95e7d142bf9fa9",
+    "id": "prog_purple-comet-math-meet",
     "name": "Purple Comet! Math Meet",
     "types": [
       "Competition"
@@ -7591,13 +7368,12 @@
     "registration_window": "Register before the ten-day April contest window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/8dfb6a27c3f746b8bd95e7d142bf9fa9",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a2a3aa71e2639b51",
+    "id": "prog_python-comp",
     "name": "Python.Comp",
     "types": [
       "Competition"
@@ -7626,13 +7402,12 @@
     "registration_window": "Register via Grok Academy before the event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/14909e714aff4baaa2a3aa71e2639b51",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b4b2f0c426e9ae2e",
+    "id": "prog_radical-innovation-hospitality-product",
     "name": "Radical Innovation Hospitality Product",
     "types": [
       "Competition"
@@ -7658,13 +7433,12 @@
     "registration_window": "Entries usually due early August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681a5b4b2f0c426e9ae2e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_aa67e25afb70b011",
+    "id": "prog_radicepura-garden-festival-call-for-ideas",
     "name": "Radicepura Garden Festival — Call for Ideas",
     "types": [
       "Competition"
@@ -7690,13 +7464,12 @@
     "registration_window": "Entries usually due late October",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f8476814baa67e25afb70b011",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8e976dac497ac925",
+    "id": "prog_readers-cup",
     "name": "Readers Cup",
     "types": [
       "Competition"
@@ -7724,13 +7497,12 @@
     "registration_window": "Register before regional rounds; books announced in advance",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d1ab88a1b4ad4d4c8e976dac497ac925",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ad27e968e57164c2",
+    "id": "prog_reflections-in-blue-art-competition",
     "name": "Reflections in Blue Art Competition",
     "types": [
       "Competition"
@@ -7758,13 +7530,12 @@
     "registration_window": "Entries usually due late May",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f847681d7ad27e968e57164c2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_974be9e4033c78ed",
+    "id": "prog_regeneron-international-science-and-engineering-fair-ise",
     "name": "Regeneron International Science and Engineering Fair (ISEF)",
     "types": [
       "Competition"
@@ -7792,13 +7563,12 @@
     "registration_window": "Qualify through affiliated local/regional/national fairs",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/7eed741deed346b3974be9e4033c78ed",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8b253209df477049",
+    "id": "prog_robocup-junior",
     "name": "RoboCup Junior",
     "types": [
       "Competition"
@@ -7834,13 +7604,12 @@
     "registration_window": "Register per event; regional events lead to nationals",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/2b4b23cdfde647188b253209df477049",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8c36dbc0a2be9644",
+    "id": "prog_rostrum-voice-of-youth",
     "name": "Rostrum Voice of Youth",
     "types": [
       "Competition"
@@ -7869,13 +7638,12 @@
     "registration_window": "First round March; finals mid-year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476811f8c36dbc0a2be9644",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8c0a234d252aa101",
+    "id": "prog_ryla-rotary-youth-leadership-awards",
     "name": "RYLA (Rotary Youth Leadership Awards)",
     "types": [
       "Program"
@@ -7897,13 +7665,12 @@
     "registration_window": "Nominations earlier in the year; held in January",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/085a1a5a46354b8b8c0a234d252aa101",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b13d6cd39a7ef709",
+    "id": "prog_rypen-rotary-youth-program-of-enrichment",
     "name": "RYPEN (Rotary Youth Program of Enrichment)",
     "types": [
       "Program"
@@ -7928,13 +7695,12 @@
     "registration_window": "Nominations via local Rotary clubs",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/1020e2c1e5d94663b13d6cd39a7ef709",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_aa38a11039695d2a",
+    "id": "prog_samsung-solve-for-tomorrow",
     "name": "Samsung Solve for Tomorrow",
     "types": [
       "Competition"
@@ -7965,13 +7731,12 @@
     "registration_window": "Entries usually due mid-year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/a2d4a67173b54f44aa38a11039695d2a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b7fceb3b009f69cd",
+    "id": "prog_sbmun-sydney-boys-high-school-model-united-nations",
     "name": "SBMUN (Sydney Boys High School Model United Nations)",
     "types": [
       "Event"
@@ -7999,13 +7764,12 @@
     "registration_window": "Register via Humanitix ahead of the December conference",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847680d2b7fceb3b009f69cd",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b3235a1b8a7b12f5",
+    "id": "prog_science-and-engineering-challenge-sec",
     "name": "Science and Engineering Challenge (SEC)",
     "types": [
       "Competition"
@@ -8031,13 +7795,12 @@
     "registration_window": "Schools book Challenge Days through the year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/4ba92b4623e240fbb3235a1b8a7b12f5",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_887c56df6ac52c7c",
+    "id": "prog_scribo-latin-writing-contest",
     "name": "SCRIBO Latin Writing Contest",
     "types": [
       "Competition"
@@ -8067,13 +7830,12 @@
     "registration_window": "Usually 1 September – 15 March",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c92097792e454d5b887c56df6ac52c7c",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b486bcac3ba2ddef",
+    "id": "prog_seamo-southeast-asian-mathematical-olympiad",
     "name": "SEAMO (Southeast Asian Mathematical Olympiad)",
     "types": [
       "Competition"
@@ -8101,13 +7863,12 @@
     "registration_window": "Register via a partner provider before the January contest",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d831fa81061547b3b486bcac3ba2ddef",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_862d74a362fbcfff",
+    "id": "prog_slinkies-young-writers-anthology",
     "name": "Slinkies Young Writers Anthology",
     "types": [
       "Competition"
@@ -8134,13 +7895,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/6b61bb123c5a40aa862d74a362fbcfff",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_84122d99912b6b3b",
+    "id": "prog_spooky-story-competition",
     "name": "Spooky Story Competition",
     "types": [
       "Competition"
@@ -8169,13 +7929,12 @@
     "registration_window": "Entries close mid March",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/8c49a739c0f34af484122d99912b6b3b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_beb1c47cbed91d03",
+    "id": "prog_stanford-symbolic-systems-society-high-school-essay-comp",
     "name": "Stanford Symbolic Systems Society High School Essay Competition",
     "types": [
       "Competition"
@@ -8204,13 +7963,12 @@
     "registration_window": "Entries usually due late January",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/cc380aceaaf743b4beb1c47cbed91d03",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a5e6fcbe364f4d64",
+    "id": "prog_stem-racing",
     "name": "STEM Racing",
     "types": [
       "Competition"
@@ -8243,13 +8001,12 @@
     "registration_window": "Register before the regional competition season",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/18ef794f847680ada5e6fcbe364f4d64",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8d99e9c02b17658e",
+    "id": "prog_storyathon",
     "name": "Storyathon",
     "types": [
       "Competition"
@@ -8275,13 +8032,12 @@
     "registration_window": "Runs several times a year; register before each event window",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/18ef794f8476809e8d99e9c02b17658e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8f53ba82c4ddeea8",
+    "id": "prog_storyfest-national-novella-writing-competition",
     "name": "Storyfest National Novella Writing Competition",
     "types": [
       "Competition"
@@ -8310,13 +8066,12 @@
     "registration_window": "Closes 5 December",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/67a77569b2d54a2a8f53ba82c4ddeea8",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b5964f66b47db88b",
+    "id": "prog_storyfest-national-poetry-prize",
     "name": "Storyfest National Poetry Prize",
     "types": [
       "Competition"
@@ -8345,13 +8100,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/93ee3730db6f49b1b5964f66b47db88b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a9d3db046b918e70",
+    "id": "prog_subs-in-schools",
     "name": "SUBS in Schools",
     "types": [
       "Competition"
@@ -8382,13 +8136,12 @@
     "registration_window": "Register before the competition season",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/40e6067f48344c18a9d3db046b918e70",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ba52d68882771c1e",
+    "id": "prog_sydney-philosothon",
     "name": "Sydney Philosothon",
     "types": [
       "Competition"
@@ -8417,13 +8170,12 @@
     "registration_window": "Register ahead of the late-July evening event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/86a244d68799415dba52d68882771c1e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a2151290f0f3b961",
+    "id": "prog_the-ethics-centre-young-writers-competition",
     "name": "The Ethics Centre Young Writers' Competition",
     "types": [
       "Competition"
@@ -8453,13 +8205,12 @@
     "registration_window": "Closes 8 September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/2107d87117e84a11a2151290f0f3b961",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a0d771ef607b474a",
+    "id": "prog_the-junior-academy-nyas",
     "name": "The Junior Academy (NYAS)",
     "types": [
       "Program"
@@ -8490,13 +8241,12 @@
     "registration_window": "Applications open per intake (see NYAS)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/8a34ae7b127745f1a0d771ef607b474a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b1b2aaffc896413d",
+    "id": "prog_the-simpson-prize",
     "name": "The Simpson Prize",
     "types": [
       "Competition"
@@ -8522,13 +8272,12 @@
     "registration_window": "Usually closes November",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/db0ea0b7a91f4325b1b2aaffc896413d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9ae4d1730fc9a4a6",
+    "id": "prog_the-un-voice-competition",
     "name": "The UN Voice Competition",
     "types": [
       "Competition"
@@ -8555,13 +8304,12 @@
     "registration_window": "Register before the competition rounds",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/18ef794f847680489ae4d1730fc9a4a6",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_82c7f954f0943162",
+    "id": "prog_the-western-civilisation-program-summer-school-acu",
     "name": "The Western Civilisation Program Summer School (ACU)",
     "types": [
       "Program"
@@ -8587,13 +8335,12 @@
     "registration_window": "Applications ahead of the summer school period",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/14ef794f847680db82c7f954f0943162",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a504fca98dd63e6a",
+    "id": "prog_the-worlds-scholars-cup",
     "name": "The Worlds Scholars Cup",
     "types": [
       "Competition"
@@ -8622,13 +8369,12 @@
     "registration_window": "Register before the regional round",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/18ef794f84768032a504fca98dd63e6a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_99560cc145bd9a8b",
+    "id": "prog_think-essay-prize-royal-institute-of-philosophy",
     "name": "Think Essay Prize (Royal Institute of Philosophy)",
     "types": [
       "Competition"
@@ -8655,13 +8401,12 @@
     "registration_window": "Entries usually due around 20 April",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/3df7967adfa446eb99560cc145bd9a8b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8dd4dd77f17aeaf8",
+    "id": "prog_toastmasters-youth-leadership-program",
     "name": "Toastmasters Youth Leadership Program",
     "types": [
       "Program"
@@ -8687,13 +8432,12 @@
     "registration_window": "Runs when a local club organises a program; contact a nearby Toastmasters club",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c4c1e118798f4f078dd4dd77f17aeaf8",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_84032f40edc84992",
+    "id": "prog_toga-day-school-event",
     "name": "Toga Day (School Event)",
     "types": [
       "Event"
@@ -8720,13 +8464,12 @@
     "registration_window": "Internal — organised by the classics faculty",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/04fca579b68f4f9684032f40edc84992",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9eda4ecda544b879",
+    "id": "prog_tournament-of-minds-tom",
     "name": "Tournament of Minds TOM",
     "types": [
       "Competition"
@@ -8756,13 +8499,12 @@
     "registration_window": "Register before Term 3 regional rounds",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/9099fe9b72e246419eda4ecda544b879",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a2deb35220007797",
+    "id": "prog_tournament-of-towns",
     "name": "Tournament of Towns",
     "types": [
       "Competition"
@@ -8788,13 +8530,12 @@
     "registration_window": "Two rounds per year (spring and autumn sittings)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/2290f4a021f34d28a2deb35220007797",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_af5b0bb167035902",
+    "id": "prog_un-youth-evatt-model-un",
     "name": "UN Youth Evatt Model UN",
     "types": [
       "Competition"
@@ -8821,13 +8562,12 @@
     "registration_window": "Preliminary rounds run May to July",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/ba13fb0534c64976af5b0bb167035902",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_93bdfebdadd09e04",
+    "id": "prog_un-youth-junior-leadership-summit-jls",
     "name": "UN Youth Junior Leadership Summit (JLS)",
     "types": [
       "Event"
@@ -8853,13 +8593,12 @@
     "registration_window": "Register ahead of the summit dates",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476804593bdfebdadd09e04",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_8dfe89ee73eade73",
+    "id": "prog_un-youth-negotiations-competition",
     "name": "UN Youth Negotiations Competition",
     "types": [
       "Competition"
@@ -8887,13 +8626,12 @@
     "registration_window": "Rounds run late July to mid-August",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/5ca2f909a29f4fe48dfe89ee73eade73",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9b7ec7a91b340a33",
+    "id": "prog_un-youth-nsw-state-conference",
     "name": "UN Youth NSW State Conference",
     "types": [
       "Event"
@@ -8921,13 +8659,12 @@
     "registration_window": "Early-bird and regular windows close before the March conference",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847680499b7ec7a91b340a33",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_bb9aef9e73a0f81a",
+    "id": "prog_un-youth-summits-nsw",
     "name": "UN Youth Summits (NSW)",
     "types": [
       "Event"
@@ -8954,13 +8691,12 @@
     "registration_window": "Three summits per year; register before each",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847680d5bb9aef9e73a0f81a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_ad55469cf302639a",
+    "id": "prog_un-youth-voice-public-speaking",
     "name": "UN Youth Voice Public Speaking",
     "types": [
       "Competition"
@@ -8987,13 +8723,12 @@
     "registration_window": "State calendars vary; rounds run through the year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/fa8843195b3847e1ad55469cf302639a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a016dcb66b900aeb",
+    "id": "prog_un-youth-workshops",
     "name": "UN Youth Workshops",
     "types": [
       "Program"
@@ -9021,13 +8756,12 @@
     "registration_window": "Arranged with schools through the year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/213f794f84768051a016dcb66b900aeb",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b1a6c431adc936af",
+    "id": "prog_unbox-architecture-competition",
     "name": "Unbox Architecture Competition",
     "types": [
       "Competition"
@@ -9053,13 +8787,12 @@
     "registration_window": "Entries usually due early December",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/376f794f8476813cb1a6c431adc936af",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_903ed822deb7339e",
+    "id": "prog_university-of-melbourne-schools-maths-olympics-smo",
     "name": "University of Melbourne Schools Maths Olympics (SMO)",
     "types": [
       "Competition"
@@ -9087,13 +8820,12 @@
     "registration_window": "Register ahead of the August event (often Open Day)",
     "not_available_nsw": true,
     "not_available_reason": "Open to Victorian schools only",
-    "notion_url": "https://app.notion.com/3aef83ec83474edc903ed822deb7339e",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_96497d9f14a848fc",
+    "id": "prog_unsw-bragg-student-prize-for-science-writing",
     "name": "UNSW Bragg Student Prize for Science Writing",
     "types": [
       "Competition"
@@ -9121,13 +8853,12 @@
     "registration_window": "TBA",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/f3d6cd72dae34b5596497d9f14a848fc",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a222dcc6b4d73782",
+    "id": "prog_unsw-discovermun-and-munis",
     "name": "UNSW DiscoverMUN and MUNiS",
     "types": [
       "Program"
@@ -9154,13 +8885,12 @@
     "registration_window": "DiscoverMUN annual; MUNiS ongoing by arrangement",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476800da222dcc6b4d73782",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a87a601bc41fb855",
+    "id": "prog_unsw-school-mathematics-competition",
     "name": "UNSW School Mathematics Competition",
     "types": [
       "Competition"
@@ -9188,13 +8918,12 @@
     "registration_window": "Entries usually close early May; sat in June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/0cde56375df2451da87a601bc41fb855",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9307dd936e918cd5",
+    "id": "prog_uon-high-performing-students-program",
     "name": "UoN High Performing Students Program",
     "types": [
       "Program"
@@ -9220,13 +8949,12 @@
     "registration_window": "Applications via school nomination (see UoN)",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/14ef794f847680449307dd936e918cd5",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b3e94711f062d5b8",
+    "id": "prog_voiceworks",
     "name": "Voiceworks",
     "types": [
       "Program"
@@ -9252,13 +8980,12 @@
     "registration_window": "Year round submissions",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e4ece3ed96824a32b3e94711f062d5b8",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b27ba4852f8e0421",
+    "id": "prog_web-comp",
     "name": "Web.Comp",
     "types": [
       "Competition"
@@ -9289,13 +9016,12 @@
     "registration_window": "Register via Grok Academy before the event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/a744c580907f41e0b27ba4852f8e0421",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a77fce720ae6782d",
+    "id": "prog_what-matters-writing-competition-whitlam-institute",
     "name": "What Matters? Writing Competition (Whitlam Institute)",
     "types": [
       "Competition"
@@ -9327,13 +9053,12 @@
     "registration_window": "Entries usually open early in the year",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f84768042a77fce720ae6782d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_93a7ed0ec5764c43",
+    "id": "prog_world-council-for-gifted-and-talented-children-wcgtc",
     "name": "World Council for Gifted and Talented Children (WCGTC)",
     "types": [
       "Association"
@@ -9352,13 +9077,12 @@
     "registration_window": "Membership open year-round; biennial World Conference",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/161f794f8476805b93a7ed0ec5764c43",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_82e697af93ae248b",
+    "id": "prog_world-economics-cup",
     "name": "World Economics Cup",
     "types": [
       "Competition"
@@ -9384,13 +9108,12 @@
     "registration_window": "Closed for 2026 (open registration closed 11 April 2026). Multi round, recurs annually.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/f6a61eb4dee9481f82e697af93ae248b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_96ecd43f56250492",
+    "id": "prog_world-economics-cup-global-final",
     "name": "World Economics Cup Global Final",
     "types": [
       "Competition"
@@ -9416,13 +9139,12 @@
     "registration_window": "Qualification required. Registration closes 1 October 2026.",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/28a97ab84a6f430d96ecd43f56250492",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_91f114f27fb1dd2b",
+    "id": "prog_world-robot-olympiad-wro",
     "name": "World Robot Olympiad (WRO)",
     "types": [
       "Competition"
@@ -9458,13 +9180,12 @@
     "registration_window": "Register via the national organiser before regional rounds",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e23bc1e3936f4c1f91f114f27fb1dd2b",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_aeb3988f9f060b6a",
+    "id": "prog_write-a-book-in-a-day",
     "name": "Write a Book in a Day",
     "types": [
       "Competition"
@@ -9496,13 +9217,12 @@
     "registration_window": "Choose any 12-hour day between June and September",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/e9e9bba6bb064218aeb3988f9f060b6a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_99fe0c86aa15d797",
+    "id": "prog_write-the-world",
     "name": "Write the World",
     "types": [
       "Competition"
@@ -9531,13 +9251,12 @@
     "registration_window": "Monthly competitions",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/ba09689aa38c4e0699fe0c86aa15d797",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9e6fcbe7b8c24cb1",
+    "id": "prog_writeon",
     "name": "WriteOn",
     "types": [
       "Competition"
@@ -9564,13 +9283,12 @@
     "registration_window": "Entries usually open late March, close mid-June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/46286b943be046f29e6fcbe7b8c24cb1",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b51a61cb14eed7c8",
+    "id": "prog_xylem-global-student-innovation-challenge",
     "name": "Xylem Global Student Innovation Challenge",
     "types": [
       "Competition"
@@ -9600,13 +9318,12 @@
     "registration_window": "Register before the virtual hackathon begins",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d729588d7a6d4de5b51a61cb14eed7c8",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b309c8412842c54d",
+    "id": "prog_yale-foreign-policy-initiative-high-school-essay-contest",
     "name": "Yale Foreign Policy Initiative High School Essay Contest",
     "types": [
       "Competition"
@@ -9634,13 +9351,12 @@
     "registration_window": "Entries usually due around April",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f8476816fb309c8412842c54d",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_9d29fe7327214024",
+    "id": "prog_yale-review-of-international-studies-yris-high-school-es",
     "name": "Yale Review of International Studies (YRIS) High School Essay Contest",
     "types": [
       "Competition"
@@ -9669,13 +9385,12 @@
     "registration_window": "Entries usually due end of June",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847681d69d29fe7327214024",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_b70ddc90cca32035",
+    "id": "prog_yale-yira-global-essay-competition",
     "name": "Yale YIRA Global Essay Competition",
     "types": [
       "Competition"
@@ -9704,13 +9419,12 @@
     "registration_window": "Entries usually due mid-to-late December",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f84768122b70ddc90cca32035",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_89e06464b2dd3406",
+    "id": "prog_ylaa-secondary-youth-leadership-conference",
     "name": "YLAA Secondary Youth Leadership Conference",
     "types": [
       "Event",
@@ -9739,13 +9453,12 @@
     "registration_window": "Conferences run in Term 1 (February to March); schools book in advance via the website",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/c09d9f0c41ed405789e06464b2dd3406",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a6525149004da9e2",
+    "id": "prog_young-ict-explorers-yicte",
     "name": "Young ICT Explorers YICTE",
     "types": [
       "Competition"
@@ -9778,13 +9491,12 @@
     "registration_window": "Submissions due ahead of Term 3–4 regional showcases",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/d08f884405f24ebea6525149004da9e2",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a30ed558aea0763a",
+    "id": "prog_young-justice-program-law-society-of-nsw",
     "name": "Young Justice Program (Law Society of NSW)",
     "types": [
       "Program"
@@ -9809,13 +9521,12 @@
     "registration_window": "Schools nominate students ahead of the August event",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/362f794f847680c4a30ed558aea0763a",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   },
   {
     "schema_version": 1,
-    "id": "prog_a011e45925d8e1db",
+    "id": "prog_young-minds-prize-minds-underground",
     "name": "Young Minds Prize (Minds Underground)",
     "types": [
       "Competition"
@@ -9841,7 +9552,6 @@
     "registration_window": "Entries usually due in April",
     "not_available_nsw": false,
     "not_available_reason": "",
-    "notion_url": "https://app.notion.com/363f794f847681c3a011e45925d8e1db",
     "created_at": "2026-06-16T13:00:00.000Z",
     "updated_at": "2026-08-05T04:59:00.000Z"
   }

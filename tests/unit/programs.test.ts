@@ -27,9 +27,10 @@ const seed = JSON.parse(readFileSync(resolve(process.cwd(), 'fixtures/seed.json'
 seed.programs = catalogPrograms();
 
 describe('program schema', () => {
-  it('keeps every catalogue property from the Gifted Education export', () => {
+  it('keeps every catalogue property from the git fixture', () => {
     const first = catalogPrograms()[0]!;
     const parsed = ProgramSchema.parse(first);
+    expect(parsed.id).toBe('prog_abbmun-abbotsleigh-model-united-nations-conference');
     expect(parsed.name).toBe('ABBMUN (Abbotsleigh Model United Nations Conference)');
     expect(parsed.types).toContain('Event');
     expect(parsed.subjects).toEqual(expect.arrayContaining(['Humanities', 'Debating']));
@@ -45,11 +46,18 @@ describe('program schema', () => {
     expect(parsed.registration_link).toContain('http');
     expect(parsed.registration_window).toContain('March');
     expect(parsed.not_available_nsw).toBe(false);
-    expect(parsed.notion_url).toContain('notion.com');
+    expect(parsed).not.toHaveProperty('notion_url');
   });
 
-  it('imports the full 290-row catalogue', () => {
-    expect(catalogPrograms()).toHaveLength(290);
+  it('imports the full 290-row git catalogue with stable slugs', () => {
+    const programs = catalogPrograms();
+    expect(programs).toHaveLength(290);
+    const ids = programs.map((item) => item.id);
+    expect(new Set(ids).size).toBe(290);
+    for (const program of programs) {
+      expect(program.id).toMatch(/^prog_[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      expect(JSON.stringify(program).toLowerCase()).not.toContain('notion');
+    }
   });
 });
 

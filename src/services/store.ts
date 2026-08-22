@@ -923,7 +923,6 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         registration_window: input.registration_window ?? '',
         not_available_nsw: input.not_available_nsw ?? false,
         not_available_reason: input.not_available_reason ?? '',
-        notion_url: input.notion_url ?? null,
         created_at: stamp,
         updated_at: stamp
       });
