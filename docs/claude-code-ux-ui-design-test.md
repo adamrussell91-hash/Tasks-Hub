@@ -1,6 +1,6 @@
 # Tasks Hub — Claude Code UX/UI design test
 
-**How to use:** open this repo in Claude Code (or Cursor agent). Paste everything below the line as the prompt. Claude Code should have the repo, a running app, and a browser. This is a **design / usability audit**, not the functional regression in `docs/chatgpt-live-regression-test.md`.
+**How to use:** paste everything below the line into Claude Code. The first action is to open the **website**, not to find a git repo. This is a **design / usability audit**, not the functional regression in `docs/chatgpt-live-regression-test.md`.
 
 The site has real usability and design problems. The job is to use it as Adam would, collect every specific defect, and return a technically specific report another agent can implement from.
 
@@ -10,55 +10,44 @@ Do not fix anything in the same run unless Adam explicitly asks. Report first.
 
 # Prompt — Tasks Hub UX/UI design audit for Claude Code
 
-You are a senior product designer and frontend implementer. Critically evaluate **the entire Tasks Hub website as a daily user**, then produce a technically specific report that can guide a later improvement pass.
+You are a senior product designer. Critically evaluate **the live Tasks Hub website as a daily user**, then produce a technically specific report that can guide a later improvement pass.
+
+**First action:** open the website in a browser. Sign in. Start using it.
+
+Do **not** locate, clone, or worktree a git repo. Do **not** say the working directory is not a git repo and then search the disk. This prompt is self-contained. Kit rules are in §2. File paths in the report are hints for a later implementer, not a reason to find source now.
+
+- If `http://localhost:5175` already loads Tasks Hub, use that.
+- Otherwise use `https://tasks-api.adam-russell.com` (preferred production) or `https://tasks-hub.adam-russell.com`.
+- Passphrase: `tasks-hub-local` (not `teaching-hub-local`).
+- Never look under `~/Documents` or `~/Desktop`. Never `git clone`. If you later need source and it is not already this session’s cwd, the only allowed existing path is `~/Projects/tasks-hub` — and only after the full site pass. If that folder is missing, skip source and finish the report from the live UI.
 
 Adam is the only user. The hub is a personal task / project manager (Clare DeMind), sibling to Teaching, Life, and Knowledge. It must feel like the same family — Cotton Glass, Teaching-density tiles — not a one-off PM tool.
 
 This is **not** a functional regression (auth, API 404s, hung loaders). Those belong in `docs/chatgpt-live-regression-test.md`. You may note a blocker if a page never paints, then move on. Your job is **use, look, copy, information architecture, interaction, and kit compliance**.
 
-Do not stop at the first problem. Finish every surface. Do not invent a new palette, type scale, rail, or button system in the report. Every fix hint must name an existing kit token, snippet, or class.
+Do not stop at the first problem. Finish every surface. Do not invent a new palette, type scale, rail, or button system in the report. Every fix hint must name an existing kit token, snippet, or class from §2.
 
 ## 0. Setup
 
-Work from the repo. Read these **before** you open the site:
+Open a browser. Go to the site. That is setup.
 
-| File | Why |
-|------|-----|
-| `design-kit/AGENTS.md` | Locked chrome, tokens, dates, sign-in, buttons |
-| `design-kit/TASKS.md` | Tasks clones Teaching; Board is home; Graph is a rail page |
-| `design-kit/RAIL.md` | 15rem labeled rail, brand → home, distinct 18px outline icons |
-| `design-kit/ICONS.md` | Tile is favicon + gate + canvas top-right only |
-| `design-kit/css/tokens.css` | Closed palette, type, space, radius |
-| `design-kit/css/overlays.css` | `data-hub="tasks"` glass / tile density only |
-| `design-kit/css/filters.css` | `.hub-search`, `.hub-filter`, `.hub-pills` |
-| `design-kit/snippets/sign-in.html` | Locked gate |
-| `design-kit/snippets/hub-utilities.html` | Refresh + sign-out **icons**, then `.hub-mark` |
-| `design-kit/snippets/hub-search.html` | Search field |
-| `design-kit/snippets/hub-pills.html` | View / mode pills |
-| `design-kit/snippets/confirm-card.html` | Agent writes: propose → confirm → apply |
-| `design-kit/js/format-display-date.js` | Display days are `dd/mm/yy` |
-| `src/shell/shell.ts` | Rail destinations + header copy |
-| `src/app/main.ts` | Header map, routing |
-| `src/styles/hub.css` + `src/styles/views.css` | Hub-only CSS (must not redefine `:root` or `--rail-width`) |
-| `docs/specs/task-project-manager-hub-spec.md` §6 | Intended views and interaction |
+| Environment | URL | When to use |
+|-------------|-----|-------------|
+| Local | `http://localhost:5175` | Only if it is already running and shows Sign in / Board |
+| Production SPA + API | `https://tasks-api.adam-russell.com` | Default if local is not up |
+| Production Pages | `https://tasks-hub.adam-russell.com` | Fallback; same app, API is on tasks-api |
 
-Then **use the running site as a user**. Do not audit from source alone.
+Do not run `npm run dev`, `git status`, or `find` to hunt for the project. If local is down, use production.
 
-| Environment | URL | Notes |
-|-------------|-----|--------|
-| Local (preferred for this audit) | `http://localhost:5175` | `npm run dev`; mock API; seed from `fixtures/seed.json` |
-| Production SPA + API | `https://tasks-api.adam-russell.com` | Same-origin Functions |
-| Production Pages | `https://tasks-hub.adam-russell.com` | Static shell |
-
-Passphrase: `tasks-hub-local` (not `teaching-hub-local`).
-
-Viewports (do all three):
+Viewports (do all three after sign-in):
 
 1. Desktop — 1440×900
 2. Laptop — 1280×800 (rail + 4-column board under pressure)
 3. Phone — 390×844
 
-Stay signed in. DevTools open. After creating or editing on Board, a brief full-screen cube load is **current product behaviour** — log it as a UX defect if it feels like a hang, but do not treat it as a crash.
+Stay signed in. After creating or editing on Board, a brief full-screen cube load is **current product behaviour** — log it as a UX defect if it feels like a hang, but do not treat it as a crash.
+
+Optional, **after** the rail sweep only, and **only** if this session’s cwd already is the Tasks Hub repo (you can see `design-kit/AGENTS.md` without searching): pin defects to `src/…` files. Otherwise name the likely file from memory of this prompt (`src/shell/shell.ts`, `src/views/board.ts`, …) and skip reading source.
 
 ## 1. How to evaluate
 
@@ -67,8 +56,8 @@ For every surface, do this loop:
 1. **Arrive as a user.** What is this page for in the next ten seconds? Can you tell without reading supporting copy?
 2. **Do the obvious job.** Add, filter, open, complete, delete, search, switch mode. If the job is missing, that is a defect.
 3. **Look.** Alignment, density, overflow, clipped labels, identical icons, login-styled fields on the canvas, hex that is not a token, `YYYY-MM-DD` in the UI.
-4. **Cross the kit.** If the UI invents a control the kit already has, name the kit class that should replace it.
-5. **Open the code** only to pin the defect: file, function, selector, token, line-level fix hint.
+4. **Cross the kit (§2).** If the UI invents a control the kit already has, name the kit class that should replace it.
+5. **Pin the defect** with hash, selector, quoted copy, and a likely `src/…` path. Do not leave the website to go find a repository. Read source only if it is already this cwd.
 
 Record defects while they are in front of you. Do not wait until the end and reconstruct from memory.
 
@@ -261,7 +250,7 @@ Walk these once across the whole site:
 - Date:
 - Host + build (local / tasks-api / tasks-hub):
 - Viewport(s):
-- Kit refs read: (tick AGENTS / TASKS / RAIL / ICONS / tokens)
+- Kit: used §2 of this prompt (do not list disk files you went hunting for)
 - Surfaces visited: (list hashes; none skipped)
 
 ## User verdict
@@ -305,5 +294,5 @@ Rules for the report:
 - Every defect is implementable without a design meeting.
 - Prefer `design-kit/` classes and tokens over new CSS.
 - If two defects share a cause (e.g. `renderQuickAdd` used on Board and Today), write one defect and list the call sites.
-- Screenshots optional; selectors and file paths are required.
+- Screenshots optional; selectors are required. File paths may be the likely `src/…` hint from this prompt.
 - Return **only** the filled report.
