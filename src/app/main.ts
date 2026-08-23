@@ -23,6 +23,7 @@ import { renderGraphView } from '@/views/graph';
 import { renderMapsView } from '@/views/maps';
 import { renderGanttView } from '@/views/gantt';
 import { renderOrbitView } from '@/views/orbit';
+import { renderUniverseView } from '@/views/universe';
 import { renderBranchView } from '@/views/branch';
 import { renderConstellationView } from '@/views/constellation';
 import { renderClareView } from '@/views/clare';
@@ -69,6 +70,11 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     eyebrow: 'Explore',
     title: 'Orbit',
     supporting: 'Adam at the centre — urgency pulls work closer.'
+  },
+  universe: {
+    eyebrow: 'Explore',
+    title: 'Universe',
+    supporting: 'Domains as planets, projects as moons — the same solar map as Knowledge Hub.'
   },
   branch: {
     eyebrow: 'Explore',
@@ -161,6 +167,8 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderGanttView(canvas);
     case 'orbit':
       return renderOrbitView(canvas);
+    case 'universe':
+      return renderUniverseView(canvas);
     case 'branch':
       return renderBranchView(canvas);
     case 'constellation':
