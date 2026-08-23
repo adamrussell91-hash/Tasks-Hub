@@ -7,6 +7,7 @@ import '../../design-kit/css/sign-in.css';
 import '../styles/hub.css';
 import '../styles/views.css';
 import '../styles/cards.css';
+import '../styles/gantt.css';
 
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
@@ -64,9 +65,10 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Transit diagrams for programs and projects.'
   },
   gantt: {
-    eyebrow: 'Schedule',
+    eyebrow: 'Project planning',
     title: 'Gantt',
-    supporting: 'Pick a project to see its timeline.'
+    supporting:
+      'Same moon, same card — drop it on the timeline, nest it under a parent, or link it to a project.'
   },
   orbit: {
     eyebrow: 'Explore',
