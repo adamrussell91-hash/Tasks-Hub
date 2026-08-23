@@ -9,7 +9,8 @@ export const MilestoneSchema = z.object({
   project_id: z.string().min(1),
   title: z.string().min(1),
   due_date: z.string().nullable().default(null),
-  status: MilestoneStatusSchema.default('open')
+  status: MilestoneStatusSchema.default('open'),
+  depends_on: z.array(z.string()).optional()
 });
 
 export const ProjectTypeSchema = z.enum(['standard', 'excursion', 'academic_program']);

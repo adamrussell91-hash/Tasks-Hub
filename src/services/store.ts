@@ -123,6 +123,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         parent_project_id: input.parent_project_id ?? null,
         parent_task_id: input.parent_task_id ?? null,
         depends_on: input.depends_on ?? [],
+        dependency_links: input.dependency_links,
         tags: input.tags ?? [],
         recurrence_rule: input.recurrence_rule ?? null,
         attachments: input.attachments ?? [],

@@ -12,6 +12,14 @@ export const TaskSourceSchema = z.enum([
   'suggested_by_agent'
 ]);
 
+export const DependencyTypeSchema = z.enum(['FS', 'SS', 'FF']);
+
+export const DependencyLinkSchema = z.object({
+  from_id: z.string().min(1),
+  type: DependencyTypeSchema.default('FS'),
+  offset_days: z.number().int().default(0)
+});
+
 export const TaskSchema = z.object({
   schema_version: schemaVersion,
   id: z.string().min(1),
@@ -30,6 +38,8 @@ export const TaskSchema = z.object({
   parent_project_id: z.string().nullable().default(null),
   parent_task_id: z.string().nullable().default(null),
   depends_on: z.array(z.string()).default([]),
+  /** Typed incoming links (FS/SS/FF + offset). When absent, `depends_on` is treated as FS / 0. */
+  dependency_links: z.array(DependencyLinkSchema).optional(),
   tags: z.array(z.string()).default([]),
   recurrence_rule: z.string().nullable().default(null),
   attachments: z.array(z.string()).default([]),
@@ -41,6 +51,8 @@ export type Task = z.infer<typeof TaskSchema>;
 export type TaskDomain = z.infer<typeof TaskDomainSchema>;
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 export type TaskPriority = z.infer<typeof TaskPrioritySchema>;
+export type DependencyType = z.infer<typeof DependencyTypeSchema>;
+export type DependencyLink = z.infer<typeof DependencyLinkSchema>;
 
 export const TaskCreateSchema = TaskSchema.omit({
   schema_version: true,
@@ -59,6 +71,7 @@ export const TaskCreateSchema = TaskSchema.omit({
   parent_project_id: true,
   parent_task_id: true,
   depends_on: true,
+  dependency_links: true,
   tags: true,
   recurrence_rule: true,
   attachments: true,
