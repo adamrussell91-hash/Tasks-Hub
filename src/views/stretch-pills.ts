@@ -14,6 +14,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 const MODES: Array<{ id: HubViewId; label: string; href: string }> = [
   { id: 'graph', label: 'Blockers', href: '#/graph' },
   { id: 'graph', label: 'Workstreams', href: '#/graph?mode=workstreams' },
+  { id: 'universe', label: 'Universe', href: '#/universe' },
   { id: 'orbit', label: 'Orbit', href: '#/orbit' },
   { id: 'branch', label: 'Branch', href: '#/branch' },
   { id: 'constellation', label: 'Sky', href: '#/constellation' }
