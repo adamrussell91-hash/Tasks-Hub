@@ -32,13 +32,12 @@ import { renderStressView } from '@/views/stress';
 import { renderCoreyView, renderPublicCapacityView } from '@/views/corey';
 import {
   renderDayView,
-  renderWeekView,
-  renderMonthView,
   renderListView,
   renderSearchView,
   renderTemplatesView,
   renderProjectsView
 } from '@/views/dashboard';
+import { renderWeekView, renderMonthView } from '@/views/calendar';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
@@ -94,12 +93,12 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   week: {
     eyebrow: 'Shape',
     title: 'Week',
-    supporting: 'Due work with pinch watch and overload cues.'
+    supporting: 'Seven-day calendar — drag to move a due date, click a day to add.'
   },
   month: {
     eyebrow: 'Horizon',
     title: 'Month',
-    supporting: 'Milestones and excursion key dates this month.'
+    supporting: 'Full month of tasks, milestones, and excursion key dates.'
   },
   list: {
     eyebrow: 'Inbox',

@@ -57,6 +57,22 @@ describe('renderQuickAdd', () => {
     expect(body.title).toBe('[UX-AUDIT] backlog test');
     expect(body).not.toHaveProperty('due_date');
   });
+
+  it('stamps a due date only when the calendar quick-add asks for one', async () => {
+    const form = renderQuickAdd(() => undefined, null, { dueDate: '2026-08-19' });
+    const title = form.querySelector('input[aria-label="New task title"]') as HTMLInputElement;
+    const due = form.querySelector('input[type="date"]') as HTMLInputElement;
+    expect(due.value).toBe('2026-08-19');
+    title.value = 'Calendar add';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => {
+      expect(tasksApi.createTask).toHaveBeenCalledTimes(1);
+    });
+    expect(vi.mocked(tasksApi.createTask).mock.calls[0]?.[0]).toMatchObject({
+      title: 'Calendar add',
+      due_date: '2026-08-19'
+    });
+  });
 });
 
 describe('requestToggleDone', () => {

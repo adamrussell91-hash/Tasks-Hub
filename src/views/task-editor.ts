@@ -118,13 +118,19 @@ export function renderTaskEditor(
 
 export function renderQuickAdd(
   onCreated: () => void,
-  projectId: string | null = null
+  projectId: string | null = null,
+  options: { dueDate?: string | null } = {}
 ): HTMLElement {
   const form = el('form', 'quick-add');
   const title = el('input', 'hub-search') as HTMLInputElement;
   title.placeholder = 'New task title';
   title.required = true;
   title.setAttribute('aria-label', 'New task title');
+  const due = el('input', 'hub-search') as HTMLInputElement;
+  due.type = 'date';
+  due.value = options.dueDate ?? '';
+  due.setAttribute('aria-label', 'Due date');
+  if (options.dueDate) due.dataset.calendarDue = options.dueDate;
   const domain = el('select', 'hub-filter') as HTMLSelectElement;
   domain.setAttribute('aria-label', 'Domain');
   for (const d of DOMAINS) {
@@ -135,16 +141,27 @@ export function renderQuickAdd(
   }
   const submit = el('button', 'btn btn--primary', 'Add');
   submit.type = 'submit';
-  form.append(title, domain, submit);
+  if (options.dueDate) form.append(title, due, domain, submit);
+  else form.append(title, domain, submit);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     submit.disabled = true;
     try {
-      await tasksApi.createTask({
+      const body: {
+        title: string;
+        domain: string;
+        parent_project_id: string | null;
+        due_date?: string;
+      } = {
         title: title.value.trim(),
         domain: domain.value,
         parent_project_id: projectId
-      });
+      };
+      if (options.dueDate) {
+        const nextDue = due.value.trim();
+        if (nextDue) body.due_date = nextDue;
+      }
+      await tasksApi.createTask(body);
       title.value = '';
       onCreated();
     } catch (err) {
