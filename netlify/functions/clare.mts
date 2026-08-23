@@ -52,6 +52,10 @@ export default async function handler(request: Request): Promise<Response> {
         domain: body.domain as 'teaching',
         description: body.description === undefined ? undefined : String(body.description),
         priority: body.priority as 'medium' | undefined,
+        protocol_id:
+          body.protocol_id === undefined
+            ? undefined
+            : (String(body.protocol_id) as import('../../src/domain/clare-protocols').ClareProtocolId),
         due_date:
           body.due_date === undefined || body.due_date === null ? null : String(body.due_date)
       });

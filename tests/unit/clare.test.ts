@@ -98,6 +98,22 @@ describe('clare estimates + calibration', () => {
     expect(proposal.framework_id).toBeTruthy();
     expect(proposal.reasoning.length).toBeGreaterThan(10);
   });
+
+  it('makes the shrink-first-step protocol materially change the proposal', () => {
+    const proposal = buildProposal(
+      {
+        title: 'Draft the whole assessment unit',
+        domain: 'teaching',
+        priority: 'high',
+        protocol_id: 'shrink-first-step'
+      } as Parameters<typeof buildProposal>[0],
+      seed.frameworks,
+      null
+    );
+    expect(proposal.protocol_id).toBe('shrink-first-step');
+    expect(proposal.proposed_minutes).toBeLessThanOrEqual(25);
+    expect(proposal.reasoning).toMatch(/first move|small|start/i);
+  });
 });
 
 describe('clare store negotiation', () => {

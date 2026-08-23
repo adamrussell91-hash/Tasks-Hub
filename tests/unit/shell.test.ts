@@ -89,8 +89,9 @@ describe('hub shell chrome', () => {
     expect(signatures.length).toBeGreaterThan(8);
   });
 
-  it('highlights Graph for Orbit, Branch, and Sky', () => {
+  it('highlights Graph for Orbit, Universe, Branch, and Sky', () => {
     expect(railHighlightId('orbit')).toBe('graph');
+    expect(railHighlightId('universe')).toBe('graph');
     expect(railHighlightId('branch')).toBe('graph');
     expect(railHighlightId('constellation')).toBe('graph');
     expect(railHighlightId('graph')).toBe('graph');

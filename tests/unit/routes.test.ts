@@ -17,6 +17,14 @@ describe('hash routes', () => {
     expect(parseHashRoute()).toBe('programs');
   });
 
+  it('includes Universe in the known stretch views', () => {
+    expect(knownHubViews()).toContain('universe');
+    location.hash = '#/universe';
+    expect(hashViewId()).toBe('universe');
+    expect(isKnownHashView()).toBe(true);
+    expect(parseHashRoute()).toBe('universe');
+  });
+
   it('resolves #/maps to the maps view', () => {
     location.hash = '#/maps';
     expect(hashViewId()).toBe('maps');

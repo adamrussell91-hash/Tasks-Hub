@@ -23,6 +23,7 @@ export type HubViewId =
   | 'maps'
   | 'gantt'
   | 'orbit'
+  | 'universe'
   | 'branch'
   | 'constellation'
   | 'day'
@@ -83,11 +84,12 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   }
 ];
 
-const STRETCH_VIEWS: HubViewId[] = ['orbit', 'branch', 'constellation'];
+const STRETCH_VIEWS: HubViewId[] = ['orbit', 'universe', 'branch', 'constellation'];
 
 const NAV: NavItem[] = [
   ...NAV_SECTIONS.flatMap((section) => section.items),
   { id: 'orbit', label: 'Orbit', href: '#/orbit' },
+  { id: 'universe', label: 'Universe', href: '#/universe' },
   { id: 'branch', label: 'Branch', href: '#/branch' },
   { id: 'constellation', label: 'Sky', href: '#/constellation' }
 ];
