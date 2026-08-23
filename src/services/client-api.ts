@@ -70,6 +70,7 @@ export const tasksApi = {
     description?: string;
     priority?: string;
     due_date?: string | null;
+    protocol_id?: import('@/domain/clare-protocols').ClareProtocolId;
   }) => apiPost<import('@/domain/clare').ClareProposal>('/api/clare', { action: 'propose', ...body }),
 
   acceptClareProposal: (body: {

@@ -1,6 +1,7 @@
 import type { FrameworkEntry } from '@/schemas/templates';
 import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
 import type { ClareCalibration } from '@/schemas/clare';
+import type { ClareProtocolId } from '@/domain/clare-protocols';
 
 export type ClareProposalInput = {
   title: string;
@@ -10,6 +11,7 @@ export type ClareProposalInput = {
   due_date?: string | null;
   /** Open backlog titles used to detect “sitting untouched” patterns. */
   backlog_titles?: string[];
+  protocol_id?: ClareProtocolId;
 };
 
 export type ClareFrameworkPick = {
@@ -30,6 +32,7 @@ export type ClareProposal = {
   /** Starting point for Adam’s counter — same as proposed until he edits. */
   suggested_accepted_minutes: number;
   calibration_note: string | null;
+  protocol_id?: ClareProtocolId;
 };
 
 const BASE_BY_DOMAIN: Record<TaskDomain, number> = {
@@ -141,6 +144,28 @@ export function buildProposal(
   const { framework, reasoning } = selectFramework(input, frameworks);
   const base = baseEstimateMinutes(input);
   const { minutes, note } = applyCalibration(base, calibration);
+  let proposedMinutes = minutes;
+  let protocolReasoning = reasoning;
+  switch (input.protocol_id) {
+    case 'estimate-it':
+      protocolReasoning += ` The ${proposedMinutes}-minute boundary includes the task type and your recent calibration.`;
+      break;
+    case 'choose-framework':
+      protocolReasoning += ` ${framework.name} is the clearest fit for how this work needs to move.`;
+      break;
+    case 'stress-test':
+      protocolReasoning += ' Stress test: protect the boundary from hidden setup, handoffs, and scope creep.';
+      break;
+    case 'flag-pinch':
+      protocolReasoning += input.due_date
+        ? ` Pinch point: the ${input.due_date} deadline leaves the least room for drift.`
+        : ` Pinch point: ${input.priority ?? 'medium'} priority without a deadline can leave this sitting untouched.`;
+      break;
+    case 'shrink-first-step':
+      proposedMinutes = Math.min(25, proposedMinutes);
+      protocolReasoning += ' Start with one small first move, then decide whether the rest deserves another block.';
+      break;
+  }
   return {
     title: input.title.trim(),
     domain: input.domain,
@@ -149,10 +174,11 @@ export function buildProposal(
     due_date: input.due_date ?? null,
     framework_id: framework.id,
     framework_name: framework.name,
-    reasoning,
-    proposed_minutes: minutes,
-    suggested_accepted_minutes: minutes,
-    calibration_note: note
+    reasoning: protocolReasoning,
+    proposed_minutes: proposedMinutes,
+    suggested_accepted_minutes: proposedMinutes,
+    calibration_note: note,
+    protocol_id: input.protocol_id
   };
 }
 
