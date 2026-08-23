@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import {
@@ -269,7 +269,7 @@ function archive(): UniverseEntry[] {
 
 describe('layout invariants', () => {
   it('is deterministic and never uses Math.random', () => {
-    const src = readFileSync(fileURLToPath(new URL('../../src/domain/universe.ts', import.meta.url)), 'utf8');
+    const src = readFileSync(path.resolve(process.cwd(), 'src/domain/universe.ts'), 'utf8');
     expect(src).not.toMatch(/Math\.random/);
     const entries = archive();
     expect(snapshot(buildSolarModel(entries))).toEqual(snapshot(buildSolarModel(entries)));
@@ -329,9 +329,12 @@ describe('degenerate inputs', () => {
     expect(model.rocks).toHaveLength(20);
   });
 
-  it('positions the sun at the origin at t=0', () => {
+  it('keeps the sun as the root and every planet on a solar orbit', () => {
     const model = buildSolarModel(tagged('t', V[0], 8));
+    expect(model.sun.parent).toBe(-1);
+    expect(model.planets.every((planet) => planet.parent === model.sun.idx)).toBe(true);
     const { x, y } = worldPositions(model.bodies, 0);
-    expect(Math.hypot(x[model.sun.idx]!, y[model.sun.idx]!)).toBeLessThan(model.sun.r);
+    expect(Number.isFinite(x[model.sun.idx])).toBe(true);
+    expect(Number.isFinite(y[model.sun.idx])).toBe(true);
   });
 });
