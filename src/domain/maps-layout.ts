@@ -1,4 +1,4 @@
-import type { MapColorToken, MapLine, MapStation, MapTick, Point, TransitMap } from '@/schemas/map';
+import type { MapColorToken, MapLine, MapStation, MapTick, Point, TransitMap, YearTrack } from '@/schemas/map';
 import { parseDue, toDateKey } from '@/domain/queries';
 
 export function lineX(line: { points: Point[] }): number {
@@ -8,17 +8,26 @@ export function lineX(line: { points: Point[] }): number {
 export const MAP_YEAR_TOP = 168;
 export const MAP_YEAR_BOTTOM = 1680;
 export const MAP_LEFT = 88;
-export const MAP_LINE_GAP = 280;
-export const MAP_FIRST_LINE_X = 200;
-export const MAP_DISC_R = 30;
-export const MAP_STATION_W = 52;
+export const MAP_LINE_GAP = 360;
+export const MAP_FIRST_LINE_X = 220;
+export const MAP_DISC_R = 26;
+export const MAP_STATION_W = 48;
 export const MAP_TICK_R = 14;
 export const MAP_LABEL_PAD = 16;
 export const MAP_PORT_GAP = 36;
-export const MAP_LANE_MIN = 248;
+export const MAP_LANE_MIN = 300;
 export const MAP_EVENT_STEM = 64;
 export const MAP_CHIP_PAD = 6;
 export const MAP_LINE_STROKE = 8;
+export const MAP_TRACK_GAP = 88;
+export const MAP_DISC_LIFT = 48;
+
+export const YEAR_TRACKS: YearTrack[] = ['junior', 'rozelle', 'senior'];
+export const YEAR_TRACK_LABELS: Record<YearTrack, string> = {
+  junior: 'Junior',
+  rozelle: 'Rozelle',
+  senior: 'Senior'
+};
 
 export type TermId = 'T1' | 'T2' | 'T3' | 'T4' | 'E';
 export type PortSide = 'left' | 'right' | 'top' | 'bottom';
@@ -59,6 +68,22 @@ export type LaidConnector = {
   under: boolean;
 };
 
+export type LaidTrack = {
+  id: YearTrack;
+  label: string;
+  x: number;
+  disc: { cx: number; cy: number; r: number };
+  cuts: Array<{ y0: number; y1: number }>;
+};
+
+export type LaidStationBody = {
+  track: YearTrack;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
 export type LaidLine = {
   id: string;
   name: string;
@@ -68,6 +93,7 @@ export type LaidLine = {
   y0: number;
   y1: number;
   disc: { cx: number; cy: number; r: number };
+  tracks: LaidTrack[];
 };
 
 export type LaidStation = {
@@ -82,6 +108,8 @@ export type LaidStation = {
   h: number;
   lane: number;
   weeks: number;
+  tracks: YearTrack[];
+  bodies: LaidStationBody[];
   ports: ConnectorPort[];
   in_stroke: MapStation['in_stroke'];
   out_stroke: MapStation['out_stroke'];
@@ -267,6 +295,55 @@ export function applyDateToTickAttach(tick: MapTick, year: number): MapTick {
   };
 }
 
+export function stationTracks(station: { tracks?: YearTrack[] | null }): YearTrack[] {
+  const tracks = station.tracks?.filter((track) => YEAR_TRACKS.includes(track));
+  return tracks?.length ? tracks : [...YEAR_TRACKS];
+}
+
+export function cutVertical(
+  y0: number,
+  y1: number,
+  blocks: Array<{ y0: number; y1: number }>
+): Array<{ y0: number; y1: number }> {
+  const blocked = [...blocks].sort((a, b) => a.y0 - b.y0);
+  const cuts: Array<{ y0: number; y1: number }> = [];
+  let cursor = y0;
+  for (const block of blocked) {
+    if (block.y0 > cursor) cuts.push({ y0: cursor, y1: block.y0 });
+    cursor = Math.max(cursor, block.y1);
+  }
+  if (cursor < y1) cuts.push({ y0: cursor, y1 });
+  return cuts;
+}
+
+function portsOnBody(
+  station: { id: string; weeks: number },
+  body: { x: number; y: number; w: number; h: number },
+  prefix: string
+): ConnectorPort[] {
+  const weeks = Math.max(1, station.weeks);
+  const inset = Math.min(18, body.h / 6);
+  const top = body.y + inset;
+  const bottom = body.y + body.h - inset;
+  const span = Math.max(1, bottom - top);
+  const ports: ConnectorPort[] = [];
+  for (const side of ['left', 'right'] as const) {
+    for (let index = 0; index < weeks; index += 1) {
+      const t = weeks === 1 ? 0.5 : index / (weeks - 1);
+      ports.push({
+        id: `${station.id}:${prefix}:${side}:${index}`,
+        ownerId: station.id,
+        owner: 'station',
+        side,
+        index,
+        x: side === 'left' ? body.x - body.w / 2 : body.x + body.w / 2,
+        y: top + t * span
+      });
+    }
+  }
+  return ports;
+}
+
 export function stationPorts(station: {
   id: string;
   x: number;
@@ -274,28 +351,12 @@ export function stationPorts(station: {
   w: number;
   h: number;
   weeks: number;
+  bodies?: LaidStationBody[];
 }): ConnectorPort[] {
-  const weeks = Math.max(1, station.weeks);
-  const inset = Math.min(18, station.h / 6);
-  const top = station.y + inset;
-  const bottom = station.y + station.h - inset;
-  const span = Math.max(1, bottom - top);
-  const ports: ConnectorPort[] = [];
-  for (const side of ['left', 'right'] as const) {
-    for (let index = 0; index < weeks; index += 1) {
-      const t = weeks === 1 ? 0.5 : index / (weeks - 1);
-      ports.push({
-        id: `${station.id}:${side}:${index}`,
-        ownerId: station.id,
-        owner: 'station',
-        side,
-        index,
-        x: side === 'left' ? station.x - station.w / 2 : station.x + station.w / 2,
-        y: top + t * span
-      });
-    }
+  if (station.bodies?.length) {
+    return station.bodies.flatMap((body) => portsOnBody(station, body, body.track));
   }
-  return ports;
+  return portsOnBody(station, station, 'main');
 }
 
 export function eventPorts(tick: { id: string; cx: number; cy: number; r?: number }): ConnectorPort[] {
@@ -318,14 +379,35 @@ export function eventMarkBox(tick: { id: string; cx: number; cy: number }): Labe
   };
 }
 
-export function lineStrokeBox(line: { id: string; x: number; y0: number; y1: number }): LabelBox {
+export function lineStrokeBoxes(line: LaidLine): LabelBox[] {
   const half = MAP_LINE_STROKE / 2 + 4;
-  return {
-    id: `line-${line.id}`,
-    x: line.x - half,
+  return line.tracks.map((track) => ({
+    id: `line-${line.id}-${track.id}`,
+    x: track.x - half,
     y: line.y0,
     w: half * 2,
     h: line.y1 - line.y0
+  }));
+}
+
+export function lineStrokeBox(line: LaidLine): LabelBox {
+  const boxes = lineStrokeBoxes(line);
+  const x0 = Math.min(...boxes.map((box) => box.x));
+  const y0 = Math.min(...boxes.map((box) => box.y));
+  const x1 = Math.max(...boxes.map((box) => box.x + box.w));
+  const y1 = Math.max(...boxes.map((box) => box.y + box.h));
+  return { id: `line-${line.id}`, x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+export function trackLabelBox(line: LaidLine, track: LaidTrack): LabelBox {
+  const w = 62;
+  const h = 16;
+  return {
+    id: `track-${line.id}-${track.id}`,
+    x: track.disc.cx - w / 2,
+    y: track.disc.cy - track.disc.r - 38,
+    w,
+    h
   };
 }
 
@@ -437,10 +519,15 @@ function shiftX(
   if (!dx) return;
   line.x += dx;
   line.disc.cx += dx;
+  for (const track of line.tracks) {
+    track.x += dx;
+    track.disc.cx += dx;
+  }
   for (const station of stations) {
     if (station.line_id !== line.id) continue;
     station.lineX += dx;
     station.x += dx;
+    for (const body of station.bodies) body.x += dx;
     for (const port of station.ports) port.x += dx;
   }
   for (const tick of ticks) {
@@ -463,22 +550,27 @@ function exclusiveBoxes(
     boxes.push({ id: `term-${term.id}`, x: 18, y: term.y - 16, w: 36, h: 32 });
   }
   for (const line of lines) {
-    boxes.push({
-      id: `disc-${line.id}`,
-      x: line.disc.cx - line.disc.r,
-      y: line.disc.cy - line.disc.r,
-      w: line.disc.r * 2,
-      h: line.disc.r * 2
-    });
+    for (const track of line.tracks) {
+      boxes.push({
+        id: `disc-${line.id}-${track.id}`,
+        x: track.disc.cx - track.disc.r,
+        y: track.disc.cy - track.disc.r,
+        w: track.disc.r * 2,
+        h: track.disc.r * 2
+      });
+      boxes.push(trackLabelBox(line, track));
+    }
   }
   for (const station of stations) {
-    boxes.push({
-      id: `st-${station.id}`,
-      x: station.x - station.w / 2,
-      y: station.y,
-      w: station.w,
-      h: station.h
-    });
+    for (const body of station.bodies) {
+      boxes.push({
+        id: `st-${station.id}-${body.track}`,
+        x: body.x - body.w / 2,
+        y: body.y,
+        w: body.w,
+        h: body.h
+      });
+    }
   }
   for (const tick of ticks) {
     boxes.push(eventMarkBox(tick), tick.labelBox);
@@ -491,23 +583,26 @@ function lineContentBox(
   stations: LaidStation[],
   ticks: LaidTick[]
 ): LabelBox {
-  const parts: LabelBox[] = [
-    {
-      id: `disc-${line.id}`,
-      x: line.disc.cx - line.disc.r,
-      y: line.disc.cy - line.disc.r,
-      w: line.disc.r * 2 + 8,
-      h: line.disc.r * 2 + 24
-    }
-  ];
-  for (const station of stations.filter((item) => item.line_id === line.id)) {
+  const parts: LabelBox[] = [];
+  for (const track of line.tracks) {
     parts.push({
-      id: station.id,
-      x: station.x - station.w / 2,
-      y: station.y,
-      w: station.w,
-      h: station.h
+      id: `disc-${line.id}-${track.id}`,
+      x: track.disc.cx - track.disc.r,
+      y: track.disc.cy - track.disc.r - 24,
+      w: track.disc.r * 2 + 8,
+      h: track.disc.r * 2 + 32
     });
+  }
+  for (const station of stations.filter((item) => item.line_id === line.id)) {
+    for (const body of station.bodies) {
+      parts.push({
+        id: `${station.id}-${body.track}`,
+        x: body.x - body.w / 2,
+        y: body.y,
+        w: body.w,
+        h: body.h
+      });
+    }
   }
   for (const tick of ticks.filter((item) => item.lineId === line.id)) {
     parts.push(tick.labelBox, eventMarkBox(tick));
@@ -571,14 +666,14 @@ export function moveLine(lines: MapLine[], id: string, delta: -1 | 1): MapLine[]
 }
 
 export const CANONICAL_LINE_COLORS: Record<string, MapColorToken> = {
-  J: 'navy',
-  I: 'high-sea',
-  E: 'success',
-  R: 'lilac',
-  justice: 'navy',
-  innovation: 'high-sea',
-  expression: 'success',
-  reasoning: 'lilac'
+  J: 'blue',
+  I: 'yellow',
+  E: 'green',
+  R: 'purple',
+  justice: 'blue',
+  innovation: 'yellow',
+  expression: 'green',
+  reasoning: 'purple'
 };
 
 export function canonicalLineColor(line: { letter: string; name: string }): MapColorToken | null {
@@ -679,6 +774,16 @@ function finishTick(
   return laid;
 }
 
+function strandParkX(line: LaidLine, fromX: number, side: 'left' | 'right'): number {
+  const xs = line.tracks.map((track) => track.x);
+  if (side === 'right') {
+    const outer = Math.max(fromX, ...xs) + MAP_STATION_W / 2;
+    return outer + MAP_EVENT_STEM;
+  }
+  const outer = Math.min(fromX, ...xs) - MAP_STATION_W / 2;
+  return outer - MAP_EVENT_STEM;
+}
+
 function placeTick(
   raw: MapTick,
   year: number,
@@ -722,16 +827,25 @@ function placeTick(
   if (attach.kind === 'line') {
     const line = lines.find((item) => item.id === attach.line_id);
     if (!line) return null;
+    const track = line.tracks.find((item) => item.id === attach.track) ?? line.tracks[1] ?? line.tracks[0];
+    const x = track?.x ?? line.x;
     const y0 = tick.starts_on ? dateToY(tick.starts_on, year) : remapLegacyY(attach.y);
-    return finishTick(tick, line.id, line.color, line.x, y0, line.x + MAP_EVENT_STEM, y0, 'right');
+    return finishTick(tick, line.id, line.color, x, y0, strandParkX(line, x, 'right'), y0, 'right');
   }
   const station = stations.find((item) => item.id === attach.station_id);
   const line = lines.find((item) => item.id === station?.line_id);
   if (!station || !line) return null;
   const dateY = tick.starts_on ? dateToY(tick.starts_on, year) : station.y + station.h * attach.offset;
-  const port = nearestPort(station.ports, attach.side, dateY);
+  const body =
+    attach.side === 'left'
+      ? station.bodies[0]
+      : station.bodies[station.bodies.length - 1];
+  const bodyPorts = body
+    ? station.ports.filter((port) => Math.abs(port.x - (attach.side === 'left' ? body.x - body.w / 2 : body.x + body.w / 2)) < 2)
+    : station.ports;
+  const port = nearestPort(bodyPorts.length ? bodyPorts : station.ports, attach.side, dateY);
   const dir = attach.side === 'left' ? -1 : 1;
-  const x0 = port?.x ?? station.x + dir * (station.w / 2);
+  const x0 = port?.x ?? (body ? body.x + dir * (body.w / 2) : station.x + dir * (station.w / 2));
   const y0 = port?.y ?? Math.min(station.y + station.h, Math.max(station.y, dateY));
   return finishTick(
     tick,
@@ -739,13 +853,42 @@ function placeTick(
     line.color,
     x0,
     y0,
-    x0 + dir * MAP_EVENT_STEM,
+    attach.side === 'left' ? strandParkX(line, x0, 'left') : strandParkX(line, x0, 'right'),
     dateY,
     attach.side
   );
 }
 
-function assignStationLanes(stations: LaidStation[]): LaidStation[] {
+function sharesTrack(a: LaidStation, b: LaidStation): boolean {
+  return a.tracks.some((track) => b.tracks.includes(track));
+}
+
+function placeStationBodies(station: LaidStation, line: LaidLine | undefined): LaidStation {
+  const laneShift = station.lane * 52;
+  const bodies = station.tracks.map((track) => {
+    const laid = line?.tracks.find((item) => item.id === track);
+    return {
+      track,
+      x: (laid?.x ?? station.lineX) + laneShift,
+      y: station.y,
+      w: MAP_STATION_W,
+      h: station.h
+    };
+  });
+  const first = bodies[0];
+  const last = bodies[bodies.length - 1] ?? first;
+  const next: LaidStation = {
+    ...station,
+    bodies,
+    x: last?.x ?? station.lineX + laneShift,
+    w: MAP_STATION_W,
+    ports: []
+  };
+  next.ports = stationPorts(next);
+  return next;
+}
+
+function assignStationLanes(stations: LaidStation[], lines: LaidLine[]): LaidStation[] {
   const byLine = new Map<string, LaidStation[]>();
   for (const station of stations) {
     const list = byLine.get(station.line_id) ?? [];
@@ -753,7 +896,8 @@ function assignStationLanes(stations: LaidStation[]): LaidStation[] {
     byLine.set(station.line_id, list);
   }
   const out: LaidStation[] = [];
-  for (const group of byLine.values()) {
+  for (const [lineId, group] of byLine) {
+    const line = lines.find((item) => item.id === lineId);
     const sorted = [...group].sort((a, b) => a.y - b.y);
     const lanes: LaidStation[] = [];
     for (const station of sorted) {
@@ -762,6 +906,7 @@ function assignStationLanes(stations: LaidStation[]): LaidStation[] {
         lanes.some(
           (other) =>
             other.lane === lane &&
+            sharesTrack(station, other) &&
             boxesOverlap(
               { id: station.id, x: 0, y: station.y, w: 10, h: station.h },
               { id: other.id, x: 0, y: other.y, w: 10, h: other.h },
@@ -771,18 +916,28 @@ function assignStationLanes(stations: LaidStation[]): LaidStation[] {
       ) {
         lane += 1;
       }
-      const shifted: LaidStation = {
-        ...station,
-        lane,
-        x: station.lineX + lane * 52,
-        ports: []
-      };
-      shifted.ports = stationPorts(shifted);
+      const shifted = placeStationBodies({ ...station, lane }, line);
       lanes.push(shifted);
       out.push(shifted);
     }
   }
   return out;
+}
+
+function applyTrackCuts(lines: LaidLine[], stations: LaidStation[]): void {
+  for (const line of lines) {
+    for (const track of line.tracks) {
+      const blocks = stations
+        .filter((station) => station.line_id === line.id && station.tracks.includes(track.id))
+        .map((station) => {
+          const body = station.bodies.find((item) => item.track === track.id);
+          const y = body?.y ?? station.y;
+          const h = body?.h ?? station.h;
+          return { y0: y, y1: y + h };
+        });
+      track.cuts = cutVertical(line.y0, line.y1, blocks);
+    }
+  }
 }
 
 export function layoutMap(map: TransitMap): MapCanvasLayout {
@@ -800,15 +955,28 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
 
   const lines: LaidLine[] = map.lines.map((line, index) => {
     const x = MAP_FIRST_LINE_X + index * MAP_LINE_GAP;
+    const discY = yearTop - MAP_DISC_LIFT;
+    const tracks: LaidTrack[] = YEAR_TRACKS.map((id, trackIndex) => {
+      const tx = x + (trackIndex - 1) * MAP_TRACK_GAP;
+      return {
+        id,
+        label: YEAR_TRACK_LABELS[id],
+        x: tx,
+        disc: { cx: tx, cy: discY, r: MAP_DISC_R },
+        cuts: [{ y0: discY, y1: yearBottom }]
+      };
+    });
+    const center = tracks[1] ?? tracks[0]!;
     return {
       id: line.id,
       name: line.name,
       letter: line.letter,
       color: line.color,
-      x,
-      y0: yearTop,
+      x: center.x,
+      y0: discY,
       y1: yearBottom,
-      disc: { cx: x, cy: yearTop - 48, r: MAP_DISC_R }
+      disc: { ...center.disc },
+      tracks
     };
   });
 
@@ -822,11 +990,12 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
       ? Math.max(minH, dated.height)
       : Math.max(minH, remapLegacyY(dated.y + dated.height) - y);
     const weeks = spanWeeks(dated.starts_on, dated.ends_on, year);
+    const tracks = stationTracks(dated);
     const station: LaidStation = {
       id: dated.id,
       line_id: dated.line_id,
       label: dated.label,
-      color: line?.color ?? 'wave',
+      color: line?.color ?? 'blue',
       lineX: x,
       x,
       y,
@@ -834,14 +1003,15 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
       h,
       lane: 0,
       weeks,
+      tracks,
+      bodies: [],
       ports: [],
       in_stroke: dated.in_stroke,
       out_stroke: dated.out_stroke
     };
-    station.ports = stationPorts(station);
-    return station;
+    return placeStationBodies(station, line);
   });
-  const stations = assignStationLanes(drafted);
+  const stations = assignStationLanes(drafted, lines);
 
   const ticks: LaidTick[] = [];
   const pending = [...map.ticks];
@@ -880,7 +1050,7 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
 
   for (let pass = 0; pass < 6; pass += 1) {
     const occupied = exclusiveBoxes(terms, lines, stations, ticks);
-    const obstacles = lines.map((line) => lineStrokeBox(line));
+    const obstacles = lines.flatMap((line) => lineStrokeBoxes(line));
     for (const tick of ticks) {
       resolveTickLabel(tick, occupied, canvas, obstacles);
       const idx = occupied.findIndex((box) => box.id === tick.labelBox.id);
@@ -896,8 +1066,15 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
     canvas.width = width;
   }
 
-  for (const station of stations) station.ports = stationPorts(station);
+  for (const station of stations) {
+    const line = lines.find((item) => item.id === station.line_id);
+    const placed = placeStationBodies(station, line);
+    station.bodies = placed.bodies;
+    station.x = placed.x;
+    station.ports = placed.ports;
+  }
   for (const tick of ticks) tick.ports = eventPorts(tick);
+  applyTrackCuts(lines, stations);
 
   const connectors: LaidConnector[] = [];
   const pathObstacles = exclusiveBoxes(terms, lines, stations, ticks);
@@ -915,13 +1092,18 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
     } else {
       const line = lines.find((item) => item.id === attach.line_id);
       if (line) {
+        const track =
+          line.tracks.find((item) => item.id === attach.track) ??
+          line.tracks.find((item) => Math.abs(item.x - tick.x0) < 1) ??
+          line.tracks[1] ??
+          line.tracks[0]!;
         from = {
-          id: `${line.id}:week:${Math.round(tick.y0)}`,
+          id: `${line.id}:${track.id}:week:${Math.round(tick.y0)}`,
           ownerId: line.id,
           owner: 'line',
-          side: tick.cx >= line.x ? 'right' : 'left',
+          side: tick.cx >= track.x ? 'right' : 'left',
           index: 0,
-          x: line.x,
+          x: track.x,
           y: tick.y0
         };
       }
@@ -932,6 +1114,9 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
       tick.labelBox.id,
       `mark-${tick.id}`,
       attach.kind === 'station' ? `st-${attach.station_id}` : '',
+      ...(attach.kind === 'station'
+        ? YEAR_TRACKS.map((track) => `st-${attach.station_id}-${track}`)
+        : []),
       attach.kind === 'event' ? `mark-${attach.event_id}` : '',
       attach.kind === 'event' ? `tk-${attach.event_id}` : ''
     ]);
@@ -965,7 +1150,16 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
         id: `cross-${tick.id}`,
         from: out,
         to: dest,
-        path: underpassPath(out, dest, blocked.filter((box) => box.id !== `disc-${other.id}` && box.id !== `line-${other.id}`)),
+        path: underpassPath(
+          out,
+          dest,
+          blocked.filter(
+            (box) =>
+              !box.id.startsWith(`disc-${other.id}`) &&
+              !box.id.startsWith(`line-${other.id}`) &&
+              !box.id.startsWith(`track-${other.id}`)
+          )
+        ),
         color: other.color,
         dash: true,
         under: true
@@ -1015,12 +1209,17 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
 export function labelHitsForeignLine(layout: MapCanvasLayout): boolean {
   return layout.ticks.some((tick) =>
     layout.lines.some(
-      (line) => line.id !== tick.lineId && boxesOverlap(tick.labelBox, lineStrokeBox(line))
+      (line) =>
+        line.id !== tick.lineId && lineStrokeBoxes(line).some((box) => boxesOverlap(tick.labelBox, box))
     )
   );
 }
 
 export const LINE_COLORS: MapColorToken[] = [
+  'blue',
+  'yellow',
+  'green',
+  'purple',
   'navy',
   'high-sea',
   'success',

@@ -33,6 +33,7 @@ function station(
     label,
     y: 80,
     height: 110,
+    tracks: extras.tracks ?? ['junior', 'rozelle', 'senior'],
     in_stroke: 'solid' as const,
     out_stroke: 'solid' as const,
     starts_on,
@@ -71,31 +72,50 @@ export function mindWorks2026Map(): TransitMap {
     created_at: STAMP,
     updated_at: STAMP,
     lines: [
-      col('line_justice', 'Justice', 'J', 'navy', 200),
-      col('line_innovation', 'Innovation', 'I', 'high-sea', 440),
-      col('line_expression', 'Expression', 'E', 'success', 680),
-      col('line_reasoning', 'Reasoning', 'R', 'lilac', 920)
+      col('line_justice', 'Justice', 'J', 'blue', 200),
+      col('line_innovation', 'Innovation', 'I', 'yellow', 440),
+      col('line_expression', 'Expression', 'E', 'green', 680),
+      col('line_reasoning', 'Reasoning', 'R', 'purple', 920)
     ],
     stations: [
-      station('st_ydp', 'line_justice', 'Young Diplomats Program', '2026-01-27', '2026-04-10'),
-      station('st_advocacy', 'line_justice', 'Diplomacy and Advocacy', '2026-04-27', '2026-07-03'),
-      station('st_mock', 'line_justice', 'NSW Law Society Mock Trial', '2026-07-20', '2026-10-30', {
-        in_stroke: 'dotted'
+      station('st_ydp', 'line_justice', 'Young Diplomats Program', '2026-01-27', '2026-04-10', {
+        tracks: ['junior']
       }),
-      station('st_ycl', 'line_innovation', 'Young Creators Lab', '2026-01-27', '2026-07-03'),
-      station('st_future', 'line_innovation', 'Future Solutions Lab', '2026-07-20', '2026-12-17'),
-      station('st_studio', 'line_expression', 'StudioGAT', '2026-01-27', '2026-12-17'),
-      station('st_psych', 'line_reasoning', 'Foundations Psychology', '2026-01-27', '2026-07-03'),
+      station('st_advocacy', 'line_justice', 'Diplomacy and Advocacy', '2026-04-27', '2026-07-03', {
+        tracks: ['senior']
+      }),
+      station('st_mock', 'line_justice', 'NSW Law Society Mock Trial', '2026-07-20', '2026-10-30', {
+        in_stroke: 'dotted',
+        tracks: ['senior']
+      }),
+      station('st_ycl', 'line_innovation', 'Young Creators Lab', '2026-01-27', '2026-07-03', {
+        tracks: ['junior']
+      }),
+      station('st_future', 'line_innovation', 'Future Solutions Lab', '2026-07-20', '2026-12-17', {
+        tracks: ['senior']
+      }),
+      station('st_studio', 'line_expression', 'StudioGAT', '2026-01-27', '2026-12-17', {
+        tracks: ['junior', 'rozelle', 'senior']
+      }),
+      station('st_psych', 'line_reasoning', 'Foundations Psychology', '2026-01-27', '2026-07-03', {
+        tracks: ['junior']
+      }),
       station(
         'st_ethics',
         'line_reasoning',
         'Foundations Ethics and Philosophy',
         '2026-07-20',
-        '2026-12-17'
+        '2026-12-17',
+        { tracks: ['junior'] }
       )
     ],
     ticks: [
-      tick('tk_muna', 'Rotary MUNA', { kind: 'line', line_id: 'line_justice', y: 200 }, '2026-05-15'),
+      tick(
+        'tk_muna',
+        'Rotary MUNA',
+        { kind: 'line', line_id: 'line_justice', y: 200, track: 'junior' },
+        '2026-05-15'
+      ),
       tick(
         'tk_locke',
         'John Locke Essay Competition',
@@ -113,7 +133,7 @@ export function mindWorks2026Map(): TransitMap {
       tick(
         'tk_davinci',
         'da Vinci Decathlon',
-        { kind: 'line', line_id: 'line_innovation', y: 260 },
+        { kind: 'line', line_id: 'line_innovation', y: 260, track: 'rozelle' },
         '2026-05-22',
         { connects_to: 'Rotary MUNA' }
       ),

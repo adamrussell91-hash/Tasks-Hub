@@ -1251,6 +1251,17 @@ select.hub-filter {
   opacity: 0.85;
 }
 
+.map-page {
+  --map-blue: #0057b8;
+  --map-yellow: #f0c400;
+  --map-green: #009a3a;
+  --map-purple: #6b2d8e;
+  --map-blue-fill: #d4e6ff;
+  --map-yellow-fill: #fff3b0;
+  --map-green-fill: #c8f0d2;
+  --map-purple-fill: #edd6fa;
+}
+
 .map-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1292,6 +1303,25 @@ select.hub-filter {
 
 .map-key__name {
   font-weight: var(--weight-medium);
+}
+
+.map-key__tracks {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.map-tracks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.map-tracks__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
 }
 
 .map-field {
@@ -1350,6 +1380,7 @@ select.hub-filter {
 
 .map-line-letter,
 .map-line-name,
+.map-track-label,
 .map-tick__label,
 .map-tick__note,
 .map-station__label,
@@ -1400,6 +1431,11 @@ select.hub-filter {
 .map-line-letter {
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
+}
+
+.map-track-label {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
 }
 
 .map-line-name {

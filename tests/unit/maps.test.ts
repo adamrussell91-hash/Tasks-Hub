@@ -23,7 +23,7 @@ import {
   eventPorts,
   labelHitsForeignLine,
   layoutMap,
-  lineStrokeBox,
+  lineStrokeBoxes,
   matchConnectTarget,
   moveLine,
   normalizeLineColors,
@@ -130,11 +130,13 @@ describe('MindWorks 2026 seed', () => {
     expect(map.ticks.some((t) => t.connects_to && /MUNA|Locke|Innovation|Reasoning|Justice/i.test(t.connects_to))).toBe(
       true
     );
-    expect(map.lines.find((l) => l.letter === 'J')?.color).toBe('navy');
-    expect(map.lines.find((l) => l.letter === 'I')?.color).toBe('high-sea');
-    expect(map.lines.find((l) => l.letter === 'E')?.color).toBe('success');
-    expect(map.lines.find((l) => l.letter === 'R')?.color).toBe('lilac');
+    expect(map.lines.find((l) => l.letter === 'J')?.color).toBe('blue');
+    expect(map.lines.find((l) => l.letter === 'I')?.color).toBe('yellow');
+    expect(map.lines.find((l) => l.letter === 'E')?.color).toBe('green');
+    expect(map.lines.find((l) => l.letter === 'R')?.color).toBe('purple');
     expect(map.stations.every((s) => s.starts_on && s.ends_on)).toBe(true);
+    expect(map.stations.find((s) => s.id === 'st_ydp')?.tracks).toEqual(['junior']);
+    expect(map.stations.find((s) => s.id === 'st_studio')?.tracks).toEqual(['junior', 'rozelle', 'senior']);
   });
 });
 
@@ -153,6 +155,7 @@ describe('year layout', () => {
         label: 'Later program',
         y: 0,
         height: 10,
+        tracks: ['junior'],
         in_stroke: 'solid',
         out_stroke: 'solid',
         starts_on: '2026-10-12',
@@ -165,6 +168,10 @@ describe('year layout', () => {
     const layout = layoutMap(mindWorks2026Map());
     expect(layout.terms.map((t) => t.id)).toEqual(['T1', 'T2', 'T3', 'T4', 'E']);
     expect(layout.lines.map((l) => l.letter).sort()).toEqual(['E', 'I', 'J', 'R']);
+    for (const line of layout.lines) {
+      expect(line.tracks.map((track) => track.id)).toEqual(['junior', 'rozelle', 'senior']);
+      expect(line.tracks.map((track) => track.label)).toEqual(['Junior', 'Rozelle', 'Senior']);
+    }
     const sixMonths = applyDateSpanToStation(
       { ...later, starts_on: '2026-01-27', ends_on: '2026-07-27', height: 10 },
       year
@@ -297,7 +304,7 @@ describe('year layout', () => {
     for (const tick of layout.ticks) {
       for (const line of layout.lines) {
         if (line.id === tick.lineId) continue;
-        expect(boxesOverlap(tick.labelBox, lineStrokeBox(line))).toBe(false);
+        expect(lineStrokeBoxes(line).some((box) => boxesOverlap(tick.labelBox, box))).toBe(false);
       }
     }
   });
@@ -362,7 +369,7 @@ describe('year layout', () => {
     );
   });
 
-  it('pins Justice navy, Innovation High Sea, Expression success, Reasoning lilac', () => {
+  it('pins Justice blue, Innovation yellow, Expression green, Reasoning purple', () => {
     const dirty = mindWorks2026Map();
     dirty.lines = dirty.lines.map((line) => {
       if (line.letter === 'J') return { ...line, color: 'lilac' as const };
@@ -372,17 +379,38 @@ describe('year layout', () => {
       return line;
     });
     const fixed = normalizeLineColors(dirty).lines;
-    expect(fixed.find((line) => line.letter === 'J')?.color).toBe('navy');
-    expect(fixed.find((line) => line.letter === 'I')?.color).toBe('high-sea');
-    expect(fixed.find((line) => line.letter === 'E')?.color).toBe('success');
-    expect(fixed.find((line) => line.letter === 'R')?.color).toBe('lilac');
+    expect(fixed.find((line) => line.letter === 'J')?.color).toBe('blue');
+    expect(fixed.find((line) => line.letter === 'I')?.color).toBe('yellow');
+    expect(fixed.find((line) => line.letter === 'E')?.color).toBe('green');
+    expect(fixed.find((line) => line.letter === 'R')?.color).toBe('purple');
     const seeded = mapsOrSeed([dirty])[0]!.lines;
     expect(seeded.map((line) => [line.letter, line.color])).toEqual([
-      ['J', 'navy'],
-      ['I', 'high-sea'],
-      ['E', 'success'],
-      ['R', 'lilac']
+      ['J', 'blue'],
+      ['I', 'yellow'],
+      ['E', 'green'],
+      ['R', 'purple']
     ]);
+  });
+
+  it('connects each year line through its disc and into every station on that track', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    for (const line of layout.lines) {
+      expect(line.y0).toBe(line.disc.cy);
+      for (const track of line.tracks) {
+        expect(track.disc.cy).toBe(line.y0);
+        expect(track.cuts[0]?.y0).toBe(track.disc.cy);
+        const stations = layout.stations.filter(
+          (station) => station.line_id === line.id && station.tracks.includes(track.id)
+        );
+        for (const station of stations) {
+          const body = station.bodies.find((item) => item.track === track.id)!;
+          const arrives = track.cuts.some((cut) => Math.abs(cut.y1 - body.y) < 0.5);
+          const leaves = track.cuts.some((cut) => Math.abs(cut.y0 - (body.y + body.h)) < 0.5);
+          expect(arrives).toBe(true);
+          expect(leaves).toBe(true);
+        }
+      }
+    }
   });
 });
 
@@ -439,7 +467,13 @@ describe('export', () => {
     expect(html).not.toContain('+ Program');
     expect(html).not.toContain('hub-rail');
     expect(html).toContain('Young Diplomats Program');
-    expect(html).toContain('#f68620');
+    expect(html).toContain('#0057b8');
+    expect(html).toContain('#f0c400');
+    expect(html).toContain('#009a3a');
+    expect(html).toContain('#6b2d8e');
+    expect(html).toContain('Junior');
+    expect(html).toContain('Rozelle');
+    expect(html).toContain('Senior');
     expect(html).not.toContain('r="4"');
     expect(html).toMatch(/<circle cx="[\d.]+" cy="[\d.]+" r="14"/);
   });
