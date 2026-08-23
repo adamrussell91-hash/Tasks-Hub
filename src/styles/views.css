@@ -261,9 +261,28 @@ select.hub-filter {
 }
 
 @media (max-width: 720px) {
-  .week-grid,
-  .board-grid {
-    grid-template-columns: 1fr;
+  .board-grid,
+  .week-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--space-4);
+    gap: var(--space-3);
+    padding-bottom: var(--space-2);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .board-col,
+  .week-col {
+    flex: 0 0 min(22rem, calc(100vw - 2.75rem));
+    scroll-snap-align: start;
+    max-width: calc(100vw - 2.75rem);
+  }
+
+  .calendar-nav__label {
+    min-width: 0;
+    flex: 1 1 auto;
   }
 }
 
@@ -367,7 +386,7 @@ select.hub-filter {
   border-radius: var(--radius-md);
   padding: var(--space-3);
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -394,6 +413,7 @@ select.hub-filter {
   cursor: grabbing;
   transform: rotate(-1.2deg) scale(1.02);
   pointer-events: none;
+  touch-action: none;
 }
 
 .board-card__title,
@@ -1620,6 +1640,23 @@ select.hub-filter {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: var(--space-1);
   min-width: 42rem;
+}
+
+@media (max-width: 720px) {
+  .month-cal {
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .month-cal__cell {
+    min-height: 4.5rem;
+    padding: var(--space-1);
+  }
+
+  .month-cal .cal-event {
+    font-size: var(--text-2xs);
+    padding: 0.1rem 0.3rem;
+  }
 }
 
 .month-cal__head {

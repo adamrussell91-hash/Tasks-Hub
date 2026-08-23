@@ -1,4 +1,12 @@
 export const DRAG_THRESHOLD = 4;
+export const TOUCH_DRAG_THRESHOLD = 12;
+
+/** Mice keep a tight lift; fingers need slack so a tap can expand the card. */
+export function dragThresholdFor(event: Pick<PointerEvent, 'pointerType'>): number {
+  return event.pointerType === 'touch' || event.pointerType === 'pen'
+    ? TOUCH_DRAG_THRESHOLD
+    : DRAG_THRESHOLD;
+}
 
 export type BoardMoveDetail = {
   id: string;
@@ -21,6 +29,7 @@ type PendingDrag = {
   card: HTMLElement;
   startX: number;
   startY: number;
+  pointerId: number;
 };
 
 type KbdState = {
@@ -152,6 +161,11 @@ export function initBoard(root: HTMLElement, options: InitBoardOptions = {}): ()
     card.style.left = `${rect.left}px`;
     card.style.top = `${rect.top}px`;
     card.classList.add('dragging');
+    try {
+      card.setPointerCapture(pendingDrag.pointerId);
+    } catch {
+      /* jsdom and some browsers skip capture */
+    }
 
     dragState = {
       card,
@@ -179,10 +193,12 @@ export function initBoard(root: HTMLElement, options: InitBoardOptions = {}): ()
       if (!pendingDrag) return;
       const dx = event.clientX - pendingDrag.startX;
       const dy = event.clientY - pendingDrag.startY;
-      if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+      if (Math.sqrt(dx * dx + dy * dy) < dragThresholdFor(event)) return;
+      event.preventDefault();
       activateDrag();
     }
     if (!dragState) return;
+    event.preventDefault();
     const card = dragState.card;
     card.style.left = `${event.clientX - dragState.offsetX}px`;
     card.style.top = `${event.clientY - dragState.offsetY}px`;
@@ -271,9 +287,14 @@ export function initBoard(root: HTMLElement, options: InitBoardOptions = {}): ()
     if (isInteractive(event.target)) return;
     const card = (event.target as Element | null)?.closest<HTMLElement>('.card');
     if (!card || !board.contains(card) || card.classList.contains('kbd-lifted')) return;
-    event.preventDefault();
-    pendingDrag = { card, startX: event.clientX, startY: event.clientY };
-    document.addEventListener('pointermove', onPointerMove);
+    // Do not preventDefault here — a tap must still fire click so the micro card can expand.
+    pendingDrag = {
+      card,
+      startX: event.clientX,
+      startY: event.clientY,
+      pointerId: event.pointerId
+    };
+    document.addEventListener('pointermove', onPointerMove, { passive: false });
     document.addEventListener('pointerup', onPointerUp);
   }
 

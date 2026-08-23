@@ -752,6 +752,90 @@
   line-height: inherit;
 }
 
+@media (max-width: 959px) {
+  .page-palette {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    background: color-mix(in srgb, var(--cotton) 88%, transparent);
+    backdrop-filter: blur(var(--hub-glass-blur));
+    -webkit-backdrop-filter: blur(var(--hub-glass-blur));
+  }
+
+  .page-palette__family {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .page-palette__label {
+    width: 100%;
+    margin: 0;
+  }
+
+  .page-palette__family + .page-palette__family .page-palette__label {
+    margin-top: var(--space-1);
+  }
+
+  .page-palette__btn {
+    width: auto;
+    min-height: 2.75rem;
+  }
+}
+
+@media (pointer: coarse) {
+  .hub-row .hub-icon-btn,
+  .hub-card .hub-icon-btn,
+  .proj-card__collapse {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .task-check input,
+  .check-box {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .hub-row {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .hub-row__title {
+    overflow-wrap: anywhere;
+  }
+
+  .hub-card-slot .hub-row,
+  .hub-card-slot .hub-card {
+    max-width: 100%;
+  }
+
+  .block-editor input,
+  .block-editor textarea,
+  .block-editor select,
+  .block-editor__rich,
+  .page-editor .hub-search,
+  .page-editor .hub-filter {
+    font-size: 1rem;
+  }
+
+  .page-card .hub-card__title {
+    font-size: var(--text-lg);
+  }
+
+  .hub-hero-metric {
+    font-size: var(--text-xl);
+  }
+}
+
 @media (max-width: 520px) {
   .hub-card {
     padding: var(--space-4);
@@ -759,5 +843,32 @@
 
   .chip-float {
     display: none;
+  }
+
+  .hub-row.proj-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .task-card__head {
+    padding-right: 0;
+  }
+
+  .task-card__foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .task-card__foot .btn,
+  .task-card__foot .hub-row__actions {
+    width: 100%;
+  }
+
+  .task-card__foot .hub-row__actions {
+    justify-content: stretch;
+  }
+
+  .task-card__foot .hub-row__actions .btn {
+    flex: 1 1 auto;
   }
 }

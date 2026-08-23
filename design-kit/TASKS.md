@@ -47,6 +47,21 @@ Priority: urgent → `--danger`, high → pastel-peach, medium → pastel-gold, 
 
 Do not invent a second page builder. Teaching Hub already has the canvas (`createBlock`, palette families, contentEditable rich text, callout styles). Tasks uses the same block shape, trimmed to page types — no NESA/student/AI port.
 
+## Mobile (≤720px)
+
+Same cards and pages — not a second visual system. The chrome already collapses the 15rem rail to a sticky horizontal scroller (do not hide it or invent a hamburger).
+
+| Surface | Phone behaviour |
+|---------|-----------------|
+| **Micro** | Full-width row, wrapping title/chips, 44px icon hits on coarse pointers. Tap expands. |
+| **Expanded** | Same card, stacked footer actions (`Open page` is a full-width `.btn`). Project row stacks title then status/%. |
+| **Board / Week** | Horizontal snap-scroll — one status or day at a time — not four skinny columns and not a 4-storey stack. |
+| **Board drag** | Tap expands. Fingers need a 12px lift before a card leaves its slot so a scroll or tap is not a move. `touch-action: pan-y` on cards so the page still scrolls. |
+| **Month** | 7-column grid fits the viewport (no 42rem min-width). Cells stay tappable; the agenda under the grid is the readable list. |
+| **Full page** | Palette becomes a sticky wrap of pills above the card (not a 13rem rail of full-width buttons). Inputs stay at 1rem so iOS does not zoom. |
+
+Safe-area padding on the canvas. `viewport-fit=cover`. No new colours, type, or button styles.
+
 ## Borrow — do not redraw
 
 Copy interaction and rendering from hubs that already have it. Restyle with kit tokens if a copied stylesheet hard-codes hex. Do not invent a Tasks graph library or a new chart look.
