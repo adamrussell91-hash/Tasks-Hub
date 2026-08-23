@@ -240,6 +240,10 @@ export function createMockApi({ seed }: MockApiOptions) {
               domain: b.domain as 'teaching',
               description: b.description === undefined ? undefined : String(b.description),
               priority: b.priority as 'medium' | undefined,
+              protocol_id:
+                b.protocol_id === undefined
+                  ? undefined
+                  : (String(b.protocol_id) as import('../src/domain/clare-protocols').ClareProtocolId),
               due_date: b.due_date === undefined || b.due_date === null ? null : String(b.due_date)
             })
           });

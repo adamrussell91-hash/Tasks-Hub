@@ -4,6 +4,13 @@ import type { ClareProposal } from '@/domain/clare';
 import { tasksApi } from '@/services/client-api';
 import { preferredDomains } from '@/domain/queries';
 import { renderLoadError } from '@/views/feedback';
+import {
+  CLARE_PROTOCOLS,
+  CLARE_WAIT_LINES,
+  type ClareProtocolId
+} from '@/domain/clare-protocols';
+
+export { CLARE_PROTOCOLS, CLARE_WAIT_LINES } from '@/domain/clare-protocols';
 
 const SKIP_REASONING_KEY = 'tasks-hub-clare-skip-reasoning';
 
@@ -54,6 +61,38 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
   const frameworks = templates.frameworks as FrameworkEntry[];
 
   canvas.replaceChildren();
+
+  let selectedProtocolId: ClareProtocolId | undefined;
+  const protocolSection = el('section', 'clare-protocols agent-protocol-pills');
+  protocolSection.append(el('p', 'page-header__eyebrow', 'Clare can'));
+  const protocolTray = el('div', 'hub-pills');
+  protocolTray.setAttribute('role', 'group');
+  protocolTray.setAttribute('aria-label', 'Clare protocols');
+  for (const protocol of CLARE_PROTOCOLS) {
+    const button = el('button', 'hub-pills__btn');
+    button.type = 'button';
+    button.dataset.protocolId = protocol.id;
+    button.setAttribute('aria-pressed', 'false');
+    const tipId = `clare-protocol-tip-${protocol.id}`;
+    button.setAttribute('aria-describedby', tipId);
+    const tip = el('span', 'agent-protocol-pills__tip', protocol.explain);
+    tip.id = tipId;
+    tip.setAttribute('role', 'tooltip');
+    button.append(el('span', 'agent-protocol-pills__label', protocol.label), tip);
+    button.addEventListener('click', () => {
+      selectedProtocolId = protocol.id;
+      for (const peer of protocolTray.querySelectorAll<HTMLButtonElement>('[data-protocol-id]')) {
+        const active = peer === button;
+        peer.classList.toggle('is-active', active);
+        peer.setAttribute('aria-pressed', String(active));
+      }
+      if (title.value.trim()) form.requestSubmit();
+      else title.focus();
+    });
+    protocolTray.append(button);
+  }
+  protocolSection.append(protocolTray);
+  canvas.append(protocolSection);
 
   const prefs = el('div', 'clare-prefs');
   const skipLabel = el('label', 'clare-prefs__skip');
@@ -140,14 +179,23 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
     const text = title.value.trim();
     if (!text) return;
     ask.disabled = true;
-    proposalHost.replaceChildren(el('p', 'canvas-status', 'Clare is thinking…'));
+    let waitIndex = 0;
+    const showWaitLine = () => {
+      proposalHost.replaceChildren(
+        el('p', 'canvas-status', CLARE_WAIT_LINES[waitIndex % CLARE_WAIT_LINES.length])
+      );
+      waitIndex += 1;
+    };
+    showWaitLine();
+    const waitTimer = window.setInterval(showWaitLine, 1800);
     confirmHost.replaceChildren();
     try {
       const proposal = await tasksApi.proposeWithClare({
         title: text,
         domain: domain.value,
         priority: priority.value,
-        due_date: due.value || null
+        due_date: due.value || null,
+        protocol_id: selectedProtocolId
       });
       paintProposal(proposalHost, confirmHost, proposal, frameworks, () => {
         title.value = '';
@@ -158,6 +206,7 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
         el('p', 'empty-state', err instanceof Error ? err.message : 'Clare could not propose.')
       );
     } finally {
+      window.clearInterval(waitTimer);
       ask.disabled = false;
     }
   });
