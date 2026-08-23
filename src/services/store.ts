@@ -126,7 +126,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         tags: input.tags ?? [],
         recurrence_rule: input.recurrence_rule ?? null,
         attachments: input.attachments ?? [],
-        source: input.source ?? 'manual'
+        source: input.source ?? 'manual',
+        page_blocks: input.page_blocks ?? []
       });
       await kv.setJSON(keys.taskKey(task.id), task);
       const ids = await readIndex(kv, keys.tasksIndexKey());
@@ -205,7 +206,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         key_dates: input.key_dates ?? null,
         student_group_reference: input.student_group_reference ?? null,
         generated_admin_tasks: input.generated_admin_tasks ?? [],
-        drafted_documents: input.drafted_documents ?? null
+        drafted_documents: input.drafted_documents ?? null,
+        page_blocks: input.page_blocks ?? []
       });
       await kv.setJSON(keys.projectKey(project.id), project);
       const ids = await readIndex(kv, keys.projectsIndexKey());

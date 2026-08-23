@@ -34,6 +34,7 @@ import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { requestToggleDone } from '@/views/dashboard';
+import { mountTaskCard } from '@/views/hub-cards';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -634,24 +635,35 @@ function renderAgenda(
 
   const stack = el('div', 'task-stack calendar-agenda__stack');
   for (const item of dayItems) {
-    const row = el('article', 'task-row');
-    row.dataset.kind = item.kind;
-    row.append(el('h3', 'task-row__title', item.title));
-    const meta = el('div', 'task-row__meta');
-    if (item.domain) meta.append(el('span', 'chip', item.domain));
-    if (item.subtitle) meta.append(el('span', 'chip', item.subtitle));
-    if (item.priority) meta.append(el('span', `chip chip--muted`, item.priority));
-    if (item.project_title) meta.append(el('span', 'chip chip--muted', item.project_title));
-    meta.append(el('span', 'chip chip--muted', formatDisplayDate(item.date_key)));
-    row.append(meta);
     if (item.task) {
-      const actions = el('div', 'task-row__actions');
-      const edit = el('button', 'btn btn--ghost', 'Edit');
-      edit.type = 'button';
-      edit.addEventListener('click', () => onOpen(item));
-      actions.append(edit);
-      row.append(actions);
+      mountTaskCard(stack, item.task, {
+        onEdit: () => onOpen(item)
+      });
+      continue;
     }
+    const row = el('article', 'hub-row');
+    row.dataset.kind = item.kind;
+    row.append(el('p', 'hub-row__title', item.title));
+    const chips = el('div', 'hub-chips');
+    if (item.domain) {
+      const chip = el('span', 'hub-chip', item.domain);
+      chip.dataset.area = item.domain;
+      chips.append(chip);
+    }
+    if (item.subtitle) chips.append(el('span', 'hub-chip', item.subtitle));
+    if (item.priority) {
+      const priority = el('span', 'priority-chip', item.priority);
+      priority.dataset.priority = item.priority;
+      chips.append(priority);
+    }
+    if (item.project_title) chips.append(el('span', 'hub-chip', item.project_title));
+    row.append(chips);
+    const foot = el('div', 'hub-row__foot');
+    const meta = el('div', 'hub-row__foot-meta');
+    const due = el('span', 'date-badge', formatDisplayDate(item.date_key));
+    meta.append(due);
+    foot.append(meta);
+    row.append(foot);
     stack.append(row);
   }
   agenda.append(stack);

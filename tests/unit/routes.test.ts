@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { hashViewId, isKnownHashView, knownHubViews, parseHashRoute } from '@/shell/shell';
+import {
+  hashViewId,
+  isKnownHashView,
+  knownHubViews,
+  parseEntityPage,
+  parseHashRoute
+} from '@/shell/shell';
 
 describe('hash routes', () => {
   it('includes Maps in the known rail views', () => {
@@ -25,5 +31,17 @@ describe('hash routes', () => {
     location.hash = '#/definitely-missing';
     expect(isKnownHashView()).toBe(false);
     expect(parseHashRoute()).toBe('board');
+  });
+
+  it('recognises task and project page hashes without adding them to the rail', () => {
+    location.hash = '#/task/task_lesson';
+    expect(parseEntityPage()).toEqual({ kind: 'task', id: 'task_lesson' });
+    expect(isKnownHashView()).toBe(true);
+    expect(knownHubViews()).not.toContain('task');
+
+    location.hash = '#/project/proj_mindworks';
+    expect(parseEntityPage()).toEqual({ kind: 'project', id: 'proj_mindworks' });
+    expect(isKnownHashView()).toBe(true);
+    expect(knownHubViews()).not.toContain('project');
   });
 });

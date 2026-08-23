@@ -6,11 +6,13 @@ import '../../design-kit/css/filters.css';
 import '../../design-kit/css/sign-in.css';
 import '../styles/hub.css';
 import '../styles/views.css';
+import '../styles/cards.css';
 
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
   isKnownHashView,
   parseCapacityShareToken,
+  parseEntityPage,
   parseHashRoute,
   renderHubShell,
   renderPageHeader,
@@ -38,6 +40,7 @@ import {
   renderProjectsView
 } from '@/views/dashboard';
 import { renderWeekView, renderMonthView } from '@/views/calendar';
+import { renderPageEditor } from '@/views/page-editor';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
@@ -225,6 +228,21 @@ async function bootApp(root: HTMLElement): Promise<void> {
     const share = parseCapacityShareToken();
     if (share) {
       await bootPublicCapacity(root, share);
+      return;
+    }
+    const entity = parseEntityPage();
+    if (entity) {
+      renderPrimaryNav(shell.railNav, entity.kind === 'project' ? 'projects' : 'board');
+      renderPageHeader(shell, {
+        eyebrow: entity.kind === 'task' ? 'Task' : 'Project',
+        title: 'Page',
+        supporting: 'Same block engine as Teaching Hub’s lesson builder.'
+      });
+      try {
+        await renderPageEditor(shell.canvas, entity);
+      } catch (err) {
+        renderLoadError(shell.canvas, err, () => void paint(), 'Could not open page');
+      }
       return;
     }
     if (!isKnownHashView()) {

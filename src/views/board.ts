@@ -4,10 +4,10 @@ import { tasksApi } from '@/services/client-api';
 import { openTasks } from '@/domain/queries';
 import { BOARD_COLUMNS, columnForTask, statusForColumn, type BoardColumnId } from '@/domain/board';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
-import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { errorMessage, showConfirmWrite } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { initBoard, type BoardMoveDetail } from '@/views/sprint-board';
+import { mountTaskCard } from '@/views/hub-cards';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -24,57 +24,23 @@ function el<K extends keyof HTMLElementTagNameMap>(
 let boardProjectFilter: string | 'all' = 'all';
 let teardownBoard: (() => void) | null = null;
 
-function renderCard(
+function appendBoardCard(
+  list: HTMLElement,
   task: Task,
   projects: Project[],
   editorHost: HTMLElement,
   onDelete: (task: Task) => void,
   onReload: () => void
-): HTMLLIElement {
-  const card = document.createElement('li');
-  card.className = 'card board-card';
-  card.tabIndex = 0;
-  card.setAttribute('role', 'button');
-  card.setAttribute('aria-roledescription', 'Draggable task card');
-  card.dataset.id = task.id;
-  card.dataset.col = '';
-  card.dataset.domain = task.domain;
-  card.dataset.status = task.status;
-
-  const title = el('p', 'card-title board-card__title', task.title);
-  card.append(title);
-
-  const meta = el('div', 'card-meta board-card__meta');
-  meta.append(el('span', 'chip', task.domain), el('span', 'chip chip--muted', task.priority));
-  if (task.due_date) {
-    const due = el('span', 'chip chip--muted card-date', formatDisplayDate(task.due_date));
-    meta.append(due);
-  }
-  if (task.depends_on.length) {
-    meta.append(el('span', 'chip chip--muted', `${task.depends_on.length} deps`));
-  }
-  card.append(meta);
-
-  const actions = el('div', 'board-card__actions');
-  const edit = el('button', 'btn btn--ghost', 'Edit');
-  edit.type = 'button';
-  const openEdit = () => renderTaskEditor(editorHost, task, projects, onReload);
-  edit.addEventListener('click', openEdit);
-  card.addEventListener('dblclick', (event) => {
-    if (isInteractiveTarget(event.target)) return;
-    openEdit();
-  });
-  actions.append(edit);
-  const remove = el('button', 'btn btn--ghost', 'Delete');
-  remove.type = 'button';
-  remove.addEventListener('click', () => onDelete(task));
-  actions.append(remove);
-  card.append(actions);
-  return card;
-}
-
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  return target instanceof Element && Boolean(target.closest('button, a, input, textarea, select'));
+): HTMLElement {
+  return mountTaskCard(
+    list,
+    task,
+    {
+      onEdit: (current) => renderTaskEditor(editorHost, current, projects, onReload),
+      onDelete
+    },
+    true
+  );
 }
 
 function persistMove(
@@ -178,7 +144,8 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
 
     const items = scoped.filter((t) => columnForTask(t, byId) === col.id);
     for (const task of items) {
-      const card = renderCard(
+      const card = appendBoardCard(
+        list,
         task,
         projects,
         confirmHost,
@@ -200,7 +167,6 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
         () => void renderBoardView(canvas)
       );
       card.dataset.col = col.id;
-      list.append(card);
     }
     const hint = el('li', 'empty-hint', col.empty);
     hint.hidden = items.length > 0;

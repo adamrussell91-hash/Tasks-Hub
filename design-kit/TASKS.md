@@ -31,6 +31,22 @@ Agent writes: propose → **confirm card** → apply.
 
 Status colour uses existing tokens only: Wave, Marine, Depth, pastel chips. High Sea is accent / decisive, never body text on orange, never focus rings.
 
+## Cards — micro, expanded, full page
+
+Every task/project card surface (Board, Today, Backlog, Search, Projects, calendar agenda) uses the Cotton Glass recipes — do not draw a parallel `task-row` / flat tile.
+
+| View | Class | Role |
+|------|--------|------|
+| **Micro** | `.hub-row` | Title, area chip (`data-area`), priority chip, date badge, “Updated …”, icon edit/delete. Click (or Enter/Space) expands. |
+| **Expanded** | `.hub-card` | Eyebrow, status badge, title, chips, date, progress + `.hub-track` (projects), child-task checklist, footer. **Open page** goes to the full page. |
+| **Full page** | `.page-card` + lesson-builder canvas | Same visual language as the expanded card, but the body is Teaching Hub’s block engine: palette + typed blocks (`heading`, `rich_text`, `callout`, `quote`, `divider`, `spacer`). Routes: `#/task/:id`, `#/project/:id`. Not rail items. |
+
+Container transform: the slot keeps a unique `view-transition-name` per instance. `document.startViewTransition` morphs micro ↔ expanded; skip the API under `prefers-reduced-motion`. Expanded project task rows stagger with `--i`.
+
+Priority: urgent → `--danger`, high → pastel-peach, medium → pastel-gold, low → pastel-sage. Area chips are categorical: teaching = blue, wedding = lilac, life = gold, health = lilac, other = shore/muted.
+
+Do not invent a second page builder. Teaching Hub already has the canvas (`createBlock`, palette families, contentEditable rich text, callout styles). Tasks uses the same block shape, trimmed to page types — no NESA/student/AI port.
+
 ## Borrow — do not redraw
 
 Copy interaction and rendering from hubs that already have it. Restyle with kit tokens if a copied stylesheet hard-codes hex. Do not invent a Tasks graph library or a new chart look.

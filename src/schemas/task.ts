@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PageBlockSchema } from './page-block';
 
 export const schemaVersion = z.literal(1);
 
@@ -32,7 +33,8 @@ export const TaskSchema = z.object({
   tags: z.array(z.string()).default([]),
   recurrence_rule: z.string().nullable().default(null),
   attachments: z.array(z.string()).default([]),
-  source: TaskSourceSchema.default('manual')
+  source: TaskSourceSchema.default('manual'),
+  page_blocks: z.array(PageBlockSchema).optional()
 });
 
 export type Task = z.infer<typeof TaskSchema>;
@@ -60,7 +62,8 @@ export const TaskCreateSchema = TaskSchema.omit({
   tags: true,
   recurrence_rule: true,
   attachments: true,
-  source: true
+  source: true,
+  page_blocks: true
 }).extend({
   title: z.string().min(1),
   domain: TaskDomainSchema

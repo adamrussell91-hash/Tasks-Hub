@@ -289,9 +289,20 @@ export function hashQuery(): URLSearchParams {
   return new URLSearchParams(query);
 }
 
+/** Full task/project page: `#/task/:id` or `#/project/:id` — not rail destinations. */
+export function parseEntityPage(hash = location.hash): { kind: 'task' | 'project'; id: string } | null {
+  const path = hash.replace(/^#\/?/, '').split('?')[0] ?? '';
+  const parts = path.split('/');
+  if ((parts[0] === 'task' || parts[0] === 'project') && parts[1]) {
+    return { kind: parts[0], id: decodeURIComponent(parts[1]) };
+  }
+  return null;
+}
+
 export function isKnownHashView(hash = location.hash): boolean {
   const id = hashViewId(hash);
   if (id === 'capacity') return true;
+  if (parseEntityPage(hash)) return true;
   return KNOWN_VIEWS.includes(id as HubViewId);
 }
 

@@ -56,6 +56,62 @@ describe('tasks store', () => {
     expect(await store.getTask(created.id)).toBeNull();
   });
 
+  it('persists page_blocks on tasks and projects', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    const created = await store.createTask({
+      title: 'Page task',
+      domain: 'teaching',
+      page_blocks: [
+        {
+          id: 'block_h1',
+          type: 'block',
+          block_type: 'heading',
+          variant: 'section',
+          content: { text: 'Brief' },
+          created_at: '2026-08-01T00:00:00.000Z',
+          updated_at: '2026-08-01T00:00:00.000Z',
+          schema_version: 1
+        }
+      ]
+    });
+    expect(created.page_blocks?.[0]?.content).toEqual({ text: 'Brief' });
+
+    const updated = await store.updateTask(created.id, {
+      page_blocks: [
+        {
+          id: 'block_rt',
+          type: 'block',
+          block_type: 'rich_text',
+          variant: 'medium',
+          content: { html: '<p>Notes</p>' },
+          created_at: '2026-08-01T00:00:00.000Z',
+          updated_at: '2026-08-01T00:00:00.000Z',
+          schema_version: 1
+        }
+      ]
+    });
+    expect(updated.page_blocks?.[0]?.block_type).toBe('rich_text');
+
+    const project = (await store.listProjects())[0]!;
+    const next = await store.updateProject(project.id, {
+      page_blocks: [
+        {
+          id: 'block_q',
+          type: 'block',
+          block_type: 'quote',
+          variant: 'medium',
+          content: { text: 'Hold the line', attribution: 'Adam' },
+          created_at: '2026-08-01T00:00:00.000Z',
+          updated_at: '2026-08-01T00:00:00.000Z',
+          schema_version: 1
+        }
+      ]
+    });
+    expect(next.page_blocks?.[0]?.content).toMatchObject({ text: 'Hold the line' });
+  });
+
   it('saves and instantiates task templates', async () => {
     const kv = memoryKv();
     await seedIfEmpty(kv, keys, seed);

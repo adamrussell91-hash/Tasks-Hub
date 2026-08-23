@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schemaVersion } from './task';
+import { PageBlockSchema } from './page-block';
 
 export const MilestoneStatusSchema = z.enum(['open', 'done', 'missed']);
 
@@ -48,7 +49,8 @@ export const ProjectSchema = z.object({
       staff_absence_email_draft: z.string().nullable().optional()
     })
     .nullable()
-    .default(null)
+    .default(null),
+  page_blocks: z.array(PageBlockSchema).optional()
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
@@ -73,7 +75,8 @@ export const ProjectCreateSchema = ProjectSchema.omit({
   key_dates: true,
   student_group_reference: true,
   generated_admin_tasks: true,
-  drafted_documents: true
+  drafted_documents: true,
+  page_blocks: true
 }).extend({
   title: z.string().min(1)
 });

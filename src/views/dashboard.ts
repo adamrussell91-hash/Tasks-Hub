@@ -10,6 +10,8 @@ import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
+import { mountProjectCard, mountTaskCard } from '@/views/hub-cards';
+import { projectPageHash } from '@/domain/cards';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -23,55 +25,18 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function priorityClass(p: Task['priority']): string {
-  return `task-row__priority task-row__priority--${p}`;
-}
-
-function renderTaskRow(
+function appendTaskCard(
+  host: HTMLElement,
   task: Task,
-  onToggle: (t: Task) => void,
-  onDelete?: (t: Task) => void,
-  onEdit?: (t: Task) => void
-): HTMLElement {
-  const row = el('article', 'task-row');
-  row.dataset.domain = task.domain;
-
-  const top = el('div', 'task-row__top');
-  const title = el('h3', 'task-row__title', task.title);
-  const pri = el('span', priorityClass(task.priority), task.priority);
-  top.append(title, pri);
-
-  const meta = el('div', 'task-row__meta');
-  meta.append(
-    el('span', 'chip', task.domain),
-    el('span', 'chip chip--muted', task.status.replace('_', ' '))
-  );
-  if (task.due_date) meta.append(el('span', 'chip chip--muted', `Due ${formatDisplayDate(task.due_date)}`));
-  if (task.framework_used) meta.append(el('span', 'chip', 'framework'));
-
-  const actions = el('div', 'task-row__actions');
-  if (onEdit) {
-    const edit = el('button', 'btn btn--ghost', 'Edit');
-    edit.type = 'button';
-    edit.addEventListener('click', () => onEdit(task));
-    actions.append(edit);
-  }
-  const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
-  done.type = 'button';
-  done.addEventListener('click', () => {
-    onToggle(task);
+  confirmHost: HTMLElement,
+  reload: () => Promise<void>,
+  projects: Project[] = []
+): void {
+  mountTaskCard(host, task, {
+    onToggle: (current) => requestToggleDone(confirmHost, current, reload),
+    onDelete: (current) => confirmDeleteTask(confirmHost, current, reload),
+    onEdit: (current) => renderTaskEditor(confirmHost, current, projects, () => void reload())
   });
-  actions.append(done);
-  if (onDelete) {
-    const remove = el('button', 'btn btn--ghost', 'Delete');
-    remove.type = 'button';
-    remove.addEventListener('click', () => onDelete(task));
-    actions.append(remove);
-  }
-
-  if (task.description) row.append(top, el('p', 'task-row__desc', task.description), meta, actions);
-  else row.append(top, meta, actions);
-  return row;
 }
 
 function confirmDeleteTask(host: HTMLElement, task: Task, reload: () => Promise<void>): void {
@@ -202,14 +167,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   }
   const stack = el('div', 'task-stack');
   for (const task of list) {
-    stack.append(
-      renderTaskRow(
-        task,
-        (t) => requestToggleDone(confirmHost, t, () => renderDayView(canvas)),
-        (t) => confirmDeleteTask(confirmHost, t, () => renderDayView(canvas)),
-        (t) => renderTaskEditor(confirmHost, t, projects, () => void renderDayView(canvas))
-      )
-    );
+    appendTaskCard(stack, task, confirmHost, () => renderDayView(canvas), projects);
   }
   canvas.append(stack);
 }
@@ -283,14 +241,7 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
   }
   const stack = el('div', 'task-stack');
   for (const task of list) {
-    stack.append(
-      renderTaskRow(
-        task,
-        (t) => requestToggleDone(confirmHost, t, () => renderListView(canvas)),
-        (t) => confirmDeleteTask(confirmHost, t, () => renderListView(canvas)),
-        (t) => renderTaskEditor(confirmHost, t, projects, () => void renderListView(canvas))
-      )
-    );
+    appendTaskCard(stack, task, confirmHost, () => renderListView(canvas), projects);
   }
   canvas.append(stack);
 }
@@ -364,13 +315,11 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     canvas.append(el('h2', 'section-title', 'Closed, buried & frankensteined'));
     const deadStack = el('div', 'task-stack');
     for (const project of closed) {
-      const row = el('article', 'task-row');
-      row.append(
-        el('h3', 'task-row__title', project.title),
-        el('p', 'task-row__desc', project.review_summary || project.arc_summary || ''),
-        el('span', 'chip chip--muted', project.status)
-      );
-      deadStack.append(row);
+      mountProjectCard(deadStack, project, tasks, {
+        onOpenPage: (current) => {
+          location.hash = projectPageHash(current.id);
+        }
+      });
     }
     canvas.append(deadStack);
   }
@@ -406,40 +355,23 @@ function renderProjectClosureCard(
   onDone: () => void
 ): HTMLElement {
   const variance = computeProjectVariance(project, tasks);
-  const row = el('article', variance.ready_to_close ? 'task-row closure-card' : 'task-row');
-  const openCount = tasks.filter(
-    (t) => t.parent_project_id === project.id && t.status !== 'done' && t.status !== 'dead'
-  ).length;
-  row.append(
-    el('h3', 'task-row__title', project.title),
-    el('p', 'task-row__desc', project.arc_summary || project.description),
-    el('div', 'task-row__meta')
-  );
-  const meta = row.querySelector('.task-row__meta')!;
-  meta.append(
-    el('span', 'chip', project.type),
-    el('span', 'chip chip--muted', project.status),
-    el('span', 'chip chip--muted', `${project.milestones.length} milestones`),
-    el('span', 'chip chip--muted', `${openCount} open tasks`),
-    el('span', 'chip chip--muted', formatSlip(variance.slip_days)),
-    el(
-      'span',
-      'chip chip--muted',
-      `baseline ${variance.baseline_end_date ? formatDisplayDate(variance.baseline_end_date) : '—'} → now ${variance.derived_end_date ? formatDisplayDate(variance.derived_end_date) : '—'}`
-    )
-  );
-
-  if (variance.ready_to_close) {
-    const actions = el('div', 'task-row__actions');
-    const closeBtn = el('button', 'btn btn--primary', 'Close project');
-    closeBtn.type = 'button';
-    closeBtn.addEventListener('click', () => {
-      showCloseConfirm(confirmHost, project, variance.slip_days, onDone);
-    });
-    actions.append(closeBtn);
-    row.append(actions);
+  const wrap = el('div', variance.ready_to_close ? 'closure-card' : '');
+  mountProjectCard(wrap, project, tasks, {
+    onToggleChild: (task) => requestToggleDone(confirmHost, task, async () => onDone()),
+    onAddTask: () => {
+      confirmHost.replaceChildren(renderQuickAdd(async () => onDone(), project.id));
+    },
+    onOpenPage: (current) => {
+      location.hash = projectPageHash(current.id);
+    },
+    onClose: variance.ready_to_close
+      ? () => showCloseConfirm(confirmHost, project, variance.slip_days, onDone)
+      : undefined
+  });
+  if (variance.slip_days !== null) {
+    wrap.append(el('p', 'hub-card__meta', `Baseline ${formatSlip(variance.slip_days)}`));
   }
-  return row;
+  return wrap;
 }
 
 function showCloseConfirm(
@@ -676,31 +608,17 @@ function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): voi
     return;
   }
   for (const project of projects) {
-    const row = el('article', 'task-row');
-    row.append(el('h3', 'task-row__title', project.title), el('span', 'chip', 'project'));
-    host.append(row);
+    mountProjectCard(host, project, tasks, {
+      onOpenPage: (current) => {
+        location.hash = projectPageHash(current.id);
+      }
+    });
   }
+  const confirmHost = host.parentElement?.querySelector('.task-confirm');
   for (const task of tasks) {
-    host.append(
-      renderTaskRow(
-        task,
-        (t) => {
-          const confirmHost = host.parentElement?.querySelector('.task-confirm');
-          if (!(confirmHost instanceof HTMLElement)) return;
-          requestToggleDone(confirmHost, t, () => refreshSearch(host));
-        },
-        (t) => {
-          const confirmHost = host.parentElement?.querySelector('.task-confirm');
-          if (!(confirmHost instanceof HTMLElement)) return;
-          confirmDeleteTask(confirmHost, t, () => refreshSearch(host));
-        },
-        (t) => {
-          const confirmHost = host.parentElement?.querySelector('.task-confirm');
-          if (!(confirmHost instanceof HTMLElement)) return;
-          renderTaskEditor(confirmHost, t, projects, () => void refreshSearch(host));
-        }
-      )
-    );
+    if (confirmHost instanceof HTMLElement) {
+      appendTaskCard(host, task, confirmHost, () => refreshSearch(host), projects);
+    }
   }
 }
 
