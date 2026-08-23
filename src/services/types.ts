@@ -16,10 +16,14 @@ import type { CapacitySnapshot, CapacityLevel } from '@/domain/capacity';
 import type { ProjectVariance } from '@/domain/closure';
 import type { TransitMap } from '@/schemas/map';
 import type { Program } from '@/schemas/program';
+import type { Area } from '@/schemas/area';
+import type { Goal } from '@/schemas/goal';
 
 export interface SeedData {
   tasks: Task[];
   projects: Project[];
+  areas?: Area[];
+  goals?: Goal[];
   frameworks: FrameworkEntry[];
   excursion_templates: ExcursionTemplate[];
   task_templates: TaskTemplate[];
@@ -45,6 +49,18 @@ export interface TasksStore {
   createProject(input: Partial<Project> & { title: string }): Promise<Project>;
   updateProject(id: string, patch: Partial<Project>): Promise<Project>;
   deleteProject(id: string, meta?: { agent?: string; reason?: string }): Promise<void>;
+
+  listAreas(): Promise<Area[]>;
+  getArea(id: string): Promise<Area | null>;
+  createArea(input: Partial<Area> & { title: string }): Promise<Area>;
+  updateArea(id: string, patch: Partial<Area>): Promise<Area>;
+  deleteArea(id: string): Promise<void>;
+
+  listGoals(): Promise<Goal[]>;
+  getGoal(id: string): Promise<Goal | null>;
+  createGoal(input: Partial<Goal> & { title: string }): Promise<Goal>;
+  updateGoal(id: string, patch: Partial<Goal>): Promise<Goal>;
+  deleteGoal(id: string): Promise<void>;
 
   listFrameworks(): Promise<FrameworkEntry[]>;
   listExcursionTemplates(): Promise<ExcursionTemplate[]>;

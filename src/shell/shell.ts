@@ -18,6 +18,8 @@ export interface HubShellOptions {
 
 export type HubViewId =
   | 'board'
+  | 'goals'
+  | 'someday'
   | 'clare'
   | 'graph'
   | 'maps'
@@ -45,6 +47,8 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Plan',
     items: [
+      { id: 'goals', label: 'Goals', href: '#/goals' },
+      { id: 'someday', label: 'Someday', href: '#/someday' },
       { id: 'clare', label: 'Clare', href: '#/clare' },
       { id: 'templates', label: 'Templates', href: '#/templates' }
     ]

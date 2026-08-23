@@ -3,6 +3,7 @@ import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { openTasks } from '@/domain/queries';
 import { BOARD_COLUMNS, columnForTask, statusForColumn, type BoardColumnId } from '@/domain/board';
+import { boardTasks } from '@/domain/hierarchy';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { errorMessage, showConfirmWrite } from '@/views/feedback';
@@ -119,10 +120,11 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     return;
   }
   const byId = new Map(tasks.map((t) => [t.id, t]));
+  const eligible = boardTasks(tasks.filter((t) => t.status !== 'dead'));
   const scoped =
     boardProjectFilter === 'all'
-      ? tasks.filter((t) => t.status !== 'dead')
-      : tasks.filter((t) => t.status !== 'dead' && t.parent_project_id === boardProjectFilter);
+      ? eligible
+      : eligible.filter((t) => t.parent_project_id === boardProjectFilter);
 
   canvas.replaceChildren();
   canvas.append(

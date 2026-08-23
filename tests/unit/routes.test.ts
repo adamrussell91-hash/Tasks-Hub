@@ -37,4 +37,15 @@ describe('hash routes', () => {
     expect(isKnownHashView()).toBe(false);
     expect(parseHashRoute()).toBe('board');
   });
+
+  it('includes Goals and Someday in the Plan section', () => {
+    expect(knownHubViews()).toContain('goals');
+    expect(knownHubViews()).toContain('someday');
+    location.hash = '#/goals';
+    expect(hashViewId()).toBe('goals');
+    expect(parseHashRoute()).toBe('goals');
+    location.hash = '#/someday';
+    expect(hashViewId()).toBe('someday');
+    expect(parseHashRoute()).toBe('someday');
+  });
 });

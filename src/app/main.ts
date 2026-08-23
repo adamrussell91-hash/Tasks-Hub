@@ -40,12 +40,24 @@ import {
   renderTemplatesView,
   renderProjectsView
 } from '@/views/dashboard';
+import { renderGoalsView } from '@/views/goals';
+import { renderSomedayView } from '@/views/someday';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
     eyebrow: 'Home',
     title: 'Board',
     supporting: 'Everything on your plate, grouped by status.'
+  },
+  goals: {
+    eyebrow: 'Plan',
+    title: 'Goals',
+    supporting: 'Area → Goal → Project, with milestones and tasks underneath.'
+  },
+  someday: {
+    eyebrow: 'Plan',
+    title: 'Someday / Maybe',
+    supporting: 'Ideas parked over the rainbow until you promote them.'
   },
   clare: {
     eyebrow: 'Negotiate',
@@ -163,6 +175,10 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
   switch (view) {
     case 'board':
       return renderBoardView(canvas);
+    case 'goals':
+      return renderGoalsView(canvas);
+    case 'someday':
+      return renderSomedayView(canvas);
     case 'clare':
       return renderClareView(canvas);
     case 'graph':

@@ -71,6 +71,54 @@ describe('tasks store', () => {
     const store = createTasksStore(kv, keys);
     expect((await store.listPrograms()).length).toBe(290);
   });
+
+  it('seeds areas and goals and supports CRUD', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+
+    const areas = await store.listAreas();
+    expect(areas.some((a) => a.id === 'area_teaching')).toBe(true);
+
+    const goals = await store.listGoals();
+    expect(goals.some((g) => g.id === 'goal_mindworks')).toBe(true);
+
+    const area = await store.createArea({ title: 'Side projects' });
+    expect(area.id).toMatch(/^area_/);
+
+    const goal = await store.createGoal({
+      title: 'Ship Tasks Hub',
+      parent_area_id: area.id,
+      tags: ['meta']
+    });
+    expect(goal.parent_area_id).toBe(area.id);
+    expect(goal.tags).toEqual(['meta']);
+
+    const project = await store.createProject({
+      title: 'Hierarchy polish',
+      parent_goal_id: goal.id,
+      tags: ['ui']
+    });
+    expect(project.parent_goal_id).toBe(goal.id);
+
+    const step = await store.createTask({
+      title: 'Write docs',
+      domain: 'other',
+      kind: 'step',
+      parent_task_id: seed.tasks[0].id,
+      step_order: 0
+    });
+    expect(step.kind).toBe('step');
+
+    const someday = await store.createTask({
+      title: 'Learn pottery',
+      domain: 'life',
+      bucket: 'someday',
+      status: 'deferred'
+    });
+    expect(someday.bucket).toBe('someday');
+    expect(backlogTasks(await store.listTasks()).some((t) => t.id === someday.id)).toBe(false);
+  });
 });
 
 describe('queries', () => {

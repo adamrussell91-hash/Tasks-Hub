@@ -8,6 +8,9 @@ import { buildConstellation } from '@/domain/constellation';
 const baseTask = (partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   schema_version: 1,
   description: '',
+  kind: 'task',
+  bucket: 'active',
+  step_order: 0,
   domain: 'teaching',
   framework_used: null,
   estimated_duration: 30,
@@ -33,6 +36,8 @@ const project: Project = {
   id: 'proj_mw',
   title: 'MindWorks',
   description: '',
+  parent_goal_id: null,
+  tags: [],
   arc_summary: '',
   type: 'academic_program',
   milestones: [],

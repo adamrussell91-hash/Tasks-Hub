@@ -204,5 +204,19 @@ export const tasksApi = {
   updateProgram: (id: string, body: unknown) =>
     apiPatch<Program>(`/api/programs?id=${encodeURIComponent(id)}`, body),
   deleteProgram: (id: string) =>
-    apiDelete<{ deleted: boolean }>(`/api/programs?id=${encodeURIComponent(id)}`)
+    apiDelete<{ deleted: boolean }>(`/api/programs?id=${encodeURIComponent(id)}`),
+
+  listAreas: () => apiGet<{ areas: import('@/schemas/area').Area[] }>('/api/areas').then((r) => r.areas),
+  getArea: (id: string) => apiGet<import('@/schemas/area').Area>(`/api/areas?id=${encodeURIComponent(id)}`),
+  createArea: (body: unknown) => apiPost<import('@/schemas/area').Area>('/api/areas', body),
+  updateArea: (id: string, body: unknown) =>
+    apiPatch<import('@/schemas/area').Area>(`/api/areas?id=${encodeURIComponent(id)}`, body),
+  deleteArea: (id: string) => apiDelete<{ deleted: boolean }>(`/api/areas?id=${encodeURIComponent(id)}`),
+
+  listGoals: () => apiGet<{ goals: import('@/schemas/goal').Goal[] }>('/api/goals').then((r) => r.goals),
+  getGoal: (id: string) => apiGet<import('@/schemas/goal').Goal>(`/api/goals?id=${encodeURIComponent(id)}`),
+  createGoal: (body: unknown) => apiPost<import('@/schemas/goal').Goal>('/api/goals', body),
+  updateGoal: (id: string, body: unknown) =>
+    apiPatch<import('@/schemas/goal').Goal>(`/api/goals?id=${encodeURIComponent(id)}`, body),
+  deleteGoal: (id: string) => apiDelete<{ deleted: boolean }>(`/api/goals?id=${encodeURIComponent(id)}`)
 };

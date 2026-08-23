@@ -6,6 +6,9 @@ import { DRAG_THRESHOLD, initBoard } from '@/views/sprint-board';
 const baseTask = (partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   schema_version: 1,
   description: '',
+  kind: 'task',
+  bucket: 'active',
+  step_order: 0,
   domain: 'teaching',
   framework_used: null,
   estimated_duration: 30,

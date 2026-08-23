@@ -183,6 +183,194 @@ select.hub-filter {
   resize: vertical;
 }
 
+.task-editor__steps {
+  margin-top: var(--space-5);
+}
+
+.task-editor__steps-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
+  color: var(--navy);
+}
+
+.task-editor__step-list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.task-editor__step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.task-editor__step-label {
+  font-size: var(--text-base);
+  color: var(--ink);
+}
+
+.task-editor__step-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.hierarchy-toolbar,
+.someday-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  align-items: center;
+}
+
+.hierarchy-editor-host {
+  margin-bottom: var(--space-5);
+}
+
+.hierarchy-area {
+  margin-bottom: var(--space-6);
+}
+
+.hierarchy-area__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-xl);
+  color: var(--navy);
+  letter-spacing: var(--tracking-tight);
+}
+
+.hierarchy-goal {
+  margin-bottom: var(--space-5);
+}
+
+.hierarchy-goal__head {
+  margin-bottom: var(--space-4);
+}
+
+.hierarchy-goal__title {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-lg);
+  color: var(--ink);
+}
+
+.hierarchy-meta {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.hierarchy-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.hierarchy-grid,
+.someday-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--hub-tile-gap, var(--space-4));
+}
+
+.hierarchy-card {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.hierarchy-card--open {
+  box-shadow: var(--hub-elev-card), 0 0 0 1px color-mix(in srgb, var(--marine) 35%, transparent);
+}
+
+.hierarchy-card__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.hierarchy-card__detail {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.hierarchy-milestone-list,
+.hierarchy-task-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.hierarchy-milestone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.hierarchy-milestone__title {
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.hierarchy-task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.hierarchy-task-row__open {
+  text-align: left;
+  flex: 1;
+}
+
+.someday-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.someday-hero__icon {
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.someday-card__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.someday-card__copy {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.someday-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.someday-add .hub-search {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+}
+
 .board-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
