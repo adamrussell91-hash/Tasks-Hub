@@ -169,6 +169,16 @@
   opacity: 0.55;
 }
 
+.gantt-moon-ghost {
+  position: fixed;
+  z-index: 40;
+  margin: 0;
+  pointer-events: none;
+  opacity: 0.94;
+  transform: rotate(-1.2deg) scale(1.03);
+  box-shadow: var(--elev-4);
+}
+
 .gantt-moons .hub-row__foot {
   margin-top: var(--space-2);
   padding-top: var(--space-2);

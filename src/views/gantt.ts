@@ -1118,6 +1118,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
   function paint(): void {
     const layout = currentLayout();
     paintMoons();
+    wireMoonPointers();
     paintChart(layout);
     paintRail(layout, currentGroups().map((group) => ({ id: group.project.id, title: group.project.title })));
     paintFallback(layout);
@@ -1178,6 +1179,108 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
         rx: 8
       });
       svg.append(highlight);
+    }
+  }
+
+  function wireMoonPointers(): void {
+    for (const card of moons.querySelectorAll<HTMLElement>('[data-task-id]')) {
+      const taskId = card.dataset.taskId;
+      if (!taskId) continue;
+      let originX = 0;
+      let originY = 0;
+      let lifted = false;
+      let skipClick = false;
+      let ghostCard: HTMLElement | null = null;
+
+      const finishLift = () => {
+        ghostCard?.remove();
+        ghostCard = null;
+        lifted = false;
+        card.classList.remove('is-dragging');
+        card.setAttribute('aria-grabbed', 'false');
+        draggingMoonId = null;
+        clearGhost();
+      };
+
+      const intentAt = (clientX: number, clientY: number): PlaceIntent | null => {
+        const stack =
+          typeof document.elementsFromPoint === 'function'
+            ? document.elementsFromPoint(clientX, clientY)
+            : [];
+        for (const node of stack) {
+          if (!(node instanceof HTMLElement)) continue;
+          const planet = node.closest<HTMLElement>('.gantt-planet');
+          if (planet?.dataset.projectId) return { kind: 'project', projectId: planet.dataset.projectId };
+          const other = node.closest<HTMLElement>('.gantt-moons [data-task-id]');
+          if (other?.dataset.taskId && other.dataset.taskId !== taskId) {
+            return { kind: 'parent', parentTaskId: other.dataset.taskId };
+          }
+        }
+        if (stack.some((node) => node instanceof Node && (node === host || host.contains(node)))) {
+          const target = hitFromClient(clientX, clientY) ?? lastChartTarget;
+          if (target) return { kind: 'chart', target };
+        }
+        return null;
+      };
+
+      card.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) return;
+        if (event.target instanceof Element && event.target.closest('button')) return;
+        originX = event.clientX;
+        originY = event.clientY;
+        lifted = false;
+        const onMove = (move: PointerEvent) => {
+          if (!lifted && Math.hypot(move.clientX - originX, move.clientY - originY) < 8) return;
+          if (!lifted) {
+            lifted = true;
+            skipClick = true;
+            draggingMoonId = taskId;
+            card.classList.add('is-dragging');
+            card.setAttribute('aria-grabbed', 'true');
+            ghostCard = card.cloneNode(true) as HTMLElement;
+            ghostCard.classList.add('gantt-moon-ghost');
+            ghostCard.style.width = `${card.getBoundingClientRect().width}px`;
+            document.body.append(ghostCard);
+            try {
+              card.setPointerCapture(event.pointerId);
+            } catch {
+              /* capture is optional */
+            }
+          }
+          if (ghostCard) {
+            ghostCard.style.left = `${move.clientX - 28}px`;
+            ghostCard.style.top = `${move.clientY - 18}px`;
+          }
+          const stack =
+            typeof document.elementsFromPoint === 'function'
+              ? document.elementsFromPoint(move.clientX, move.clientY)
+              : [];
+          const overChart = stack.some((node) => node === host || host.contains(node));
+          if (overChart) {
+            lastChartTarget = hitFromClient(move.clientX, move.clientY);
+            showGhost(lastChartTarget);
+          } else clearGhost();
+        };
+        const onUp = (up: PointerEvent) => {
+          window.removeEventListener('pointermove', onMove);
+          const intent = lifted ? intentAt(up.clientX, up.clientY) : null;
+          finishLift();
+          if (intent) void placeMoon(taskId, intent);
+          else if (skipClick) flash('Drop on a day, a bar, a planet, or another moon.');
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp, { once: true });
+      });
+      card.addEventListener(
+        'click',
+        (event) => {
+          if (!skipClick) return;
+          event.preventDefault();
+          event.stopPropagation();
+          skipClick = false;
+        },
+        true
+      );
     }
   }
 

@@ -156,6 +156,37 @@ describe('gantt view', () => {
     });
   });
 
+  it('places a moon via pointer drag onto the chart', async () => {
+    const canvas = document.createElement('main');
+    await renderGanttView(canvas);
+    const card = canvas.querySelector<HTMLElement>('[data-task-id="task_demo_backlog"]')!;
+    const svg = canvas.querySelector<SVGSVGElement>('svg.gantt-svg')!;
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 800,
+      height: 400,
+      right: 800,
+      bottom: 400,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+    document.elementsFromPoint = () => [
+      canvas.querySelector('.gantt-scroll')!,
+      canvas.querySelector('.gantt-host')!
+    ];
+    card.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 20, clientY: 20, bubbles: true }));
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 140, clientY: 90, bubbles: true }));
+    window.dispatchEvent(new PointerEvent('pointerup', { clientX: 140, clientY: 90, bubbles: true }));
+    await vi.waitFor(() => {
+      expect(tasksApi.updateTask).toHaveBeenCalledWith(
+        'task_demo_backlog',
+        expect.objectContaining({ due_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
+      );
+    });
+  });
+
   it('opens a preview card from a rail row', async () => {
     const canvas = document.createElement('main');
     await renderGanttView(canvas);
