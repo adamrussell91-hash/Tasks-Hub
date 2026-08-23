@@ -15,6 +15,7 @@ import type { CapacityShare } from '@/schemas/capacity';
 import type { CapacitySnapshot, CapacityLevel } from '@/domain/capacity';
 import type { ProjectVariance } from '@/domain/closure';
 import type { TransitMap } from '@/schemas/map';
+import type { Program } from '@/schemas/program';
 
 export interface SeedData {
   tasks: Task[];
@@ -24,6 +25,7 @@ export interface SeedData {
   task_templates: TaskTemplate[];
   project_templates: ProjectTemplate[];
   maps?: TransitMap[];
+  programs?: Program[];
 }
 
 export interface IndexDoc {
@@ -128,4 +130,10 @@ export interface TasksStore {
   createMap(input: Partial<TransitMap> & { title: string }): Promise<TransitMap>;
   updateMap(id: string, patch: Partial<TransitMap>): Promise<TransitMap>;
   deleteMap(id: string): Promise<void>;
+
+  listPrograms(): Promise<Program[]>;
+  getProgram(id: string): Promise<Program | null>;
+  createProgram(input: Partial<Program> & { name: string }): Promise<Program>;
+  updateProgram(id: string, patch: Partial<Program>): Promise<Program>;
+  deleteProgram(id: string): Promise<void>;
 }

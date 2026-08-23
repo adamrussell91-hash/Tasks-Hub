@@ -120,6 +120,13 @@ describe('tasks store', () => {
     expect(fromTemplate.domain).toBe('teaching');
     expect(fromTemplate.framework_used).toBe('fw_timeboxing');
   });
+
+  it('seeds the competitions catalogue when programs are omitted from seed.json', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    expect((await store.listPrograms()).length).toBe(290);
+  });
 });
 
 describe('queries', () => {

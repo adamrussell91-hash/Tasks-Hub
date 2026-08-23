@@ -31,6 +31,7 @@ import { renderBranchView } from '@/views/branch';
 import { renderConstellationView } from '@/views/constellation';
 import { renderClareView } from '@/views/clare';
 import { renderExcursionsView } from '@/views/excursions';
+import { renderProgramsView } from '@/views/programs';
 import { renderStressView } from '@/views/stress';
 import { renderCoreyView, renderPublicCapacityView } from '@/views/corey';
 import {
@@ -130,6 +131,11 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     title: 'Excursions',
     supporting: 'Spin up admin tasks from Ethics Olympiad / Da Vinci templates.'
   },
+  programs: {
+    eyebrow: 'Catalogue',
+    title: 'Programs',
+    supporting: 'Competitions and programs — search, filter, and open a card.'
+  },
   stress: {
     eyebrow: 'Network',
     title: 'Network',
@@ -193,6 +199,8 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderProjectsView(canvas);
     case 'excursions':
       return renderExcursionsView(canvas);
+    case 'programs':
+      return renderProgramsView(canvas);
     case 'stress':
       return renderStressView(canvas);
     case 'corey':
