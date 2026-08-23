@@ -1643,9 +1643,21 @@ select.hub-filter {
 }
 
 @media (max-width: 720px) {
+  .month-cal-wrap {
+    overflow-x: hidden;
+  }
+
   .month-cal {
+    width: 100%;
     min-width: 0;
     gap: 2px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .month-cal__head,
+  .month-cal__cell {
+    min-width: 0;
+    overflow: hidden;
   }
 
   .month-cal__cell {
@@ -1654,8 +1666,10 @@ select.hub-filter {
   }
 
   .month-cal .cal-event {
+    max-width: 100%;
+    min-width: 0;
     font-size: var(--text-2xs);
-    padding: 0.1rem 0.3rem;
+    padding: 0.1rem 0.2rem;
   }
 }
 
