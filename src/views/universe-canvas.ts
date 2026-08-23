@@ -329,7 +329,9 @@ export function mountUniverseView(
       const body = B[i]!;
       const pr = presence(body, z, view.k, maxTag);
       const dist = Math.hypot(X[i]! - wx, Y[i]! - wy);
-      const pad = 6 / view.k;
+      const searching = isSolarSearching(options.search);
+      const leaf = body.kind === 'page' || body.kind === 'rock';
+      const pad = (searching && leaf ? 16 : 6) / view.k;
       if (dist <= pr + pad && dist < best) {
         best = dist;
         hit = i;
@@ -461,7 +463,7 @@ export function mountUniverseView(
         pins.push({
           x: X[i]!,
           y: Y[i]!,
-          r: Math.max(presence(body, z, view.k, maxTag), 3.2 / view.k),
+          r: Math.max(presence(body, z, view.k, maxTag), 10 / view.k),
           color: body.color,
           alpha: 1
         });
