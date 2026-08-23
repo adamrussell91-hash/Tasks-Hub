@@ -12,6 +12,7 @@ import {
   sortByPriorityThenDue
 } from '@/domain/queries';
 import type { Task } from '@/schemas/task';
+import { createBlock } from '@/blocks/create-block';
 
 function memoryKv(): KvAdapter {
   const map = new Map<string, unknown>();
@@ -60,56 +61,33 @@ describe('tasks store', () => {
     const kv = memoryKv();
     await seedIfEmpty(kv, keys, seed);
     const store = createTasksStore(kv, keys);
+    const heading = createBlock('heading', 'block_h1');
+    if (heading.block_type !== 'heading') throw new Error('expected heading');
+    heading.content.text = 'Brief';
     const created = await store.createTask({
       title: 'Page task',
       domain: 'teaching',
-      page_blocks: [
-        {
-          id: 'block_h1',
-          type: 'block',
-          block_type: 'heading',
-          variant: 'section',
-          content: { text: 'Brief' },
-          created_at: '2026-08-01T00:00:00.000Z',
-          updated_at: '2026-08-01T00:00:00.000Z',
-          schema_version: 1
-        }
-      ]
+      page_blocks: [heading]
     });
     expect(created.page_blocks?.[0]?.content).toEqual({ text: 'Brief' });
 
+    const rich = createBlock('rich_text', 'block_rt');
+    if (rich.block_type !== 'rich_text') throw new Error('expected rich_text');
+    rich.content.html = '<p>Notes</p>';
     const updated = await store.updateTask(created.id, {
-      page_blocks: [
-        {
-          id: 'block_rt',
-          type: 'block',
-          block_type: 'rich_text',
-          variant: 'medium',
-          content: { html: '<p>Notes</p>' },
-          created_at: '2026-08-01T00:00:00.000Z',
-          updated_at: '2026-08-01T00:00:00.000Z',
-          schema_version: 1
-        }
-      ]
+      page_blocks: [rich]
     });
     expect(updated.page_blocks?.[0]?.block_type).toBe('rich_text');
 
     const project = (await store.listProjects())[0]!;
+    const quote = createBlock('quote', 'block_q');
+    if (quote.block_type !== 'quote') throw new Error('expected quote');
+    quote.content.quote = 'Hold the line';
+    quote.content.attribution = 'Adam';
     const next = await store.updateProject(project.id, {
-      page_blocks: [
-        {
-          id: 'block_q',
-          type: 'block',
-          block_type: 'quote',
-          variant: 'medium',
-          content: { text: 'Hold the line', attribution: 'Adam' },
-          created_at: '2026-08-01T00:00:00.000Z',
-          updated_at: '2026-08-01T00:00:00.000Z',
-          schema_version: 1
-        }
-      ]
+      page_blocks: [quote]
     });
-    expect(next.page_blocks?.[0]?.content).toMatchObject({ text: 'Hold the line' });
+    expect(next.page_blocks?.[0]?.content).toMatchObject({ quote: 'Hold the line' });
   });
 
   it('saves and instantiates task templates', async () => {

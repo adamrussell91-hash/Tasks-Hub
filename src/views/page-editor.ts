@@ -1,6 +1,11 @@
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
-import type { PageBlock } from '@/schemas/page-block';
+import type { Block } from '@/schemas/block';
+import { nextBlockIdFactory } from '@/teacher/lesson-canvas/drop';
+import { mountBlockCanvas, type BlockCanvasHandle } from '@/teacher/lesson-canvas/mount-page';
+import { mountLessonPalette } from '@/teacher/lesson-canvas/mount-palette';
+import { taskPaletteFamilies } from '@/teacher/lesson-canvas/palette-catalog';
+import { readBuilderChromePrefs } from '@/teacher/lesson-canvas/prefs';
 import { tasksApi } from '@/services/client-api';
 import {
   formatRelativeUpdated,
@@ -10,7 +15,6 @@ import {
 } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { errorMessage, renderLoadError } from '@/views/feedback';
-import { mountBlockCanvas, mountBlockPalette } from '@/builder/canvas';
 import { renderQuickAdd } from '@/views/task-editor';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -32,8 +36,43 @@ function domainChip(domain: string): HTMLElement {
 
 export type EntityPageRef = { kind: 'task' | 'project'; id: string };
 
-function pageBlocksOf(entity: Task | Project): PageBlock[] {
+function pageBlocksOf(entity: Task | Project): Block[] {
   return Array.isArray(entity.page_blocks) ? entity.page_blocks : [];
+}
+
+function mountEngine(
+  layout: HTMLElement,
+  canvasHost: HTMLElement,
+  blocks: Block[],
+  onChange: (blocks: Block[]) => void
+): BlockCanvasHandle {
+  const prefs = readBuilderChromePrefs();
+  const builder = el('div', 'lesson-builder lesson-builder--no-chat');
+  if (prefs.rail === 'shelved') builder.classList.add('lesson-builder--rail-shelved');
+  const rail = el('aside', 'lesson-builder__rail');
+  const page = el('div', 'lesson-builder__page');
+  page.append(canvasHost);
+  builder.append(rail, page);
+  layout.append(builder);
+
+  const handle = mountBlockCanvas(canvasHost, {
+    blocks,
+    heading: 'Page',
+    idFactory: nextBlockIdFactory('block', blocks),
+    onChange
+  });
+
+  mountLessonPalette(rail, {
+    families: taskPaletteFamilies(),
+    onInsert: (payload) => {
+      if (payload.kind === 'block') handle.insertType(payload.type);
+    },
+    onShelved: (shelved) => {
+      builder.classList.toggle('lesson-builder--rail-shelved', shelved);
+    }
+  });
+
+  return handle;
 }
 
 export async function renderPageEditor(canvas: HTMLElement, ref: EntityPageRef): Promise<void> {
@@ -56,7 +95,6 @@ export async function renderPageEditor(canvas: HTMLElement, ref: EntityPageRef):
 function paintTaskPage(canvas: HTMLElement, task: Task, _projects: Project[]): void {
   let current = task;
   const page = el('div', 'page-editor');
-  const layout = el('div', 'page-editor__layout');
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
   head.append(el('span', 'hub-card__eyebrow', 'Task'), el('span', statusBadgeClass(task.status), statusLabel(task.status)));
@@ -71,12 +109,7 @@ function paintTaskPage(canvas: HTMLElement, task: Task, _projects: Project[]): v
   if (task.due_date) tags.append(el('span', 'date-badge', `Due ${formatDisplayDate(task.due_date)}`));
   if (task.description) card.append(head, title, tags, el('p', 'hub-card__meta', task.description));
   else card.append(head, title, tags);
-  const canvasHost = el('div', 'block-canvas');
-  card.append(canvasHost);
-  card.append(
-    el('footer', 'task-card__foot', undefined)
-  );
-  const foot = card.querySelector('.task-card__foot')!;
+  const foot = el('footer', 'task-card__foot');
   foot.append(el('span', 'hub-card__meta', formatRelativeUpdated(task.updated_at)));
   const back = el('button', 'btn btn--ghost', 'Back to Board');
   back.type = 'button';
@@ -84,20 +117,32 @@ function paintTaskPage(canvas: HTMLElement, task: Task, _projects: Project[]): v
     location.hash = '#/board';
   });
   foot.append(back);
+  card.append(foot);
+
+  const errorHost = el('p', 'empty-state');
+  errorHost.hidden = true;
+  const canvasHost = el('div', 'block-canvas');
+  const layout = el('div', 'page-editor__layout');
 
   let saveTimer: number | undefined;
-  const handle = mountBlockCanvas(canvasHost, pageBlocksOf(current), (blocks) => {
+  mountEngine(layout, canvasHost, pageBlocksOf(current), (blocks) => {
     current = { ...current, page_blocks: blocks };
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
-      void tasksApi.updateTask(current.id, { page_blocks: blocks }).catch((err) => {
-        canvas.append(el('p', 'empty-state', errorMessage(err)));
-      });
+      void tasksApi.updateTask(current.id, { page_blocks: blocks }).then(
+        () => {
+          errorHost.hidden = true;
+          errorHost.textContent = '';
+        },
+        (err) => {
+          errorHost.hidden = false;
+          errorHost.textContent = errorMessage(err);
+        }
+      );
     }, 400);
   });
-  const palette = mountBlockPalette((type) => handle.insertType(type));
-  layout.append(palette, card);
-  page.append(layout);
+
+  page.append(card, errorHost, layout);
   canvas.replaceChildren(page);
 }
 
@@ -105,7 +150,6 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
   let current = project;
   const progress = projectProgress(project, tasks);
   const page = el('div', 'page-editor');
-  const layout = el('div', 'page-editor__layout');
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
   head.append(
@@ -135,8 +179,6 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
     card.append(head, title, tags, metrics, track);
   }
   card.append(renderQuickAdd(() => void renderPageEditor(canvas, { kind: 'project', id: project.id }), project.id));
-  const canvasHost = el('div', 'block-canvas');
-  card.append(canvasHost);
   const foot = el('footer', 'task-card__foot');
   foot.append(el('span', 'hub-card__meta', formatRelativeUpdated(project.updated_at)));
   const back = el('button', 'btn btn--ghost', 'Back to Projects');
@@ -147,18 +189,29 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
   foot.append(back);
   card.append(foot);
 
+  const errorHost = el('p', 'empty-state');
+  errorHost.hidden = true;
+  const canvasHost = el('div', 'block-canvas');
+  const layout = el('div', 'page-editor__layout');
+
   let saveTimer: number | undefined;
-  const handle = mountBlockCanvas(canvasHost, pageBlocksOf(current), (blocks) => {
+  mountEngine(layout, canvasHost, pageBlocksOf(current), (blocks) => {
     current = { ...current, page_blocks: blocks };
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
-      void tasksApi.updateProject(current.id, { page_blocks: blocks }).catch((err) => {
-        canvas.append(el('p', 'empty-state', errorMessage(err)));
-      });
+      void tasksApi.updateProject(current.id, { page_blocks: blocks }).then(
+        () => {
+          errorHost.hidden = true;
+          errorHost.textContent = '';
+        },
+        (err) => {
+          errorHost.hidden = false;
+          errorHost.textContent = errorMessage(err);
+        }
+      );
     }, 400);
   });
-  const palette = mountBlockPalette((type) => handle.insertType(type));
-  layout.append(palette, card);
-  page.append(layout);
+
+  page.append(card, errorHost, layout);
   canvas.replaceChildren(page);
 }

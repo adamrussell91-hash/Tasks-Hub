@@ -40,13 +40,13 @@ Every task/project card surface (Board, Today, Backlog, Search, Projects, calend
 |------|--------|------|
 | **Micro** | `.hub-row` | Title, area chip (`data-area`), priority chip, date badge, “Updated …”, icon edit/delete. Click (or Enter/Space) expands. |
 | **Expanded** | `.hub-card` | Eyebrow, status badge, title, chips, date, progress + `.hub-track` (projects), child-task checklist, footer. **Open page** goes to the full page. |
-| **Full page** | `.page-card` + lesson-builder canvas | Same visual language as the expanded card, but the body is Teaching Hub’s block engine: palette + typed blocks (`heading`, `rich_text`, `callout`, `quote`, `divider`, `spacer`). Routes: `#/task/:id`, `#/project/:id`. Not rail items. |
+| **Full page** | `.page-card` + Teaching Hub `.lesson-builder` | Same visual language as the expanded card. The body is Teaching Hub’s lesson engine: family palette, drag-and-drop canvas, nested layout blocks. Routes: `#/task/:id`, `#/project/:id`. Not rail items. |
 
 Container transform: the slot keeps a unique `view-transition-name` per instance. `document.startViewTransition` morphs micro ↔ expanded; skip the API under `prefers-reduced-motion`. Expanded project task rows stagger with `--i`.
 
 Priority: urgent → `--danger`, high → pastel-peach, medium → pastel-gold, low → pastel-sage. Area chips are categorical: teaching = blue, wedding = lilac, life = gold, health = lilac, other = shore/muted.
 
-Do not invent a second page builder. Teaching Hub already has the canvas (`createBlock`, palette families, contentEditable rich text, callout styles). Tasks uses the same block shape, trimmed to page types — no NESA/student/AI port.
+Do not invent a second page builder. Port Teaching Hub’s engine (`src/blocks/*`, `src/teacher/lesson-canvas/*`) and persist `page_blocks` on the task or project. Skip compositions, NESA outcome strips, student publish, and the AI chat column. Media uses a URL/file field (no Drive library).
 
 ## Mobile (≤720px)
 
@@ -59,7 +59,7 @@ Same cards and pages — not a second visual system. The chrome already collapse
 | **Board / Week** | Horizontal snap-scroll — one status or day at a time — not four skinny columns and not a 4-storey stack. |
 | **Board drag** | Tap expands. Fingers need a 12px lift before a card leaves its slot so a scroll or tap is not a move. `touch-action: pan-y` on cards so the page still scrolls. |
 | **Month** | 7-column grid fits the viewport (no 42rem min-width). Cells stay tappable; the agenda under the grid is the readable list. |
-| **Full page** | Palette becomes a sticky wrap of pills above the card (not a 13rem rail of full-width buttons). Inputs stay at 1rem so iOS does not zoom. |
+| **Full page** | Teaching Hub’s lesson palette (family rail + flyout) sits beside the canvas; it shelves the same way as Teaching. Inputs stay at 1rem so iOS does not zoom. |
 
 Safe-area padding on the canvas. `viewport-fit=cover`. No new colours, type, or button styles.
 

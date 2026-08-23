@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBlock, PAGE_BLOCK_GROUPS } from '@/builder/create-block';
+import { BLOCK_GROUPS, createBlock } from '@/blocks/create-block';
 import {
   dueChipKind,
   dueChipLabel,
@@ -90,15 +90,23 @@ describe('card domain helpers', () => {
   it('builds page hashes and Teaching-shaped blocks', () => {
     expect(taskPageHash('task_1')).toBe('#/task/task_1');
     expect(projectPageHash('proj_mw')).toBe('#/project/proj_mw');
-    expect(PAGE_BLOCK_GROUPS.map((group) => group.label)).toEqual(['Basic', 'Layout']);
-    const heading = createBlock('heading');
+    expect(BLOCK_GROUPS.map((group) => group.label)).toEqual([
+      'Basic',
+      'Media',
+      'Teaching',
+      'Learning',
+      'Visualisation',
+      'Layout'
+    ]);
+    const heading = createBlock('heading', 'block_h');
     expect(heading).toMatchObject({
       type: 'block',
       block_type: 'heading',
       variant: 'section',
-      schema_version: 1
+      schema_version: 1,
+      visibility: 'student_teacher'
     });
-    expect(createBlock('rich_text').content).toEqual({ html: '' });
-    expect(createBlock('callout').content).toMatchObject({ style: 'information' });
+    expect(createBlock('rich_text', 'block_rt').content).toEqual({ html: '' });
+    expect(createBlock('callout', 'block_c').content).toMatchObject({ style: 'information' });
   });
 });
