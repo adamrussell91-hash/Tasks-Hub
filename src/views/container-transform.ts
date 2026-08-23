@@ -8,10 +8,11 @@ type DocumentWithVT = Document & {
 export function runContainerTransform(update: () => void, guard?: { current: boolean }): void {
   if (guard?.current) return;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const start = (document as DocumentWithVT).startViewTransition;
-  if (start && !reduceMotion) {
+  const doc = document as DocumentWithVT;
+  // Call on the document — extracting the method loses `this` and throws Illegal invocation.
+  if (doc.startViewTransition && !reduceMotion) {
     if (guard) guard.current = true;
-    const transition = start(update);
+    const transition = doc.startViewTransition(update);
     void transition.finished.finally(() => {
       if (guard) guard.current = false;
     });
