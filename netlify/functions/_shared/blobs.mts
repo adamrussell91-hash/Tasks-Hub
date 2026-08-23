@@ -18,7 +18,7 @@ const CONTENT_STORE_NAME = 'tasks-hub-content';
  * depend on included_files path layout under `/var/task`.
  */
 export function loadSeed(): SeedData {
-  const seed = seedFixture as SeedData;
+  const seed = seedFixture as unknown as SeedData;
   if (!seed.tasks?.length) {
     throw new Error('bundled fixtures/seed.json has no tasks — refusing to seed');
   }

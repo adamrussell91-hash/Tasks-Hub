@@ -42,6 +42,7 @@ import {
 } from '@/views/dashboard';
 import { renderGoalsView } from '@/views/goals';
 import { renderSomedayView } from '@/views/someday';
+import { renderReminderStrip } from '@/views/reminder-strip';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
@@ -266,6 +267,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
     renderPrimaryNav(shell.railNav, view);
     renderPageHeader(shell, HEADERS[view]);
     try {
+      await renderReminderStrip(shell.reminderHost, () => void paint());
       await renderActiveView(view, shell.canvas);
     } catch (err) {
       renderLoadError(shell.canvas, err, () => void paint(), `Could not load ${HEADERS[view].title}`);

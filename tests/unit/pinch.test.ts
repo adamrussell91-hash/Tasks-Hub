@@ -34,6 +34,9 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title' | 'due_date' | 
     depends_on: [],
     tags: [],
     recurrence_rule: null,
+    due_time: null,
+    remind_at: null,
+    remind_dismissed_at: null,
     attachments: [],
     source: 'manual',
     ...partial

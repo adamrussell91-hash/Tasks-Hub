@@ -37,6 +37,9 @@ export const TaskSchema = z.object({
   depends_on: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   recurrence_rule: z.string().nullable().default(null),
+  due_time: z.string().nullable().default(null),
+  remind_at: z.string().nullable().default(null),
+  remind_dismissed_at: z.string().nullable().default(null),
   attachments: z.array(z.string()).default([]),
   source: TaskSourceSchema.default('manual')
 });
@@ -68,6 +71,9 @@ export const TaskCreateSchema = TaskSchema.omit({
   depends_on: true,
   tags: true,
   recurrence_rule: true,
+  due_time: true,
+  remind_at: true,
+  remind_dismissed_at: true,
   attachments: true,
   source: true
 }).extend({

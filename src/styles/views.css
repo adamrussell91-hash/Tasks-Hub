@@ -371,6 +371,96 @@ select.hub-filter {
   min-width: 12rem;
 }
 
+.reminder-strip-host {
+  margin: 0 var(--space-5) var(--space-4);
+}
+
+.reminder-strip__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.reminder-strip__lede {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.reminder-strip__enable {
+  margin-left: auto;
+}
+
+.reminder-strip__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--hub-tile-gap, var(--space-3));
+}
+
+.reminder-card__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.reminder-card__copy {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.reminder-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.reminder-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.task-editor__repeat,
+.task-editor__remind {
+  margin-top: var(--space-4);
+}
+
+.task-editor__repeat-title,
+.task-editor__remind-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
+  color: var(--navy);
+}
+
+.task-editor__repeat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.task-editor__field-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.task-editor__check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
 .board-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

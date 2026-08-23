@@ -15,6 +15,14 @@ import { TransitMapSchema } from '@/schemas/map';
 import { ProgramSchema } from '@/schemas/program';
 import { AreaSchema } from '@/schemas/area';
 import { GoalSchema } from '@/schemas/goal';
+import {
+  advanceRecurrence,
+  hasMoreOccurrences,
+  nextDueDate,
+  parseRecurrenceRule,
+  serializeRecurrenceRule
+} from '@/domain/recurrence';
+import { carryReminderForward } from '@/domain/reminders';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { catalogPrograms } from '@/domain/programs-seed';
 import { buildExcursionPlan } from '@/domain/excursion';
@@ -80,6 +88,45 @@ function newId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
 }
 
+async function spawnRecurringSuccessor(
+  store: TasksStore,
+  completed: Task
+): Promise<Task | null> {
+  if (completed.kind === 'step' || completed.bucket === 'someday') return null;
+  const rule = parseRecurrenceRule(completed.recurrence_rule);
+  if (!rule || !hasMoreOccurrences(rule)) return null;
+
+  const advanced = advanceRecurrence(rule);
+  if (rule.count != null && advanced.completed_count >= rule.count) return null;
+
+  const due = nextDueDate(completed.due_date, rule);
+  if (!due) return null;
+
+  const seriesId = rule.series_id ?? completed.id;
+  const nextRule = serializeRecurrenceRule({ ...advanced, series_id: seriesId });
+
+  return store.createTask({
+    title: completed.title,
+    description: completed.description,
+    domain: completed.domain,
+    kind: 'task',
+    bucket: 'active',
+    framework_used: completed.framework_used,
+    estimated_duration: completed.estimated_duration,
+    due_date: due,
+    due_time: completed.due_time,
+    status: 'open',
+    priority: completed.priority,
+    parent_project_id: completed.parent_project_id,
+    depends_on: [],
+    tags: completed.tags,
+    recurrence_rule: nextRule,
+    remind_at: carryReminderForward(completed, due),
+    remind_dismissed_at: null,
+    source: completed.source
+  });
+}
+
 async function readIndex(kv: KvAdapter, key: string): Promise<string[]> {
   const doc = await kv.getJSON<IndexDoc>(key);
   return doc?.ids ?? [];
@@ -138,6 +185,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         depends_on: input.depends_on ?? [],
         tags: input.tags ?? [],
         recurrence_rule: input.recurrence_rule ?? null,
+        due_time: input.due_time ?? null,
+        remind_at: input.remind_at ?? null,
+        remind_dismissed_at: input.remind_dismissed_at ?? null,
         attachments: input.attachments ?? [],
         source: input.source ?? 'manual'
       });
@@ -165,6 +215,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
               : (patch.completed_at ?? existing.completed_at)
       });
       await kv.setJSON(keys.taskKey(id), next);
+      if (patch.status === 'done' && existing.status !== 'done') {
+        await spawnRecurringSuccessor(this, next);
+      }
       return next;
     },
     async deleteTask(id, meta) {

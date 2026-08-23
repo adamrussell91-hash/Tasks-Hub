@@ -26,6 +26,9 @@ const baseTask = (partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => 
   depends_on: [],
   tags: [],
   recurrence_rule: null,
+  due_time: null,
+  remind_at: null,
+  remind_dismissed_at: null,
   attachments: [],
   source: 'manual',
   ...partial

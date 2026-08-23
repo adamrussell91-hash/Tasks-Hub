@@ -119,6 +119,33 @@ describe('tasks store', () => {
     expect(someday.bucket).toBe('someday');
     expect(backlogTasks(await store.listTasks()).some((t) => t.id === someday.id)).toBe(false);
   });
+
+  it('spawns the next instance when a recurring task is completed', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    const rule = JSON.stringify({
+      v: 1,
+      frequency: 'weekly',
+      interval: 1,
+      count: 3,
+      completed_count: 0,
+      weekday: 1
+    });
+    const created = await store.createTask({
+      title: 'Weekly journal',
+      domain: 'life',
+      due_date: '2026-08-18',
+      recurrence_rule: rule
+    });
+    await store.updateTask(created.id, { status: 'done' });
+    const tasks = await store.listTasks();
+    const successor = tasks.find(
+      (t) => t.title === 'Weekly journal' && t.id !== created.id && t.status === 'open'
+    );
+    expect(successor?.due_date).toBe('2026-08-25');
+    expect(JSON.parse(successor!.recurrence_rule!).completed_count).toBe(1);
+  });
 });
 
 describe('queries', () => {
