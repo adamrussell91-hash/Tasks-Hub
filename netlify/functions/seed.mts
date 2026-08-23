@@ -40,15 +40,21 @@ export default async function handler(request: Request): Promise<Response> {
     await seedIfEmpty(kv, keys, seed, { force });
     resetSeedCache();
     const store = await getTasksStore();
-    const [tasks, projects] = await Promise.all([store.listTasks(), store.listProjects()]);
+    const [tasks, projects, programs] = await Promise.all([
+      store.listTasks(),
+      store.listProjects(),
+      store.listPrograms()
+    ]);
     return withCors(
       okResponse(200, {
         seeded: true,
         forced: force,
         loaded_task_count: seed.tasks.length,
         loaded_project_count: seed.projects.length,
+        loaded_program_count: seed.programs?.length ?? 0,
         task_count: tasks.length,
-        project_count: projects.length
+        project_count: projects.length,
+        program_count: programs.length
       }),
       request,
       env

@@ -80,6 +80,7 @@ describe('hub shell chrome', () => {
     const links = [...refs.railNav.querySelectorAll('.hub-rail__link')];
     expect(links.some((link) => link.textContent === 'Orbit')).toBe(false);
     expect(links.some((link) => link.textContent === 'Board')).toBe(true);
+    expect(links.some((link) => link.textContent === 'Programs')).toBe(true);
 
     const signatures = links.map((link) =>
       [...link.querySelectorAll('path')].map((path) => path.getAttribute('d') ?? '').join('|')

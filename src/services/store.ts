@@ -12,7 +12,9 @@ import { ClareCalibrationSchema, ClareNegotiationLogSchema } from '@/schemas/cla
 import { DEFAULT_STRESS_ROUTE, StressFlagSchema } from '@/schemas/stress';
 import { CapacityShareSchema } from '@/schemas/capacity';
 import { TransitMapSchema } from '@/schemas/map';
+import { ProgramSchema } from '@/schemas/program';
 import { mindWorks2026Map } from '@/domain/maps-seed';
+import { catalogPrograms } from '@/domain/programs-seed';
 import { buildExcursionPlan } from '@/domain/excursion';
 import { addDays, backlogTasks, toDateKey } from '@/domain/queries';
 import {
@@ -60,6 +62,8 @@ export interface KeyBuilders {
   metaSeededKey: () => string;
   mapKey: (id: string) => string;
   mapsIndexKey: () => string;
+  programKey: (id: string) => string;
+  programsIndexKey: () => string;
 }
 
 function nowIso(): string {
@@ -874,6 +878,78 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       await kv.delete(keys.mapKey(id));
       const ids = (await readIndex(kv, keys.mapsIndexKey())).filter((x) => x !== id);
       await writeIndex(kv, keys.mapsIndexKey(), ids);
+    },
+
+    async listPrograms() {
+      let programs = await listByIndex(kv, keys.programsIndexKey(), keys.programKey, (raw) =>
+        ProgramSchema.parse(raw)
+      );
+      if (programs.length === 0) {
+        const seeded = catalogPrograms();
+        for (const item of seeded) {
+          await kv.setJSON(keys.programKey(item.id), item);
+        }
+        await writeIndex(
+          kv,
+          keys.programsIndexKey(),
+          seeded.map((item) => item.id)
+        );
+        programs = seeded;
+      }
+      return programs;
+    },
+    async getProgram(id) {
+      const raw = await kv.getJSON(keys.programKey(id));
+      return raw ? ProgramSchema.parse(raw) : null;
+    },
+    async createProgram(input) {
+      const stamp = nowIso();
+      const program = ProgramSchema.parse({
+        schema_version: 1,
+        id: newId('prog'),
+        name: input.name,
+        types: input.types ?? [],
+        subjects: input.subjects ?? [],
+        month: input.month ?? null,
+        age_groups: input.age_groups ?? [],
+        competition_level: input.competition_level ?? null,
+        competition_length: input.competition_length ?? null,
+        location: input.location ?? '',
+        organiser: input.organiser ?? '',
+        cost: input.cost ?? '',
+        cost_basis: input.cost_basis ?? null,
+        description: input.description ?? '',
+        registration_link: input.registration_link ?? null,
+        registration_window: input.registration_window ?? '',
+        not_available_nsw: input.not_available_nsw ?? false,
+        not_available_reason: input.not_available_reason ?? '',
+        created_at: stamp,
+        updated_at: stamp
+      });
+      await kv.setJSON(keys.programKey(program.id), program);
+      const ids = await readIndex(kv, keys.programsIndexKey());
+      ids.push(program.id);
+      await writeIndex(kv, keys.programsIndexKey(), ids);
+      return program;
+    },
+    async updateProgram(id, patch) {
+      const existing = await this.getProgram(id);
+      if (!existing) throw new Error(`Program not found: ${id}`);
+      const next = ProgramSchema.parse({
+        ...existing,
+        ...patch,
+        id: existing.id,
+        schema_version: 1,
+        created_at: existing.created_at,
+        updated_at: nowIso()
+      });
+      await kv.setJSON(keys.programKey(id), next);
+      return next;
+    },
+    async deleteProgram(id) {
+      await kv.delete(keys.programKey(id));
+      const ids = (await readIndex(kv, keys.programsIndexKey())).filter((x) => x !== id);
+      await writeIndex(kv, keys.programsIndexKey(), ids);
     }
   };
 }
@@ -952,6 +1028,16 @@ export async function seedIfEmpty(
     kv,
     keys.mapsIndexKey(),
     maps.map((m) => m.id)
+  );
+
+  const programs = seed.programs?.length ? seed.programs : catalogPrograms();
+  for (const item of programs) {
+    await kv.setJSON(keys.programKey(item.id), ProgramSchema.parse(item));
+  }
+  await writeIndex(
+    kv,
+    keys.programsIndexKey(),
+    programs.map((item) => item.id)
   );
 
   await kv.setJSON(keys.metaSeededKey(), { at: nowIso() });

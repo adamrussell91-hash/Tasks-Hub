@@ -98,3 +98,11 @@ export function mapKey(id: string): string {
 export function mapsIndexKey(): string {
   return 'maps/_index';
 }
+
+export function programKey(id: string): string {
+  return `programs/${id}`;
+}
+
+export function programsIndexKey(): string {
+  return 'programs/_index';
+}

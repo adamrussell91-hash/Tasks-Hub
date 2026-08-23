@@ -46,6 +46,12 @@ Canonical copy on `main` (`3d8668f`). Load: Inter → `css/tokens.css` → `over
 
 Ship seed JSON in `fixtures/seed.json` (Eat the Frog, timeboxing, Eisenhower). Editable via Templates UI. Clare calibration grows from accept / actual-duration samples.
 
+## Programs catalogue
+
+**Git file `fixtures/competitions.json` is the source of truth.** 290 rows live in this repo. Dev mock, Netlify seed, and empty-store backfill all read that fixture. Runtime writes (add/edit/delete) go to Blobs / the in-memory mock, same as other hub records.
+
+There is no Notion import, URL, sync, or fallback. Do not add one. The old Notion database is not a source and will be deleted.
+
 ## StressFlag routing timing
 
 **Write-on-create** into Blobs (`stress_flags/:id` + agent inbox). Hammond / Penelope / Vera consumers poll or fetch later — no sync fan-out until Life Hub exposes an authenticated inbox.
