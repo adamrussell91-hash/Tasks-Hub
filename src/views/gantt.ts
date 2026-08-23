@@ -11,6 +11,7 @@ import {
   collectDependencies,
   criticalPath,
   dropTargetAt,
+  moonPatchFromDrop,
   formatGanttTick,
   layoutGanttGroups,
   linksPatchForTask,
@@ -73,6 +74,7 @@ export function resetGanttSession(): void {
   session.railCollapsed = false;
   session.collapsedGroups = new Set();
   session.moonFilter = 'place';
+  draggingMoonId = null;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -102,8 +104,11 @@ function edgePathD(x1: number, y1: number, x2: number, y2: number): string {
 
 function clientToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } {
   const rect = svg.getBoundingClientRect();
-  const scaleX = svg.viewBox.baseVal.width / rect.width;
-  const scaleY = svg.viewBox.baseVal.height / rect.height;
+  const vb = svg.viewBox?.baseVal;
+  const viewW = vb?.width || Number(svg.getAttribute('width')) || rect.width;
+  const viewH = vb?.height || Number(svg.getAttribute('height')) || rect.height;
+  const scaleX = viewW / (rect.width || 1);
+  const scaleY = viewH / (rect.height || 1);
   return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
 }
 
@@ -158,8 +163,15 @@ function pill(
   return btn;
 }
 
+let draggingMoonId: string | null = null;
+
 function transferTaskId(event: DragEvent): string {
-  return event.dataTransfer?.getData('text/task-id') || event.dataTransfer?.getData('text/plain') || '';
+  return (
+    event.dataTransfer?.getData('text/task-id') ||
+    event.dataTransfer?.getData('text/plain') ||
+    draggingMoonId ||
+    ''
+  );
 }
 
 function wireDrop(
@@ -204,6 +216,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
   let previewId: string | null = null;
   let activeLayout: GanttLayout | null = null;
   let activePopover: HTMLElement | null = null;
+  let lastChartTarget: GanttDropTarget | null = null;
   let toastTimer = 0;
 
   const toast = el('p', 'gantt-toast');
@@ -523,6 +536,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
       card.dataset.taskId = task.id;
       card.setAttribute('aria-grabbed', 'false');
       card.addEventListener('dragstart', (event) => {
+        draggingMoonId = task.id;
         event.dataTransfer?.setData('text/task-id', task.id);
         event.dataTransfer?.setData('text/plain', task.id);
         if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
@@ -530,6 +544,8 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
         card.setAttribute('aria-grabbed', 'true');
       });
       card.addEventListener('dragend', () => {
+        draggingMoonId = null;
+        lastChartTarget = null;
         card.classList.remove('is-dragging');
         card.setAttribute('aria-grabbed', 'false');
       });
@@ -569,29 +585,14 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
       patch.parent_project_id = parent.parent_project_id ?? task.parent_project_id;
       note = `${task.title} is now a child of ${parent.title}.`;
     } else {
-      const { target } = intent;
-      patch.due_date = target.dateKey;
-      if (target.kind === 'bar' && target.bar.row.kind === 'task') {
-        const parent = taskById(tasks, target.bar.row.id);
-        if (parent && parent.id !== task.id) {
-          patch.parent_task_id = parent.id;
-          patch.parent_project_id = parent.parent_project_id ?? target.bar.row.parentProjectId;
-          note = `${task.title} nested under ${parent.title} and dated ${formatDisplayDate(target.dateKey)}.`;
-        } else {
-          patch.parent_project_id = target.bar.row.parentProjectId ?? session.projectId ?? null;
-          note = `Placed ${task.title} on ${formatDisplayDate(target.dateKey)}.`;
-        }
-      } else if (target.kind === 'bar') {
-        patch.parent_project_id = target.bar.row.parentProjectId ?? session.projectId ?? null;
-        note = `Placed ${task.title} on ${formatDisplayDate(target.dateKey)}.`;
-      } else if (target.kind === 'group') {
-        patch.parent_project_id = target.projectId;
-        note = `Placed ${task.title} on ${formatDisplayDate(target.dateKey)} in that project.`;
-      } else {
-        patch.parent_project_id =
-          target.projectId ?? (session.scope === 'project' ? session.projectId : task.parent_project_id);
-        note = `Placed ${task.title} on ${formatDisplayDate(target.dateKey)}.`;
-      }
+      Object.assign(patch, moonPatchFromDrop(task, intent.target, session.projectId || null));
+      const parent =
+        patch.parent_task_id && patch.parent_task_id !== task.parent_task_id
+          ? taskById(tasks, patch.parent_task_id)
+          : undefined;
+      note = parent
+        ? `${task.title} nested under ${parent.title} and dated ${formatDisplayDate(intent.target.dateKey)}.`
+        : `Placed ${task.title} on ${formatDisplayDate(intent.target.dateKey)}.`;
     }
 
     const updated = await persistTask(taskId, patch);
@@ -1180,26 +1181,24 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     }
   }
 
-  wireDrop(host, (taskId, event) => {
+  function hitFromClient(clientX: number, clientY: number): GanttDropTarget | null {
     const svg = scroll.querySelector('svg');
-    if (!svg || !activeLayout) return;
-    const pt = clientToSvg(svg, event.clientX, event.clientY);
-    const target = dropTargetAt(
-      activeLayout,
-      pt.x,
-      pt.y,
-      session.scope === 'project' ? session.projectId : null
-    );
+    if (!svg || !activeLayout) return null;
+    const pt = clientToSvg(svg, clientX, clientY);
+    return dropTargetAt(activeLayout, pt.x, pt.y, session.projectId || null);
+  }
+
+  wireDrop(host, (taskId, event) => {
+    const target = hitFromClient(event.clientX, event.clientY) ?? lastChartTarget;
     clearGhost();
+    lastChartTarget = null;
     if (target) void placeMoon(taskId, { kind: 'chart', target });
+    else flash('Drop on a day, a bar, or a project band to place that moon.');
   });
   host.addEventListener('dragover', (event) => {
-    const svg = scroll.querySelector('svg');
-    if (!svg || !activeLayout) return;
-    const pt = clientToSvg(svg, event.clientX, event.clientY);
-    showGhost(
-      dropTargetAt(activeLayout, pt.x, pt.y, session.scope === 'project' ? session.projectId : null)
-    );
+    const target = hitFromClient(event.clientX, event.clientY);
+    lastChartTarget = target;
+    showGhost(target);
   });
   host.addEventListener('dragleave', (event) => {
     if (event.relatedTarget instanceof Node && host.contains(event.relatedTarget)) return;

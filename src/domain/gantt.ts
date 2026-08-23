@@ -706,6 +706,31 @@ export function dropTargetAt(
   return { kind: 'day', dateKey, projectId: fallbackProjectId };
 }
 
+export function moonPatchFromDrop(
+  task: Pick<Task, 'id' | 'parent_project_id' | 'parent_task_id'>,
+  target: GanttDropTarget,
+  fallbackProjectId: string | null
+): Partial<Task> {
+  const patch: Partial<Task> = { due_date: target.dateKey };
+  if (target.kind === 'bar' && target.bar.row.kind === 'task' && target.bar.row.id !== task.id) {
+    patch.parent_task_id = target.bar.row.id;
+    patch.parent_project_id =
+      target.bar.row.parentProjectId ?? fallbackProjectId ?? task.parent_project_id;
+    return patch;
+  }
+  if (target.kind === 'bar') {
+    patch.parent_project_id =
+      target.bar.row.parentProjectId ?? fallbackProjectId ?? task.parent_project_id;
+    return patch;
+  }
+  if (target.kind === 'group') {
+    patch.parent_project_id = target.projectId;
+    return patch;
+  }
+  patch.parent_project_id = target.projectId ?? fallbackProjectId ?? task.parent_project_id;
+  return patch;
+}
+
 export function wouldCreateCycle(
   dependencies: GanttDependency[],
   fromId: string,

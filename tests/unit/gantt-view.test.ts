@@ -114,6 +114,48 @@ describe('gantt view', () => {
     expect(canvas.querySelector('.gantt-rail__group')).not.toBeNull();
   });
 
+  it('places a moon on the chart when dropped onto the host', async () => {
+    const canvas = document.createElement('main');
+    await renderGanttView(canvas);
+    const host = canvas.querySelector<HTMLElement>('.gantt-host')!;
+    const card = canvas.querySelector<HTMLElement>('[data-task-id="task_demo_backlog"]')!;
+    const svg = canvas.querySelector<SVGSVGElement>('svg.gantt-svg')!;
+    Object.defineProperty(svg, 'viewBox', {
+      value: { baseVal: { width: 800, height: 400 } },
+      configurable: true
+    });
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 800,
+      height: 400,
+      right: 800,
+      bottom: 400,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+    const start = new Event('dragstart', { bubbles: true, cancelable: true });
+    Object.defineProperty(start, 'dataTransfer', { value: transfer('task_demo_backlog') });
+    card.dispatchEvent(start);
+    const over = new Event('dragover', { bubbles: true, cancelable: true });
+    Object.defineProperty(over, 'dataTransfer', { value: transfer('task_demo_backlog') });
+    Object.defineProperty(over, 'clientX', { value: 120 });
+    Object.defineProperty(over, 'clientY', { value: 80 });
+    host.dispatchEvent(over);
+    const drop = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: transfer('task_demo_backlog') });
+    Object.defineProperty(drop, 'clientX', { value: 120 });
+    Object.defineProperty(drop, 'clientY', { value: 80 });
+    host.dispatchEvent(drop);
+    await vi.waitFor(() => {
+      expect(tasksApi.updateTask).toHaveBeenCalledWith(
+        'task_demo_backlog',
+        expect.objectContaining({ due_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
+      );
+    });
+  });
+
   it('opens a preview card from a rail row', async () => {
     const canvas = document.createElement('main');
     await renderGanttView(canvas);

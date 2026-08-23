@@ -11,6 +11,7 @@ import {
   criticalPath,
   dateKeyAtX,
   dropTargetAt,
+  moonPatchFromDrop,
   layoutGantt,
   layoutGanttGroups,
   linksPatchForTask,
@@ -203,6 +204,22 @@ describe('gantt drop targeting and moons', () => {
     const target = dropTargetAt(layout, first.x + 8, first.y + 10, project.id);
     expect(target?.kind).toBe('bar');
     if (target?.kind === 'bar') expect(target.bar.row.id).toBe(first.row.id);
+    const loose = dropTargetAt(layout, first.x + 80, 4, project.id);
+    expect(loose).toMatchObject({ kind: 'day', projectId: project.id });
+    expect(
+      moonPatchFromDrop(
+        {
+          id: 'task_demo_backlog',
+          parent_project_id: null,
+          parent_task_id: null
+        },
+        { kind: 'day', dateKey: '2026-08-26', projectId: null },
+        project.id
+      )
+    ).toEqual({
+      due_date: '2026-08-26',
+      parent_project_id: project.id
+    });
   });
 
   it('lists undated or unassigned moons first in the place tray', () => {
