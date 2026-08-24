@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBlock, PAGE_BLOCK_GROUPS } from '@/builder/create-block';
+import { createBlock, LESSON_BLOCK_GROUPS } from '@/blocks/create-block';
 import {
   dueChipKind,
   dueChipLabel,
@@ -95,18 +95,28 @@ describe('card domain helpers', () => {
     expect(progress).toMatchObject({ done: 1, total: 2, pct: 50, dueToday: 1 });
   });
 
-  it('builds page hashes and Teaching-shaped blocks', () => {
+  it('builds page hashes and Teaching Hub lesson families', () => {
     expect(taskPageHash('task_1')).toBe('#/task/task_1');
     expect(projectPageHash('proj_mw')).toBe('#/project/proj_mw');
-    expect(PAGE_BLOCK_GROUPS.map((group) => group.label)).toEqual(['Basic', 'Layout']);
-    const heading = createBlock('heading');
+    expect(LESSON_BLOCK_GROUPS.map((group) => group.label)).toEqual([
+      'Basic',
+      'Media',
+      'Teaching',
+      'Learning',
+      'Visualisation',
+      'Layout'
+    ]);
+    const heading = createBlock('heading', 'block_h1');
     expect(heading).toMatchObject({
       type: 'block',
       block_type: 'heading',
       variant: 'section',
+      visibility: 'student_teacher',
       schema_version: 1
     });
-    expect(createBlock('rich_text').content).toEqual({ html: '' });
-    expect(createBlock('callout').content).toMatchObject({ style: 'information' });
+    expect(createBlock('rich_text', 'block_rt').content).toEqual({ html: '' });
+    expect(createBlock('callout', 'block_c').content).toMatchObject({ style: 'information' });
+    expect(createBlock('flashcards', 'block_f').block_type).toBe('flashcards');
+    expect(createBlock('equation', 'block_eq').block_type).toBe('equation');
   });
 });

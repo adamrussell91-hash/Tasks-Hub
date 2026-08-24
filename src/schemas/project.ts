@@ -57,6 +57,7 @@ export const ProjectSchema = z.object({
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
+export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type Milestone = z.infer<typeof MilestoneSchema>;
 
 export const ProjectCreateSchema = ProjectSchema.omit({
