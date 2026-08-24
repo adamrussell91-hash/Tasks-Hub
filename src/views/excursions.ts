@@ -6,24 +6,10 @@ import { projectPageHash } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, toDateKey } from '@/domain/queries';
 import { hashQuery } from '@/shell/shell';
-<<<<<<< HEAD
-import { createHubField, createHubFilter, createHubSearch, el } from '@/views/hub-kit';
-=======
 import { requestToggleDone } from '@/views/dashboard';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountProjectCard } from '@/views/hub-cards';
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
->>>>>>> origin/main
+import { createHubField, createHubFilter, createHubSearch, el } from '@/views/hub-kit';
 
 function defaultEventDate(): string {
   return toDateKey(addDays(new Date(), 45));
@@ -176,14 +162,8 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
         confirmHost.replaceChildren(
           el('p', 'canvas-status', `Created ${result.project.title} with ${result.tasks.length} tasks.`)
         );
-<<<<<<< HEAD
         title.input.value = '';
-        await renderExcursionsView(canvas);
-        location.hash = '#/excursions';
-=======
-        title.value = '';
         openProjectPage(result.project);
->>>>>>> origin/main
       }
     );
   });
