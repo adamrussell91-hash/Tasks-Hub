@@ -6,11 +6,14 @@ import '../../design-kit/css/filters.css';
 import '../../design-kit/css/sign-in.css';
 import '../styles/hub.css';
 import '../styles/views.css';
+import '../styles/cards.css';
+import '../styles/gantt.css';
 
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
   isKnownHashView,
   parseCapacityShareToken,
+  parseEntityPage,
   parseHashRoute,
   renderHubShell,
   renderPageHeader,
@@ -33,13 +36,13 @@ import { renderStressView } from '@/views/stress';
 import { renderCoreyView, renderPublicCapacityView } from '@/views/corey';
 import {
   renderDayView,
-  renderWeekView,
-  renderMonthView,
   renderListView,
   renderSearchView,
   renderTemplatesView,
   renderProjectsView
 } from '@/views/dashboard';
+import { renderWeekView, renderMonthView } from '@/views/calendar';
+import { renderPageEditor } from '@/views/page-editor';
 import { renderGoalsView } from '@/views/goals';
 import { renderSomedayView } from '@/views/someday';
 import { renderReminderStrip } from '@/views/reminder-strip';
@@ -76,9 +79,10 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Transit diagrams for programs and projects.'
   },
   gantt: {
-    eyebrow: 'Schedule',
+    eyebrow: 'Project planning',
     title: 'Gantt',
-    supporting: 'Pick a project to see its timeline.'
+    supporting:
+      'Same moon, same card — drop it on the timeline, nest it under a parent, or link it to a project.'
   },
   orbit: {
     eyebrow: 'Explore',
@@ -108,12 +112,12 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   week: {
     eyebrow: 'Shape',
     title: 'Week',
-    supporting: 'Due work with pinch watch and overload cues.'
+    supporting: 'Seven-day calendar — drag to move a due date, click a day to add.'
   },
   month: {
     eyebrow: 'Horizon',
     title: 'Month',
-    supporting: 'Milestones and excursion key dates this month.'
+    supporting: 'Full month of tasks, milestones, and excursion key dates.'
   },
   list: {
     eyebrow: 'Inbox',
@@ -251,6 +255,21 @@ async function bootApp(root: HTMLElement): Promise<void> {
     const share = parseCapacityShareToken();
     if (share) {
       await bootPublicCapacity(root, share);
+      return;
+    }
+    const entity = parseEntityPage();
+    if (entity) {
+      renderPrimaryNav(shell.railNav, entity.kind === 'project' ? 'projects' : 'board');
+      renderPageHeader(shell, {
+        eyebrow: entity.kind === 'task' ? 'Task' : 'Project',
+        title: 'Page',
+        supporting: 'Same block engine as Teaching Hub’s lesson builder.'
+      });
+      try {
+        await renderPageEditor(shell.canvas, entity);
+      } catch (err) {
+        renderLoadError(shell.canvas, err, () => void paint(), 'Could not open page');
+      }
       return;
     }
     if (!isKnownHashView()) {

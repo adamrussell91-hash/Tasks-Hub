@@ -17,7 +17,7 @@ Load Inter, then kit `tokens.css`, `overlays.css`, `chrome.css` (new hub), then 
 
 `data-hub="tasks"` **clones Teaching**: more glass, more tiles, the same 15rem labeled rail as every other hub. Values live in `css/overlays.css` — do not retune them in the hub. Rail rules: `RAIL.md`.
 
-Page header stays kit: uppercase eyebrow → `h1` → optional supporting → actions on the right. Rail brand is `<a class="hub-rail__brand" href="…board…">` (single uppercase line, returns to the board from anywhere). Destinations are `.hub-rail__link` (outline icon + title-case label). Refresh and sign out use `.hub-utilities` / `.hub-icon-btn` at the canvas top-right, then `.hub-mark` (`icons/tasks.svg`). Same tile is the favicon and the sign-in mark. No supporting copy on the gate. See `ICONS.md`.
+Page header stays kit: uppercase eyebrow → `h1` → optional supporting → actions on the right. Rail brand is `<a class="hub-rail__brand" href="…board…">` (single uppercase line, returns to the board from anywhere). Destinations are `.hub-rail__link` (outline icon + title-case label). Refresh and sign out use `.hub-utilities` / `.hub-icon-btn` at the canvas top-right. Tasks does not show `.hub-mark` in the header — the tile stays favicon and sign-in mark only. No supporting copy on the gate. See `ICONS.md`.
 
 Agent writes: propose → **confirm card** → apply.
 
@@ -26,6 +26,7 @@ Agent writes: propose → **confirm card** → apply.
 | Surface | Role |
 |---------|------|
 | **Board** | Home. Task / project / excursion cards as Teaching tiles (glass, `--hub-tile-gap`). |
+| **Gantt** | Timeline for the same Cotton Glass cards. Every moon (task card) is droppable onto a day, a project planet, or another moon (parent). Bars are micro-cards: drag to reschedule, right-edge resize, ○ handle to link `depends_on` (FS / SS / FF). Critical path is a High Sea outline, not a new colour story. |
 | **Goals** | Plan. Area → Goal → Project hierarchy; expand a project for milestones and tasks. |
 | **Someday** | Plan. Off-tree holding pen (`bucket: someday`); promote to goal, project, or task. |
 | **Graph** | A rail page, not home. Two modes on that page: **blockers** (task nodes, blocked-by edges) and **workstreams** (clustered projects / areas). |
@@ -34,6 +35,37 @@ Agent writes: propose → **confirm card** → apply.
 Data model: `docs/data-model.md` in the Tasks Hub repo (Area → Goal → Project → Task → Step; milestones on projects; Someday bucket).
 
 Status colour uses existing tokens only: Wave, Marine, Depth, pastel chips. High Sea is accent / decisive, never body text on orange, never focus rings.
+
+## Cards — micro, expanded, full page
+
+Every task/project card surface (Board, Today, Backlog, Search, Projects, calendar agenda, Gantt moons tray) uses the Cotton Glass recipes — do not draw a parallel `task-row` / flat tile.
+
+| View | Class | Role |
+|------|--------|------|
+| **Micro** | `.hub-row` | Title, area chip (`data-area`), priority chip, date badge, “Updated …”, icon edit/delete. Click (or Enter/Space) expands. |
+| **Expanded** | `.hub-card` | Eyebrow, status badge, title, chips, date, progress + `.hub-track` (projects), child-task checklist, footer. **Open page** goes to the full page. |
+| **Full page** | `.page-card` + lesson-builder canvas | Same visual language as the expanded card, but the body is Teaching Hub’s block engine: palette + typed blocks (`heading`, `rich_text`, `callout`, `quote`, `divider`, `spacer`). Routes: `#/task/:id`, `#/project/:id`. Not rail items. |
+
+Container transform: the slot keeps a unique `view-transition-name` per instance. `document.startViewTransition` morphs micro ↔ expanded; skip the API under `prefers-reduced-motion`. Expanded project task rows stagger with `--i`.
+
+Priority: urgent → `--danger`, high → pastel-peach, medium → pastel-gold, low → pastel-sage. Area chips are categorical: teaching = blue, wedding = lilac, life = gold, health = lilac, other = shore/muted.
+
+Do not invent a second page builder. Teaching Hub already has the canvas (`createBlock`, palette families, contentEditable rich text, callout styles). Tasks uses the same block shape, trimmed to page types — no NESA/student/AI port.
+
+## Mobile (≤720px)
+
+Same cards and pages — not a second visual system. The chrome already collapses the 15rem rail to a sticky horizontal scroller (do not hide it or invent a hamburger).
+
+| Surface | Phone behaviour |
+|---------|-----------------|
+| **Micro** | Full-width row, wrapping title/chips, 44px icon hits on coarse pointers. Tap expands. |
+| **Expanded** | Same card, stacked footer actions (`Open page` is a full-width `.btn`). Project row stacks title then status/%. |
+| **Board / Week** | Horizontal snap-scroll — one status or day at a time — not four skinny columns and not a 4-storey stack. |
+| **Board drag** | Tap expands. Fingers need a 12px lift before a card leaves its slot so a scroll or tap is not a move. `touch-action: pan-y` on cards so the page still scrolls. |
+| **Month** | 7-column grid fits the viewport (no 42rem min-width). Cells stay tappable; the agenda under the grid is the readable list. |
+| **Full page** | Palette becomes a sticky wrap of pills above the card (not a 13rem rail of full-width buttons). Inputs stay at 1rem so iOS does not zoom. |
+
+Safe-area padding on the canvas. `viewport-fit=cover`. No new colours, type, or button styles.
 
 ## Borrow — do not redraw
 

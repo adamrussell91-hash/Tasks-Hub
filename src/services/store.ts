@@ -183,13 +183,15 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         parent_project_id: input.parent_project_id ?? null,
         parent_task_id: input.parent_task_id ?? null,
         depends_on: input.depends_on ?? [],
+        dependency_links: input.dependency_links,
         tags: input.tags ?? [],
         recurrence_rule: input.recurrence_rule ?? null,
         due_time: input.due_time ?? null,
         remind_at: input.remind_at ?? null,
         remind_dismissed_at: input.remind_dismissed_at ?? null,
         attachments: input.attachments ?? [],
-        source: input.source ?? 'manual'
+        source: input.source ?? 'manual',
+        page_blocks: input.page_blocks ?? []
       });
       await kv.setJSON(keys.taskKey(task.id), task);
       const ids = await readIndex(kv, keys.tasksIndexKey());
@@ -273,7 +275,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         key_dates: input.key_dates ?? null,
         student_group_reference: input.student_group_reference ?? null,
         generated_admin_tasks: input.generated_admin_tasks ?? [],
-        drafted_documents: input.drafted_documents ?? null
+        drafted_documents: input.drafted_documents ?? null,
+        page_blocks: input.page_blocks ?? []
       });
       await kv.setJSON(keys.projectKey(project.id), project);
       const ids = await readIndex(kv, keys.projectsIndexKey());
