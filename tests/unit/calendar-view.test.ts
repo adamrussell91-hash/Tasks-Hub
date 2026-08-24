@@ -110,7 +110,16 @@ describe('calendar views', () => {
       const found = tasks.find((entry) => entry.id === id)!;
       return { ...found, ...(body as Partial<Task>) };
     });
-    vi.mocked(tasksApi.createTask).mockResolvedValue(task({ id: 'task_new', title: 'New' }));
+    vi.mocked(tasksApi.createTask).mockImplementation(async (body) => {
+      const input = body as { title: string; due_date?: string; domain?: Task['domain'] };
+      return task({
+        id: `task_new_${input.title}`,
+        title: input.title,
+        due_date: input.due_date ?? '2026-08-17',
+        domain: input.domain ?? 'teaching',
+        parent_project_id: null
+      });
+    });
   });
 
   it('renders a real month grid with tasks, milestones, and overflow hooks', async () => {
@@ -208,6 +217,14 @@ describe('calendar views', () => {
       title: 'Prep excursion bags',
       due_date: '2026-08-19'
     });
+    // listTasks stays stale on purpose — the created task must still paint.
+    expect(vi.mocked(tasksApi.listTasks).mock.calls.length).toBe(1);
+    await vi.waitFor(() => {
+      expect(canvas.textContent).toContain('Prep excursion bags');
+    });
+    expect(canvas.querySelector('[data-date="2026-08-19"][data-kind="task"]')?.textContent).toBe(
+      'Prep excursion bags'
+    );
   });
 
   it('moves the month with Next and keeps a calendar grid', async () => {

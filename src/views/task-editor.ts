@@ -425,7 +425,7 @@ export async function renderTaskEditor(
 }
 
 export function renderQuickAdd(
-  onCreated: () => void,
+  onCreated: (task: Task) => void | Promise<void>,
   projectId: string | null = null,
   options: { dueDate?: string | null } = {}
 ): HTMLElement {
@@ -473,9 +473,9 @@ export function renderQuickAdd(
         const nextDue = due.value.trim();
         if (nextDue) body.due_date = nextDue;
       }
-      await tasksApi.createTask(body);
+      const created = await tasksApi.createTask(body);
       title.value = '';
-      onCreated();
+      await onCreated(created);
     } catch (err) {
       form.append(el('p', 'empty-state', errorMessage(err)));
     } finally {

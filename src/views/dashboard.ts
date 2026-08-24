@@ -1,6 +1,12 @@
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
-import { adaptiveTodayTasks, backlogTasks, preferredDomains, searchEntities } from '@/domain/queries';
+import {
+  adaptiveTodayTasks,
+  backlogTasks,
+  preferredDomains,
+  searchEntities,
+  toDateKey
+} from '@/domain/queries';
 import { computeProjectVariance, formatSlip } from '@/domain/closure';
 import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
@@ -46,6 +52,7 @@ function confirmDeleteTask(host: HTMLElement, task: Task, reload: () => Promise<
     'This removes the task from the hub.',
     async () => {
       await tasksApi.deleteTask(task.id, { agent: 'Tasks Hub', reason: 'Row delete' });
+      dayOverlay.delete(task.id);
       await reload();
     },
     'Delete'
@@ -129,9 +136,35 @@ export function requestToggleDone(
   card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
-export async function renderDayView(canvas: HTMLElement): Promise<void> {
+const dayOverlay = new Map<string, Task>();
+let dayViewEpoch = 0;
+
+function mergeDayTasks(fetched: Task[]): Task[] {
+  const byId = new Map(fetched.map((task) => [task.id, task]));
+  for (const [id, overlay] of dayOverlay) {
+    const current = byId.get(id);
+    if (!current || overlay.updated_at >= current.updated_at) {
+      byId.set(id, overlay);
+    } else {
+      dayOverlay.delete(id);
+    }
+  }
+  return [...byId.values()];
+}
+
+/** Test hook — drop in-memory Today overlays between specs. */
+export function resetDayViewState(): void {
+  dayOverlay.clear();
+  dayViewEpoch += 1;
+}
+
+export async function renderDayView(canvas: HTMLElement, extras: Task[] = []): Promise<void> {
+  for (const task of extras) dayOverlay.set(task.id, task);
+  const epoch = ++dayViewEpoch;
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  const [fetched, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  if (epoch !== dayViewEpoch) return;
+  const tasks = mergeDayTasks(fetched);
   const today = new Date();
   const list = adaptiveTodayTasks(tasks, today);
   const prefs = preferredDomains(today);
@@ -158,7 +191,11 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   canvas.append(pressure);
 
   const confirmHost = el('div', 'task-confirm');
-  canvas.append(renderQuickAdd(() => void renderDayView(canvas)));
+  canvas.append(
+    renderQuickAdd((task) => void renderDayView(canvas, [task]), null, {
+      dueDate: toDateKey(today)
+    })
+  );
   canvas.append(confirmHost);
 
   if (!list.length) {
@@ -681,7 +718,10 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
         `Create “${tt.name}”`,
         `This will create a ${tt.domain} task from the template and open Today.`,
         async () => {
-          await tasksApi.createTaskFromTemplate(tt.id);
+          const created = await tasksApi.createTaskFromTemplate(tt.id, {
+            due_date: toDateKey(new Date())
+          });
+          dayOverlay.set(created.id, created);
           location.hash = '#/day';
         }
       );
