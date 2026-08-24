@@ -427,6 +427,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     const showPreview = (item: CalendarItem) => {
       selectedDateKey = item.date_key;
       if (item.task) {
+        if (expandMountedTaskCard(canvas, item.task.id)) return;
         pendingExpandTaskId = item.task.id;
         paint();
         return;

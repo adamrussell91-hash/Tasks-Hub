@@ -151,6 +151,22 @@ describe('calendar views', () => {
     expect(canvas.textContent).toMatch(/Already done/);
   });
 
+  it('expands the day-agenda card when a week chip is clicked', async () => {
+    location.hash = '#/week?date=2026-08-17';
+    const canvas = document.createElement('main');
+    await renderWeekView(canvas);
+
+    const chip = canvas.querySelector<HTMLButtonElement>('.week-col [data-task-id="task_lesson"]');
+    expect(chip).not.toBeNull();
+    chip?.click();
+    await vi.waitFor(() => {
+      expect(
+        canvas.querySelector('.calendar-agenda .hub-card-slot[data-task-id="task_lesson"]')?.getAttribute('data-state')
+      ).toBe('expanded');
+    });
+    expect(canvas.querySelector('.calendar-agenda .hub-card__title')?.textContent).toBe('Finish lesson pack');
+  });
+
   it('expands the day-agenda card when a month chip is clicked', async () => {
     const canvas = document.createElement('main');
     await renderMonthView(canvas);
