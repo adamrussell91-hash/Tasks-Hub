@@ -9,12 +9,12 @@ import {
 } from 'd3-force';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
+import { isBlocked } from '@/domain/board';
 import { tasksApi } from '@/services/client-api';
 import { hashQuery } from '@/shell/shell';
-import { blockerRows, layoutBlockerGraph, type BlockerNode } from '@/domain/blockers';
-import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import { blockerRows, layoutBlockerGraph, type BlockerNode, type BlockerRow } from '@/domain/blockers';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
-import { renderTaskEditor } from '@/views/task-editor';
+import { renderBoardTaskTile, renderTaskLinkList } from '@/views/task-tile';
 
 type GraphMode = 'blockers' | 'workstreams';
 
@@ -60,6 +60,16 @@ function statusChip(status: Task['status'], blocked: boolean): HTMLElement {
   return el('span', 'chip chip--muted', 'Open');
 }
 
+function groupBlockerRows(rows: BlockerRow[]): Map<string, BlockerRow[]> {
+  const groups = new Map<string, BlockerRow[]>();
+  for (const row of rows) {
+    const list = groups.get(row.blockedId) ?? [];
+    list.push(row);
+    groups.set(row.blockedId, list);
+  }
+  return groups;
+}
+
 function buildWorkstreamModel(tasks: Task[], projects: Project[]): {
   nodes: GraphNode[];
   links: GraphLink[];
@@ -90,74 +100,40 @@ function buildWorkstreamModel(tasks: Task[], projects: Project[]): {
   return { nodes, links };
 }
 
-function showTaskPreview(
-  preview: HTMLElement,
-  task: Task,
-  tasks: Task[],
-  projects: Project[],
-  onRefresh: () => void
-): void {
-  preview.hidden = false;
+function renderBlockerDetail(task: Task, tasks: Task[]): HTMLElement {
   const byId = new Map(tasks.map((item) => [item.id, item]));
+  const detail = el('div', 'task-tile__detail-body');
   const blockers = task.depends_on
     .map((id) => byId.get(id))
     .filter((item): item is Task => Boolean(item));
   const blocking = tasks.filter((item) => item.depends_on.includes(task.id));
 
-  preview.replaceChildren(
-    el('p', 'graph-preview__eyebrow', task.domain),
-    el('h3', 'graph-preview__title', task.title),
-    el(
-      'p',
-      'graph-preview__meta',
-      [task.status.replace('_', ' '), task.due_date ? formatDisplayDate(task.due_date) : null]
-        .filter(Boolean)
-        .join(' · ')
-    )
-  );
-
   if (blockers.length) {
-    const list = el('ul', 'blocker-preview__list');
-    list.setAttribute('aria-label', 'Blocked by');
-    list.append(el('li', 'blocker-preview__heading', 'Blocked by'));
-    for (const blocker of blockers) {
-      const item = el('li');
-      item.append(
-        el('span', 'blocker-preview__task', blocker.title),
-        statusChip(blocker.status, false)
-      );
-      list.append(item);
-    }
-    preview.append(list);
+    detail.append(
+      renderTaskLinkList(
+        'Blocked by',
+        blockers.map((blocker) => ({
+          title: blocker.title,
+          meta: blocker.status.replace('_', ' ')
+        }))
+      )
+    );
   }
-
   if (blocking.length) {
-    const list = el('ul', 'blocker-preview__list');
-    list.setAttribute('aria-label', 'Blocking');
-    list.append(el('li', 'blocker-preview__heading', 'Blocking'));
-    for (const blocked of blocking) {
-      const item = el('li');
-      item.append(
-        el('span', 'blocker-preview__task', blocked.title),
-        statusChip(
-          blocked.status,
-          blocked.depends_on.some((depId) => {
-            const dep = byId.get(depId);
-            return dep != null && dep.status !== 'done';
-          })
-        )
-      );
-      list.append(item);
-    }
-    preview.append(list);
+    detail.append(
+      renderTaskLinkList(
+        'Blocking',
+        blocking.map((blocked) => ({
+          title: blocked.title,
+          meta: isBlocked(blocked, byId) ? 'blocked' : blocked.status.replace('_', ' ')
+        }))
+      )
+    );
   }
-
-  const edit = el('button', 'btn btn--ghost', 'Edit');
-  edit.type = 'button';
-  edit.addEventListener('click', () => {
-    renderTaskEditor(preview, task, projects, onRefresh);
-  });
-  preview.append(edit);
+  if (!blockers.length && !blocking.length) {
+    detail.append(el('p', 'hierarchy-meta', 'No blocker links on this task.'));
+  }
+  return detail;
 }
 
 function mountBlockerGraph(
@@ -165,11 +141,17 @@ function mountBlockerGraph(
   tasks: Task[],
   projects: Project[],
   activeOnly: boolean,
-  onSelect: (taskId: string) => void
+  editorHost: HTMLElement,
+  selectedId: string | null,
+  expandedId: string | null,
+  onSelect: (taskId: string | null) => void,
+  onExpand: (taskId: string, open: boolean) => void,
+  onRefresh: () => void
 ): void {
   host.replaceChildren();
   const layout = layoutBlockerGraph(tasks);
   const rows = blockerRows(tasks, activeOnly);
+  const byId = new Map(tasks.map((task) => [task.id, task]));
 
   if (!layout.totalLinkCount) {
     host.append(
@@ -182,14 +164,15 @@ function mountBlockerGraph(
     return;
   }
 
-  const summary = el(
-    'p',
-    'blocker-summary',
-    layout.blockedCount
-      ? `${layout.blockedCount} task${layout.blockedCount === 1 ? '' : 's'} blocked · ${layout.activeLinkCount} active link${layout.activeLinkCount === 1 ? '' : 's'}`
-      : `Nothing blocked right now · ${layout.totalLinkCount} resolved link${layout.totalLinkCount === 1 ? '' : 's'}`
+  host.append(
+    el(
+      'p',
+      'blocker-summary',
+      layout.blockedCount
+        ? `${layout.blockedCount} task${layout.blockedCount === 1 ? '' : 's'} blocked · ${layout.activeLinkCount} active link${layout.activeLinkCount === 1 ? '' : 's'}`
+        : `Nothing blocked right now · ${layout.totalLinkCount} resolved link${layout.totalLinkCount === 1 ? '' : 's'}`
+    )
   );
-  host.append(summary);
 
   const tableWrap = el('div', 'blocker-table-wrap');
   const table = el('table', 'viz-alt viz-alt--table blocker-table');
@@ -214,28 +197,26 @@ function mountBlockerGraph(
     for (const row of rows) {
       const tr = document.createElement('tr');
       tr.tabIndex = 0;
+      tr.dataset.taskId = row.blockedId;
       tr.setAttribute('role', 'button');
-      tr.setAttribute(
-        'aria-label',
-        `${row.blockedTitle} is blocked by ${row.blockerTitle}`
-      );
+      tr.setAttribute('aria-expanded', selectedId === row.blockedId ? 'true' : 'false');
+      if (selectedId === row.blockedId) tr.classList.add('is-selected');
+      tr.setAttribute('aria-label', `${row.blockedTitle} is blocked by ${row.blockerTitle}`);
 
       const blockedCell = document.createElement('td');
       blockedCell.append(
         el('span', 'blocker-table__task', row.blockedTitle),
         statusChip(row.blockedStatus, row.blocked)
       );
-
       const blockerCell = document.createElement('td');
       blockerCell.textContent = row.blockerTitle;
-
       const statusCell = document.createElement('td');
       statusCell.append(
         statusChip(row.blockerStatus, false),
         row.active ? el('span', 'chip', 'Active') : el('span', 'chip chip--muted', 'Resolved')
       );
 
-      const select = () => onSelect(row.blockedId);
+      const select = () => onSelect(selectedId === row.blockedId ? null : row.blockedId);
       tr.addEventListener('click', select);
       tr.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -251,6 +232,30 @@ function mountBlockerGraph(
   table.append(body);
   tableWrap.append(table);
   host.append(tableWrap);
+
+  const expandHost = el('div', 'task-stack blocker-expand');
+  if (selectedId) {
+    const task = byId.get(selectedId);
+    const taskRows = groupBlockerRows(rows).get(selectedId) ?? [];
+    if (task) {
+      const waitingOn = taskRows.map((row) => row.blockerTitle).join(', ');
+      expandHost.append(
+        renderBoardTaskTile(
+          task,
+          waitingOn ? `waiting on ${waitingOn}` : 'blocker links',
+          renderBlockerDetail(task, tasks),
+          {
+            editorHost,
+            projects,
+            onSaved: onRefresh,
+            open: expandedId === selectedId,
+            onToggle: (taskId, open) => onExpand(taskId, open)
+          }
+        )
+      );
+    }
+  }
+  host.append(expandHost);
 
   const pad = 24;
   const width = Math.max(layout.width + pad, host.clientWidth || 720);
@@ -293,7 +298,10 @@ function mountBlockerGraph(
       'd',
       `M ${from.x + 108} ${from.y + 18} C ${midX} ${from.y + 18}, ${midX} ${to.y + 18}, ${to.x} ${to.y + 18}`
     );
-    path.setAttribute('class', link.active ? 'blocker-edge blocker-edge--active' : 'blocker-edge blocker-edge--resolved');
+    path.setAttribute(
+      'class',
+      link.active ? 'blocker-edge blocker-edge--active' : 'blocker-edge blocker-edge--resolved'
+    );
     path.setAttribute('marker-end', 'url(#blocker-arrow)');
     edges.append(path);
   }
@@ -305,17 +313,29 @@ function mountBlockerGraph(
     if (activeOnly && !rows.some((row) => row.blockedId === node.id || row.blockerId === node.id)) {
       continue;
     }
-    nodes.append(renderBlockerNode(node, () => onSelect(node.id)));
+    nodes.append(
+      renderBlockerNode(node, selectedId === node.id, () =>
+        onSelect(selectedId === node.id ? null : node.id)
+      )
+    );
   }
   svg.append(nodes);
   host.append(svg);
 }
 
-function renderBlockerNode(node: BlockerNode, onSelect: () => void): SVGGElement {
+function renderBlockerNode(
+  node: BlockerNode,
+  selected: boolean,
+  onSelect: () => void
+): SVGGElement {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  g.setAttribute('class', `branch-node blocker-node${node.blocked ? ' blocker-node--blocked' : ''}`);
+  g.setAttribute(
+    'class',
+    `branch-node blocker-node${node.blocked ? ' blocker-node--blocked' : ''}${selected ? ' blocker-node--selected' : ''}`
+  );
   g.setAttribute('tabindex', '0');
   g.setAttribute('role', 'button');
+  g.setAttribute('aria-pressed', selected ? 'true' : 'false');
   g.setAttribute('aria-label', `${node.label}${node.blocked ? ' — blocked' : ''}`);
   g.style.setProperty('--branch-delay', `${node.depth * 70}ms`);
 
@@ -351,7 +371,11 @@ function mountWorkstreamGraph(
   host: HTMLElement,
   tasks: Task[],
   projects: Project[],
-  preview: HTMLElement,
+  editorHost: HTMLElement,
+  selectedId: string | null,
+  expandedId: string | null,
+  onSelect: (taskId: string | null) => void,
+  onExpand: (taskId: string, open: boolean) => void,
   onRefresh: () => void
 ): void {
   const { nodes, links } = buildWorkstreamModel(tasks, projects);
@@ -382,13 +406,11 @@ function mountWorkstreamGraph(
   tip.hidden = true;
   host.append(tip);
 
-  preview.hidden = true;
-
   const ctx = canvas.getContext('2d')!;
   const simNodes = nodes.map((n) => ({ ...n }));
   const simLinks = links.map((l) => ({ ...l }));
 
-  let selected: string | null = null;
+  let selected: string | null = selectedId;
   let hover: GraphNode | null = null;
 
   const simulation: Simulation<GraphNode, GraphLink> = forceSimulation(simNodes)
@@ -450,22 +472,38 @@ function mountWorkstreamGraph(
     return null;
   }
 
-  function showPreview(node: GraphNode): void {
+  function showSelection(node: GraphNode): void {
     selected = node.id;
-    if (node.kind === 'task') {
-      const task = tasks.find((item) => item.id === node.id);
-      if (task) {
-        showTaskPreview(preview, task, tasks, projects, onRefresh);
-      }
-    } else {
-      preview.hidden = false;
-      preview.replaceChildren(
-        el('p', 'graph-preview__eyebrow', node.kind),
-        el('h3', 'graph-preview__title', node.label)
-      );
-    }
+    if (node.kind === 'task') onSelect(node.id);
+    else onSelect(null);
     draw();
   }
+
+  const expandHost = el('div', 'task-stack graph-expand');
+  if (selectedId) {
+    const task = tasks.find((item) => item.id === selectedId);
+    if (task) {
+      const project = projects.find((item) => item.id === task.parent_project_id);
+      const detail = el('div', 'task-tile__detail-body');
+      detail.append(
+        el(
+          'p',
+          'hierarchy-meta',
+          project ? `Project · ${project.title}` : 'No project assigned'
+        )
+      );
+      expandHost.append(
+        renderBoardTaskTile(task, project?.title ?? task.domain, detail, {
+          editorHost,
+          projects,
+          onSaved: onRefresh,
+          open: expandedId === selectedId,
+          onToggle: (taskId, open) => onExpand(taskId, open)
+        })
+      );
+    }
+  }
+  host.append(expandHost);
 
   const list = el('ul', 'viz-alt');
   list.setAttribute('aria-label', 'Workstream nodes');
@@ -473,7 +511,7 @@ function mountWorkstreamGraph(
     const item = el('li');
     const btn = el('button', 'btn btn--ghost', `${node.kind}: ${node.label}`);
     btn.type = 'button';
-    btn.addEventListener('click', () => showPreview(node));
+    btn.addEventListener('click', () => showSelection(node));
     item.append(btn);
     list.append(item);
   }
@@ -497,7 +535,7 @@ function mountWorkstreamGraph(
   canvas.addEventListener('click', (event) => {
     const rect = canvas.getBoundingClientRect();
     const node = nodeAt(event.clientX - rect.left, event.clientY - rect.top);
-    if (node) showPreview(node);
+    if (node) showSelection(node);
   });
 
   simulation.alpha(1).restart();
@@ -552,15 +590,19 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   toolbar.append(search);
   canvas.append(toolbar);
 
+  const confirmHost = el('div', 'graph-confirm');
+  canvas.append(confirmHost);
+
   const host = el('div', 'graph-host');
   const stage = el('div', 'graph-stage');
-  const preview = el('aside', 'graph-preview');
-  preview.hidden = true;
-  host.append(stage, preview);
+  host.append(stage);
   canvas.append(host);
 
+  let selectedId: string | null = null;
+  let expandedId: string | null = null;
+
   const paint = () => {
-    preview.hidden = true;
+    confirmHost.replaceChildren();
     const q = search.value.trim().toLowerCase();
     const filteredTasks = q
       ? tasks.filter((task) => task.title.toLowerCase().includes(q) || task.description.toLowerCase().includes(q))
@@ -568,27 +610,55 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
     const filteredProjects = q
       ? projects.filter((project) => project.title.toLowerCase().includes(q))
       : projects;
+    const scopedTasks = filteredTasks.length ? filteredTasks : tasks;
+
+    if (selectedId && !scopedTasks.some((task) => task.id === selectedId)) {
+      selectedId = null;
+      expandedId = null;
+    }
+    if (expandedId && expandedId !== selectedId) {
+      expandedId = null;
+    }
 
     if (mode === 'blockers') {
       mountBlockerGraph(
         stage,
-        filteredTasks.length ? filteredTasks : tasks,
+        scopedTasks,
         projects,
         activeOnly,
+        confirmHost,
+        selectedId,
+        expandedId,
         (taskId) => {
-          const task = tasks.find((item) => item.id === taskId);
-          if (!task) return;
-          showTaskPreview(preview, task, tasks, projects, paint);
-        }
+          selectedId = taskId;
+          expandedId = null;
+          paint();
+        },
+        (taskId, open) => {
+          expandedId = open ? taskId : null;
+          paint();
+        },
+        paint
       );
       return;
     }
 
     mountWorkstreamGraph(
       stage,
-      filteredTasks.length ? filteredTasks : tasks,
-      filteredProjects,
-      preview,
+      scopedTasks,
+      filteredProjects.length ? filteredProjects : projects,
+      confirmHost,
+      selectedId,
+      expandedId,
+      (taskId) => {
+        selectedId = taskId;
+        expandedId = null;
+        paint();
+      },
+      (taskId, open) => {
+        expandedId = open ? taskId : null;
+        paint();
+      },
       paint
     );
   };
