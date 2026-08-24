@@ -44,7 +44,7 @@ Every task/project card surface (Board, Today, Backlog, Search, Projects, calend
 |------|--------|------|
 | **Micro** | `.hub-row` | Title, area chip (`data-area`), priority chip, date badge, “Updated …”, icon edit/delete. Click (or Enter/Space) expands. |
 | **Expanded** | `.hub-card` | Eyebrow, status badge, title, chips, date, progress + `.hub-track` (projects), child-task checklist, footer. **Open page** goes to the full page. |
-| **Full page** | `.page-card` + Teaching Hub `.lesson-builder` | Same visual language as the expanded card. The body is Teaching Hub’s lesson engine: family palette (Basic, Media, Teaching, Learning, Visualisation, Layout), drag-and-drop canvas, nested layout blocks. Routes: `#/task/:id`, `#/project/:id`. Not rail items. |
+| **Full page** | `.page-card` + Teaching Hub block canvas | Same visual language as the expanded card. Title and task fields are editable on the card. A circular **+** opens the Teaching Hub insert menu (Basic, Media, Teaching, Learning, Visualisation, Layout) — not a side rail. Routes: `#/task/:id`, `#/project/:id`. Not rail items. |
 
 Container transform: the slot keeps a unique `view-transition-name` per instance. `document.startViewTransition` morphs micro ↔ expanded; skip the API under `prefers-reduced-motion`. Expanded project task rows stagger with `--i`.
 
@@ -63,7 +63,7 @@ Same cards and pages — not a second visual system. The chrome already collapse
 | **Board / Week** | Horizontal snap-scroll — one status or day at a time — not four skinny columns and not a 4-storey stack. |
 | **Board drag** | Tap expands. Fingers need a 12px lift before a card leaves its slot so a scroll or tap is not a move. `touch-action: pan-y` on cards so the page still scrolls. |
 | **Month** | 7-column grid fits the viewport (no 42rem min-width). Cells stay tappable; the agenda under the grid is the readable list. |
-| **Full page** | Teaching Hub’s lesson palette (family rail + flyout) sits beside the canvas; it shelves the same way as Teaching. Inputs stay at 1rem so iOS does not zoom. |
+| **Full page** | Circular **+** under the card opens the insert menu. Title is an input. Back is a small header link, not a full-width footer button. Inputs stay at 1rem so iOS does not zoom. |
 
 Safe-area padding on the canvas. `viewport-fit=cover`. No new colours, type, or button styles.
 

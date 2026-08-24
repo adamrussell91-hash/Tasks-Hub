@@ -78,7 +78,7 @@ describe('page editor', () => {
     vi.useRealTimers();
   });
 
-  it('mounts the Teaching Hub lesson palette and persists a heading block', async () => {
+  it('edits the title and task fields, and inserts blocks from the plus menu', async () => {
     vi.useFakeTimers();
     vi.mocked(tasksApi.getTask).mockResolvedValue(task());
     vi.mocked(tasksApi.listProjects).mockResolvedValue([project]);
@@ -87,29 +87,40 @@ describe('page editor', () => {
     const canvas = document.createElement('main');
     await renderPageEditor(canvas, { kind: 'task', id: 'task_lesson' });
 
-    expect(canvas.querySelector('.lesson-palette')).not.toBeNull();
-    expect(canvas.querySelector('.lesson-page')).not.toBeNull();
-    expect(canvas.querySelector('.page-card .hub-card__title')?.textContent).toBe('Finish lesson pack');
+    expect(canvas.querySelector('.lesson-palette')).toBeNull();
+    expect(canvas.querySelector('.page-card__back')?.textContent).toBe('Board');
+    expect(canvas.querySelector('.task-card__foot .btn')).toBeNull();
 
-    const basic = canvas.querySelector<HTMLButtonElement>(
-      '.lesson-palette__family[data-family="Basic"]'
-    );
-    expect(basic).not.toBeNull();
-    basic!.click();
+    const title = canvas.querySelector<HTMLInputElement>('.page-card__title-input')!;
+    expect(title.value).toBe('Finish lesson pack');
+    title.value = 'Term brief rewrite';
+    title.dispatchEvent(new Event('input', { bubbles: true }));
 
-    const heading = canvas.querySelector<HTMLButtonElement>(
-      '.lesson-palette__card[data-block-type="heading"]'
-    );
-    expect(heading).not.toBeNull();
-    heading!.click();
+    const domain = canvas.querySelector<HTMLSelectElement>('.page-card__domain')!;
+    domain.value = 'life';
+    domain.dispatchEvent(new Event('change', { bubbles: true }));
 
+    await vi.advanceTimersByTimeAsync(400);
+    expect(tasksApi.updateTask).toHaveBeenCalled();
+    const fields = vi.mocked(tasksApi.updateTask).mock.calls.at(-1)?.[1] as {
+      title: string;
+      domain: string;
+    };
+    expect(fields.title).toBe('Term brief rewrite');
+    expect(fields.domain).toBe('life');
+
+    canvas.querySelector<HTMLButtonElement>('.page-editor__add-btn')!.click();
+    expect(canvas.querySelector('[data-block-type="heading"]')).not.toBeNull();
+    expect(canvas.querySelector('[data-block-type="flashcards"]')).not.toBeNull();
+    expect(canvas.querySelector('[data-block-type="equation"]')).not.toBeNull();
+
+    canvas.querySelector<HTMLButtonElement>('[data-block-type="heading"]')!.click();
     expect(canvas.querySelector('.block-editor__heading-text')).not.toBeNull();
     const field = canvas.querySelector<HTMLInputElement>('.block-editor__heading-text')!;
     field.value = 'Term brief';
     field.dispatchEvent(new Event('input', { bubbles: true }));
 
     await vi.advanceTimersByTimeAsync(400);
-    expect(tasksApi.updateTask).toHaveBeenCalled();
     const patch = vi.mocked(tasksApi.updateTask).mock.calls.at(-1)?.[1] as {
       page_blocks: Array<{ block_type: string; content: { text?: string } }>;
     };
@@ -117,39 +128,15 @@ describe('page editor', () => {
     expect(patch.page_blocks[0]?.content.text).toBe('Term brief');
   });
 
-  it('exposes every Teaching Hub lesson family, not the six-block stub', async () => {
+  it('lists every Teaching Hub family in the plus menu', async () => {
     vi.mocked(tasksApi.getTask).mockResolvedValue(task());
     vi.mocked(tasksApi.listProjects).mockResolvedValue([project]);
 
     const canvas = document.createElement('main');
     await renderPageEditor(canvas, { kind: 'task', id: 'task_lesson' });
+    canvas.querySelector<HTMLButtonElement>('.page-editor__add-btn')!.click();
 
-    const families = [...canvas.querySelectorAll<HTMLButtonElement>('.lesson-palette__family')].map(
-      (btn) => btn.dataset.family
-    );
-    expect(families).toEqual(['Basic', 'Media', 'Teaching', 'Learning', 'Visualisation', 'Layout']);
-
-    const media = canvas.querySelector<HTMLButtonElement>(
-      '.lesson-palette__family[data-family="Media"]'
-    )!;
-    media.click();
-    expect(canvas.querySelector('[data-block-type="image"]')).not.toBeNull();
-    expect(canvas.querySelector('[data-block-type="video"]')).not.toBeNull();
-
-    const learning = canvas.querySelector<HTMLButtonElement>(
-      '.lesson-palette__family[data-family="Learning"]'
-    )!;
-    learning.click();
-    const flashcards = canvas.querySelector<HTMLButtonElement>('[data-block-type="flashcards"]')!;
-    flashcards.click();
-    expect(canvas.querySelector('.block-editor__flashcards-items')).not.toBeNull();
-
-    const visualisation = canvas.querySelector<HTMLButtonElement>(
-      '.lesson-palette__family[data-family="Visualisation"]'
-    )!;
-    visualisation.click();
-    const equation = canvas.querySelector<HTMLButtonElement>('[data-block-type="equation"]')!;
-    equation.click();
-    expect(canvas.querySelectorAll('.lesson-page__block').length).toBeGreaterThanOrEqual(2);
+    const labels = [...canvas.querySelectorAll('.page-editor__insert-label')].map((node) => node.textContent);
+    expect(labels).toEqual(['Basic', 'Media', 'Teaching', 'Learning', 'Visualisation', 'Layout']);
   });
 });
