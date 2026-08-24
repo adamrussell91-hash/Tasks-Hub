@@ -6,7 +6,14 @@ import {
   type SolarModel
 } from '@/domain/universe';
 
-export const UNIVERSE_BUILD = 20;
+export const UNIVERSE_BUILD = 21;
+
+/**
+ * Kepler years in the solar model are thousands of simulation seconds.
+ * At 1× on the slider this many sim-seconds elapse per wall-clock second, so
+ * planets actually crawl instead of looking bolted to the canvas.
+ */
+export const ORBIT_TIME_SCALE = 192;
 
 export type UniverseNotePayload = { pageId: string; title: string; excerpt: string };
 
@@ -183,9 +190,9 @@ export function pinchMidpoint(
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
-export function advanceOrbitClock(seconds: number, deltaMs: number, speed: number, freeze: boolean): number {
-  if (freeze) return 0;
-  return seconds + (Math.max(deltaMs, 0) / 1000) * speed;
+export function advanceOrbitClock(seconds: number, deltaMs: number, speed: number, _freeze = false): number {
+  if (speed <= 0) return seconds;
+  return seconds + (Math.max(deltaMs, 0) / 1000) * speed * ORBIT_TIME_SCALE;
 }
 
 export function isSolarSearching(query: string): boolean {
@@ -209,10 +216,6 @@ export function resolveSearchHits(model: SolarModel, query: string): Set<number>
 export function glowSpread(z: number, giant: boolean): number {
   if (z < 2.4) return 0;
   return giant ? 2.6 : 2.1;
-}
-
-function prefersReducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 function kindLabel(kind: BodyKind): string {
@@ -303,7 +306,6 @@ export function mountUniverseView(
   host.innerHTML = '';
   if (host.clientHeight < 32) host.style.height = `${height}px`;
   const onNoteSelect = options.onNoteSelect;
-  const freeze = prefersReducedMotion();
   const B = model.bodies;
   const n = B.length;
   const X = new Float64Array(n);
@@ -464,7 +466,7 @@ export function mountUniverseView(
   }
 
   function draw(now: number): void {
-    orbitSeconds = advanceOrbitClock(orbitSeconds, now - lastFrame, options.clock?.speed ?? 1, freeze);
+    orbitSeconds = advanceOrbitClock(orbitSeconds, now - lastFrame, options.clock?.speed ?? 1);
     lastFrame = now;
     const z = zNow();
     const band = zoomBand(z);

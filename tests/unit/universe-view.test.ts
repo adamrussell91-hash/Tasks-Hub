@@ -3,6 +3,7 @@ import { buildSolarModel, worldPositions, type Body, type UniverseEntry } from '
 import { DOMAIN_VOCABULARY } from '@/domain/universe';
 import {
   UNIVERSE_BUILD,
+  ORBIT_TIME_SCALE,
   KIND_DEPTH,
   advanceOrbitClock,
   applySolarStageResize,
@@ -160,7 +161,7 @@ function worldPos(body: Body, model: ReturnType<typeof buildSolarModel>) {
 
 describe('presence and bands', () => {
   it('exposes a build number so a stale Universe bundle is obvious', () => {
-    expect(UNIVERSE_BUILD).toBe(20);
+    expect(UNIVERSE_BUILD).toBe(21);
   });
 
   it('maps band thresholds onto KIND_DEPTH cutoffs', () => {
@@ -291,9 +292,32 @@ describe('zoom ladder', () => {
   });
 
   it('advances the orbit clock from the speed control without jumping', () => {
-    expect(advanceOrbitClock(0, 10000, 0.25, false)).toBe(2.5);
-    expect(advanceOrbitClock(2.5, 1000, 1, false)).toBe(3.5);
-    expect(advanceOrbitClock(5, 2000, 2, true)).toBe(0);
+    expect(advanceOrbitClock(0, 10000, 0.25)).toBe(2.5 * ORBIT_TIME_SCALE);
+    expect(advanceOrbitClock(2.5, 1000, 1)).toBe(2.5 + ORBIT_TIME_SCALE);
+    expect(advanceOrbitClock(5, 2000, 0)).toBe(5);
+    expect(advanceOrbitClock(5, 2000, 2, true)).toBe(5 + 2 * 2 * ORBIT_TIME_SCALE);
+  });
+
+  it('moves planets and moons a visible angle in two seconds at the default 0.5× speed', () => {
+    const model = buildSolarModel([...tagged('g', V0, 12), ...tagged('l', DOMAIN_VOCABULARY[1]!, 8)]);
+    const elapsed = advanceOrbitClock(0, 2000, 0.5);
+    const before = worldPositions(model.bodies, 0);
+    const after = worldPositions(model.bodies, elapsed);
+    const wrap = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
+    const spinOf = (body: { idx: number; parent: number }) => {
+      const parent = body.parent >= 0 ? body.parent : body.idx;
+      return wrap(
+        Math.atan2(after.y[body.idx]! - after.y[parent]!, after.x[body.idx]! - after.x[parent]!) -
+          Math.atan2(before.y[body.idx]! - before.y[parent]!, before.x[body.idx]! - before.x[parent]!)
+      );
+    };
+    const planetSpins = model.planets.filter((body) => body.period > 0).map((body) => Math.abs(spinOf(body)));
+    const moonSpins = model.bodies
+      .filter((body) => body.kind === 'moon' && body.period > 0)
+      .map((body) => Math.abs(spinOf(body)));
+    expect(elapsed).toBe(ORBIT_TIME_SCALE);
+    expect(Math.max(...planetSpins)).toBeGreaterThan(0.04);
+    expect(Math.max(...moonSpins)).toBeGreaterThan(0.15);
   });
 });
 
@@ -348,6 +372,25 @@ describe('mountUniverseView', () => {
     });
     frames.pump(16);
     expect(recorded.fullCircleStrokes).toHaveLength(0);
+    stop();
+  });
+
+  it('keeps planets moving across frames even when the OS asks for reduced motion', () => {
+    const recorded = installCanvas();
+    const frames = stubFrame();
+    const host = document.createElement('div');
+    Object.defineProperty(host, 'clientWidth', { value: 800, configurable: true });
+    const stop = mountUniverseView(host, buildSolarModel([...tagged('g', V0, 12), ...tagged('l', DOMAIN_VOCABULARY[1]!, 8)]), {
+      search: '',
+      onNoteSelect() {},
+      clock: { speed: 0.5 }
+    });
+    frames.pump(0);
+    const first = recorded.arcs.map((arc) => `${arc.x.toFixed(2)},${arc.y.toFixed(2)}`);
+    frames.pump(2000);
+    const second = recorded.arcs.map((arc) => `${arc.x.toFixed(2)},${arc.y.toFixed(2)}`);
+    expect(first.length).toBeGreaterThan(0);
+    expect(second).not.toEqual(first);
     stop();
   });
 
