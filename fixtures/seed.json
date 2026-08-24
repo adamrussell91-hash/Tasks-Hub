@@ -108,12 +108,58 @@
       "created_at": "2026-08-01T00:00:00.000Z"
     }
   ],
+  "areas": [
+    {
+      "schema_version": 1,
+      "id": "area_teaching",
+      "title": "Teaching",
+      "description": "School, curriculum, and classroom work.",
+      "tags": [],
+      "created_at": "2026-08-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z"
+    },
+    {
+      "schema_version": 1,
+      "id": "area_life",
+      "title": "Life",
+      "description": "Home, health, and personal arcs.",
+      "tags": [],
+      "created_at": "2026-08-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z"
+    }
+  ],
+  "goals": [
+    {
+      "schema_version": 1,
+      "id": "goal_mindworks",
+      "title": "Grow MindWorks",
+      "description": "Build and stabilise the MindWorks program across the year.",
+      "parent_area_id": "area_teaching",
+      "status": "active",
+      "tags": ["academic"],
+      "created_at": "2026-08-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z"
+    },
+    {
+      "schema_version": 1,
+      "id": "goal_masters",
+      "title": "Finish Masters reading",
+      "description": "Complete the literature review arc.",
+      "parent_area_id": "area_life",
+      "status": "active",
+      "tags": ["study"],
+      "created_at": "2026-08-01T00:00:00.000Z",
+      "updated_at": "2026-08-01T00:00:00.000Z"
+    }
+  ],
   "projects": [
     {
       "schema_version": 1,
       "id": "proj_mindworks",
       "title": "MindWorks",
       "description": "Multi-term academic initiative.",
+      "parent_goal_id": "goal_mindworks",
+      "tags": ["academic", "term-3"],
       "arc_summary": "Build and stabilise MindWorks across the year.",
       "type": "academic_program",
       "milestones": [
@@ -150,6 +196,8 @@
       "id": "proj_stalled_masters",
       "title": "Masters reading notes",
       "description": "Literature notes that stopped moving mid-year.",
+      "parent_goal_id": "goal_masters",
+      "tags": ["study"],
       "arc_summary": "Quiet since June — seed for stall detection.",
       "type": "standard",
       "milestones": [
@@ -287,6 +335,35 @@
         "wedding"
       ],
       "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_demo_weekly_review",
+      "title": "Weekly teaching review",
+      "description": "Repeat every Monday — spawns the next instance when marked done.",
+      "domain": "teaching",
+      "framework_used": "fw_timeboxing",
+      "estimated_duration": 30,
+      "actual_duration": null,
+      "due_date": "2026-08-18",
+      "created_at": "2026-08-10T00:00:00.000Z",
+      "updated_at": "2026-08-10T00:00:00.000Z",
+      "completed_at": null,
+      "status": "open",
+      "priority": "medium",
+      "parent_project_id": "proj_mindworks",
+      "parent_task_id": null,
+      "depends_on": [],
+      "tags": [
+        "teaching",
+        "review"
+      ],
+      "recurrence_rule": "{\"v\":1,\"frequency\":\"weekly\",\"interval\":1,\"count\":null,\"completed_count\":0,\"weekday\":1}",
+      "due_time": "09:00",
+      "remind_at": "2026-08-17T23:00:00.000Z",
+      "remind_dismissed_at": null,
       "attachments": [],
       "source": "manual"
     },
@@ -604,6 +681,9 @@
       "id": "task_demo_outline_units",
       "title": "Outline MindWorks units",
       "description": "Child of the lesson pack — branch-view depth.",
+      "kind": "step",
+      "bucket": "active",
+      "step_order": 1,
       "domain": "teaching",
       "framework_used": null,
       "estimated_duration": 40,
@@ -620,6 +700,34 @@
       "tags": [
         "teaching",
         "mindworks"
+      ],
+      "recurrence_rule": null,
+      "attachments": [],
+      "source": "manual"
+    },
+    {
+      "schema_version": 1,
+      "id": "task_someday_podcast",
+      "title": "Start a teaching podcast",
+      "description": "Maybe — park until there is bandwidth after Term 3.",
+      "kind": "task",
+      "bucket": "someday",
+      "step_order": 0,
+      "domain": "teaching",
+      "framework_used": null,
+      "estimated_duration": null,
+      "actual_duration": null,
+      "due_date": null,
+      "created_at": "2026-08-20T00:00:00.000Z",
+      "updated_at": "2026-08-20T00:00:00.000Z",
+      "completed_at": null,
+      "status": "deferred",
+      "priority": "low",
+      "parent_project_id": null,
+      "parent_task_id": null,
+      "depends_on": [],
+      "tags": [
+        "idea"
       ],
       "recurrence_rule": null,
       "attachments": [],

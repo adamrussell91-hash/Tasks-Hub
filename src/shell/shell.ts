@@ -5,6 +5,7 @@ export interface HubShellRefs {
   rail: HTMLElement;
   railNav: HTMLElement;
   canvas: HTMLElement;
+  reminderHost: HTMLElement;
   pageHeader: HTMLElement;
   headerActions: HTMLElement;
   logoutButton: HTMLButtonElement | null;
@@ -18,6 +19,8 @@ export interface HubShellOptions {
 
 export type HubViewId =
   | 'board'
+  | 'goals'
+  | 'someday'
   | 'clare'
   | 'graph'
   | 'maps'
@@ -45,6 +48,8 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Plan',
     items: [
+      { id: 'goals', label: 'Goals', href: '#/goals' },
+      { id: 'someday', label: 'Someday', href: '#/someday' },
       { id: 'clare', label: 'Clare', href: '#/clare' },
       { id: 'templates', label: 'Templates', href: '#/templates' }
     ]
@@ -196,11 +201,16 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
   const canvas = document.createElement('div');
   canvas.className = 'hub-canvas__body';
 
+  const reminderHost = document.createElement('div');
+  reminderHost.className = 'reminder-strip-host';
+  reminderHost.hidden = true;
+
   const refs: HubShellRefs = {
     root,
     rail,
     railNav,
     canvas,
+    reminderHost,
     pageHeader,
     headerActions,
     logoutButton,
@@ -209,7 +219,7 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
 
   headerActions.append(mountUtilities(refs), hubMark());
   pageHeader.append(headerActions);
-  canvasWrap.append(pageHeader, canvas);
+  canvasWrap.append(pageHeader, reminderHost, canvas);
   layout.append(rail, canvasWrap);
   root.append(createSkipLink('hub-main'), layout);
 

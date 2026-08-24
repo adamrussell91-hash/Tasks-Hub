@@ -106,3 +106,19 @@ export function programKey(id: string): string {
 export function programsIndexKey(): string {
   return 'programs/_index';
 }
+
+export function areaKey(id: string): string {
+  return `areas/${id}`;
+}
+
+export function areasIndexKey(): string {
+  return 'areas/_index';
+}
+
+export function goalKey(id: string): string {
+  return `goals/${id}`;
+}
+
+export function goalsIndexKey(): string {
+  return 'goals/_index';
+}

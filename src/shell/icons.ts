@@ -2,6 +2,8 @@
 
 export const RAIL_ICON_PATHS: Record<string, string[]> = {
   board: ['M4 6h7v5H4z', 'M13 6h7v5h-7z', 'M4 14h7v5H4z', 'M13 14h7v5h-7z'],
+  goals: ['M4 18V6', 'M8 6v12', 'M12 10v8', 'M16 4v14', 'M20 8v10'],
+  someday: ['M4 16c3-4 6-6 8-6s5 2 8 6', 'M4 16h16', 'M8 20h8'],
   clare: ['M4 6h16v9H8l-4 3V6z'],
   graph: [
     'M6 12a2.25 2.25 0 1 1 0-4.5A2.25 2.25 0 0 1 6 12z',

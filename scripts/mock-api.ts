@@ -6,6 +6,8 @@ import { TaskCreateSchema, TaskUpdateSchema } from '../src/schemas/task';
 import { ProjectCreateSchema, ProjectUpdateSchema } from '../src/schemas/project';
 import { TransitMapCreateSchema, TransitMapUpdateSchema } from '../src/schemas/map';
 import { ProgramCreateSchema, ProgramUpdateSchema } from '../src/schemas/program';
+import { AreaCreateSchema, AreaUpdateSchema } from '../src/schemas/area';
+import { GoalCreateSchema, GoalUpdateSchema } from '../src/schemas/goal';
 
 export function createMemoryKv(): KvAdapter & { map: Map<string, unknown> } {
   const map = new Map<string, unknown>();
@@ -128,6 +130,52 @@ export function createMockApi({ seed }: MockApiOptions) {
       }
       if (method === 'DELETE' && id) {
         await s.deleteProject(id, body as { agent?: string; reason?: string } | undefined);
+        return json(200, { ok: true, data: { deleted: true } });
+      }
+    }
+
+    if (path === '/api/areas') {
+      if (method === 'GET') {
+        if (id) {
+          const area = await s.getArea(id);
+          if (!area) return json(404, { ok: false, error: { code: 'not_found', message: 'Area not found' } });
+          return json(200, { ok: true, data: area });
+        }
+        return json(200, { ok: true, data: { areas: await s.listAreas() } });
+      }
+      if (method === 'POST') {
+        const parsed = AreaCreateSchema.parse(body);
+        return json(201, { ok: true, data: await s.createArea(parsed) });
+      }
+      if (method === 'PATCH' && id) {
+        const parsed = AreaUpdateSchema.parse(body);
+        return json(200, { ok: true, data: await s.updateArea(id, parsed) });
+      }
+      if (method === 'DELETE' && id) {
+        await s.deleteArea(id);
+        return json(200, { ok: true, data: { deleted: true } });
+      }
+    }
+
+    if (path === '/api/goals') {
+      if (method === 'GET') {
+        if (id) {
+          const goal = await s.getGoal(id);
+          if (!goal) return json(404, { ok: false, error: { code: 'not_found', message: 'Goal not found' } });
+          return json(200, { ok: true, data: goal });
+        }
+        return json(200, { ok: true, data: { goals: await s.listGoals() } });
+      }
+      if (method === 'POST') {
+        const parsed = GoalCreateSchema.parse(body);
+        return json(201, { ok: true, data: await s.createGoal(parsed) });
+      }
+      if (method === 'PATCH' && id) {
+        const parsed = GoalUpdateSchema.parse(body);
+        return json(200, { ok: true, data: await s.updateGoal(id, parsed) });
+      }
+      if (method === 'DELETE' && id) {
+        await s.deleteGoal(id);
         return json(200, { ok: true, data: { deleted: true } });
       }
     }

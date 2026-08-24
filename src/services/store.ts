@@ -13,6 +13,16 @@ import { DEFAULT_STRESS_ROUTE, StressFlagSchema } from '@/schemas/stress';
 import { CapacityShareSchema } from '@/schemas/capacity';
 import { TransitMapSchema } from '@/schemas/map';
 import { ProgramSchema } from '@/schemas/program';
+import { AreaSchema } from '@/schemas/area';
+import { GoalSchema } from '@/schemas/goal';
+import {
+  advanceRecurrence,
+  hasMoreOccurrences,
+  nextDueDate,
+  parseRecurrenceRule,
+  serializeRecurrenceRule
+} from '@/domain/recurrence';
+import { carryReminderForward } from '@/domain/reminders';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { catalogPrograms } from '@/domain/programs-seed';
 import { buildExcursionPlan } from '@/domain/excursion';
@@ -64,6 +74,10 @@ export interface KeyBuilders {
   mapsIndexKey: () => string;
   programKey: (id: string) => string;
   programsIndexKey: () => string;
+  areaKey: (id: string) => string;
+  areasIndexKey: () => string;
+  goalKey: (id: string) => string;
+  goalsIndexKey: () => string;
 }
 
 function nowIso(): string {
@@ -72,6 +86,45 @@ function nowIso(): string {
 
 function newId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+}
+
+async function spawnRecurringSuccessor(
+  store: TasksStore,
+  completed: Task
+): Promise<Task | null> {
+  if (completed.kind === 'step' || completed.bucket === 'someday') return null;
+  const rule = parseRecurrenceRule(completed.recurrence_rule);
+  if (!rule || !hasMoreOccurrences(rule)) return null;
+
+  const advanced = advanceRecurrence(rule);
+  if (rule.count != null && advanced.completed_count >= rule.count) return null;
+
+  const due = nextDueDate(completed.due_date, rule);
+  if (!due) return null;
+
+  const seriesId = rule.series_id ?? completed.id;
+  const nextRule = serializeRecurrenceRule({ ...advanced, series_id: seriesId });
+
+  return store.createTask({
+    title: completed.title,
+    description: completed.description,
+    domain: completed.domain,
+    kind: 'task',
+    bucket: 'active',
+    framework_used: completed.framework_used,
+    estimated_duration: completed.estimated_duration,
+    due_date: due,
+    due_time: completed.due_time,
+    status: 'open',
+    priority: completed.priority,
+    parent_project_id: completed.parent_project_id,
+    depends_on: [],
+    tags: completed.tags,
+    recurrence_rule: nextRule,
+    remind_at: carryReminderForward(completed, due),
+    remind_dismissed_at: null,
+    source: completed.source
+  });
 }
 
 async function readIndex(kv: KvAdapter, key: string): Promise<string[]> {
@@ -114,6 +167,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         id: newId('task'),
         title: input.title,
         description: input.description ?? '',
+        kind: input.kind ?? 'task',
+        bucket: input.bucket ?? 'active',
+        step_order: input.step_order ?? 0,
         domain: input.domain,
         framework_used: input.framework_used ?? null,
         estimated_duration: input.estimated_duration ?? null,
@@ -129,6 +185,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         depends_on: input.depends_on ?? [],
         tags: input.tags ?? [],
         recurrence_rule: input.recurrence_rule ?? null,
+        due_time: input.due_time ?? null,
+        remind_at: input.remind_at ?? null,
+        remind_dismissed_at: input.remind_dismissed_at ?? null,
         attachments: input.attachments ?? [],
         source: input.source ?? 'manual'
       });
@@ -156,6 +215,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
               : (patch.completed_at ?? existing.completed_at)
       });
       await kv.setJSON(keys.taskKey(id), next);
+      if (patch.status === 'done' && existing.status !== 'done') {
+        await spawnRecurringSuccessor(this, next);
+      }
       return next;
     },
     async deleteTask(id, meta) {
@@ -195,6 +257,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         id: newId('proj'),
         title: input.title,
         description: input.description ?? '',
+        parent_goal_id: input.parent_goal_id ?? null,
+        tags: input.tags ?? [],
         arc_summary: input.arc_summary ?? '',
         type: input.type ?? 'standard',
         milestones: input.milestones ?? [],
@@ -251,6 +315,96 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         });
         await kv.setJSON(keys.agentActionLogKey(log.id), log);
       }
+    },
+
+    async listAreas() {
+      return listByIndex(kv, keys.areasIndexKey(), keys.areaKey, (raw) => AreaSchema.parse(raw));
+    },
+    async getArea(id) {
+      const raw = await kv.getJSON(keys.areaKey(id));
+      return raw ? AreaSchema.parse(raw) : null;
+    },
+    async createArea(input) {
+      const stamp = nowIso();
+      const area = AreaSchema.parse({
+        schema_version: 1,
+        id: newId('area'),
+        title: input.title,
+        description: input.description ?? '',
+        tags: input.tags ?? [],
+        created_at: stamp,
+        updated_at: stamp
+      });
+      await kv.setJSON(keys.areaKey(area.id), area);
+      const ids = await readIndex(kv, keys.areasIndexKey());
+      ids.push(area.id);
+      await writeIndex(kv, keys.areasIndexKey(), ids);
+      return area;
+    },
+    async updateArea(id, patch) {
+      const existing = await this.getArea(id);
+      if (!existing) throw new Error(`Area not found: ${id}`);
+      const next = AreaSchema.parse({
+        ...existing,
+        ...patch,
+        id: existing.id,
+        schema_version: 1,
+        created_at: existing.created_at,
+        updated_at: nowIso()
+      });
+      await kv.setJSON(keys.areaKey(id), next);
+      return next;
+    },
+    async deleteArea(id) {
+      await kv.delete(keys.areaKey(id));
+      const ids = (await readIndex(kv, keys.areasIndexKey())).filter((x) => x !== id);
+      await writeIndex(kv, keys.areasIndexKey(), ids);
+    },
+
+    async listGoals() {
+      return listByIndex(kv, keys.goalsIndexKey(), keys.goalKey, (raw) => GoalSchema.parse(raw));
+    },
+    async getGoal(id) {
+      const raw = await kv.getJSON(keys.goalKey(id));
+      return raw ? GoalSchema.parse(raw) : null;
+    },
+    async createGoal(input) {
+      const stamp = nowIso();
+      const goal = GoalSchema.parse({
+        schema_version: 1,
+        id: newId('goal'),
+        title: input.title,
+        description: input.description ?? '',
+        parent_area_id: input.parent_area_id ?? null,
+        status: input.status ?? 'active',
+        tags: input.tags ?? [],
+        created_at: stamp,
+        updated_at: stamp
+      });
+      await kv.setJSON(keys.goalKey(goal.id), goal);
+      const ids = await readIndex(kv, keys.goalsIndexKey());
+      ids.push(goal.id);
+      await writeIndex(kv, keys.goalsIndexKey(), ids);
+      return goal;
+    },
+    async updateGoal(id, patch) {
+      const existing = await this.getGoal(id);
+      if (!existing) throw new Error(`Goal not found: ${id}`);
+      const next = GoalSchema.parse({
+        ...existing,
+        ...patch,
+        id: existing.id,
+        schema_version: 1,
+        created_at: existing.created_at,
+        updated_at: nowIso()
+      });
+      await kv.setJSON(keys.goalKey(id), next);
+      return next;
+    },
+    async deleteGoal(id) {
+      await kv.delete(keys.goalKey(id));
+      const ids = (await readIndex(kv, keys.goalsIndexKey())).filter((x) => x !== id);
+      await writeIndex(kv, keys.goalsIndexKey(), ids);
     },
 
     async listFrameworks() {
@@ -1010,6 +1164,30 @@ export async function seedIfEmpty(
     keys.projectsIndexKey(),
     seed.projects.map((p) => p.id)
   );
+
+  const areas = seed.areas ?? [];
+  for (const item of areas) {
+    await kv.setJSON(keys.areaKey(item.id), AreaSchema.parse(item));
+  }
+  if (areas.length > 0) {
+    await writeIndex(
+      kv,
+      keys.areasIndexKey(),
+      areas.map((a) => a.id)
+    );
+  }
+
+  const goals = seed.goals ?? [];
+  for (const item of goals) {
+    await kv.setJSON(keys.goalKey(item.id), GoalSchema.parse(item));
+  }
+  if (goals.length > 0) {
+    await writeIndex(
+      kv,
+      keys.goalsIndexKey(),
+      goals.map((g) => g.id)
+    );
+  }
 
   for (const item of seed.tasks) {
     await kv.setJSON(keys.taskKey(item.id), TaskSchema.parse(item));

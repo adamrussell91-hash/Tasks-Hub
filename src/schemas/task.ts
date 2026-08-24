@@ -3,6 +3,9 @@ import { z } from 'zod';
 export const schemaVersion = z.literal(1);
 
 export const TaskDomainSchema = z.enum(['teaching', 'life', 'wedding', 'health', 'other']);
+export const TaskKindSchema = z.enum(['task', 'step']);
+export const TaskBucketSchema = z.enum(['active', 'someday']);
+
 export const TaskStatusSchema = z.enum(['open', 'in_progress', 'done', 'deferred', 'dead']);
 export const TaskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 export const TaskSourceSchema = z.enum([
@@ -16,6 +19,9 @@ export const TaskSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   description: z.string().default(''),
+  kind: TaskKindSchema.default('task'),
+  bucket: TaskBucketSchema.default('active'),
+  step_order: z.number().int().nonnegative().default(0),
   domain: TaskDomainSchema,
   framework_used: z.string().nullable().default(null),
   estimated_duration: z.number().nonnegative().nullable().default(null),
@@ -31,6 +37,9 @@ export const TaskSchema = z.object({
   depends_on: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   recurrence_rule: z.string().nullable().default(null),
+  due_time: z.string().nullable().default(null),
+  remind_at: z.string().nullable().default(null),
+  remind_dismissed_at: z.string().nullable().default(null),
   attachments: z.array(z.string()).default([]),
   source: TaskSourceSchema.default('manual')
 });
@@ -48,6 +57,9 @@ export const TaskCreateSchema = TaskSchema.omit({
   completed_at: true
 }).partial({
   description: true,
+  kind: true,
+  bucket: true,
+  step_order: true,
   framework_used: true,
   estimated_duration: true,
   actual_duration: true,
@@ -59,6 +71,9 @@ export const TaskCreateSchema = TaskSchema.omit({
   depends_on: true,
   tags: true,
   recurrence_rule: true,
+  due_time: true,
+  remind_at: true,
+  remind_dismissed_at: true,
   attachments: true,
   source: true
 }).extend({

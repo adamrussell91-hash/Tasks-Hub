@@ -58,6 +58,8 @@ function renderTaskRow(
     el('span', 'chip chip--muted', task.status.replace('_', ' '))
   );
   if (task.due_date) meta.append(el('span', 'chip chip--muted', `Due ${formatDisplayDate(task.due_date)}`));
+  if (task.recurrence_rule) meta.append(el('span', 'chip', 'Repeats'));
+  if (task.remind_at) meta.append(el('span', 'chip', 'Notify'));
   if (task.framework_used) meta.append(el('span', 'chip', 'framework'));
 
   const actions = el('div', 'task-row__actions');
