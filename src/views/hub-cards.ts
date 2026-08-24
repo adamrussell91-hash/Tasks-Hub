@@ -101,6 +101,8 @@ export type ProjectCardHandlers = {
   onAddTask?: (project: Project) => void;
   onOpenPage?: (project: Project) => void;
   onClose?: (project: Project) => void;
+  /** Compact-row click. Defaults to expanding the card in place. */
+  onActivate?: (project: Project) => void;
 };
 
 function isInteractive(target: EventTarget | null): boolean {
@@ -255,7 +257,10 @@ export function renderProjectExpandedCard(
   const title = el('h2', 'hub-card__title card-title', project.title);
   const tags = el('div', 'task-card__tags-row');
   const chips = el('div', 'hub-chips');
-  chips.append(el('span', 'hub-chip', project.type));
+  chips.append(el('span', 'hub-chip', project.type === 'excursion' ? 'excursion' : project.type));
+  if (project.type === 'excursion' && project.student_group_reference) {
+    chips.append(el('span', 'hub-chip', project.student_group_reference));
+  }
   tags.append(chips);
   const due = dateBadge(project.current_end_date, 'Target ');
   if (due) tags.append(due);
@@ -421,11 +426,15 @@ export function mountProjectCard(
       }, guard);
     if (!expanded) {
       const row = slot.querySelector<HTMLElement>('.proj-row');
-      row?.addEventListener('click', expand);
+      const activate = () => {
+        if (handlers.onActivate) handlers.onActivate(project);
+        else expand();
+      };
+      row?.addEventListener('click', activate);
       row?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          expand();
+          activate();
         }
       });
     } else {

@@ -12,6 +12,8 @@ import {
   sortByPriorityThenDue
 } from '@/domain/queries';
 import type { Task } from '@/schemas/task';
+import { createBlock } from '@/blocks/create-block';
+import { PageBlockSchema } from '@/schemas/page-block';
 
 function memoryKv(): KvAdapter {
   const map = new Map<string, unknown>();
@@ -63,53 +65,36 @@ describe('tasks store', () => {
     const created = await store.createTask({
       title: 'Page task',
       domain: 'teaching',
-      page_blocks: [
-        {
-          id: 'block_h1',
-          type: 'block',
-          block_type: 'heading',
-          variant: 'section',
-          content: { text: 'Brief' },
-          created_at: '2026-08-01T00:00:00.000Z',
-          updated_at: '2026-08-01T00:00:00.000Z',
-          schema_version: 1
-        }
-      ]
+      page_blocks: [createBlock('heading', 'block_h1')]
     });
-    expect(created.page_blocks?.[0]?.content).toEqual({ text: 'Brief' });
+    expect(created.page_blocks?.[0]).toMatchObject({
+      block_type: 'heading',
+      content: { text: '' }
+    });
 
     const updated = await store.updateTask(created.id, {
-      page_blocks: [
-        {
-          id: 'block_rt',
-          type: 'block',
-          block_type: 'rich_text',
-          variant: 'medium',
-          content: { html: '<p>Notes</p>' },
-          created_at: '2026-08-01T00:00:00.000Z',
-          updated_at: '2026-08-01T00:00:00.000Z',
-          schema_version: 1
-        }
-      ]
+      page_blocks: [createBlock('rich_text', 'block_rt')]
     });
     expect(updated.page_blocks?.[0]?.block_type).toBe('rich_text');
 
+    const stubQuote = PageBlockSchema.parse({
+      id: 'block_q',
+      type: 'block',
+      block_type: 'quote',
+      variant: 'medium',
+      content: { text: 'Hold the line', attribution: 'Adam' },
+      created_at: '2026-08-01T00:00:00.000Z',
+      updated_at: '2026-08-01T00:00:00.000Z',
+      schema_version: 1
+    });
     const project = (await store.listProjects())[0]!;
     const next = await store.updateProject(project.id, {
-      page_blocks: [
-        {
-          id: 'block_q',
-          type: 'block',
-          block_type: 'quote',
-          variant: 'medium',
-          content: { text: 'Hold the line', attribution: 'Adam' },
-          created_at: '2026-08-01T00:00:00.000Z',
-          updated_at: '2026-08-01T00:00:00.000Z',
-          schema_version: 1
-        }
-      ]
+      page_blocks: [stubQuote]
     });
-    expect(next.page_blocks?.[0]?.content).toMatchObject({ text: 'Hold the line' });
+    expect(next.page_blocks?.[0]?.content).toMatchObject({
+      quote: 'Hold the line',
+      attribution: 'Adam'
+    });
   });
 
   it('saves and instantiates task templates', async () => {

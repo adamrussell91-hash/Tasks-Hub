@@ -8,6 +8,8 @@ import '../styles/hub.css';
 import '../styles/views.css';
 import '../styles/cards.css';
 import '../styles/gantt.css';
+import '../styles/lesson-engine.css';
+import 'katex/dist/katex.min.css';
 
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
@@ -46,6 +48,7 @@ import { renderPageEditor } from '@/views/page-editor';
 import { renderGoalsView } from '@/views/goals';
 import { renderSomedayView } from '@/views/someday';
 import { renderReminderStrip } from '@/views/reminder-strip';
+import { tasksApi } from '@/services/client-api';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
@@ -259,11 +262,24 @@ async function bootApp(root: HTMLElement): Promise<void> {
     }
     const entity = parseEntityPage();
     if (entity) {
-      renderPrimaryNav(shell.railNav, entity.kind === 'project' ? 'projects' : 'board');
+      let rail: HubViewId = entity.kind === 'project' ? 'projects' : 'board';
+      let eyebrow = entity.kind === 'task' ? 'Task' : 'Project';
+      let title = 'Page';
+      if (entity.kind === 'project') {
+        const project = await tasksApi.getProject(entity.id).catch(() => null);
+        if (project) {
+          title = project.title;
+          if (project.type === 'excursion') {
+            rail = 'excursions';
+            eyebrow = 'Excursion';
+          }
+        }
+      }
+      renderPrimaryNav(shell.railNav, rail);
       renderPageHeader(shell, {
-        eyebrow: entity.kind === 'task' ? 'Task' : 'Project',
-        title: 'Page',
-        supporting: 'Same block engine as Teaching Hub’s lesson builder.'
+        eyebrow,
+        title,
+        supporting: 'Build the page with Teaching Hub’s lesson blocks.'
       });
       try {
         await renderPageEditor(shell.canvas, entity);

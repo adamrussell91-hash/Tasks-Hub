@@ -1059,6 +1059,185 @@
   margin-top: var(--space-5);
 }
 
+.excursion-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: 0;
+}
+
+.excursion-page__intro {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.excursion-page__intro .hub-card__title {
+  font-size: var(--text-xl);
+}
+
+.excursion-page__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.excursion-progress {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--hub-glass-fill);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--hub-elev-card);
+  backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
+  -webkit-backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
+}
+
+.excursion-progress__copy {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.excursion-progress .hub-track {
+  width: 100%;
+}
+
+.excursion-timeline {
+  position: relative;
+  max-height: min(70vh, 48rem);
+  overflow: auto;
+  scroll-behavior: smooth;
+  padding: 0 var(--space-2) var(--space-6);
+  outline: none;
+}
+
+.excursion-timeline:focus-visible {
+  box-shadow: 0 0 0 2px var(--wave);
+  border-radius: var(--radius-md);
+}
+
+.excursion-timeline__inner {
+  position: relative;
+  min-height: 100%;
+}
+
+.excursion-timeline__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.excursion-timeline__line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(5.5rem + 1rem - 4px);
+  width: 8px;
+  border-radius: var(--radius-full);
+  background: var(--marine);
+  pointer-events: none;
+}
+
+.excursion-timeline__stop {
+  display: grid;
+  grid-template-columns: 5.5rem 2rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+  position: relative;
+}
+
+.excursion-timeline__when {
+  justify-self: end;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.excursion-timeline__mark {
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.excursion-timeline__node {
+  display: block;
+  overflow: visible;
+}
+
+.excursion-timeline__node .map-tick__mark {
+  fill: var(--paper);
+  stroke: var(--marine);
+  stroke-width: 3.5;
+}
+
+.excursion-timeline__node.is-done .map-tick__mark {
+  fill: color-mix(in srgb, var(--marine) 22%, var(--paper));
+}
+
+.excursion-timeline__node.is-event .map-tick__mark {
+  stroke: var(--wave);
+}
+
+.excursion-timeline__card {
+  min-width: 0;
+}
+
+.excursion-timeline__card .hub-row {
+  cursor: pointer;
+}
+
+.excursion-timeline__event {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--hub-glass-fill);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-1);
+}
+
+@media (max-width: 720px) {
+  .excursion-timeline {
+    max-height: none;
+  }
+
+  .excursion-timeline__stop {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    grid-template-areas:
+      'mark when'
+      'mark card';
+    row-gap: var(--space-1);
+  }
+
+  .excursion-timeline__line {
+    left: calc(1rem - 4px);
+  }
+
+  .excursion-timeline__mark {
+    grid-area: mark;
+  }
+
+  .excursion-timeline__when {
+    grid-area: when;
+    justify-self: start;
+  }
+
+  .excursion-timeline__card {
+    grid-area: card;
+  }
+}
+
 .clare-prefs {
   margin-bottom: var(--space-4);
 }
