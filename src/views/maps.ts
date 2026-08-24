@@ -1,4 +1,4 @@
-import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap } from '@/schemas/map';
+import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap, YearTrack } from '@/schemas/map';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { exportMapHtml, pickCurrentYearMap } from '@/domain/maps';
@@ -15,10 +15,13 @@ import {
   normalizeLineColors,
   schoolTerms,
   wrapEventLines,
+  YEAR_TRACKS,
+  YEAR_TRACK_LABELS,
   yearLinePoints,
   yToDate,
   type MapCanvasLayout
 } from '@/domain/maps-layout';
+import { discCss, fillCss, letterCss, strokeCss } from '@/domain/maps-colors';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 
@@ -42,37 +45,15 @@ function newId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
 }
 
-const STROKE_VAR: Record<MapColorToken, string> = {
-  wave: 'var(--wave)',
-  success: 'var(--success)',
-  lilac: 'var(--pastel-lilac-ink)',
-  'high-sea': 'var(--high-sea)',
-  'high-sea-ink': 'var(--high-sea-ink)',
-  marine: 'var(--marine)',
-  navy: 'var(--navy)',
-  depth: 'var(--depth)'
-};
-
-const FILL_VAR: Record<MapColorToken, string> = {
-  wave: 'var(--pastel-blue)',
-  success: 'var(--pastel-sage)',
-  lilac: 'var(--pastel-lilac)',
-  'high-sea': 'var(--pastel-gold)',
-  'high-sea-ink': 'var(--pastel-gold)',
-  marine: 'var(--pastel-blue)',
-  navy: 'var(--pastel-blue)',
-  depth: 'var(--pastel-blue)'
-};
-
 type Mode = 'view' | 'edit';
 type DraftKind = 'line' | 'station' | 'event' | null;
 
 function strokeOf(color: MapColorToken): string {
-  return STROKE_VAR[color];
+  return strokeCss(color);
 }
 
 function fillOf(color: MapColorToken): string {
-  return FILL_VAR[color];
+  return fillCss(color);
 }
 
 function findLine(map: TransitMap, id: string): MapLine | undefined {
@@ -271,11 +252,11 @@ function ownerLineId(layout: MapCanvasLayout, ownerId: string, owner: string): s
 const lastLineX = new Map<string, number>();
 
 function letterFill(color: MapColorToken): string {
-  return color === 'high-sea' ? 'var(--high-sea-ink)' : 'var(--paper)';
+  return letterCss(color);
 }
 
 function discFill(color: MapColorToken): string {
-  return color === 'high-sea' ? 'var(--pastel-gold)' : strokeOf(color);
+  return discCss(color);
 }
 
 function slideLine(node: SVGElement, prev: number | undefined, x: number): void {
@@ -334,40 +315,46 @@ function renderMapSvg(
     });
     const prev = lastLineX.get(line.id);
     slideLine(track, prev, line.x);
-    track.append(
-      svgEl('line', {
-        x1: String(line.x),
-        y1: String(line.y0),
-        x2: String(line.x),
-        y2: String(line.y1),
-        stroke: color,
-        'stroke-width': '8',
-        class: 'map-line'
-      })
-    );
-    const head = svgEl('g', { class: 'map-line-head' });
-    const disc = svgEl('circle', {
-      cx: String(line.disc.cx),
-      cy: String(line.disc.cy),
-      r: String(line.disc.r),
-      fill: discFill(line.color),
-      class: 'map-line-disc'
-    });
-    if (line.color === 'high-sea') {
-      disc.setAttribute('stroke', color);
-      disc.setAttribute('stroke-width', '3');
+    for (const item of line.tracks) {
+      for (const cut of item.cuts) {
+        track.append(
+          svgEl('line', {
+            x1: String(item.x),
+            y1: String(cut.y0),
+            x2: String(item.x),
+            y2: String(cut.y1),
+            stroke: color,
+            'stroke-width': '8',
+            'stroke-linecap': 'butt',
+            class: 'map-line'
+          })
+        );
+      }
+      const label = svgEl('text', {
+        x: String(item.disc.cx),
+        y: String(item.disc.cy - item.disc.r - 30),
+        'text-anchor': 'middle',
+        class: 'map-track-label',
+        fill: color
+      });
+      label.textContent = item.label;
+      const disc = svgEl('circle', {
+        cx: String(item.disc.cx),
+        cy: String(item.disc.cy),
+        r: String(item.disc.r),
+        fill: discFill(line.color),
+        class: 'map-line-disc'
+      });
+      const letter = svgEl('text', {
+        x: String(item.disc.cx),
+        y: String(item.disc.cy + 6),
+        'text-anchor': 'middle',
+        class: 'map-line-letter',
+        fill: letterFill(line.color)
+      });
+      letter.textContent = line.letter;
+      track.append(label, disc, letter);
     }
-    head.append(disc);
-    const letter = svgEl('text', {
-      x: String(line.disc.cx),
-      y: String(line.disc.cy + 8),
-      'text-anchor': 'middle',
-      class: 'map-line-letter',
-      fill: letterFill(line.color)
-    });
-    letter.textContent = line.letter;
-    head.append(letter);
-    track.append(head);
     root.append(track);
   }
 
@@ -401,33 +388,22 @@ function renderMapSvg(
         class: `map-station${selectedId === station.id ? ' is-selected' : ''}`,
         'data-id': station.id
       });
-      if (station.lane > 0) {
+      for (const body of station.bodies) {
         g.append(
-          svgEl('path', {
-            d: `M ${station.lineX} ${station.y} H ${station.x} V ${station.y + 18}`,
-            fill: 'none',
+          svgEl('rect', {
+            x: String(body.x - body.w / 2),
+            y: String(body.y),
+            width: String(body.w),
+            height: String(body.h),
+            rx: String(body.w / 2),
+            fill: fillOf(station.color),
             stroke: stationColor,
-            'stroke-width': '6',
-            class: 'map-station__jog'
+            'stroke-width': '3.5',
+            class: 'map-station__body'
           })
         );
+        g.append(verticalText(body.x, body.y + body.h / 2, station.label, 'map-station__label', stationColor));
       }
-      g.append(
-        svgEl('rect', {
-          x: String(station.x - station.w / 2),
-          y: String(station.y),
-          width: String(station.w),
-          height: String(station.h),
-          rx: String(station.w / 2),
-          fill: fillOf(station.color),
-          stroke: stationColor,
-          'stroke-width': '3.5',
-          class: 'map-station__body'
-        })
-      );
-      g.append(
-        verticalText(station.x, station.y + station.h / 2, station.label, 'map-station__label', stationColor)
-      );
       if (showPorts) {
         for (const port of station.ports) {
           g.append(portDot(port.x, port.y, port.id, stationColor));
@@ -523,20 +499,23 @@ function hitMap(layout: MapCanvasLayout, x: number, y: number, showPorts: boolea
     }
   }
   for (const station of layout.stations) {
-    if (
-      x >= station.x - station.w / 2 - 6 &&
-      x <= station.x + station.w / 2 + 6 &&
-      y >= station.y &&
-      y <= station.y + station.h
-    ) {
-      return { kind: 'station', id: station.id };
-    }
+    const hit = station.bodies.some(
+      (body) =>
+        x >= body.x - body.w / 2 - 6 &&
+        x <= body.x + body.w / 2 + 6 &&
+        y >= body.y &&
+        y <= body.y + body.h
+    );
+    if (hit) return { kind: 'station', id: station.id };
   }
   for (const line of layout.lines) {
-    if (Math.hypot(x - line.disc.cx, y - line.disc.cy) <= line.disc.r + 6) {
+    if (line.tracks.some((track) => Math.hypot(x - track.disc.cx, y - track.disc.cy) <= track.disc.r + 6)) {
       return { kind: 'line', id: line.id };
     }
-    if (showPorts && Math.abs(x - line.x) <= 12 && y >= line.y0 - 8 && y <= line.y1 + 8) {
+    if (
+      showPorts &&
+      line.tracks.some((track) => Math.abs(x - track.x) <= 12 && y >= line.y0 - 8 && y <= line.y1 + 8)
+    ) {
       return { kind: 'line', id: line.id };
     }
   }
@@ -637,6 +616,29 @@ function dateInput(value: string, aria: string): HTMLInputElement {
   return input;
 }
 
+function trackPicker(selected: YearTrack[]): { root: HTMLElement; value: () => YearTrack[] } {
+  const root = el('div', 'map-tracks');
+  root.setAttribute('role', 'group');
+  root.setAttribute('aria-label', 'Year lines');
+  const boxes = YEAR_TRACKS.map((track) => {
+    const label = el('label', 'map-tracks__item');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.value = track;
+    box.checked = selected.includes(track);
+    label.append(box, document.createTextNode(YEAR_TRACK_LABELS[track]));
+    root.append(label);
+    return box;
+  });
+  return {
+    root,
+    value: () => {
+      const picked = boxes.filter((box) => box.checked).map((box) => box.value as YearTrack);
+      return picked.length ? picked : ['junior'];
+    }
+  };
+}
+
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   lastLineX.clear();
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading maps…'));
@@ -682,6 +684,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   const excursions = projects.filter((p) => p.type === 'excursion');
 
   const paint = () => {
+    canvas.classList.add('map-page');
     const year = current.year ?? yearNow;
     const terms = schoolTerms(year);
     const layout = layoutMap(current);
@@ -821,17 +824,18 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       left.addEventListener('click', () => void shift(-1));
       right.addEventListener('click', () => void shift(1));
       const mark = el('span', 'map-key__disc', line.letter);
-      if (line.color === 'high-sea') {
-        mark.style.background = 'var(--pastel-gold)';
-        mark.style.color = 'var(--high-sea-ink)';
-        mark.style.boxShadow = 'inset 0 0 0 2px var(--high-sea)';
-      } else {
-        mark.style.background = strokeOf(line.color);
+      mark.style.background = discFill(line.color);
+      mark.style.color = letterFill(line.color);
+      if (line.color === 'yellow' || line.color === 'high-sea') {
+        mark.style.boxShadow = `inset 0 0 0 2px ${strokeOf(line.color)}`;
       }
       item.append(left, mark, el('span', 'map-key__name', `${line.name} Line`), right);
       key.append(item);
     }
     canvas.append(key);
+    const tracksKey = el('p', 'map-key__tracks');
+    tracksKey.textContent = 'Each strand has three lines: Junior, Rozelle, and Senior.';
+    canvas.append(tracksKey);
 
     const stage = el('div', `map-stage${joining ? ' is-joining' : ''}${mode === 'edit' ? ' is-edit' : ''}`);
     const svg = svgEl('svg', {
@@ -1015,7 +1019,13 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         el(
           'p',
           'graph-preview__meta',
-          [line ? `${line.letter} ${line.name}` : null, dates || null].filter(Boolean).join(' · ')
+          [
+            line ? `${line.letter} ${line.name}` : null,
+            selectedStation ? selectedStation.tracks.map((track) => YEAR_TRACK_LABELS[track]).join(', ') : null,
+            dates || null
+          ]
+            .filter(Boolean)
+            .join(' · ')
         )
       );
       const linked = item.link ? projects.find((p) => p.id === item.link!.id) : null;
@@ -1056,6 +1066,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
             selected: connectSelectValue(current, selectedTick.connects_to)
           });
         }
+        const tracks = selectedStation ? trackPicker(selectedStation.tracks) : null;
         const save = el('button', 'btn btn--primary', 'Save');
         save.type = 'button';
         save.addEventListener('click', async () => {
@@ -1065,6 +1076,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           const [type, id] = link.value.split(':');
           item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
           if (selectedStation) {
+            selectedStation.tracks = tracks?.value() ?? selectedStation.tracks;
             const next = applyDateSpanToStation(selectedStation, year);
             selectedStation.starts_on = next.starts_on;
             selectedStation.ends_on = next.ends_on;
@@ -1096,7 +1108,10 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         });
         form.append(name);
         form.append(selectedStation ? field('Starts', start) : field('Date', start));
-        if (selectedStation) form.append(field('Ends', end));
+        if (selectedStation) {
+          form.append(field('Ends', end));
+          if (tracks) form.append(field('Year lines', tracks.root));
+        }
         if (selectedTick) {
           form.append(field('Attach to', attachTo), field('Also connect to', also));
         }
@@ -1148,7 +1163,7 @@ function renderDraftForm(
   const titles = { line: 'Add line', station: 'Add station', event: 'Add event' };
   const copy = {
     line: 'A new vertical line for the calendar year, from T1 through E.',
-    station: 'A program on one line. Start and end dates place it on the year.',
+    station: 'A program on one strand. Pick Junior, Rozelle, and/or Senior. Start and end dates place it on the year.',
     event: 'A competition. Attach it to a line, a station, or another competition’s border.'
   };
   card.append(
@@ -1179,6 +1194,7 @@ function renderDraftForm(
   }
   const start = dateInput(terms.t1, kind === 'event' ? 'Date' : 'Starts');
   const end = dateInput(terms.e, 'Ends');
+  const tracks = trackPicker(['junior']);
   const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
   attachTo.setAttribute('aria-label', 'Attach to');
   fillTargetSelect(attachTo, map, {
@@ -1190,7 +1206,13 @@ function renderDraftForm(
 
   if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color));
   else if (kind === 'station') {
-    card.append(field('Name', name), field('Line', line), field('Starts', start), field('Ends', end));
+    card.append(
+      field('Name', name),
+      field('Line', line),
+      field('Year lines', tracks.root),
+      field('Starts', start),
+      field('Ends', end)
+    );
   } else {
     card.append(field('Name', name), field('Attach to', attachTo), field('Also connect to', also), field('Date', start));
   }
@@ -1213,7 +1235,7 @@ function renderDraftForm(
         id: newId('line'),
         name: title,
         letter: (letter.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
-        color: (color.value as MapColorToken) || 'navy',
+        color: (color.value as MapColorToken) || 'blue',
         points: yearLinePoints(x)
       });
     } else if (kind === 'station') {
@@ -1227,6 +1249,7 @@ function renderDraftForm(
         label: title,
         y: 80,
         height: 110,
+        tracks: tracks.value(),
         in_stroke: 'solid',
         out_stroke: 'solid',
         starts_on: start.value || terms.t1,
