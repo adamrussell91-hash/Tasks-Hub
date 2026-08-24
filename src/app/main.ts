@@ -81,8 +81,7 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   gantt: {
     eyebrow: 'Project planning',
     title: 'Gantt',
-    supporting:
-      'Same moon, same card — drop it on the timeline, nest it under a parent, or link it to a project.'
+    supporting: 'Same tasks as every other view, plotted on a timeline. Projects sit in lanes.'
   },
   orbit: {
     eyebrow: 'Explore',
