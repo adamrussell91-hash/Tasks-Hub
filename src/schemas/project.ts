@@ -21,6 +21,8 @@ export const ProjectSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   description: z.string().default(''),
+  parent_goal_id: z.string().nullable().default(null),
+  tags: z.array(z.string()).default([]),
   arc_summary: z.string().default(''),
   type: ProjectTypeSchema.default('standard'),
   milestones: z.array(MilestoneSchema).default([]),
@@ -64,6 +66,8 @@ export const ProjectCreateSchema = ProjectSchema.omit({
   updated_at: true
 }).partial({
   description: true,
+  parent_goal_id: true,
+  tags: true,
   arc_summary: true,
   type: true,
   milestones: true,

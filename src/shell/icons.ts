@@ -2,6 +2,8 @@
 
 export const RAIL_ICON_PATHS: Record<string, string[]> = {
   board: ['M4 6h7v5H4z', 'M13 6h7v5h-7z', 'M4 14h7v5H4z', 'M13 14h7v5h-7z'],
+  goals: ['M4 18V6', 'M8 6v12', 'M12 10v8', 'M16 4v14', 'M20 8v10'],
+  someday: ['M4 16c3-4 6-6 8-6s5 2 8 6', 'M4 16h16', 'M8 20h8'],
   clare: ['M4 6h16v9H8l-4 3V6z'],
   graph: [
     'M6 12a2.25 2.25 0 1 1 0-4.5A2.25 2.25 0 0 1 6 12z',
@@ -26,6 +28,13 @@ export const RAIL_ICON_PATHS: Record<string, string[]> = {
   list: ['M8 7h12', 'M8 12h12', 'M8 17h12', 'M5 7h.01', 'M5 12h.01', 'M5 17h.01'],
   projects: ['M4 8h6l2 2h8v10H4z'],
   excursions: ['M7 4v16', 'M7 5h10l-2.5 3L17 11H7'],
+  programs: [
+    'M8 20h8',
+    'M12 16v4',
+    'M7 5h10v6a5 5 0 0 1-10 0V5z',
+    'M7 5H4.8A1.8 1.8 0 0 0 6.6 7',
+    'M17 5h2.2A1.8 1.8 0 0 1 17.4 7'
+  ],
   stress: ['M4 13h4l2-6 3 10 2-4h5'],
   corey: ['M16 8a3 3 0 1 1-2.8 4', 'M8 12H4m0 0 2.5-2.5M4 12l2.5 2.5'],
   templates: ['M9 4h10v16H9z', 'M5 8h4', 'M5 8v12h8'],

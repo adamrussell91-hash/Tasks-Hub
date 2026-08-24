@@ -433,7 +433,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
       const edit = el('button', 'btn btn--secondary', 'Edit');
       edit.type = 'button';
       edit.addEventListener('click', () => {
-        renderTaskEditor(preview, task, liveProjects, () => void renderGanttView(canvas));
+        void renderTaskEditor(preview, task, liveProjects, () => void renderGanttView(canvas));
       });
       const page = el('button', 'btn btn--ghost', 'Open page');
       page.type = 'button';

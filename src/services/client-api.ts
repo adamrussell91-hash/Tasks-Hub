@@ -2,6 +2,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from '@/api/client';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import type { TransitMap } from '@/schemas/map';
+import type { Program } from '@/schemas/program';
 import type {
   FrameworkEntry,
   ExcursionTemplate,
@@ -195,5 +196,27 @@ export const tasksApi = {
   createMap: (body: unknown) => apiPost<TransitMap>('/api/maps', body),
   updateMap: (id: string, body: unknown) =>
     apiPatch<TransitMap>(`/api/maps?id=${encodeURIComponent(id)}`, body),
-  deleteMap: (id: string) => apiDelete<{ deleted: boolean }>(`/api/maps?id=${encodeURIComponent(id)}`)
+  deleteMap: (id: string) => apiDelete<{ deleted: boolean }>(`/api/maps?id=${encodeURIComponent(id)}`),
+
+  listPrograms: () => apiGet<{ programs: Program[] }>('/api/programs').then((r) => r.programs),
+  getProgram: (id: string) => apiGet<Program>(`/api/programs?id=${encodeURIComponent(id)}`),
+  createProgram: (body: unknown) => apiPost<Program>('/api/programs', body),
+  updateProgram: (id: string, body: unknown) =>
+    apiPatch<Program>(`/api/programs?id=${encodeURIComponent(id)}`, body),
+  deleteProgram: (id: string) =>
+    apiDelete<{ deleted: boolean }>(`/api/programs?id=${encodeURIComponent(id)}`),
+
+  listAreas: () => apiGet<{ areas: import('@/schemas/area').Area[] }>('/api/areas').then((r) => r.areas),
+  getArea: (id: string) => apiGet<import('@/schemas/area').Area>(`/api/areas?id=${encodeURIComponent(id)}`),
+  createArea: (body: unknown) => apiPost<import('@/schemas/area').Area>('/api/areas', body),
+  updateArea: (id: string, body: unknown) =>
+    apiPatch<import('@/schemas/area').Area>(`/api/areas?id=${encodeURIComponent(id)}`, body),
+  deleteArea: (id: string) => apiDelete<{ deleted: boolean }>(`/api/areas?id=${encodeURIComponent(id)}`),
+
+  listGoals: () => apiGet<{ goals: import('@/schemas/goal').Goal[] }>('/api/goals').then((r) => r.goals),
+  getGoal: (id: string) => apiGet<import('@/schemas/goal').Goal>(`/api/goals?id=${encodeURIComponent(id)}`),
+  createGoal: (body: unknown) => apiPost<import('@/schemas/goal').Goal>('/api/goals', body),
+  updateGoal: (id: string, body: unknown) =>
+    apiPatch<import('@/schemas/goal').Goal>(`/api/goals?id=${encodeURIComponent(id)}`, body),
+  deleteGoal: (id: string) => apiDelete<{ deleted: boolean }>(`/api/goals?id=${encodeURIComponent(id)}`)
 };

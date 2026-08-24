@@ -183,12 +183,12 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     await renderCalendarView(canvas, mode);
   }
 
-  function openItem(item: CalendarItem, preview: HTMLElement): void {
+  async function openItem(item: CalendarItem, preview: HTMLElement): Promise<void> {
     selectedDateKey = item.date_key;
     preview.hidden = false;
     if (item.task) {
       preview.replaceChildren();
-      renderTaskEditor(preview, item.task, projects, () => void reload());
+      await renderTaskEditor(preview, item.task, projects, () => void reload());
       const actions = el('div', 'calendar-preview__actions');
       const done = el('button', 'btn btn--secondary', item.task.status === 'done' ? 'Reopen' : 'Done');
       done.type = 'button';
@@ -425,7 +425,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
 
     const showPreview = (item: CalendarItem) => {
       selectedDateKey = item.date_key;
-      openItem(item, preview);
+      void openItem(item, preview);
     };
 
     if (mode === 'week') {

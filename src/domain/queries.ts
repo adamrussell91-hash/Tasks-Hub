@@ -1,5 +1,6 @@
 import type { Task, TaskDomain } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
+import { isBoardTask } from '@/domain/hierarchy';
 
 const PRIORITY_RANK: Record<Task['priority'], number> = {
   urgent: 0,
@@ -85,12 +86,23 @@ export function tasksForDay(tasks: Task[], day: Date): Task[] {
 }
 
 export function openTasks(tasks: Task[]): Task[] {
-  return sortByPriorityThenDue(tasks.filter((t) => t.status === 'open' || t.status === 'in_progress' || t.status === 'deferred'));
+  return sortByPriorityThenDue(
+    tasks.filter(
+      (t) =>
+        isBoardTask(t) &&
+        (t.status === 'open' || t.status === 'in_progress' || t.status === 'deferred')
+    )
+  );
 }
 
 export function backlogTasks(tasks: Task[]): Task[] {
   return sortByPriorityThenDue(
-    tasks.filter((t) => (t.status === 'open' || t.status === 'deferred') && !t.due_date)
+    tasks.filter(
+      (t) =>
+        isBoardTask(t) &&
+        (t.status === 'open' || t.status === 'deferred') &&
+        !t.due_date
+    )
   );
 }
 

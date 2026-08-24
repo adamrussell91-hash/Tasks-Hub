@@ -28,6 +28,9 @@ function datedTask(id: string, due: string): Task {
     id,
     title: id,
     description: '',
+    kind: 'task',
+    bucket: 'active',
+    step_order: 0,
     domain: 'teaching',
     framework_used: null,
     estimated_duration: 30,
@@ -43,6 +46,9 @@ function datedTask(id: string, due: string): Task {
     depends_on: [],
     tags: [],
     recurrence_rule: null,
+    due_time: null,
+    remind_at: null,
+    remind_dismissed_at: null,
     attachments: [],
     source: 'manual'
   };

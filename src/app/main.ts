@@ -31,6 +31,7 @@ import { renderBranchView } from '@/views/branch';
 import { renderConstellationView } from '@/views/constellation';
 import { renderClareView } from '@/views/clare';
 import { renderExcursionsView } from '@/views/excursions';
+import { renderProgramsView } from '@/views/programs';
 import { renderStressView } from '@/views/stress';
 import { renderCoreyView, renderPublicCapacityView } from '@/views/corey';
 import {
@@ -42,12 +43,25 @@ import {
 } from '@/views/dashboard';
 import { renderWeekView, renderMonthView } from '@/views/calendar';
 import { renderPageEditor } from '@/views/page-editor';
+import { renderGoalsView } from '@/views/goals';
+import { renderSomedayView } from '@/views/someday';
+import { renderReminderStrip } from '@/views/reminder-strip';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
     eyebrow: 'Home',
     title: 'Board',
     supporting: 'Everything on your plate, grouped by status.'
+  },
+  goals: {
+    eyebrow: 'Plan',
+    title: 'Goals',
+    supporting: 'Area → Goal → Project, with milestones and tasks underneath.'
+  },
+  someday: {
+    eyebrow: 'Plan',
+    title: 'Someday / Maybe',
+    supporting: 'Ideas parked over the rainbow until you promote them.'
   },
   clare: {
     eyebrow: 'Negotiate',
@@ -130,6 +144,11 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     title: 'Excursions',
     supporting: 'Spin up admin tasks from Ethics Olympiad / Da Vinci templates.'
   },
+  programs: {
+    eyebrow: 'Catalogue',
+    title: 'Programs',
+    supporting: 'Competitions and programs — search, filter, and open a card.'
+  },
   stress: {
     eyebrow: 'Network',
     title: 'Network',
@@ -161,6 +180,10 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
   switch (view) {
     case 'board':
       return renderBoardView(canvas);
+    case 'goals':
+      return renderGoalsView(canvas);
+    case 'someday':
+      return renderSomedayView(canvas);
     case 'clare':
       return renderClareView(canvas);
     case 'graph':
@@ -193,6 +216,8 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderProjectsView(canvas);
     case 'excursions':
       return renderExcursionsView(canvas);
+    case 'programs':
+      return renderProgramsView(canvas);
     case 'stress':
       return renderStressView(canvas);
     case 'corey':
@@ -261,6 +286,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
     renderPrimaryNav(shell.railNav, view);
     renderPageHeader(shell, HEADERS[view]);
     try {
+      await renderReminderStrip(shell.reminderHost, () => void paint());
       await renderActiveView(view, shell.canvas);
     } catch (err) {
       renderLoadError(shell.canvas, err, () => void paint(), `Could not load ${HEADERS[view].title}`);

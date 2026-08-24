@@ -18,6 +18,9 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
   return {
     schema_version: 1,
     description: '',
+    kind: 'task',
+    bucket: 'active',
+    step_order: 0,
     domain: 'teaching',
     framework_used: null,
     estimated_duration: 45,
@@ -33,6 +36,9 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
     depends_on: [],
     tags: [],
     recurrence_rule: null,
+    due_time: null,
+    remind_at: null,
+    remind_dismissed_at: null,
     attachments: [],
     source: 'manual',
     ...partial
@@ -45,6 +51,8 @@ const projects: Project[] = [
     id: 'proj_mindworks',
     title: 'MindWorks',
     description: '',
+    parent_goal_id: null,
+    tags: [],
     arc_summary: '',
     type: 'academic_program',
     milestones: [
@@ -138,7 +146,9 @@ describe('calendar views', () => {
     const canvas = document.createElement('main');
     await renderMonthView(canvas);
     canvas.querySelector<HTMLButtonElement>('[data-task-id="task_lesson"]')?.click();
-    expect(canvas.querySelector('.task-editor')).not.toBeNull();
+    await vi.waitFor(() => {
+      expect(canvas.querySelector('.task-editor')).not.toBeNull();
+    });
     expect(canvas.querySelector('.task-editor [aria-label="Title"]')).toBeTruthy();
   });
 

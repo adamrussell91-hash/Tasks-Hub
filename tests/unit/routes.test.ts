@@ -12,6 +12,17 @@ describe('hash routes', () => {
     expect(knownHubViews()).toContain('maps');
   });
 
+  it('includes Programs in the known rail views', () => {
+    expect(knownHubViews()).toContain('programs');
+  });
+
+  it('resolves #/programs to the programs view', () => {
+    location.hash = '#/programs';
+    expect(hashViewId()).toBe('programs');
+    expect(isKnownHashView()).toBe(true);
+    expect(parseHashRoute()).toBe('programs');
+  });
+
   it('includes Universe in the known stretch views', () => {
     expect(knownHubViews()).toContain('universe');
     location.hash = '#/universe';
@@ -43,5 +54,16 @@ describe('hash routes', () => {
     expect(parseEntityPage()).toEqual({ kind: 'project', id: 'proj_mindworks' });
     expect(isKnownHashView()).toBe(true);
     expect(knownHubViews()).not.toContain('project');
+  });
+
+  it('includes Goals and Someday in the Plan section', () => {
+    expect(knownHubViews()).toContain('goals');
+    expect(knownHubViews()).toContain('someday');
+    location.hash = '#/goals';
+    expect(hashViewId()).toBe('goals');
+    expect(parseHashRoute()).toBe('goals');
+    location.hash = '#/someday';
+    expect(hashViewId()).toBe('someday');
+    expect(parseHashRoute()).toBe('someday');
   });
 });

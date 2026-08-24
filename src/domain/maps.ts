@@ -1,5 +1,6 @@
 import type { MapStation, Point, TickAttach, TransitMap } from '@/schemas/map';
 import { layoutMap, MAP_LEFT, wrapEventLines } from '@/domain/maps-layout';
+import { swatch } from '@/domain/maps-colors';
 
 export function isOrthogonalPath(points: Point[]): boolean {
   if (points.length < 2) return false;
@@ -121,28 +122,6 @@ function escapeHtml(value: string): string {
     .replaceAll('"', '&quot;');
 }
 
-const COLOR: Record<string, string> = {
-  wave: '#376fb7',
-  success: '#2f7a4f',
-  lilac: '#5d4e70',
-  'high-sea': '#f68620',
-  'high-sea-ink': '#a85a0c',
-  marine: '#142b51',
-  navy: '#17375e',
-  depth: '#0a1536'
-};
-
-const FILL: Record<string, string> = {
-  wave: '#dceafa',
-  success: '#dce8d8',
-  lilac: '#e8e0ef',
-  'high-sea': '#f1e2b6',
-  'high-sea-ink': '#f3e4c8',
-  marine: '#dceafa',
-  navy: '#dceafa',
-  depth: '#dceafa'
-};
-
 function renderExportSvg(map: TransitMap): string {
   const layout = layoutMap(map);
   const parts: string[] = [];
@@ -154,35 +133,38 @@ function renderExportSvg(map: TransitMap): string {
     );
   }
   for (const line of layout.lines) {
-    const color = COLOR[line.color] ?? COLOR.wave!;
-    parts.push(
-      `<line x1="${line.x}" y1="${line.y0}" x2="${line.x}" y2="${line.y1}" stroke="${color}" stroke-width="8"/>`,
-      `<circle cx="${line.disc.cx}" cy="${line.disc.cy}" r="${line.disc.r}" fill="${line.color === 'high-sea' ? '#f1e2b6' : color}"${line.color === 'high-sea' ? ` stroke="${color}" stroke-width="3"` : ''}/>`,
-      `<text x="${line.disc.cx}" y="${line.disc.cy + 6}" text-anchor="middle" font-size="18" fill="${line.color === 'high-sea' ? '#a85a0c' : '#fbf8f2'}" font-weight="700">${escapeHtml(line.letter)}</text>`
-    );
+    const tone = swatch(line.color);
+    for (const track of line.tracks) {
+      for (const cut of track.cuts) {
+        parts.push(
+          `<line x1="${track.x}" y1="${cut.y0}" x2="${track.x}" y2="${cut.y1}" stroke="${tone.stroke}" stroke-width="8" stroke-linecap="butt"/>`
+        );
+      }
+      parts.push(
+        `<text x="${track.disc.cx}" y="${track.disc.cy - track.disc.r - 30}" text-anchor="middle" font-size="11" fill="${tone.stroke}" font-weight="600">${escapeHtml(track.label)}</text>`,
+        `<circle cx="${track.disc.cx}" cy="${track.disc.cy}" r="${track.disc.r}" fill="${tone.disc}"/>`,
+        `<text x="${track.disc.cx}" y="${track.disc.cy + 5}" text-anchor="middle" font-size="16" fill="${tone.letter}" font-weight="700">${escapeHtml(line.letter)}</text>`
+      );
+    }
   }
   for (const connector of layout.connectors) {
-    const color = COLOR[connector.color] ?? COLOR.wave!;
+    const color = swatch(connector.color).stroke;
     const opacity = connector.under ? ' stroke-opacity="0.9"' : '';
     parts.push(
       `<path d="${connector.path}" fill="none" stroke="${color}" stroke-width="3"${connector.dash ? ' stroke-dasharray="5 4"' : ''}${opacity}/>`
     );
   }
   for (const station of layout.stations) {
-    const color = COLOR[station.color] ?? COLOR.wave!;
-    const fill = FILL[station.color] ?? FILL.wave!;
-    if (station.lane > 0) {
+    const tone = swatch(station.color);
+    for (const body of station.bodies) {
       parts.push(
-        `<path d="M ${station.lineX} ${station.y} H ${station.x} V ${station.y + 16}" fill="none" stroke="${color}" stroke-width="6"/>`
+        `<rect x="${body.x - body.w / 2}" y="${body.y}" width="${body.w}" height="${body.h}" rx="${body.w / 2}" fill="${tone.fill}" stroke="${tone.stroke}" stroke-width="3.5"/>`,
+        `<text transform="rotate(-90 ${body.x} ${body.y + body.h / 2})" x="${body.x}" y="${body.y + body.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${tone.stroke}" font-weight="600">${escapeHtml(station.label)}</text>`
       );
     }
-    parts.push(
-      `<rect x="${station.x - station.w / 2}" y="${station.y}" width="${station.w}" height="${station.h}" rx="${station.w / 2}" fill="${fill}" stroke="${color}" stroke-width="3.5"/>`,
-      `<text transform="rotate(-90 ${station.x} ${station.y + station.h / 2})" x="${station.x}" y="${station.y + station.h / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="${color}" font-weight="600">${escapeHtml(station.label)}</text>`
-    );
   }
   for (const tick of layout.ticks) {
-    const color = COLOR[tick.color] ?? COLOR.wave!;
+    const color = swatch(tick.color).stroke;
     parts.push(
       `<circle cx="${tick.cx}" cy="${tick.cy}" r="14" fill="#fbf8f2" stroke="${color}" stroke-width="3.5"/>`,
       `<rect x="${tick.labelBox.x}" y="${tick.labelBox.y}" width="${tick.labelBox.w}" height="${tick.labelBox.h}" rx="8" fill="#fbf8f2"/>`,

@@ -246,7 +246,9 @@ function rowFromMilestone(milestone: Milestone, project: Project, tasks: Task[])
 
 /** Build Gantt rows for one project — tasks with dates + milestones. */
 export function buildProjectGanttRows(project: Project, tasks: Task[]): GanttRow[] {
-  const projectTasks = tasks.filter((t) => t.parent_project_id === project.id && t.status !== 'dead');
+  const projectTasks = tasks.filter(
+    (t) => t.parent_project_id === project.id && t.status !== 'dead' && t.bucket !== 'someday'
+  );
   const byId = new Map(projectTasks.map((task) => [task.id, task]));
   const rows: GanttRow[] = [];
 
@@ -460,6 +462,8 @@ export function layoutGantt(rows: GanttRow[], options: LayoutGanttOptions = {}):
     id: options.groupTitles?.[0]?.id ?? 'gantt',
     title: options.groupTitles?.[0]?.title ?? 'Project',
     description: '',
+    parent_goal_id: null,
+    tags: [],
     arc_summary: '',
     type: 'standard',
     milestones: [],
@@ -786,7 +790,9 @@ export function moonsForTray(
   tasks: Task[],
   filter: 'place' | 'all'
 ): Task[] {
-  const open = tasks.filter((task) => task.status !== 'dead' && task.status !== 'done');
+  const open = tasks.filter(
+    (task) => task.status !== 'dead' && task.status !== 'done' && task.bucket !== 'someday'
+  );
   const list =
     filter === 'all'
       ? open

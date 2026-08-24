@@ -7,6 +7,7 @@ import {
 } from '../../../src/services/store.ts';
 import type { SeedData } from '../../../src/services/types.ts';
 import seedFixture from '../../../fixtures/seed.json';
+import competitionsFixture from '../../../fixtures/competitions.json';
 
 export { keys };
 
@@ -17,9 +18,13 @@ const CONTENT_STORE_NAME = 'tasks-hub-content';
  * depend on included_files path layout under `/var/task`.
  */
 export function loadSeed(): SeedData {
-  const seed = seedFixture as SeedData;
+  const seed = seedFixture as unknown as SeedData;
   if (!seed.tasks?.length) {
     throw new Error('bundled fixtures/seed.json has no tasks — refusing to seed');
+  }
+  if (!seed.programs?.length) {
+    // Git fixture is the catalogue source of truth — never Notion.
+    seed.programs = competitionsFixture as SeedData['programs'];
   }
   return seed;
 }

@@ -35,7 +35,7 @@ function appendTaskCard(
   mountTaskCard(host, task, {
     onToggle: (current) => requestToggleDone(confirmHost, current, reload),
     onDelete: (current) => confirmDeleteTask(confirmHost, current, reload),
-    onEdit: (current) => renderTaskEditor(confirmHost, current, projects, () => void reload())
+    onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void reload())
   });
 }
 

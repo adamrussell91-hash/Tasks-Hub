@@ -27,6 +27,9 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title' | 'due_date'>):
   return {
     schema_version: 1,
     description: '',
+    kind: 'task',
+    bucket: 'active',
+    step_order: 0,
     domain: 'teaching',
     framework_used: null,
     estimated_duration: 480,
@@ -41,6 +44,9 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title' | 'due_date'>):
     depends_on: [],
     tags: [],
     recurrence_rule: null,
+    due_time: null,
+    remind_at: null,
+    remind_dismissed_at: null,
     attachments: [],
     source: 'manual',
     ...partial
