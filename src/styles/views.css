@@ -1088,6 +1088,11 @@ select.hub-filter {
   border-radius: var(--radius-md);
 }
 
+.excursion-timeline__inner {
+  position: relative;
+  min-height: 100%;
+}
+
 .excursion-timeline__list {
   list-style: none;
   margin: 0;

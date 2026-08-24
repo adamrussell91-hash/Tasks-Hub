@@ -189,8 +189,9 @@ export function paintExcursionPage(
   const scroller = el('div', 'excursion-timeline');
   scroller.setAttribute('tabindex', '0');
   scroller.setAttribute('aria-label', 'Excursion timeline');
+  const inner = el('div', 'excursion-timeline__inner');
+  inner.style.minHeight = `${layout.height}px`;
   const list = el('ol', 'excursion-timeline__list');
-  list.style.minHeight = `${layout.height}px`;
   const line = el('div', 'excursion-timeline__line');
   line.setAttribute('aria-hidden', 'true');
   if (!layout.stops.length) {
@@ -198,7 +199,8 @@ export function paintExcursionPage(
   } else {
     for (const stop of layout.stops) list.append(renderStop(stop, confirmHost, reload));
   }
-  scroller.append(line, list);
+  inner.append(line, list);
+  scroller.append(inner);
 
   page.append(
     nav,
