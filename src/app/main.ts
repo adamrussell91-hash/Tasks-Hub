@@ -3,6 +3,7 @@ import '../../design-kit/css/overlays.css';
 import '../../design-kit/css/chrome.css';
 import '../../design-kit/css/rail.css';
 import '../../design-kit/css/filters.css';
+import '../../design-kit/css/calendar.css';
 import '../../design-kit/css/sign-in.css';
 import '../styles/hub.css';
 import '../styles/views.css';
