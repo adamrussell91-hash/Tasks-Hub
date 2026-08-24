@@ -117,19 +117,19 @@ describe('calendar views', () => {
     const canvas = document.createElement('main');
     await renderMonthView(canvas);
 
-    expect(canvas.querySelectorAll('.month-cal__cell')).toHaveLength(42);
-    expect([...canvas.querySelectorAll('.month-cal__head')].map((node) => node.textContent)).toEqual([
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun'
+    expect(canvas.querySelectorAll('.hub-calendar__day')).toHaveLength(42);
+    expect([...canvas.querySelectorAll('.hub-calendar__weekday')].map((node) => node.textContent)).toEqual([
+      'M',
+      'T',
+      'W',
+      'T',
+      'F',
+      'S',
+      'S'
     ]);
-    expect(canvas.querySelector('[data-task-id="task_lesson"]')?.textContent).toBe('Finish lesson pack');
-    expect(canvas.querySelector('[data-kind="milestone"]')?.textContent).toBe('Term brief locked');
-    expect(canvas.querySelector('.calendar-nav__label')?.textContent).toMatch(/August 2026/);
+    expect(canvas.querySelector('[data-task-id="task_lesson"]')?.textContent).toContain('Finish lesson pack');
+    expect(canvas.querySelector('[data-kind="milestone"]')?.textContent).toContain('Term brief locked');
+    expect(canvas.querySelector('.hub-calendar__month-label')?.textContent).toMatch(/August 2026/);
     expect(canvas.querySelector('[data-date="2026-08-17"][data-kind="task"]')).not.toBeNull();
   });
 
@@ -157,12 +157,12 @@ describe('calendar views', () => {
     const canvas = document.createElement('main');
     await renderWeekView(canvas);
 
-    expect(canvas.querySelectorAll('.week-col')).toHaveLength(7);
+    expect(canvas.querySelectorAll('.hub-calendar__week-day')).toHaveLength(7);
     expect(canvas.querySelector('[data-task-id="task_lesson"]')).not.toBeNull();
     expect(canvas.querySelector('[data-task-id="task_florist"]')).not.toBeNull();
-    const due = canvas.querySelector<HTMLInputElement>('.calendar-agenda input[type="date"]');
+    const due = canvas.querySelector<HTMLInputElement>('.hub-calendar__detail input[type="date"]');
     expect(due?.value).toBe('2026-08-17');
-    expect(canvas.querySelector('.calendar-nav__label')?.textContent).toMatch(/17\/08\/26/);
+    expect(canvas.querySelector('.hub-calendar__month-label')?.textContent).toMatch(/17\/08\/26/);
   });
 
   it('reschedules a task when it is dropped on another day', async () => {
@@ -170,7 +170,7 @@ describe('calendar views', () => {
     const canvas = document.createElement('main');
     await renderWeekView(canvas);
 
-    const friday = canvas.querySelector<HTMLElement>('.week-col[data-date="2026-08-21"]')!;
+    const friday = canvas.querySelector<HTMLElement>('.hub-calendar__week-day[data-date="2026-08-21"]')!;
     const transfer = {
       data: { 'text/task-id': 'task_lesson', 'text/plain': 'task_lesson' } as Record<string, string>,
       getData(type: string) {
@@ -196,7 +196,7 @@ describe('calendar views', () => {
     const canvas = document.createElement('main');
     await renderWeekView(canvas);
 
-    const form = canvas.querySelector('.calendar-agenda .quick-add') as HTMLFormElement;
+    const form = canvas.querySelector('.hub-calendar__detail .quick-add') as HTMLFormElement;
     const title = form.querySelector('input[aria-label="New task title"]') as HTMLInputElement;
     title.value = 'Prep excursion bags';
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -214,7 +214,7 @@ describe('calendar views', () => {
     const canvas = document.createElement('main');
     await renderMonthView(canvas);
     canvas.querySelector<HTMLButtonElement>('[aria-label="Next month"]')?.click();
-    expect(canvas.querySelectorAll('.month-cal__cell')).toHaveLength(42);
-    expect(canvas.querySelector('.calendar-nav__label')?.textContent).toMatch(/September 2026/);
+    expect(canvas.querySelectorAll('.hub-calendar__day')).toHaveLength(42);
+    expect(canvas.querySelector('.hub-calendar__month-label')?.textContent).toMatch(/September 2026/);
   });
 });

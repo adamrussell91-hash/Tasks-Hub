@@ -26,6 +26,7 @@ copy_kit() {
   cp "$KIT/css/chrome.css" "$css_dest/chrome.css"
   cp "$KIT/css/actions.css" "$css_dest/actions.css"
   cp "$KIT/css/sign-in.css" "$css_dest/sign-in.css"
+  cp "$KIT/css/calendar.css" "$css_dest/calendar.css"
   cp "$KIT/snippets/"*.html "$dest/snippets/"
   echo "Synced $dest"
 }
