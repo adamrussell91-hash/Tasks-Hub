@@ -15,7 +15,6 @@ function fieldInput(className: string, label: string, value: string) {
   return createHubField({
     ariaLabel: label,
     value,
-    className,
     inputClass: `hub-search__input ${className}`
   });
 }
