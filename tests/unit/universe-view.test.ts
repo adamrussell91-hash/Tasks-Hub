@@ -5,14 +5,20 @@ import {
   UNIVERSE_BUILD,
   KIND_DEPTH,
   advanceOrbitClock,
+  applySolarStageResize,
+  cameraFromWorld,
   fillDots,
   glowSpread,
+  isNarrowViewport,
   mountUniverseView,
+  pinchDistance,
+  pinchMidpoint,
   presence,
   resolveSearchHits,
   searchResolveStats,
   solarCamera,
   solarScales,
+  solarStageSize,
   solarZoomClamp,
   zoomBand
 } from '@/views/universe-canvas';
@@ -154,7 +160,7 @@ function worldPos(body: Body, model: ReturnType<typeof buildSolarModel>) {
 
 describe('presence and bands', () => {
   it('exposes a build number so a stale Universe bundle is obvious', () => {
-    expect(UNIVERSE_BUILD).toBe(1);
+    expect(UNIVERSE_BUILD).toBe(20);
   });
 
   it('maps band thresholds onto KIND_DEPTH cutoffs', () => {
@@ -215,6 +221,57 @@ describe('presence and bands', () => {
     expect(glowSpread(2.39, true)).toBe(0);
     expect(glowSpread(2.4, false)).toBe(2.1);
     expect(glowSpread(2.4, true)).toBe(2.6);
+  });
+});
+
+describe('mobile-only universe camera', () => {
+  it('keeps the desktop stage on the 720px floor', () => {
+    expect(isNarrowViewport(1280)).toBe(false);
+    expect(solarStageSize({ clientWidth: 800, clientHeight: 0 }, { innerWidth: 1280, innerHeight: 900 })).toEqual({
+      width: 800,
+      height: 720
+    });
+    expect(solarStageSize({ clientWidth: 1100, clientHeight: 400 }, { innerWidth: 1440, innerHeight: 1000 })).toEqual({
+      width: 1100,
+      height: 800
+    });
+  });
+
+  it('sizes a phone stage from the leftover viewport instead of a 720px floor', () => {
+    expect(isNarrowViewport(390)).toBe(true);
+    expect(solarStageSize({ clientWidth: 390, clientHeight: 520 }, { innerWidth: 390, innerHeight: 844 })).toEqual({
+      width: 390,
+      height: 520
+    });
+    expect(
+      solarStageSize({ clientWidth: 390, clientHeight: 0 }, { innerWidth: 390, innerHeight: 667 }).height
+    ).toBeLessThan(720);
+  });
+
+  it('keeps wheel-zoom camera math', () => {
+    const world = { x: 100, y: 40 };
+    expect(cameraFromWorld(world, 1.08, 200, 160, { left: 0, top: 0 })).toEqual({
+      k: 1.08,
+      x: 200 - 100 * 1.08,
+      y: 160 - 40 * 1.08
+    });
+    expect(pinchDistance({ x: 0, y: 0 }, { x: 30, y: 40 })).toBe(50);
+    expect(pinchMidpoint({ x: 10, y: 20 }, { x: 30, y: 40 })).toEqual({ x: 20, y: 30 });
+  });
+
+  it('keeps the same world focus and relative zoom when the stage grows', () => {
+    const scales = solarScales(3400, 8, 800, 720);
+    const prev = { width: 800, height: 720, ...scales, k: scales.fitK * 2, x: 100, y: 80 };
+    const focusX = (prev.width / 2 - prev.x) / prev.k;
+    const focusY = (prev.height / 2 - prev.y) / prev.k;
+    const next = applySolarStageResize(prev, { width: 1400, height: 900 }, 3400, 8);
+    expect(next.width).toBe(1400);
+    expect(next.height).toBe(900);
+    expect(next.k / next.fitK).toBeCloseTo(2);
+    expect((next.width / 2 - next.x) / next.k).toBeCloseTo(focusX);
+    expect((next.height / 2 - next.y) / next.k).toBeCloseTo(focusY);
+    expect(applySolarStageResize(prev, { width: 0, height: 0 }, 3400, 8)).toBe(prev);
+    expect(applySolarStageResize(prev, { width: 800, height: 720 }, 3400, 8)).toBe(prev);
   });
 });
 
@@ -366,6 +423,161 @@ describe('mountUniverseView', () => {
       title: 'Zebra Unique Page',
       excerpt: 'zebra excerpt'
     });
+    stop();
+  });
+
+  it('does not mount zoom buttons on a desktop-width window', () => {
+    const host = document.createElement('div');
+    Object.defineProperty(host, 'clientWidth', { value: 800, configurable: true });
+    const stop = mountUniverseView(host, buildSolarModel([]), { search: '', onNoteSelect() {} });
+    expect(host.querySelector('.universe-zoom')).toBeNull();
+    stop();
+  });
+
+  it('resizes the existing canvas when the host grows and disconnects the observer on teardown', () => {
+    const callbacks: Array<() => void> = [];
+    const disconnect = vi.fn();
+    class FakeResizeObserver {
+      constructor(cb: () => void) {
+        callbacks.push(cb);
+      }
+      observe() {}
+      disconnect() {
+        disconnect();
+      }
+    }
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    const host = document.createElement('div');
+    Object.defineProperty(host, 'clientWidth', { value: 800, configurable: true, writable: true });
+    Object.defineProperty(host, 'clientHeight', { value: 720, configurable: true, writable: true });
+    const stop = mountUniverseView(host, buildSolarModel([]), { search: '', onNoteSelect() {} });
+    const canvas = host.querySelector('canvas')!;
+    expect(canvas.style.width).toBe('800px');
+    Object.defineProperty(host, 'clientWidth', { value: 1400, configurable: true });
+    Object.defineProperty(host, 'clientHeight', { value: 900, configurable: true });
+    callbacks.at(-1)?.();
+    expect(host.querySelector('canvas')).toBe(canvas);
+    expect(canvas.style.width).toBe('1400px');
+    expect(canvas.style.height).toBe('900px');
+    stop();
+    expect(disconnect).toHaveBeenCalled();
+  });
+
+  it('mounts pinch-safe zoom buttons only on a narrow window', () => {
+    vi.stubGlobal('innerWidth', 390);
+    const host = document.createElement('div');
+    Object.defineProperty(host, 'clientWidth', { value: 390, configurable: true });
+    const stop = mountUniverseView(host, buildSolarModel([]), { search: '', onNoteSelect() {} });
+    expect(host.querySelector('.universe-zoom')).toBeTruthy();
+    expect(host.querySelectorAll('[data-universe-zoom]')).toHaveLength(2);
+    stop();
+  });
+
+  it('still selects a searched task after the stage is resized', () => {
+    const callbacks: Array<() => void> = [];
+    class FakeResizeObserver {
+      constructor(cb: () => void) {
+        callbacks.push(cb);
+      }
+      observe() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    const frames = stubFrame();
+    const host = document.createElement('div');
+    Object.defineProperty(host, 'clientWidth', { value: 800, configurable: true });
+    Object.defineProperty(host, 'clientHeight', { value: 720, configurable: true });
+    const entries = tagged('g', V0, 12, (i) => (i === 0 ? 'Zebra Unique Page' : `Note ${i}`));
+    entries[0]!.excerpt = 'zebra excerpt';
+    const model = buildSolarModel(entries);
+    const onNoteSelect = vi.fn();
+    const stop = mountUniverseView(host, model, { search: 'Zebra Unique', onNoteSelect });
+    Object.defineProperty(host, 'clientWidth', { value: 1400, configurable: true });
+    Object.defineProperty(host, 'clientHeight', { value: 900, configurable: true });
+    callbacks.at(-1)?.();
+    frames.pump(16);
+    const target = model.bodies.find((body) => body.pageId === 'g0')!;
+    const world = worldPos(target, model);
+    const width = 1400;
+    const height = 900;
+    const { fitK } = solarScales(model.reach, model.tightest, width, height);
+    const next = applySolarStageResize(
+      {
+        width: 800,
+        height: 720,
+        ...solarScales(model.reach, model.tightest, 800, 720),
+        k: solarScales(model.reach, model.tightest, 800, 720).fitK,
+        x: 400,
+        y: 360
+      },
+      { width, height },
+      model.reach,
+      model.tightest
+    );
+    const sx = next.x + world.x * next.k;
+    const sy = next.y + world.y * next.k;
+    const canvas = host.querySelector('canvas')!;
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width,
+      height,
+      right: width,
+      bottom: height,
+      x: 0,
+      y: 0,
+      toJSON() {}
+    });
+    canvas.dispatchEvent(new MouseEvent('pointerdown', { clientX: sx, clientY: sy, bubbles: true }));
+    window.dispatchEvent(new MouseEvent('pointerup', { clientX: sx, clientY: sy, bubbles: true }));
+    expect(onNoteSelect).toHaveBeenCalledWith({
+      pageId: 'g0',
+      title: 'Zebra Unique Page',
+      excerpt: 'zebra excerpt'
+    });
+    expect(fitK).toBeGreaterThan(0);
+    stop();
+  });
+
+  it('treats a two-finger pinch as zoom, not a task click', () => {
+    const frames = stubFrame();
+    const host = document.createElement('div');
+    Object.defineProperty(host, 'clientWidth', { value: 800, configurable: true });
+    const entries = tagged('g', V0, 12, (i) => (i === 0 ? 'Zebra Unique Page' : `Note ${i}`));
+    const model = buildSolarModel(entries);
+    const onNoteSelect = vi.fn();
+    const stop = mountUniverseView(host, model, { search: 'Zebra Unique', onNoteSelect });
+    frames.pump(16);
+    const target = model.bodies.find((body) => body.pageId === 'g0')!;
+    const world = worldPos(target, model);
+    const width = 800;
+    const height = Math.max(720, Math.floor(window.innerHeight * 0.8));
+    const { fitK } = solarScales(model.reach, model.tightest, width, height);
+    const sx = width / 2 + world.x * fitK;
+    const sy = height / 2 + world.y * fitK;
+    const canvas = host.querySelector('canvas')!;
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width,
+      height,
+      right: width,
+      bottom: height,
+      x: 0,
+      y: 0,
+      toJSON() {}
+    });
+    const pointer = (type: string, pointerId: number, clientX: number, clientY: number) => {
+      const event = new MouseEvent(type, { clientX, clientY, bubbles: true });
+      Object.defineProperty(event, 'pointerId', { value: pointerId });
+      return event;
+    };
+    canvas.dispatchEvent(pointer('pointerdown', 1, sx, sy));
+    canvas.dispatchEvent(pointer('pointerdown', 2, sx + 40, sy));
+    window.dispatchEvent(pointer('pointermove', 2, sx + 90, sy));
+    window.dispatchEvent(pointer('pointerup', 1, sx, sy));
+    window.dispatchEvent(pointer('pointerup', 2, sx + 90, sy));
+    expect(onNoteSelect).not.toHaveBeenCalled();
     stop();
   });
 });

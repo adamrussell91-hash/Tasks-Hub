@@ -244,6 +244,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
 
   async function paint() {
     window.scrollTo(0, 0);
+    document.body.classList.remove('is-universe-fullscreen');
     const canvasWrap = shell.canvas.closest('.hub-canvas');
     if (canvasWrap instanceof HTMLElement) canvasWrap.scrollTop = 0;
     shell.canvas.scrollTop = 0;
