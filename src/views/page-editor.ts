@@ -58,11 +58,6 @@ function titleInput(value: string, label: string): HTMLInputElement {
   return input;
 }
 
-function syncChromeTitle(text: string): void {
-  const heading = document.querySelector('.page-header__title');
-  if (heading) heading.textContent = text;
-}
-
 function backLink(href: string, label: string): HTMLAnchorElement {
   const link = el('a', 'page-card__back', label) as HTMLAnchorElement;
   link.href = href;
@@ -143,18 +138,15 @@ function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): vo
     }, 400);
   };
 
-  syncChromeTitle(task.title);
-
   const page = el('div', 'page-editor');
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
-  head.append(el('span', 'hub-card__eyebrow', 'Task'), backLink('#/board', 'Board'));
+  head.append(el('span', 'hub-card__eyebrow', 'Task'), backLink('#/board', '← Board'));
 
   const title = titleInput(task.title, 'Task title');
   title.addEventListener('input', () => {
     const next = title.value.trim();
     if (!next) return;
-    syncChromeTitle(next);
     persist({ title: next });
   });
   title.addEventListener('blur', () => {
@@ -246,8 +238,6 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
     }, 400);
   };
 
-  syncChromeTitle(project.title);
-
   const progress = projectProgress(project, tasks);
   const page = el('div', 'page-editor');
   const card = el('article', 'hub-card page-card');
@@ -261,7 +251,6 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
   title.addEventListener('input', () => {
     const next = title.value.trim();
     if (!next) return;
-    syncChromeTitle(next);
     persist({ title: next });
   });
   title.addEventListener('blur', () => {

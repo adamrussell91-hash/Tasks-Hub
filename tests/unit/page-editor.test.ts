@@ -88,7 +88,7 @@ describe('page editor', () => {
     await renderPageEditor(canvas, { kind: 'task', id: 'task_lesson' });
 
     expect(canvas.querySelector('.lesson-palette')).toBeNull();
-    expect(canvas.querySelector('.page-card__back')?.textContent).toBe('Board');
+    expect(canvas.querySelector('.page-card__back')?.textContent).toBe('← Board');
     expect(canvas.querySelector('.task-card__foot .btn')).toBeNull();
 
     const title = canvas.querySelector<HTMLInputElement>('.page-card__title-input')!;
