@@ -6,17 +6,10 @@ import { tasksApi } from '@/services/client-api';
 import { errorMessage } from '@/views/feedback';
 import { renderTaskEditor } from '@/views/task-editor';
 import { formatTagsInput, parseTagsInput } from '@/domain/hierarchy';
+import { createHubFilter, createHubSearch, createHubToolbar, el } from '@/views/hub-kit';
 
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+let goalArea = 'all';
+let goalQuery = '';
 
 function tagRow(tags: string[]): HTMLElement {
   const row = el('div', 'hierarchy-tags');
@@ -151,13 +144,43 @@ function paintGoals(
   projects: Project[],
   tasks: Task[]
 ): void {
+  const restoreSearch =
+    document.activeElement instanceof HTMLInputElement &&
+    document.activeElement.getAttribute('aria-label') === 'Filter goals';
+  const searchPos = restoreSearch
+    ? (document.activeElement as HTMLInputElement).selectionStart
+    : null;
+
   canvas.replaceChildren();
   const editorHost = el('div', 'hierarchy-editor-host');
   const reload = () => {
     void renderGoalsView(canvas);
   };
 
-  const toolbar = el('div', 'hierarchy-toolbar');
+  const toolbar = createHubToolbar('hierarchy-toolbar');
+  const search = createHubSearch({
+    placeholder: 'Filter goals…',
+    ariaLabel: 'Filter goals',
+    value: goalQuery,
+    onInput: (value) => {
+      goalQuery = value;
+      paintGoals(canvas, areas, goals, projects, tasks);
+    }
+  });
+  const areaFilter = createHubFilter({
+    key: 'Area',
+    label: 'Area',
+    defaultValue: 'all',
+    options: [
+      { value: 'all', label: 'All areas' },
+      ...areas.map((area) => ({ value: area.id, label: area.title }))
+    ],
+    value: goalArea,
+    onChange: (value) => {
+      goalArea = value;
+      paintGoals(canvas, areas, goals, projects, tasks);
+    }
+  });
   const addGoal = el('button', 'btn btn--secondary', 'New goal');
   addGoal.type = 'button';
   addGoal.addEventListener('click', () => {
@@ -180,7 +203,7 @@ function paintGoals(
       .then(reload)
       .catch((err) => window.alert(errorMessage(err)));
   });
-  toolbar.append(addGoal, addProject);
+  toolbar.append(search.el, areaFilter.el, addGoal, addProject);
   canvas.append(
     el(
       'p',
@@ -192,7 +215,19 @@ function paintGoals(
   );
 
   const areasById = new Map(areas.map((area) => [area.id, area]));
-  const activeGoals = goals.filter((g) => g.status === 'active');
+  const query = goalQuery.trim().toLowerCase();
+  const activeGoals = goals.filter((g) => {
+    if (g.status !== 'active') return false;
+    if (goalArea !== 'all' && g.parent_area_id !== goalArea) return false;
+    if (
+      query &&
+      !g.title.toLowerCase().includes(query) &&
+      !g.description.toLowerCase().includes(query)
+    ) {
+      return false;
+    }
+    return true;
+  });
   const grouped = new Map<string, Goal[]>();
   for (const goal of activeGoals) {
     const key = goal.parent_area_id ?? 'ungrouped';
@@ -224,5 +259,13 @@ function paintGoals(
 
   if (areas.length === 0 && activeGoals.length === 0) {
     canvas.append(el('p', 'empty-state', 'Create your first goal to start building the hierarchy.'));
+  }
+
+  if (restoreSearch) {
+    const field = canvas.querySelector<HTMLInputElement>('[aria-label="Filter goals"]');
+    if (field) {
+      field.focus();
+      if (searchPos != null) field.setSelectionRange(searchPos, searchPos);
+    }
   }
 }

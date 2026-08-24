@@ -1,16 +1,6 @@
 import type { CalloutStyle, HeadingVariant, PageBlock, PageBlockType, SpacerSize } from '@/schemas/page-block';
 import { createBlock, PAGE_BLOCK_GROUPS, PAGE_BLOCK_LABEL } from '@/builder/create-block';
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+import { createHubField, createHubFilter, createHubTextarea, el, optionList } from '@/views/hub-kit';
 
 export type BlockCanvasHandle = {
   update(blocks: PageBlock[]): void;
@@ -21,30 +11,31 @@ function touch(block: PageBlock, content: Record<string, unknown>, variant = blo
   return { ...block, content, variant, updated_at: new Date().toISOString() };
 }
 
-function fieldInput(className: string, label: string, value: string): HTMLInputElement {
-  const input = el('input', `hub-search ${className}`) as HTMLInputElement;
-  input.type = 'text';
-  input.value = value;
-  input.setAttribute('aria-label', label);
-  return input;
+function fieldInput(className: string, label: string, value: string) {
+  return createHubField({
+    ariaLabel: label,
+    value,
+    className,
+    inputClass: `hub-search__input ${className}`
+  });
 }
 
 function createHeadingEditor(block: PageBlock, onChange: (next: PageBlock) => void): HTMLElement {
   const fields = el('div', 'block-editor__fields');
   const text = fieldInput('block-editor__heading-text', 'Heading text', String(block.content.text ?? ''));
-  const variant = el('select', 'hub-filter block-editor__heading-variant') as HTMLSelectElement;
-  variant.setAttribute('aria-label', 'Heading level');
-  for (const option of ['page', 'section', 'subsection'] as const) {
-    const opt = document.createElement('option');
-    opt.value = option;
-    opt.textContent = option;
-    opt.selected = block.variant === option;
-    variant.append(opt);
-  }
-  const emit = () => onChange(touch(block, { text: text.value }, variant.value as HeadingVariant));
-  text.addEventListener('input', emit);
-  variant.addEventListener('change', emit);
-  fields.append(text, variant);
+  const variant = createHubFilter({
+    key: 'Level',
+    label: 'Heading level',
+    defaultValue: block.variant || 'section',
+    options: optionList(['page', 'section', 'subsection']),
+    value: block.variant || 'section',
+    onChange: () => emit()
+  });
+  variant.el.classList.add('block-editor__heading-variant');
+  const emit = () =>
+    onChange(touch(block, { text: text.input.value }, variant.getValue() as HeadingVariant));
+  text.input.addEventListener('input', emit);
+  fields.append(text.el, variant.el);
   return fields;
 }
 
@@ -63,61 +54,62 @@ function createRichTextEditor(block: PageBlock, onChange: (next: PageBlock) => v
 
 function createCalloutEditor(block: PageBlock, onChange: (next: PageBlock) => void): HTMLElement {
   const fields = el('div', 'block-editor__fields');
-  const style = el('select', 'hub-filter block-editor__callout-style') as HTMLSelectElement;
-  style.setAttribute('aria-label', 'Callout style');
-  for (const option of [
-    'information',
-    'important',
-    'warning',
-    'extension',
-    'scaffold',
-    'example',
-    'remember',
-    'teacher'
-  ] as const) {
-    const opt = document.createElement('option');
-    opt.value = option;
-    opt.textContent = option;
-    opt.selected = block.content.style === option;
-    style.append(opt);
-  }
+  const style = createHubFilter({
+    key: 'Style',
+    label: 'Callout style',
+    defaultValue: String(block.content.style ?? 'information'),
+    options: optionList([
+      'information',
+      'important',
+      'warning',
+      'extension',
+      'scaffold',
+      'example',
+      'remember',
+      'teacher'
+    ]),
+    value: String(block.content.style ?? 'information'),
+    onChange: () => emit()
+  });
+  style.el.classList.add('block-editor__callout-style');
   const title = fieldInput('block-editor__callout-title', 'Callout title', String(block.content.title ?? ''));
-  const body = document.createElement('textarea');
-  body.className = 'hub-search block-editor__callout-body';
-  body.rows = 4;
-  body.value = String(block.content.body ?? '');
-  body.setAttribute('aria-label', 'Callout body');
+  const body = createHubTextarea({
+    ariaLabel: 'Callout body',
+    className: 'block-editor__callout-body',
+    rows: 4,
+    value: String(block.content.body ?? '')
+  });
   const emit = () =>
     onChange(
       touch(block, {
-        style: style.value as CalloutStyle,
-        title: title.value.trim() || undefined,
+        style: style.getValue() as CalloutStyle,
+        title: title.input.value.trim() || undefined,
         body: body.value
       })
     );
-  style.addEventListener('change', emit);
-  title.addEventListener('input', emit);
+  title.input.addEventListener('input', emit);
   body.addEventListener('input', emit);
-  fields.append(style, title, body);
+  fields.append(style.el, title.el, body);
   return fields;
 }
 
 function createQuoteEditor(block: PageBlock, onChange: (next: PageBlock) => void): HTMLElement {
   const fields = el('div', 'block-editor__fields');
-  const text = document.createElement('textarea');
-  text.className = 'hub-search block-editor__quote-text';
-  text.rows = 3;
-  text.value = String(block.content.text ?? '');
-  text.setAttribute('aria-label', 'Quote');
+  const text = createHubTextarea({
+    ariaLabel: 'Quote',
+    className: 'block-editor__quote-text',
+    rows: 3,
+    value: String(block.content.text ?? '')
+  });
   const attr = fieldInput(
     'block-editor__quote-attr',
     'Attribution',
     String(block.content.attribution ?? '')
   );
-  const emit = () => onChange(touch(block, { text: text.value, attribution: attr.value }));
+  const emit = () => onChange(touch(block, { text: text.value, attribution: attr.input.value }));
   text.addEventListener('input', emit);
-  attr.addEventListener('input', emit);
-  fields.append(text, attr);
+  attr.input.addEventListener('input', emit);
+  fields.append(text, attr.el);
   return fields;
 }
 
@@ -129,17 +121,15 @@ function createDividerEditor(): HTMLElement {
 
 function createSpacerEditor(block: PageBlock, onChange: (next: PageBlock) => void): HTMLElement {
   const fields = el('div', 'block-editor__fields');
-  const size = el('select', 'hub-filter') as HTMLSelectElement;
-  size.setAttribute('aria-label', 'Spacer size');
-  for (const option of ['small', 'medium', 'large'] as const) {
-    const opt = document.createElement('option');
-    opt.value = option;
-    opt.textContent = option;
-    opt.selected = (block.content.size ?? 'medium') === option;
-    size.append(opt);
-  }
-  size.addEventListener('change', () => onChange(touch(block, { size: size.value as SpacerSize })));
-  fields.append(size, el('div', `block-spacer block-spacer--${String(block.content.size ?? 'medium')}`));
+  const size = createHubFilter({
+    key: 'Size',
+    label: 'Spacer size',
+    defaultValue: String(block.content.size ?? 'medium'),
+    options: optionList(['small', 'medium', 'large']),
+    value: String(block.content.size ?? 'medium'),
+    onChange: (value) => onChange(touch(block, { size: value as SpacerSize }))
+  });
+  fields.append(size.el, el('div', `block-spacer block-spacer--${String(block.content.size ?? 'medium')}`));
   return fields;
 }
 

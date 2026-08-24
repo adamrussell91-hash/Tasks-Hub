@@ -32,7 +32,7 @@ import {
 } from '@/domain/gantt';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { parseDue } from '@/domain/queries';
-import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
+import { createHubFilter, createHubToolbar } from '@/views/hub-kit';
 import { renderTaskMicroCard } from '@/views/hub-cards';
 import { renderTaskEditor } from '@/views/task-editor';
 import { errorMessage, renderLoadError } from '@/views/feedback';
@@ -231,7 +231,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     }, 2400);
   }
 
-  const toolbar = el('div', 'gantt-toolbar');
+  const toolbar = createHubToolbar('gantt-toolbar');
   const left = el('div', 'gantt-toolbar__group');
   const right = el('div', 'gantt-toolbar__group');
 

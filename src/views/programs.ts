@@ -15,20 +15,18 @@ import {
   type ProgramFilters,
   type ProgramSort
 } from '@/domain/programs';
-import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { hashQuery } from '@/shell/shell';
 import { showConfirmWrite } from '@/views/feedback';
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+import {
+  createHubField,
+  createHubFilter,
+  createHubPills,
+  createHubSearch,
+  createHubTextarea,
+  createHubToolbar,
+  el,
+  optionList
+} from '@/views/hub-kit';
 
 type CatalogView = 'cards' | 'table';
 
@@ -69,18 +67,15 @@ function renderToolbar(
   onAdd: () => void
 ): HTMLElement {
   const wrap = el('div', 'catalog-toolbar');
-  const search = el('label', 'hub-search');
-  const hidden = el('span', 'visually-hidden', 'Search programs');
-  const input = el('input', 'hub-search__input') as HTMLInputElement;
-  input.type = 'search';
-  input.placeholder = 'Search name, organiser, subject…';
-  input.setAttribute('aria-label', 'Search programs');
-  input.value = state.filters.query ?? '';
-  input.addEventListener('input', () => {
-    state.filters.query = input.value;
-    onChange();
+  const search = createHubSearch({
+    placeholder: 'Search name, organiser, subject…',
+    ariaLabel: 'Search programs',
+    value: state.filters.query ?? '',
+    onInput: (value) => {
+      state.filters.query = value;
+      onChange();
+    }
   });
-  search.append(hidden, input);
 
   const filters = el('div', 'catalog-filters');
   const subjects = uniqueSorted(state.programs.flatMap((item) => item.subjects));
@@ -140,44 +135,36 @@ function renderToolbar(
     filters.append(filter.el);
   }
 
-  const sortPills = el('div', 'hub-pills');
-  sortPills.setAttribute('role', 'group');
-  sortPills.setAttribute('aria-label', 'Sort');
-  for (const sort of SORTS) {
-    const btn = el('button', `hub-pills__btn${state.sort === sort.id ? ' is-active' : ''}`, sort.label);
-    btn.type = 'button';
-    btn.setAttribute('aria-pressed', state.sort === sort.id ? 'true' : 'false');
-    btn.addEventListener('click', () => {
-      state.sort = sort.id;
+  const sortPills = createHubPills({
+    label: 'Sort',
+    items: SORTS.map((sort) => ({ id: sort.id, label: sort.label })),
+    value: state.sort,
+    onSelect: (id) => {
+      state.sort = id;
       onChange();
-    });
-    sortPills.append(btn);
-  }
+    }
+  });
 
-  const viewPills = el('div', 'hub-pills');
-  viewPills.setAttribute('role', 'tablist');
-  viewPills.setAttribute('aria-label', 'View');
-  for (const view of [
-    { id: 'cards' as const, label: 'Cards' },
-    { id: 'table' as const, label: 'Table' }
-  ]) {
-    const btn = el('button', `hub-pills__btn${state.view === view.id ? ' is-active' : ''}`, view.label);
-    btn.type = 'button';
-    btn.setAttribute('role', 'tab');
-    btn.setAttribute('aria-selected', state.view === view.id ? 'true' : 'false');
-    btn.addEventListener('click', () => {
-      state.view = view.id;
+  const viewPills = createHubPills({
+    label: 'View',
+    role: 'tablist',
+    items: [
+      { id: 'cards', label: 'Cards' },
+      { id: 'table', label: 'Table' }
+    ],
+    value: state.view,
+    onSelect: (id) => {
+      state.view = id;
       onChange();
-    });
-    viewPills.append(btn);
-  }
+    }
+  });
 
   const add = el('button', 'btn btn--primary', 'Add');
   add.type = 'button';
   add.addEventListener('click', onAdd);
 
-  const row = el('div', 'catalog-toolbar__row');
-  row.append(search, add);
+  const row = createHubToolbar('catalog-toolbar__row');
+  row.append(search.el, add);
   const controls = el('div', 'catalog-toolbar__row');
   controls.append(sortPills, viewPills);
   wrap.append(row, filters, controls);
@@ -325,25 +312,19 @@ function renderDetail(
 }
 
 function field(label: string, control: HTMLElement): HTMLElement {
-  const wrap = el('label', 'catalog-form__field');
+  const wrap = el('div', 'catalog-form__field');
   wrap.append(el('span', 'catalog-form__label', label), control);
   return wrap;
 }
 
-function selectControl(options: readonly string[], value = ''): HTMLSelectElement {
-  const select = el('select', 'hub-filter') as HTMLSelectElement;
-  const blank = document.createElement('option');
-  blank.value = '';
-  blank.textContent = '—';
-  select.append(blank);
-  for (const option of options) {
-    const node = document.createElement('option');
-    node.value = option;
-    node.textContent = option;
-    if (option === value) node.selected = true;
-    select.append(node);
-  }
-  return select;
+function selectControl(key: string, options: readonly string[], value = '') {
+  return createHubFilter({
+    key,
+    label: key,
+    defaultValue: '',
+    options: optionList(options, { value: '', label: '—' }),
+    value
+  });
 }
 
 function chipPicker(values: readonly string[]): { el: HTMLElement; get: () => string[] } {
@@ -399,23 +380,22 @@ function renderAddForm(
     el('p', 'page-header__supporting', 'Same properties as the competitions catalogue. Confirm before it is saved.')
   );
 
-  const name = el('input', 'hub-search') as HTMLInputElement;
-  name.type = 'text';
-  name.required = true;
-  const organiser = el('input', 'hub-search') as HTMLInputElement;
-  const location = el('input', 'hub-search') as HTMLInputElement;
-  const cost = el('input', 'hub-search') as HTMLInputElement;
-  const registrationWindow = el('input', 'hub-search') as HTMLInputElement;
-  const link = el('input', 'hub-search') as HTMLInputElement;
-  link.type = 'url';
-  const description = document.createElement('textarea');
-  description.className = 'hub-search task-editor__notes';
-  const reason = el('input', 'hub-search') as HTMLInputElement;
-  const type = selectControl(PROGRAM_TYPES, 'Competition');
-  const month = selectControl(PROGRAM_MONTHS);
-  const level = selectControl(PROGRAM_LEVELS);
-  const length = selectControl(PROGRAM_LENGTHS);
-  const costBasis = selectControl(PROGRAM_COST_BASES);
+  const name = createHubField({ ariaLabel: 'Name', required: true });
+  const organiser = createHubField({ ariaLabel: 'Organiser' });
+  const location = createHubField({ ariaLabel: 'Location' });
+  const cost = createHubField({ ariaLabel: 'Cost' });
+  const registrationWindow = createHubField({ ariaLabel: 'Registration window' });
+  const link = createHubField({ type: 'url', ariaLabel: 'Registration link' });
+  const description = createHubTextarea({
+    ariaLabel: 'Description',
+    className: 'task-editor__notes'
+  });
+  const reason = createHubField({ ariaLabel: 'Not available reason' });
+  const type = selectControl('Type', PROGRAM_TYPES, 'Competition');
+  const month = selectControl('Month', PROGRAM_MONTHS);
+  const level = selectControl('Level', PROGRAM_LEVELS);
+  const length = selectControl('Length', PROGRAM_LENGTHS);
+  const costBasis = selectControl('Cost', PROGRAM_COST_BASES);
   const subjects = chipPicker(PROGRAM_SUBJECTS);
   const ages = chipPicker(PROGRAM_AGE_GROUPS);
   const nsw = document.createElement('input');
@@ -424,22 +404,22 @@ function renderAddForm(
 
   const form = el('form', 'catalog-form');
   form.append(
-    field('Name', name),
-    field('Type', type),
-    field('Month', month),
-    field('Level', level),
-    field('Length', length),
-    field('Cost basis', costBasis),
-    field('Organiser', organiser),
-    field('Location', location),
-    field('Cost', cost),
-    field('Registration window', registrationWindow),
-    field('Registration link', link),
+    field('Name', name.el),
+    type.el,
+    month.el,
+    level.el,
+    length.el,
+    costBasis.el,
+    field('Organiser', organiser.el),
+    field('Location', location.el),
+    field('Cost', cost.el),
+    field('Registration window', registrationWindow.el),
+    field('Registration link', link.el),
     field('Subjects', subjects.el),
     field('Age groups', ages.el),
     field('Description', description),
     field('Not available in NSW', nsw),
-    field('Not available reason', reason)
+    field('Not available reason', reason.el)
   );
 
   const actions = el('div', 'catalog-detail__actions');
@@ -459,28 +439,28 @@ function renderAddForm(
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    if (!name.value.trim()) {
-      name.focus();
+    if (!name.input.value.trim()) {
+      name.input.focus();
       return;
     }
     session.close();
     const draft: Partial<Program> & { name: string } = {
-      name: name.value.trim(),
-      types: type.value ? [type.value] : [],
+      name: name.input.value.trim(),
+      types: type.getValue() ? [type.getValue()] : [],
       subjects: subjects.get(),
-      month: month.value || null,
+      month: month.getValue() || null,
       age_groups: ages.get(),
-      competition_level: level.value || null,
-      competition_length: length.value || null,
-      location: location.value.trim(),
-      organiser: organiser.value.trim(),
-      cost: cost.value.trim(),
-      cost_basis: costBasis.value || null,
+      competition_level: level.getValue() || null,
+      competition_length: length.getValue() || null,
+      location: location.input.value.trim(),
+      organiser: organiser.input.value.trim(),
+      cost: cost.input.value.trim(),
+      cost_basis: costBasis.getValue() || null,
       description: description.value.trim(),
-      registration_link: link.value.trim() || null,
-      registration_window: registrationWindow.value.trim(),
+      registration_link: link.input.value.trim() || null,
+      registration_window: registrationWindow.input.value.trim(),
       not_available_nsw: nsw.checked,
-      not_available_reason: reason.value.trim()
+      not_available_reason: reason.input.value.trim()
     };
     const kind = draft.types?.[0];
     showConfirmWrite(

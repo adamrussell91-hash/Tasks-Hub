@@ -12,6 +12,7 @@ import {
   resolveSearchHits,
   type UniverseMount
 } from '@/views/universe-canvas';
+import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -71,14 +72,14 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
   const model = buildUniverseModel(tasks, projects);
 
   canvas.replaceChildren();
-  const toolbar = el('div', 'graph-toolbar');
+  const toolbar = createHubToolbar('graph-toolbar');
   toolbar.append(renderGraphFamilyPills('universe'));
 
-  const search = el('input', 'hub-search') as HTMLInputElement;
-  search.type = 'search';
-  search.placeholder = 'Search tasks, projects, domains…';
-  search.setAttribute('aria-label', 'Filter universe');
-  toolbar.append(search);
+  const search = createHubSearch({
+    placeholder: 'Search tasks, projects, domains…',
+    ariaLabel: 'Filter universe'
+  });
+  toolbar.append(search.el);
 
   const clock = { speed: 0.5 };
   const speed = el('label', 'graph-speed');
@@ -140,9 +141,9 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
     clock
   });
 
-  search.addEventListener('input', () => {
-    mount?.setSearch(search.value);
-    writeMeta(search.value);
+  search.input.addEventListener('input', () => {
+    mount?.setSearch(search.input.value);
+    writeMeta(search.input.value);
   });
   writeMeta('');
 

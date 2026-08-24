@@ -2,7 +2,7 @@ import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { layoutProjectBranch, type BranchNode } from '@/domain/branch';
-import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
+import { createHubFilter, createHubToolbar } from '@/views/hub-kit';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderTaskEditor } from '@/views/task-editor';
@@ -173,14 +173,14 @@ export async function renderBranchView(canvas: HTMLElement): Promise<void> {
   const active = projects.filter((p) => p.status !== 'archived_dead');
 
   canvas.replaceChildren();
-  canvas.append(renderGraphFamilyPills('branch'));
+  const toolbar = createHubToolbar('graph-toolbar');
+  toolbar.append(renderGraphFamilyPills('branch'));
+  canvas.append(toolbar);
 
   if (!active.length) {
     canvas.append(el('p', 'empty-state', 'No active projects to branch.'));
     return;
   }
-
-  const toolbar = el('div', 'graph-toolbar');
   const preferred = active.find((p) => p.id === 'proj_mindworks') ?? active[0];
   let projectId = preferred.id;
   const projectFilter = createHubFilter({
@@ -195,7 +195,6 @@ export async function renderBranchView(canvas: HTMLElement): Promise<void> {
     }
   });
   toolbar.append(projectFilter.el);
-  canvas.append(toolbar);
 
   const host = el('div', 'branch-host graph-host');
   canvas.append(host);

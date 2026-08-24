@@ -53,6 +53,9 @@ describe('renderQuickAdd', () => {
 
   it('posts a new task without stamping due_date', async () => {
     const form = renderQuickAdd(() => undefined);
+    expect(form.querySelector('select')).toBeNull();
+    expect(form.querySelector('.hub-filter')?.tagName).toBe('BUTTON');
+    expect(form.querySelector('.hub-search')?.tagName).toBe('LABEL');
     const title = form.querySelector('input') as HTMLInputElement;
     title.value = '[UX-AUDIT] backlog test';
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));

@@ -28,24 +28,20 @@ import {
   type CalendarItem,
   type CalendarMode
 } from '@/domain/calendar';
-import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { formatDisplayDate, formatDisplayDateRange } from '../../design-kit/js/format-display-date.js';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { requestToggleDone } from '@/views/dashboard';
 import { mountTaskCard } from '@/views/hub-cards';
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+import {
+  createHubFilter,
+  createHubPills,
+  createHubSearch,
+  createHubToolbar,
+  domainFilterOptions,
+  el
+} from '@/views/hub-kit';
 
 const MONTH_EVENT_LIMIT = 3;
 
@@ -139,23 +135,18 @@ function wireDropTarget(
 }
 
 function renderModePills(mode: CalendarMode, anchor: Date): HTMLElement {
-  const pills = el('div', 'hub-pills');
-  pills.setAttribute('role', 'tablist');
-  pills.setAttribute('aria-label', 'Calendar range');
-  for (const item of [
-    { id: 'week' as const, label: 'Week' },
-    { id: 'month' as const, label: 'Month' }
-  ]) {
-    const btn = el('button', `hub-pills__btn${item.id === mode ? ' is-active' : ''}`, item.label);
-    btn.type = 'button';
-    btn.setAttribute('role', 'tab');
-    btn.setAttribute('aria-selected', item.id === mode ? 'true' : 'false');
-    btn.addEventListener('click', () => {
-      location.hash = calendarHash(item.id, anchor);
-    });
-    pills.append(btn);
-  }
-  return pills;
+  return createHubPills({
+    label: 'Calendar range',
+    role: 'tablist',
+    items: [
+      { id: 'week', label: 'Week' },
+      { id: 'month', label: 'Month' }
+    ],
+    value: mode,
+    onSelect: (id) => {
+      location.hash = calendarHash(id, anchor);
+    }
+  });
 }
 
 export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode): Promise<void> {
@@ -280,7 +271,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
 
     canvas.replaceChildren();
 
-    const toolbar = el('div', 'calendar-toolbar');
+    const toolbar = createHubToolbar('calendar-toolbar');
     toolbar.append(renderModePills(mode, anchor));
 
     const nav = el('div', 'calendar-nav');
@@ -339,29 +330,24 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
       canvas.append(strip);
     }
 
-    const filters = el('div', 'board-filter calendar-filters');
-    const search = el('input', 'hub-search calendar-search') as HTMLInputElement;
-    search.type = 'search';
-    search.placeholder = 'Filter this calendar…';
-    search.setAttribute('aria-label', 'Filter calendar');
-    search.value = sessionFilters.query;
-    search.addEventListener('input', () => {
-      sessionFilters.query = search.value;
-      paint();
+    const filters = createHubToolbar('board-filter', 'calendar-filters');
+    const search = createHubSearch({
+      placeholder: 'Filter this calendar…',
+      ariaLabel: 'Filter calendar',
+      value: sessionFilters.query,
+      inputClass: 'hub-search__input calendar-search',
+      onInput: (value) => {
+        sessionFilters.query = value;
+        paint();
+      }
     });
     filters.append(
-      search,
+      search.el,
       createHubFilter({
         key: 'Domain',
         label: 'Domain',
         defaultValue: 'all',
-        options: [
-          { value: 'all', label: 'All domains' },
-          ...(['teaching', 'life', 'wedding', 'health', 'other'] as const).map((domain) => ({
-            value: domain,
-            label: domain
-          }))
-        ],
+        options: domainFilterOptions(),
         value: sessionFilters.domain,
         onChange: (value) => {
           sessionFilters.domain = value as TaskDomain | 'all';
@@ -385,32 +371,24 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
         }
       }).el
     );
-    const toggles = el('div', 'hub-pills');
-    toggles.setAttribute('aria-label', 'Calendar layers');
-    const doneToggle = el(
-      'button',
-      `hub-pills__btn${sessionFilters.includeDone ? ' is-active' : ''}`,
-      'Completed'
+    filters.append(
+      createHubPills({
+        label: 'Calendar layers',
+        items: [
+          { id: 'done', label: 'Completed' },
+          { id: 'dates', label: 'Milestones' }
+        ],
+        value: [
+          ...(sessionFilters.includeDone ? (['done'] as const) : []),
+          ...(sessionFilters.includeDates ? (['dates'] as const) : [])
+        ],
+        onSelect: (id) => {
+          if (id === 'done') sessionFilters.includeDone = !sessionFilters.includeDone;
+          else sessionFilters.includeDates = !sessionFilters.includeDates;
+          paint();
+        }
+      })
     );
-    doneToggle.type = 'button';
-    doneToggle.setAttribute('aria-pressed', sessionFilters.includeDone ? 'true' : 'false');
-    doneToggle.addEventListener('click', () => {
-      sessionFilters.includeDone = !sessionFilters.includeDone;
-      paint();
-    });
-    const datesToggle = el(
-      'button',
-      `hub-pills__btn${sessionFilters.includeDates ? ' is-active' : ''}`,
-      'Milestones'
-    );
-    datesToggle.type = 'button';
-    datesToggle.setAttribute('aria-pressed', sessionFilters.includeDates ? 'true' : 'false');
-    datesToggle.addEventListener('click', () => {
-      sessionFilters.includeDates = !sessionFilters.includeDates;
-      paint();
-    });
-    toggles.append(doneToggle, datesToggle);
-    filters.append(toggles);
     canvas.append(filters);
 
     if (mode === 'week') {
@@ -496,7 +474,9 @@ function renderWeekGrid(
       event.stopPropagation();
       onSelect(day);
       queueMicrotask(() => {
-        const field = document.querySelector<HTMLInputElement>('.calendar-agenda .hub-search');
+        const field = document.querySelector<HTMLInputElement>(
+          '.calendar-agenda .hub-search__input, .calendar-agenda .quick-add input'
+        );
         field?.focus();
       });
     });
@@ -564,7 +544,9 @@ function renderMonthGrid(
       event.preventDefault();
       onSelect(day);
       queueMicrotask(() => {
-        const field = document.querySelector<HTMLInputElement>('.calendar-agenda .hub-search');
+        const field = document.querySelector<HTMLInputElement>(
+          '.calendar-agenda .hub-search__input, .calendar-agenda .quick-add input'
+        );
         field?.focus();
       });
     });

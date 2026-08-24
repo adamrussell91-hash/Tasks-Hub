@@ -13,6 +13,7 @@ import { tasksApi } from '@/services/client-api';
 import { hashQuery } from '@/shell/shell';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderTaskEditor } from '@/views/task-editor';
+import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 type GraphMode = 'blockers' | 'workstreams';
 
@@ -282,20 +283,20 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   let mode: GraphMode = hashQuery().get('mode') === 'workstreams' ? 'workstreams' : 'blockers';
   canvas.replaceChildren();
 
-  const toolbar = el('div', 'graph-toolbar');
+  const toolbar = createHubToolbar('graph-toolbar');
   toolbar.append(renderGraphFamilyPills('graph', mode));
-  const search = el('input', 'hub-search') as HTMLInputElement;
-  search.type = 'search';
-  search.placeholder = 'Filter nodes…';
-  search.setAttribute('aria-label', 'Filter graph');
-  toolbar.append(search);
+  const search = createHubSearch({
+    placeholder: 'Filter nodes…',
+    ariaLabel: 'Filter graph'
+  });
+  toolbar.append(search.el);
   canvas.append(toolbar);
 
   const host = el('div', 'graph-host');
   canvas.append(host);
 
   const paint = () => {
-    const q = search.value.trim().toLowerCase();
+    const q = search.input.value.trim().toLowerCase();
     const filteredTasks = q
       ? tasks.filter((t) => t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q))
       : tasks;
@@ -305,6 +306,6 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
     mountGraph(host, filteredTasks.length ? filteredTasks : tasks, filteredProjects, mode);
   };
 
-  search.addEventListener('input', () => paint());
+  search.input.addEventListener('input', () => paint());
   paint();
 }

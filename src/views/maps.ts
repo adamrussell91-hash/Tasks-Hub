@@ -24,21 +24,17 @@ import {
 import { discCss, fillCss, letterCss, strokeCss } from '@/domain/maps-colors';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import {
+  createHubFilter,
+  createHubPills,
+  createHubToolbar,
+  el,
+  type HubFilterOption
+} from '@/views/hub-kit';
 
 export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] {
   const list = maps && maps.length > 0 ? maps : [mindWorks2026Map()];
   return list.map((map) => normalizeLineColors(map));
-}
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
 }
 
 function newId(prefix: string): string {
@@ -75,50 +71,29 @@ function lineForTick(map: TransitMap, tick: MapTick | undefined): MapLine | unde
   );
 }
 
-function fillTargetSelect(
-  select: HTMLSelectElement,
+function targetFilterOptions(
   map: TransitMap,
-  opts: { includeBlank?: string; skipId?: string | null; selected?: string }
-): void {
-  select.replaceChildren();
+  opts: { includeBlank?: string; skipId?: string | null } = {}
+): HubFilterOption[] {
+  const options: HubFilterOption[] = [];
   if (opts.includeBlank !== undefined) {
-    const blank = document.createElement('option');
-    blank.value = '';
-    blank.textContent = opts.includeBlank;
-    select.append(blank);
+    options.push({ value: '', label: opts.includeBlank });
   }
-  const lines = document.createElement('optgroup');
-  lines.label = 'Lines';
   for (const item of map.lines) {
-    const opt = document.createElement('option');
-    opt.value = `line:${item.id}`;
-    opt.textContent = `${item.letter} · ${item.name}`;
-    if (opts.selected === opt.value) opt.selected = true;
-    lines.append(opt);
+    options.push({ value: `line:${item.id}`, label: `Line · ${item.letter} · ${item.name}` });
   }
-  select.append(lines);
-  const stations = document.createElement('optgroup');
-  stations.label = 'Stations';
   for (const item of map.stations) {
     const line = findLine(map, item.line_id);
-    const opt = document.createElement('option');
-    opt.value = `station:${item.id}`;
-    opt.textContent = `${line?.letter ?? '?'} · ${item.label}`;
-    if (opts.selected === opt.value) opt.selected = true;
-    stations.append(opt);
+    options.push({
+      value: `station:${item.id}`,
+      label: `Station · ${line?.letter ?? '?'} · ${item.label}`
+    });
   }
-  select.append(stations);
-  const events = document.createElement('optgroup');
-  events.label = 'Competitions';
   for (const item of map.ticks) {
     if (item.id === opts.skipId) continue;
-    const opt = document.createElement('option');
-    opt.value = `event:${item.id}`;
-    opt.textContent = item.label;
-    if (opts.selected === opt.value) opt.selected = true;
-    events.append(opt);
+    options.push({ value: `event:${item.id}`, label: `Competition · ${item.label}` });
   }
-  select.append(events);
+  return options;
 }
 
 function attachSelectValue(tick: MapTick): string {
@@ -597,7 +572,7 @@ function showConfirm(host: HTMLElement, summary: string, onConfirm: () => Promis
 }
 
 function field(label: string, control: HTMLElement): HTMLElement {
-  const wrap = el('label', 'map-field');
+  const wrap = el('div', 'map-field');
   wrap.append(el('span', 'map-field__label', label), control);
   return wrap;
 }
@@ -689,43 +664,40 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     const terms = schoolTerms(year);
     const layout = layoutMap(current);
     canvas.replaceChildren();
-    const toolbar = el('div', 'map-toolbar');
-    const select = el('select', 'hub-filter') as HTMLSelectElement;
-    select.setAttribute('aria-label', 'Map');
-    for (const map of maps) {
-      const opt = document.createElement('option');
-      opt.value = map.id;
-      opt.textContent = map.title;
-      if (map.id === current.id) opt.selected = true;
-      select.append(opt);
-    }
-    select.addEventListener('change', () => {
-      const next = maps.find((m) => m.id === select.value);
-      if (next) {
-        current = next;
-        selectedId = null;
-        paint();
+    const toolbar = createHubToolbar('map-toolbar');
+    const select = createHubFilter({
+      key: 'Map',
+      label: 'Map',
+      defaultValue: current.id,
+      options: maps.map((map) => ({ value: map.id, label: map.title })),
+      value: current.id,
+      onChange: (value) => {
+        const next = maps.find((m) => m.id === value);
+        if (next) {
+          current = next;
+          selectedId = null;
+          paint();
+        }
       }
     });
 
-    const pills = el('div', 'hub-pills');
-    pills.setAttribute('role', 'group');
-    const viewBtn = el('button', `hub-pills__btn${mode === 'view' ? ' is-active' : ''}`, 'View');
-    const editBtn = el('button', `hub-pills__btn${mode === 'edit' ? ' is-active' : ''}`, 'Edit');
-    viewBtn.type = 'button';
-    editBtn.type = 'button';
-    viewBtn.addEventListener('click', () => {
-      mode = 'view';
-      draft = null;
-      joining = false;
-      joinFrom = null;
-      paint();
+    const pills = createHubPills({
+      label: 'Map mode',
+      items: [
+        { id: 'view', label: 'View' },
+        { id: 'edit', label: 'Edit' }
+      ],
+      value: mode,
+      onSelect: (id) => {
+        mode = id;
+        if (id === 'view') {
+          draft = null;
+          joining = false;
+          joinFrom = null;
+        }
+        paint();
+      }
     });
-    editBtn.addEventListener('click', () => {
-      mode = 'edit';
-      paint();
-    });
-    pills.append(viewBtn, editBtn);
 
     const exportBtn = el('button', 'btn btn--secondary', 'Export');
     exportBtn.type = 'button';
@@ -741,7 +713,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       paint();
     });
 
-    toolbar.append(select, pills, exportBtn, newBtn);
+    toolbar.append(select.el, pills, exportBtn, newBtn);
 
     if (mode === 'edit') {
       const addLine = el('button', draft === 'line' ? 'btn btn--primary' : 'btn btn--ghost', '+ Line');
@@ -1038,34 +1010,42 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         const name = textInput(item.label, 'Name');
         const start = dateInput(item.starts_on ?? terms.t1, 'Starts');
         const end = dateInput(item.ends_on ?? item.starts_on ?? terms.e, 'Ends');
-        const link = document.createElement('select');
-        link.className = 'hub-filter';
-        const none = document.createElement('option');
-        none.value = '';
-        none.textContent = 'No project link';
-        link.append(none);
-        for (const project of [...projects.filter((p) => p.type !== 'excursion'), ...excursions]) {
-          const opt = document.createElement('option');
-          opt.value = `${project.type === 'excursion' ? 'excursion' : 'project'}:${project.id}`;
-          opt.textContent = project.title;
-          if (item.link?.id === project.id) opt.selected = true;
-          link.append(opt);
-        }
-        const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
-        attachTo.setAttribute('aria-label', 'Attach to');
-        const also = el('select', 'hub-filter') as HTMLSelectElement;
-        also.setAttribute('aria-label', 'Also connect to');
-        if (selectedTick) {
-          fillTargetSelect(attachTo, current, {
-            skipId: selectedTick.id,
-            selected: attachSelectValue(selectedTick)
-          });
-          fillTargetSelect(also, current, {
-            includeBlank: 'No extra connection',
-            skipId: selectedTick.id,
-            selected: connectSelectValue(current, selectedTick.connects_to)
-          });
-        }
+        const link = createHubFilter({
+          key: 'Project',
+          label: 'Linked project',
+          defaultValue: '',
+          options: [
+            { value: '', label: 'No project link' },
+            ...[...projects.filter((p) => p.type !== 'excursion'), ...excursions].map((project) => ({
+              value: `${project.type === 'excursion' ? 'excursion' : 'project'}:${project.id}`,
+              label: project.title
+            }))
+          ],
+          value: item.link
+            ? `${item.link.type === 'excursion' ? 'excursion' : 'project'}:${item.link.id}`
+            : ''
+        });
+        const attachTo = createHubFilter({
+          key: 'Attach',
+          label: 'Attach to',
+          defaultValue: selectedTick ? attachSelectValue(selectedTick) : '',
+          options: selectedTick
+            ? targetFilterOptions(current, { skipId: selectedTick.id })
+            : [],
+          value: selectedTick ? attachSelectValue(selectedTick) : ''
+        });
+        const also = createHubFilter({
+          key: 'Also',
+          label: 'Also connect to',
+          defaultValue: '',
+          options: selectedTick
+            ? targetFilterOptions(current, {
+                includeBlank: 'No extra connection',
+                skipId: selectedTick.id
+              })
+            : [],
+          value: selectedTick ? connectSelectValue(current, selectedTick.connects_to) : ''
+        });
         const tracks = selectedStation ? trackPicker(selectedStation.tracks) : null;
         const save = el('button', 'btn btn--primary', 'Save');
         save.type = 'button';
@@ -1073,7 +1053,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           item.label = name.value.trim() || item.label;
           item.starts_on = start.value || null;
           item.ends_on = selectedStation ? end.value || null : end.value || start.value || null;
-          const [type, id] = link.value.split(':');
+          const [type, id] = link.getValue().split(':');
           item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
           if (selectedStation) {
             selectedStation.tracks = tracks?.value() ?? selectedStation.tracks;
@@ -1084,11 +1064,11 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
             selectedStation.height = next.height;
           } else if (selectedTick) {
             selectedTick.attach = parseAttachValue(
-              attachTo.value,
+              attachTo.getValue(),
               current.lines[0]?.id ?? '',
               selectedTick.attach.kind === 'line' ? selectedTick.attach.y : 200
             );
-            selectedTick.connects_to = parseConnectValue(also.value, current);
+            selectedTick.connects_to = parseConnectValue(also.getValue(), current);
             const next = applyDateToTickAttach(selectedTick, year);
             selectedTick.attach = next.attach;
           }
@@ -1113,9 +1093,9 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           if (tracks) form.append(field('Year lines', tracks.root));
         }
         if (selectedTick) {
-          form.append(field('Attach to', attachTo), field('Also connect to', also));
+          form.append(field('Attach to', attachTo.el), field('Also connect to', also.el));
         }
-        form.append(link, save, del);
+        form.append(link.el, save, del);
         preview.append(form);
       }
     } else {
@@ -1176,45 +1156,57 @@ function renderDraftForm(
   name.placeholder = kind === 'line' ? 'Justice' : kind === 'station' ? 'Young Diplomats Program' : 'Rotary MUNA';
   const letter = textInput(nextLineLetter(map.lines), 'Letter');
   letter.maxLength = 4;
-  const color = el('select', 'hub-filter') as HTMLSelectElement;
-  color.setAttribute('aria-label', 'Colour');
-  for (const token of LINE_COLORS) {
-    const opt = document.createElement('option');
-    opt.value = token;
-    opt.textContent = token.replace('-', ' ');
-    color.append(opt);
-  }
-  const line = el('select', 'hub-filter') as HTMLSelectElement;
-  line.setAttribute('aria-label', 'Line');
-  for (const item of map.lines) {
-    const opt = document.createElement('option');
-    opt.value = item.id;
-    opt.textContent = `${item.letter} · ${item.name}`;
-    line.append(opt);
-  }
+  const color = createHubFilter({
+    key: 'Colour',
+    label: 'Colour',
+    defaultValue: LINE_COLORS[0] ?? 'blue',
+    options: LINE_COLORS.map((token) => ({ value: token, label: token.replace('-', ' ') })),
+    value: LINE_COLORS[0] ?? 'blue'
+  });
+  const line = createHubFilter({
+    key: 'Line',
+    label: 'Line',
+    defaultValue: map.lines[0]?.id ?? '',
+    options: map.lines.map((item) => ({
+      value: item.id,
+      label: `${item.letter} · ${item.name}`
+    })),
+    value: map.lines[0]?.id ?? ''
+  });
   const start = dateInput(terms.t1, kind === 'event' ? 'Date' : 'Starts');
   const end = dateInput(terms.e, 'Ends');
   const tracks = trackPicker(['junior']);
-  const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
-  attachTo.setAttribute('aria-label', 'Attach to');
-  fillTargetSelect(attachTo, map, {
-    selected: map.lines[0] ? `line:${map.lines[0].id}` : ''
+  const attachTo = createHubFilter({
+    key: 'Attach',
+    label: 'Attach to',
+    defaultValue: map.lines[0] ? `line:${map.lines[0].id}` : '',
+    options: targetFilterOptions(map),
+    value: map.lines[0] ? `line:${map.lines[0].id}` : ''
   });
-  const also = el('select', 'hub-filter') as HTMLSelectElement;
-  also.setAttribute('aria-label', 'Also connect to');
-  fillTargetSelect(also, map, { includeBlank: 'No extra connection' });
+  const also = createHubFilter({
+    key: 'Also',
+    label: 'Also connect to',
+    defaultValue: '',
+    options: targetFilterOptions(map, { includeBlank: 'No extra connection' }),
+    value: ''
+  });
 
-  if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color));
+  if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color.el));
   else if (kind === 'station') {
     card.append(
       field('Name', name),
-      field('Line', line),
+      field('Line', line.el),
       field('Year lines', tracks.root),
       field('Starts', start),
       field('Ends', end)
     );
   } else {
-    card.append(field('Name', name), field('Attach to', attachTo), field('Also connect to', also), field('Date', start));
+    card.append(
+      field('Name', name),
+      field('Attach to', attachTo.el),
+      field('Also connect to', also.el),
+      field('Date', start)
+    );
   }
 
   const actions = el('div', 'confirm-card__actions');
@@ -1235,7 +1227,7 @@ function renderDraftForm(
         id: newId('line'),
         name: title,
         letter: (letter.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
-        color: (color.value as MapColorToken) || 'blue',
+        color: (color.getValue() as MapColorToken) || 'blue',
         points: yearLinePoints(x)
       });
     } else if (kind === 'station') {
@@ -1245,7 +1237,7 @@ function renderDraftForm(
       }
       const draftStation: MapStation = {
         id: newId('st'),
-        line_id: line.value || map.lines[0]!.id,
+        line_id: line.getValue() || map.lines[0]!.id,
         label: title,
         y: 80,
         height: 110,
@@ -1265,9 +1257,9 @@ function renderDraftForm(
       const draftTick: MapTick = {
         id: newId('tk'),
         label: title,
-        attach: parseAttachValue(attachTo.value, map.lines[0]!.id, 200),
+        attach: parseAttachValue(attachTo.getValue(), map.lines[0]!.id, 200),
         stroke: 'solid',
-        connects_to: parseConnectValue(also.value, map),
+        connects_to: parseConnectValue(also.getValue(), map),
         starts_on: start.value || terms.t1,
         ends_on: null,
         link: null

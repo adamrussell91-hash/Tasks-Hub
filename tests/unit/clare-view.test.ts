@@ -74,6 +74,9 @@ describe('Clare protocol controls', () => {
     await renderClareView(canvas);
 
     expect(canvas.textContent).toMatch(/clare can/i);
+    expect(canvas.querySelector('select.hub-filter')).toBeNull();
+    expect(canvas.querySelector('.clare-form .hub-filter')?.tagName).toBe('BUTTON');
+    expect(canvas.querySelector('.clare-form .hub-search')?.tagName).toBe('LABEL');
     const pills = [...canvas.querySelectorAll<HTMLButtonElement>('[data-protocol-id]')];
     expect(pills).toHaveLength(5);
     for (const pill of pills) {

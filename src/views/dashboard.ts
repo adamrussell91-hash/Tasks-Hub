@@ -7,23 +7,32 @@ import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { findStallCandidates } from '@/domain/stall';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
-import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { mountProjectCard, mountTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
+import {
+  createHubField,
+  createHubFilter,
+  createHubPills,
+  createHubSearch,
+  createHubToolbar,
+  domainFilterOptions,
+  el,
+  priorityFilterOptions
+} from '@/views/hub-kit';
 
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+let dayDomain: TaskDomain | 'all' = 'all';
+let dayPriority: TaskPriority | 'all' = 'all';
+let backlogDomain: TaskDomain | 'all' = 'all';
+let backlogPriority: TaskPriority | 'all' = 'all';
+let backlogTag = '';
+let projectStatusFilter: 'all' | 'stalled' | 'active' | 'closed' = 'all';
+let projectQuery = '';
+let searchDomain: TaskDomain | 'all' = 'all';
+let searchKind: 'all' | 'tasks' | 'projects' = 'all';
+let templateKind: 'all' | 'task' | 'project' | 'excursion' = 'all';
 
 function appendTaskCard(
   host: HTMLElement,
@@ -96,12 +105,13 @@ export function requestToggleDone(
       `Clare guessed ${task.estimated_duration} minutes. Discard leaves this task open.`
     )
   );
-  const minutes = el('input', 'hub-search') as HTMLInputElement;
-  minutes.type = 'number';
-  minutes.min = '1';
-  minutes.step = '5';
-  minutes.value = String(task.estimated_duration);
-  minutes.setAttribute('aria-label', 'Actual minutes');
+  const minutes = createHubField({
+    type: 'number',
+    ariaLabel: 'Actual minutes',
+    min: '1',
+    step: '5',
+    value: String(task.estimated_duration)
+  });
   const actions = el('div', 'confirm-card__actions');
   const discard = el('button', 'btn btn--ghost', 'Discard');
   discard.type = 'button';
@@ -109,7 +119,7 @@ export function requestToggleDone(
   confirm.type = 'button';
   discard.addEventListener('click', () => host.replaceChildren());
   confirm.addEventListener('click', async () => {
-    const value = Number(minutes.value);
+    const value = Number(minutes.input.value);
     if (!value || Number.isNaN(value)) {
       host.append(el('p', 'empty-state', 'Enter actual minutes, or Discard.'));
       return;
@@ -124,7 +134,7 @@ export function requestToggleDone(
     }
   });
   actions.append(discard, confirm);
-  card.append(minutes, actions);
+  card.append(minutes.el, actions);
   host.append(card);
   card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
@@ -133,8 +143,12 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
   const today = new Date();
-  const list = adaptiveTodayTasks(tasks, today);
   const prefs = preferredDomains(today);
+  const list = adaptiveTodayTasks(tasks, today).filter((t) => {
+    if (dayDomain !== 'all' && t.domain !== dayDomain) return false;
+    if (dayPriority !== 'all' && t.priority !== dayPriority) return false;
+    return true;
+  });
 
   canvas.replaceChildren();
   const intro = el(
@@ -143,6 +157,33 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
     `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`
   );
   canvas.append(intro);
+
+  const filters = createHubToolbar();
+  filters.append(
+    createHubFilter({
+      key: 'Domain',
+      label: 'Domain',
+      defaultValue: 'all',
+      options: domainFilterOptions(),
+      value: dayDomain,
+      onChange: (value) => {
+        dayDomain = value as TaskDomain | 'all';
+        void renderDayView(canvas);
+      }
+    }).el,
+    createHubFilter({
+      key: 'Priority',
+      label: 'Priority',
+      defaultValue: 'all',
+      options: priorityFilterOptions(),
+      value: dayPriority,
+      onChange: (value) => {
+        dayPriority = value as TaskPriority | 'all';
+        void renderDayView(canvas);
+      }
+    }).el
+  );
+  canvas.append(filters);
 
   const clareLink = el('p', 'clare-inline');
   const goClare = el('button', 'btn btn--secondary', 'Negotiate with Clare');
@@ -172,10 +213,6 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   canvas.append(stack);
 }
 
-let backlogDomain: TaskDomain | 'all' = 'all';
-let backlogPriority: TaskPriority | 'all' = 'all';
-let backlogTag = '';
-
 export async function renderListView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
@@ -186,19 +223,13 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
   if (backlogTag) list = list.filter((t) => t.tags.includes(backlogTag));
   canvas.replaceChildren();
 
-  const filters = el('div', 'board-filter');
+  const filters = createHubToolbar('board-filter');
   filters.append(
     createHubFilter({
       key: 'Domain',
       label: 'Domain',
       defaultValue: 'all',
-      options: [
-        { value: 'all', label: 'All domains' },
-        ...(['teaching', 'life', 'wedding', 'health', 'other'] as const).map((d) => ({
-          value: d,
-          label: d
-        }))
-      ],
+      options: domainFilterOptions(),
       value: backlogDomain,
       onChange: (value) => {
         backlogDomain = value as TaskDomain | 'all';
@@ -209,10 +240,7 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
       key: 'Priority',
       label: 'Priority',
       defaultValue: 'all',
-      options: [
-        { value: 'all', label: 'All priorities' },
-        ...(['urgent', 'high', 'medium', 'low'] as const).map((p) => ({ value: p, label: p }))
-      ],
+      options: priorityFilterOptions(),
       value: backlogPriority,
       onChange: (value) => {
         backlogPriority = value as TaskPriority | 'all';
@@ -268,6 +296,13 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     return;
   }
 
+  const restoreSearch =
+    document.activeElement instanceof HTMLInputElement &&
+    document.activeElement.getAttribute('aria-label') === 'Filter projects';
+  const searchPos = restoreSearch
+    ? (document.activeElement as HTMLInputElement).selectionStart
+    : null;
+
   canvas.replaceChildren();
   if (flagWarning) canvas.append(el('p', 'empty-state', flagWarning));
 
@@ -285,36 +320,79 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   const mergeTargets = projects.filter(
     (p) => p.status !== 'archived_dead' && p.status !== 'stalled'
   );
+  const q = projectQuery.trim().toLowerCase();
+  const matchesQuery = (project: Project) =>
+    !q ||
+    project.title.toLowerCase().includes(q) ||
+    project.description.toLowerCase().includes(q) ||
+    project.arc_summary.toLowerCase().includes(q);
 
-  if (stalled.length) {
+  const toolbar = createHubToolbar();
+  const search = createHubSearch({
+    placeholder: 'Filter projects…',
+    ariaLabel: 'Filter projects',
+    value: projectQuery,
+    onInput: (value) => {
+      projectQuery = value;
+      void renderProjectsView(canvas);
+    }
+  });
+  toolbar.append(
+    search.el,
+    createHubPills({
+      label: 'Project status',
+      items: [
+        { id: 'all', label: 'All' },
+        { id: 'stalled', label: 'Stalled' },
+        { id: 'active', label: 'Active' },
+        { id: 'closed', label: 'Closed' }
+      ],
+      value: projectStatusFilter,
+      onSelect: (id) => {
+        projectStatusFilter = id;
+        void renderProjectsView(canvas);
+      }
+    })
+  );
+  canvas.append(toolbar);
+
+  const showStalled = projectStatusFilter === 'all' || projectStatusFilter === 'stalled';
+  const showActive = projectStatusFilter === 'all' || projectStatusFilter === 'active';
+  const showClosed = projectStatusFilter === 'all' || projectStatusFilter === 'closed';
+
+  if (showStalled && stalled.length) {
     canvas.append(el('h2', 'section-title', 'Stalled — choose an outcome'));
     const stallStack = el('div', 'task-stack');
-    for (const project of stalled) {
+    for (const project of stalled.filter(matchesQuery)) {
       stallStack.append(
         renderStalledCard(project, tasks, mergeTargets, stallConfirmHost, () =>
           void renderProjectsView(canvas)
         )
       );
     }
+    if (!stallStack.children.length) stallStack.append(el('p', 'empty-state', 'No stalled projects match.'));
     canvas.append(stallStack);
   }
 
+  if (showActive) {
   canvas.append(el('h2', 'section-title', 'Active & revived'));
   const stack = el('div', 'task-stack');
-  for (const project of live) {
+  const visibleLive = live.filter(matchesQuery);
+  for (const project of visibleLive) {
     stack.append(
       renderProjectClosureCard(project, tasks, closureConfirmHost, () =>
         void renderProjectsView(canvas)
       )
     );
   }
-  if (!live.length) stack.append(el('p', 'empty-state', 'No active projects.'));
+  if (!visibleLive.length) stack.append(el('p', 'empty-state', 'No active projects.'));
   canvas.append(stack);
+  }
 
-  if (closed.length) {
+  if (showClosed && closed.length) {
     canvas.append(el('h2', 'section-title', 'Closed, buried & frankensteined'));
     const deadStack = el('div', 'task-stack');
-    for (const project of closed) {
+    for (const project of closed.filter(matchesQuery)) {
       mountProjectCard(deadStack, project, tasks, {
         onOpenPage: (current) => {
           location.hash = projectPageHash(current.id);
@@ -345,6 +423,14 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
       logStack.append(row);
     }
     canvas.append(logStack);
+  }
+
+  if (restoreSearch) {
+    const field = canvas.querySelector<HTMLInputElement>('[aria-label="Filter projects"]');
+    if (field) {
+      field.focus();
+      if (searchPos != null) field.setSelectionRange(searchPos, searchPos);
+    }
   }
 }
 
@@ -386,9 +472,10 @@ function showCloseConfirm(
   card.setAttribute('aria-label', 'Confirm closure');
   card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
   card.append(el('h2', 'closure-confirm__title', `Close ${project.title}`));
-  const reason = el('input', 'hub-search') as HTMLInputElement;
-  reason.placeholder = 'Short retrospective (required)';
-  reason.setAttribute('aria-label', 'Retrospective');
+  const reason = createHubField({
+    ariaLabel: 'Retrospective',
+    placeholder: 'Short retrospective (required)'
+  });
   const slipText =
     slipDays === null
       ? 'No baseline comparison.'
@@ -397,7 +484,7 @@ function showCloseConfirm(
         : slipDays > 0
           ? `${slipDays} days past baseline.`
           : `${Math.abs(slipDays)} days ahead of baseline.`;
-  card.append(el('p', 'page-header__supporting', `${slipText} Do not apply until Confirm.`), reason);
+  card.append(el('p', 'page-header__supporting', `${slipText} Do not apply until Confirm.`), reason.el);
   const actions = el('div', 'confirm-card__actions');
   const discard = el('button', 'btn btn--ghost', 'Discard');
   discard.type = 'button';
@@ -405,7 +492,7 @@ function showCloseConfirm(
   confirm.type = 'button';
   discard.addEventListener('click', () => host.replaceChildren());
   confirm.addEventListener('click', async () => {
-    const text = reason.value.trim();
+    const text = reason.input.value.trim();
     if (!text) {
       host.append(el('p', 'empty-state', 'Add a retrospective first.'));
       return;
@@ -456,22 +543,23 @@ function renderStalledCard(
     )
   );
 
-  const reason = el('input', 'hub-search') as HTMLInputElement;
-  reason.placeholder = 'Short reason (required)';
-  reason.setAttribute('aria-label', `Reason for ${project.title}`);
+  const reason = createHubField({
+    ariaLabel: `Reason for ${project.title}`,
+    placeholder: 'Short reason (required)'
+  });
 
-  const merge = el('select', 'hub-filter') as HTMLSelectElement;
-  merge.setAttribute('aria-label', 'Frankenstein into');
-  const blank = document.createElement('option');
-  blank.value = '';
-  blank.textContent = 'Merge into… (for Frankenstein)';
-  merge.append(blank);
-  for (const target of mergeTargets.filter((p) => p.id !== project.id)) {
-    const opt = document.createElement('option');
-    opt.value = target.id;
-    opt.textContent = target.title;
-    merge.append(opt);
-  }
+  const merge = createHubFilter({
+    key: 'Merge into',
+    label: 'Frankenstein into',
+    defaultValue: '',
+    options: [
+      { value: '', label: 'Merge into… (for Frankenstein)' },
+      ...mergeTargets
+        .filter((p) => p.id !== project.id)
+        .map((target) => ({ value: target.id, label: target.title }))
+    ],
+    value: ''
+  });
 
   const actions = el('div', 'stall-card__actions');
   const outcomes: Array<{ id: 'revived' | 'frankensteined' | 'buried'; label: string }> = [
@@ -487,21 +575,21 @@ function renderStalledCard(
     );
     btn.type = 'button';
     btn.addEventListener('click', () => {
-      const text = reason.value.trim();
+      const text = reason.input.value.trim();
       if (!text) {
         confirmHost.replaceChildren(el('p', 'empty-state', 'Add a short reason first.'));
         return;
       }
-      if (outcome.id === 'frankensteined' && !merge.value) {
+      if (outcome.id === 'frankensteined' && !merge.getValue()) {
         confirmHost.replaceChildren(el('p', 'empty-state', 'Pick a merge target for Frankenstein.'));
         return;
       }
-      showStallConfirm(confirmHost, project, outcome.id, text, merge.value || null, onDone);
+      showStallConfirm(confirmHost, project, outcome.id, text, merge.getValue() || null, onDone);
     });
     actions.append(btn);
   }
 
-  card.append(reason, merge, actions);
+  card.append(reason.el, merge.el, actions);
   return card;
 }
 
@@ -557,31 +645,71 @@ function showStallConfirm(
 
 export async function renderSearchView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren();
-  const form = el('form', 'search-form');
-  const input = el('input', 'hub-search') as HTMLInputElement;
-  input.type = 'search';
-  input.placeholder = 'Search tasks and projects…';
-  input.setAttribute('aria-label', 'Search');
+  const form = el('form', 'search-form hub-toolbar');
+  const search = createHubSearch({
+    placeholder: 'Search tasks and projects…',
+    ariaLabel: 'Search'
+  });
   const results = el('div', 'task-stack');
-  form.append(input);
-  form.addEventListener('submit', (e) => e.preventDefault());
-  input.addEventListener('input', async () => {
-    const q = input.value.trim();
+  const runSearch = async () => {
+    const q = search.input.value.trim();
     if (q.length < 2) {
       results.replaceChildren();
       return;
     }
     try {
       const data = await tasksApi.search(q);
-      paintSearch(results, data.tasks, data.projects);
+      const filtered = applySearchFilters(data.tasks, data.projects);
+      paintSearch(results, filtered.tasks, filtered.projects);
     } catch {
       const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
       const data = searchEntities(tasks, projects, q);
-      paintSearch(results, data.tasks, data.projects);
+      const filtered = applySearchFilters(data.tasks, data.projects);
+      paintSearch(results, filtered.tasks, filtered.projects);
     }
-  });
+  };
+  form.append(
+    search.el,
+    createHubFilter({
+      key: 'Domain',
+      label: 'Domain',
+      defaultValue: 'all',
+      options: domainFilterOptions(),
+      value: searchDomain,
+      onChange: (value) => {
+        searchDomain = value as TaskDomain | 'all';
+        void runSearch();
+      }
+    }).el,
+    createHubPills({
+      label: 'Search in',
+      items: [
+        { id: 'all', label: 'All' },
+        { id: 'tasks', label: 'Tasks' },
+        { id: 'projects', label: 'Projects' }
+      ],
+      value: searchKind,
+      onSelect: (id) => {
+        searchKind = id;
+        void runSearch();
+      }
+    })
+  );
+  form.addEventListener('submit', (e) => e.preventDefault());
+  search.input.addEventListener('input', () => void runSearch());
   const confirmHost = el('div', 'task-confirm');
   canvas.append(form, results, confirmHost);
+}
+
+function applySearchFilters(tasks: Task[], projects: Project[]): { tasks: Task[]; projects: Project[] } {
+  const nextTasks =
+    searchKind === 'projects'
+      ? []
+      : searchDomain === 'all'
+        ? tasks
+        : tasks.filter((task) => task.domain === searchDomain);
+  const nextProjects = searchKind === 'tasks' ? [] : projects;
+  return { tasks: nextTasks, projects: nextProjects };
 }
 
 async function refreshSearch(host: HTMLElement): Promise<void> {
@@ -593,11 +721,13 @@ async function refreshSearch(host: HTMLElement): Promise<void> {
   }
   try {
     const data = await tasksApi.search(q);
-    paintSearch(host, data.tasks, data.projects);
+    const filtered = applySearchFilters(data.tasks, data.projects);
+    paintSearch(host, filtered.tasks, filtered.projects);
   } catch {
     const [allTasks, allProjects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
     const data = searchEntities(allTasks, allProjects, q);
-    paintSearch(host, data.tasks, data.projects);
+    const filtered = applySearchFilters(data.tasks, data.projects);
+    paintSearch(host, filtered.tasks, filtered.projects);
   }
 }
 
@@ -667,7 +797,27 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
   }
   canvas.replaceChildren();
   const confirmHost = el('div', 'template-confirm');
+  const toolbar = createHubToolbar();
+  toolbar.append(
+    createHubPills({
+      label: 'Template type',
+      role: 'tablist',
+      items: [
+        { id: 'all', label: 'All' },
+        { id: 'task', label: 'Task' },
+        { id: 'project', label: 'Project' },
+        { id: 'excursion', label: 'Excursion' }
+      ],
+      value: templateKind,
+      onSelect: (id) => {
+        templateKind = id;
+        void renderTemplatesView(canvas);
+      }
+    })
+  );
+  canvas.append(toolbar);
 
+  if (templateKind === 'all' || templateKind === 'task') {
   canvas.append(el('h2', 'section-title', 'Task templates'));
   const taskStack = el('div', 'task-stack');
   for (const tt of data.task_templates as TaskTemplate[]) {
@@ -691,10 +841,14 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     taskStack.append(row);
   }
   canvas.append(taskStack);
+  }
 
+  if (templateKind === 'all' || templateKind === 'project' || templateKind === 'excursion') {
   canvas.append(el('h2', 'section-title', 'Project & excursion templates'));
   const projStack = el('div', 'task-stack');
   for (const pt of data.project_templates as ProjectTemplate[]) {
+    if (templateKind === 'excursion' && pt.type !== 'excursion') continue;
+    if (templateKind === 'project' && pt.type === 'excursion') continue;
     const row = el('article', 'task-row');
     const actions = el('div', 'task-row__actions');
     const use = el('button', 'btn btn--primary', 'Use');
@@ -719,6 +873,7 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     projStack.append(row);
   }
   for (const et of data.excursion_templates as ExcursionTemplate[]) {
+    if (templateKind === 'project') continue;
     const row = el('article', 'task-row');
     const actions = el('div', 'task-row__actions');
     const use = el('button', 'btn btn--primary', 'Use');
@@ -735,5 +890,7 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     );
     projStack.append(row);
   }
-  canvas.append(projStack, confirmHost);
+  canvas.append(projStack);
+  }
+  canvas.append(confirmHost);
 }

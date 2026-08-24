@@ -2,18 +2,17 @@ import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
 import { somedayTasks } from '@/domain/hierarchy';
 import { errorMessage } from '@/views/feedback';
-import { renderQuickAdd } from '@/views/task-editor';
+import {
+  createHubFilter,
+  createHubSearch,
+  createHubToolbar,
+  domainFilterOptions,
+  el
+} from '@/views/hub-kit';
+import type { TaskDomain } from '@/schemas/task';
 
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+let somedayDomain: TaskDomain | 'all' = 'all';
+let somedayQuery = '';
 
 function renderSomedayCard(task: Task, onReload: () => void): HTMLElement {
   const card = el('article', 'glass-tile someday-card');
@@ -72,6 +71,13 @@ export async function renderSomedayView(canvas: HTMLElement): Promise<void> {
 }
 
 function paintSomeday(canvas: HTMLElement, items: Task[]): void {
+  const restoreSearch =
+    document.activeElement instanceof HTMLInputElement &&
+    document.activeElement.getAttribute('aria-label') === 'Filter someday ideas';
+  const searchPos = restoreSearch
+    ? (document.activeElement as HTMLInputElement).selectionStart
+    : null;
+
   canvas.replaceChildren();
   const reload = () => {
     void renderSomedayView(canvas);
@@ -84,25 +90,53 @@ function paintSomeday(canvas: HTMLElement, items: Task[]): void {
   );
   canvas.append(hero);
 
-  const addForm = el('form', 'someday-add');
-  const title = el('input', 'hub-search') as HTMLInputElement;
-  title.placeholder = 'Capture a someday idea';
-  title.required = true;
-  title.setAttribute('aria-label', 'Someday idea');
+  const filters = createHubToolbar();
+  const search = createHubSearch({
+    placeholder: 'Filter someday ideas…',
+    ariaLabel: 'Filter someday ideas',
+    value: somedayQuery,
+    onInput: (value) => {
+      somedayQuery = value;
+      paintSomeday(canvas, items);
+    }
+  });
+  filters.append(
+    search.el,
+    createHubFilter({
+      key: 'Domain',
+      label: 'Domain',
+      defaultValue: 'all',
+      options: domainFilterOptions(),
+      value: somedayDomain,
+      onChange: (value) => {
+        somedayDomain = value as TaskDomain | 'all';
+        paintSomeday(canvas, items);
+      }
+    }).el
+  );
+  canvas.append(filters);
+
+  const addForm = el('form', 'someday-add hub-toolbar');
+  const title = createHubSearch({
+    type: 'text',
+    placeholder: 'Capture a someday idea',
+    ariaLabel: 'Someday idea',
+    required: true
+  });
   const submit = el('button', 'btn btn--decisive', 'Park it');
   submit.type = 'submit';
-  addForm.append(title, submit);
+  addForm.append(title.el, submit);
   addForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     submit.disabled = true;
     try {
       await tasksApi.createTask({
-        title: title.value.trim(),
+        title: title.input.value.trim(),
         domain: 'other',
         bucket: 'someday',
         status: 'deferred'
       });
-      title.value = '';
+      title.input.value = '';
       reload();
     } catch (err) {
       canvas.append(el('p', 'empty-state', errorMessage(err)));
@@ -112,12 +146,39 @@ function paintSomeday(canvas: HTMLElement, items: Task[]): void {
   });
   canvas.append(addForm);
 
-  if (items.length === 0) {
-    canvas.append(el('p', 'empty-state', 'Nothing in Someday / Maybe yet.'));
+  const query = somedayQuery.trim().toLowerCase();
+  const visible = items.filter((item) => {
+    if (somedayDomain !== 'all' && item.domain !== somedayDomain) return false;
+    if (
+      query &&
+      !item.title.toLowerCase().includes(query) &&
+      !item.description.toLowerCase().includes(query)
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  if (visible.length === 0) {
+    canvas.append(
+      el(
+        'p',
+        'empty-state',
+        items.length === 0 ? 'Nothing in Someday / Maybe yet.' : 'No someday ideas match those filters.'
+      )
+    );
     return;
   }
 
   const grid = el('div', 'someday-grid');
-  for (const item of items) grid.append(renderSomedayCard(item, reload));
+  for (const item of visible) grid.append(renderSomedayCard(item, reload));
   canvas.append(grid);
+
+  if (restoreSearch) {
+    const field = canvas.querySelector<HTMLInputElement>('[aria-label="Filter someday ideas"]');
+    if (field) {
+      field.focus();
+      if (searchPos != null) field.setSelectionRange(searchPos, searchPos);
+    }
+  }
 }
