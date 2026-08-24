@@ -417,7 +417,7 @@ function renderAddForm(
     field('Registration link', link.el),
     field('Subjects', subjects.el),
     field('Age groups', ages.el),
-    field('Description', description),
+    field('Description', description.el),
     field('Not available in NSW', nsw),
     field('Not available reason', reason.el)
   );
@@ -456,7 +456,7 @@ function renderAddForm(
       organiser: organiser.input.value.trim(),
       cost: cost.input.value.trim(),
       cost_basis: costBasis.getValue() || null,
-      description: description.value.trim(),
+      description: description.input.value.trim(),
       registration_link: link.input.value.trim() || null,
       registration_window: registrationWindow.input.value.trim(),
       not_available_nsw: nsw.checked,

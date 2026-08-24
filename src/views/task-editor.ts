@@ -392,7 +392,7 @@ export async function renderTaskEditor(
         domain: domain.getValue(),
         priority: priority.getValue(),
         parent_project_id: project.getValue() || null,
-        description: notes.value.trim(),
+        description: notes.input.value.trim(),
         tags: parseTagsInput(tags.input.value),
         recurrence_rule: recurrence.read(),
         remind_at: reminder.remind_at,
@@ -406,7 +406,7 @@ export async function renderTaskEditor(
     }
   });
   actions.append(discard, save);
-  card.append(title.el, due.el, domain.el, priority.el, project.el, tags.el, notes);
+  card.append(title.el, due.el, domain.el, priority.el, project.el, tags.el, notes.el);
   if (task.kind !== 'step' && !task.parent_task_id) {
     card.append(recurrence.section, remind.section);
   }

@@ -25,6 +25,7 @@ import { discCss, fillCss, letterCss, strokeCss } from '@/domain/maps-colors';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import {
+  createHubField,
   createHubFilter,
   createHubPills,
   createHubToolbar,
@@ -577,18 +578,12 @@ function field(label: string, control: HTMLElement): HTMLElement {
   return wrap;
 }
 
-function textInput(value: string, aria: string): HTMLInputElement {
-  const input = el('input', 'hub-search') as HTMLInputElement;
-  input.value = value;
-  input.setAttribute('aria-label', aria);
-  return input;
+function textInput(value: string, aria: string) {
+  return createHubField({ ariaLabel: aria, value });
 }
 
-function dateInput(value: string, aria: string): HTMLInputElement {
-  const input = textInput('', aria);
-  input.type = 'date';
-  input.value = value;
-  return input;
+function dateInput(value: string, aria: string) {
+  return createHubField({ type: 'date', ariaLabel: aria, value });
 }
 
 function trackPicker(selected: YearTrack[]): { root: HTMLElement; value: () => YearTrack[] } {
@@ -1050,9 +1045,11 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         const save = el('button', 'btn btn--primary', 'Save');
         save.type = 'button';
         save.addEventListener('click', async () => {
-          item.label = name.value.trim() || item.label;
-          item.starts_on = start.value || null;
-          item.ends_on = selectedStation ? end.value || null : end.value || start.value || null;
+          item.label = name.input.value.trim() || item.label;
+          item.starts_on = start.input.value || null;
+          item.ends_on = selectedStation
+            ? end.input.value || null
+            : end.input.value || start.input.value || null;
           const [type, id] = link.getValue().split(':');
           item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
           if (selectedStation) {
@@ -1086,10 +1083,10 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
             paint();
           });
         });
-        form.append(name);
-        form.append(selectedStation ? field('Starts', start) : field('Date', start));
+        form.append(name.el);
+        form.append(selectedStation ? field('Starts', start.el) : field('Date', start.el));
         if (selectedStation) {
-          form.append(field('Ends', end));
+          form.append(field('Ends', end.el));
           if (tracks) form.append(field('Year lines', tracks.root));
         }
         if (selectedTick) {
@@ -1153,9 +1150,10 @@ function renderDraftForm(
   );
 
   const name = textInput('', 'Name');
-  name.placeholder = kind === 'line' ? 'Justice' : kind === 'station' ? 'Young Diplomats Program' : 'Rotary MUNA';
+  name.input.placeholder =
+    kind === 'line' ? 'Justice' : kind === 'station' ? 'Young Diplomats Program' : 'Rotary MUNA';
   const letter = textInput(nextLineLetter(map.lines), 'Letter');
-  letter.maxLength = 4;
+  letter.input.maxLength = 4;
   const color = createHubFilter({
     key: 'Colour',
     label: 'Colour',
@@ -1191,21 +1189,21 @@ function renderDraftForm(
     value: ''
   });
 
-  if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color.el));
+  if (kind === 'line') card.append(field('Name', name.el), field('Letter', letter.el), field('Colour', color.el));
   else if (kind === 'station') {
     card.append(
-      field('Name', name),
+      field('Name', name.el),
       field('Line', line.el),
       field('Year lines', tracks.root),
-      field('Starts', start),
-      field('Ends', end)
+      field('Starts', start.el),
+      field('Ends', end.el)
     );
   } else {
     card.append(
-      field('Name', name),
+      field('Name', name.el),
       field('Attach to', attachTo.el),
       field('Also connect to', also.el),
-      field('Date', start)
+      field('Date', start.el)
     );
   }
 
@@ -1216,7 +1214,7 @@ function renderDraftForm(
   confirm.type = 'button';
   discard.addEventListener('click', () => onCancel());
   confirm.addEventListener('click', () => {
-    const title = name.value.trim();
+    const title = name.input.value.trim();
     if (!title) {
       host.append(el('p', 'empty-state', 'Add a name.'));
       return;
@@ -1226,7 +1224,7 @@ function renderDraftForm(
       map.lines.push({
         id: newId('line'),
         name: title,
-        letter: (letter.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
+        letter: (letter.input.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
         color: (color.getValue() as MapColorToken) || 'blue',
         points: yearLinePoints(x)
       });
@@ -1244,8 +1242,8 @@ function renderDraftForm(
         tracks: tracks.value(),
         in_stroke: 'solid',
         out_stroke: 'solid',
-        starts_on: start.value || terms.t1,
-        ends_on: end.value || terms.e,
+        starts_on: start.input.value || terms.t1,
+        ends_on: end.input.value || terms.e,
         link: null
       };
       map.stations.push(applyDateSpanToStation(draftStation, year));
@@ -1260,7 +1258,7 @@ function renderDraftForm(
         attach: parseAttachValue(attachTo.getValue(), map.lines[0]!.id, 200),
         stroke: 'solid',
         connects_to: parseConnectValue(also.getValue(), map),
-        starts_on: start.value || terms.t1,
+        starts_on: start.input.value || terms.t1,
         ends_on: null,
         link: null
       };

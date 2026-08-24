@@ -4,6 +4,7 @@ import {
   createHubFilter,
   createHubPills,
   createHubSearch,
+  createHubTextarea,
   createHubToolbar,
   domainFilterOptions,
   priorityFilterOptions
@@ -56,6 +57,19 @@ describe('hub-kit controls', () => {
     expect(buttons[0]?.classList.contains('is-active')).toBe(true);
     expect(buttons[0]?.getAttribute('aria-selected')).toBe('true');
     expect(buttons[1]?.getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('wraps notes in the same kit search chrome as single-line fields', () => {
+    const notes = createHubTextarea({
+      ariaLabel: 'Notes',
+      className: 'task-editor__notes',
+      value: 'hold'
+    });
+    expect(notes.el.tagName).toBe('LABEL');
+    expect(notes.el.classList.contains('hub-search')).toBe(true);
+    expect(notes.input.classList.contains('hub-search__input')).toBe(true);
+    expect(notes.input.classList.contains('task-editor__notes')).toBe(true);
+    expect(notes.input.value).toBe('hold');
   });
 
   it('wraps toolbars in the shared hub-toolbar class', () => {

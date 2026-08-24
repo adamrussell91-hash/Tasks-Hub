@@ -32,7 +32,7 @@ import {
 } from '@/domain/gantt';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { parseDue } from '@/domain/queries';
-import { createHubFilter, createHubToolbar } from '@/views/hub-kit';
+import { createHubField, createHubFilter, createHubToolbar } from '@/views/hub-kit';
 import { renderTaskMicroCard } from '@/views/hub-cards';
 import { renderTaskEditor } from '@/views/task-editor';
 import { errorMessage, renderLoadError } from '@/views/feedback';
@@ -706,24 +706,27 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     pop.style.top = `${clientY - hostRect.top + 12}px`;
     pop.append(el('h4', undefined, 'Dependency'));
 
+    const typeFilter = createHubFilter({
+      key: 'Type',
+      label: 'Type',
+      defaultValue: 'FS',
+      options: [
+        { value: 'FS', label: 'FS' },
+        { value: 'SS', label: 'SS' },
+        { value: 'FF', label: 'FF' }
+      ],
+      value: edge.type
+    });
     const typeRow = el('div', 'gantt-popover__row');
-    typeRow.append(el('label', undefined, 'Type'));
-    const select = document.createElement('select');
-    for (const type of ['FS', 'SS', 'FF'] as const) {
-      const option = document.createElement('option');
-      option.value = type;
-      option.textContent = type;
-      select.append(option);
-    }
-    select.value = edge.type;
-    typeRow.append(select);
+    typeRow.append(typeFilter.el);
 
+    const offset = createHubField({
+      type: 'number',
+      ariaLabel: 'Offset (d)',
+      value: String(edge.offsetDays)
+    });
     const offsetRow = el('div', 'gantt-popover__row');
-    offsetRow.append(el('label', undefined, 'Offset (d)'));
-    const offset = document.createElement('input');
-    offset.type = 'number';
-    offset.value = String(edge.offsetDays);
-    offsetRow.append(offset);
+    offsetRow.append(el('span', undefined, 'Offset (d)'), offset.el);
 
     const actions = el('div', 'gantt-popover__actions');
     const del = el('button', 'btn btn--secondary', 'Delete link');
@@ -736,7 +739,11 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     apply.type = 'button';
     apply.addEventListener('click', () => {
       closePopover();
-      void updateLink(edge, select.value as GanttDependency['type'], Number(offset.value) || 0);
+      void updateLink(
+        edge,
+        typeFilter.getValue() as GanttDependency['type'],
+        Number(offset.input.value) || 0
+      );
     });
     actions.append(del, apply);
     pop.append(typeRow, offsetRow, actions);

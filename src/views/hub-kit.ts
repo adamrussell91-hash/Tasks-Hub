@@ -101,14 +101,17 @@ export function createHubTextarea(options: {
   rows?: number;
   className?: string;
   placeholder?: string;
-}): HTMLTextAreaElement {
+}): { el: HTMLLabelElement; input: HTMLTextAreaElement } {
+  const wrap = el('label', 'hub-search');
+  const hidden = el('span', 'visually-hidden', options.ariaLabel);
   const notes = document.createElement('textarea');
-  notes.className = ['hub-search', options.className].filter(Boolean).join(' ');
+  notes.className = ['hub-search__input', options.className].filter(Boolean).join(' ');
   notes.value = options.value ?? '';
   notes.rows = options.rows ?? 3;
   notes.setAttribute('aria-label', options.ariaLabel);
   if (options.placeholder) notes.placeholder = options.placeholder;
-  return notes;
+  wrap.append(hidden, notes);
+  return { el: wrap, input: notes };
 }
 
 export function createHubToolbar(...classNames: string[]): HTMLElement {

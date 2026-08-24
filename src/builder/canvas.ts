@@ -83,12 +83,12 @@ function createCalloutEditor(block: PageBlock, onChange: (next: PageBlock) => vo
       touch(block, {
         style: style.getValue() as CalloutStyle,
         title: title.input.value.trim() || undefined,
-        body: body.value
+        body: body.input.value
       })
     );
   title.input.addEventListener('input', emit);
-  body.addEventListener('input', emit);
-  fields.append(style.el, title.el, body);
+  body.input.addEventListener('input', emit);
+  fields.append(style.el, title.el, body.el);
   return fields;
 }
 
@@ -105,10 +105,10 @@ function createQuoteEditor(block: PageBlock, onChange: (next: PageBlock) => void
     'Attribution',
     String(block.content.attribution ?? '')
   );
-  const emit = () => onChange(touch(block, { text: text.value, attribution: attr.input.value }));
-  text.addEventListener('input', emit);
+  const emit = () => onChange(touch(block, { text: text.input.value, attribution: attr.input.value }));
+  text.input.addEventListener('input', emit);
   attr.input.addEventListener('input', emit);
-  fields.append(text, attr.el);
+  fields.append(text.el, attr.el);
   return fields;
 }
 
