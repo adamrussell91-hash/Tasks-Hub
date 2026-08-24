@@ -376,6 +376,11 @@
   backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
   -webkit-backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
   transition: border-color 0.15s;
+  cursor: pointer;
+}
+
+.hub-card-slot {
+  cursor: pointer;
 }
 
 .hub-row:hover {

@@ -33,7 +33,7 @@ import {
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { parseDue } from '@/domain/queries';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
-import { renderTaskMicroCard } from '@/views/hub-cards';
+import { mountTaskCard } from '@/views/hub-cards';
 import { renderTaskEditor } from '@/views/task-editor';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 
@@ -527,13 +527,12 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
       scroller.append(el('p', 'empty-state empty-state--compact', 'Every open moon already has a date and a project.'));
     }
     for (const task of list) {
-      const card = renderTaskMicroCard(task, {
+      const card = mountTaskCard(scroller, task, {
         onEdit: (item) => {
           showPreview(item.id);
         }
       });
       card.draggable = true;
-      card.dataset.taskId = task.id;
       card.setAttribute('aria-grabbed', 'false');
       card.addEventListener('dragstart', (event) => {
         draggingMoonId = task.id;
@@ -549,15 +548,10 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
         card.classList.remove('is-dragging');
         card.setAttribute('aria-grabbed', 'false');
       });
-      card.addEventListener('click', (event) => {
-        if ((event.target as Element).closest('button')) return;
-        showPreview(task.id);
-      });
       wireDrop(card, (taskId) => {
         if (taskId === task.id) return;
         void placeMoon(taskId, { kind: 'parent', parentTaskId: task.id });
       });
-      scroller.append(card);
     }
 
     moons.replaceChildren(head, planets, scroller);

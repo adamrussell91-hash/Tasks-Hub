@@ -68,6 +68,22 @@ describe('renderDayView', () => {
     });
   });
 
+  it('expands a Today card on click', async () => {
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([
+      sampleTask({ id: 'task_today_card', title: 'Finish lesson pack' })
+    ]);
+    const canvas = document.createElement('main');
+    await renderDayView(canvas);
+
+    const slot = canvas.querySelector<HTMLElement>('.hub-card-slot[data-task-id="task_today_card"]');
+    expect(slot?.dataset.state).toBe('compact');
+    slot?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await vi.waitFor(() => {
+      expect(slot?.dataset.state).toBe('expanded');
+    });
+    expect(slot?.querySelector('.hub-card__title')?.textContent).toBe('Finish lesson pack');
+  });
+
   it('stamps today and shows the new task without waiting for a fresh list', async () => {
     const canvas = document.createElement('main');
     await renderDayView(canvas);

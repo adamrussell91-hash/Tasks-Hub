@@ -351,6 +351,8 @@ export function mountTaskCard(
     slot.setAttribute('aria-roledescription', 'Draggable task card');
   }
   slot.style.viewTransitionName = cardTransitionName(task.id);
+  slot.dataset.taskId = task.id;
+  slot.dataset.cardKind = 'task';
   const guard = { current: false };
   let expanded = false;
 
@@ -358,24 +360,15 @@ export function mountTaskCard(
     slot.replaceChildren(expanded ? renderTaskExpandedCard(task, handlers) : renderTaskMicroCard(task, handlers));
     slot.dataset.state = expanded ? 'expanded' : 'compact';
     const trigger = slot.querySelector<HTMLElement>(expanded ? '.hub-card' : '.hub-row');
-    if (!asListItem && trigger && !expanded) {
+    if (trigger && !asListItem) {
       trigger.setAttribute('role', 'button');
       trigger.tabIndex = 0;
-      trigger.setAttribute('aria-expanded', 'false');
-      trigger.setAttribute('aria-label', `Expand ${task.title} task card`);
+      trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      trigger.setAttribute(
+        'aria-label',
+        expanded ? `Collapse ${task.title} task card` : `Expand ${task.title} task card`
+      );
     }
-    trigger?.addEventListener('click', (event) => {
-      if (isInteractive(event.target)) return;
-      toggle();
-    });
-    trigger?.addEventListener('keydown', (event) => {
-      if (asListItem) return;
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        if (isInteractive(event.target)) return;
-        toggle();
-      }
-    });
   }
 
   function toggle(): void {
@@ -385,9 +378,34 @@ export function mountTaskCard(
     }, guard);
   }
 
+  slot.addEventListener('click', (event) => {
+    if (isInteractive(event.target)) return;
+    toggle();
+  });
+  slot.addEventListener('keydown', (event) => {
+    if (asListItem) return;
+    const key = (event as KeyboardEvent).key;
+    if (key !== 'Enter' && key !== ' ') return;
+    if (isInteractive(event.target)) return;
+    event.preventDefault();
+    toggle();
+  });
+  slot.addEventListener('hub-card-expand', () => {
+    if (!expanded) toggle();
+  });
+
   host.append(slot);
   paint();
   return slot;
+}
+
+/** Expand a mounted task card already in the tree (calendar chips, deep links). */
+export function expandMountedTaskCard(root: ParentNode, taskId: string): boolean {
+  const slot = root.querySelector<HTMLElement>(`.hub-card-slot[data-task-id="${CSS.escape(taskId)}"]`);
+  if (!slot) return false;
+  slot.dispatchEvent(new Event('hub-card-expand'));
+  slot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  return true;
 }
 
 export function mountProjectCard(

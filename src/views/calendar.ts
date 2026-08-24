@@ -34,7 +34,7 @@ import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { requestToggleDone } from '@/views/dashboard';
-import { mountTaskCard } from '@/views/hub-cards';
+import { expandMountedTaskCard, mountTaskCard } from '@/views/hub-cards';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -174,6 +174,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
 
   const today = new Date();
   let anchor = parseCalendarAnchor(hashQuery().get('date'), today);
+  let pendingExpandTaskId: string | null = null;
 
   function allItems(): CalendarItem[] {
     return filterCalendarItems(collectCalendarItems(tasks, projects), sessionFilters);
@@ -425,6 +426,11 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
 
     const showPreview = (item: CalendarItem) => {
       selectedDateKey = item.date_key;
+      if (item.task) {
+        pendingExpandTaskId = item.task.id;
+        paint();
+        return;
+      }
       void openItem(item, preview);
     };
 
@@ -444,6 +450,12 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
       })
     );
     canvas.append(preview);
+
+    if (pendingExpandTaskId) {
+      const taskId = pendingExpandTaskId;
+      pendingExpandTaskId = null;
+      expandMountedTaskCard(canvas, taskId);
+    }
 
     canvas.scrollTop = scrollTop;
     if (searchFocused) {

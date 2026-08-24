@@ -151,14 +151,17 @@ describe('calendar views', () => {
     expect(canvas.textContent).toMatch(/Already done/);
   });
 
-  it('opens the task editor from a month chip', async () => {
+  it('expands the day-agenda card when a month chip is clicked', async () => {
     const canvas = document.createElement('main');
     await renderMonthView(canvas);
     canvas.querySelector<HTMLButtonElement>('[data-task-id="task_lesson"]')?.click();
     await vi.waitFor(() => {
-      expect(canvas.querySelector('.task-editor')).not.toBeNull();
+      expect(
+        canvas.querySelector('.calendar-agenda .hub-card-slot[data-task-id="task_lesson"]')?.getAttribute('data-state')
+      ).toBe('expanded');
     });
-    expect(canvas.querySelector('.task-editor [aria-label="Title"]')).toBeTruthy();
+    expect(canvas.querySelector('.calendar-agenda .hub-card__title')?.textContent).toBe('Finish lesson pack');
+    expect(canvas.querySelector('.task-editor')).toBeNull();
   });
 
   it('renders seven week columns and a dated quick-add on the selected day', async () => {

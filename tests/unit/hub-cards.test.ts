@@ -78,7 +78,7 @@ describe('hub cards', () => {
     expect(slot.querySelector('.priority-chip')?.textContent).toBe('high');
     expect(slot.dataset.state).toBe('compact');
 
-    slot.querySelector('.hub-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    slot.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(slot.dataset.state).toBe('expanded');
     expect(slot.querySelector('.hub-card__title')?.textContent).toBe('Finish lesson pack');
     expect(slot.querySelector('button')?.textContent).toBe('Open page');
