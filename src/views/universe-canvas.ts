@@ -301,7 +301,7 @@ export function mountUniverseView(
   let width = firstSize.width;
   let height = firstSize.height;
   host.innerHTML = '';
-  host.style.height = `${height}px`;
+  if (host.clientHeight < 32) host.style.height = `${height}px`;
   const onNoteSelect = options.onNoteSelect;
   const freeze = prefersReducedMotion();
   const B = model.bodies;
@@ -750,6 +750,7 @@ export function mountUniverseView(
         })
       : null;
   resizeObserver?.observe(host);
+  requestAnimationFrame(() => applyHostSize());
 
   raf = requestAnimationFrame(loop);
 
