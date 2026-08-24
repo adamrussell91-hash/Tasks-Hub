@@ -115,4 +115,13 @@ describe('hub cards', () => {
     expect(slot.querySelectorAll('.task-item')).toHaveLength(2);
     expect(slot.textContent).toContain('Open page');
   });
+
+  it('opens via onActivate instead of expanding when that handler is set', () => {
+    const host = document.createElement('div');
+    const onActivate = vi.fn();
+    const slot = mountProjectCard(host, { ...project, type: 'excursion' }, [], { onActivate });
+    slot.querySelector('.proj-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onActivate).toHaveBeenCalledWith(expect.objectContaining({ id: 'proj_mw' }));
+    expect(slot.dataset.state).toBe('compact');
+  });
 });

@@ -48,6 +48,7 @@ import { renderPageEditor } from '@/views/page-editor';
 import { renderGoalsView } from '@/views/goals';
 import { renderSomedayView } from '@/views/someday';
 import { renderReminderStrip } from '@/views/reminder-strip';
+import { tasksApi } from '@/services/client-api';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
@@ -261,10 +262,23 @@ async function bootApp(root: HTMLElement): Promise<void> {
     }
     const entity = parseEntityPage();
     if (entity) {
-      renderPrimaryNav(shell.railNav, entity.kind === 'project' ? 'projects' : 'board');
+      let rail: HubViewId = entity.kind === 'project' ? 'projects' : 'board';
+      let eyebrow = entity.kind === 'task' ? 'Task' : 'Project';
+      let title = 'Page';
+      if (entity.kind === 'project') {
+        const project = await tasksApi.getProject(entity.id).catch(() => null);
+        if (project) {
+          title = project.title;
+          if (project.type === 'excursion') {
+            rail = 'excursions';
+            eyebrow = 'Excursion';
+          }
+        }
+      }
+      renderPrimaryNav(shell.railNav, rail);
       renderPageHeader(shell, {
-        eyebrow: entity.kind === 'task' ? 'Task' : 'Project',
-        title: 'Page',
+        eyebrow,
+        title,
         supporting: 'Build the page with Teaching Hub’s lesson blocks.'
       });
       try {

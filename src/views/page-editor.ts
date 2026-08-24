@@ -5,9 +5,11 @@ import { nextBlockIdFactory } from '@/teacher/lesson-canvas/drop';
 import { mountBlockCanvas, type BlockCanvasHandle } from '@/teacher/lesson-canvas/mount-page';
 import { tasksApi } from '@/services/client-api';
 import { formatRelativeUpdated, projectProgress, statusLabel } from '@/domain/cards';
+import type { ExcursionTemplate } from '@/schemas/templates';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountBlockInsert } from '@/views/block-insert';
+import { paintExcursionPage } from '@/views/excursion-timeline';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -93,8 +95,19 @@ export async function renderPageEditor(canvas: HTMLElement, ref: EntityPageRef):
       paintTaskPage(canvas, task, projects);
       return;
     }
-    const [project, tasks] = await Promise.all([tasksApi.getProject(ref.id), tasksApi.listTasks()]);
+    const [project, tasks, templates] = await Promise.all([
+      tasksApi.getProject(ref.id),
+      tasksApi.listTasks(),
+      tasksApi.listTemplates().catch(() => null)
+    ]);
     if (!project) throw new Error('Project not found');
+    if (project.type === 'excursion') {
+      const template = templates?.excursion_templates.find(
+        (item: ExcursionTemplate) => item.id === project.competition_or_event_type
+      );
+      paintExcursionPage(canvas, project, tasks, template, () => renderPageEditor(canvas, ref));
+      return;
+    }
     paintProjectPage(canvas, project, tasks);
   } catch (err) {
     renderLoadError(canvas, err, () => void renderPageEditor(canvas, ref), 'Could not open page');
@@ -243,7 +256,7 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
   head.append(
-    el('span', 'hub-card__eyebrow', project.type === 'excursion' ? 'Excursion' : 'Project'),
+    el('span', 'hub-card__eyebrow', 'Project'),
     backLink('#/projects', 'Projects')
   );
 
@@ -291,7 +304,6 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
   const fill = el('div', 'hub-track__fill');
   fill.style.width = `${progress.pct}%`;
   track.append(fill);
-
   const foot = el('footer', 'task-card__foot');
   foot.append(updated);
 
