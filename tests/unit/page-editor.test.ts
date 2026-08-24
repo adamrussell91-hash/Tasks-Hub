@@ -78,7 +78,7 @@ describe('page editor', () => {
     vi.useRealTimers();
   });
 
-  it('mounts the Teaching Hub palette and persists a heading block', async () => {
+  it('mounts the Teaching Hub lesson palette and persists a heading block', async () => {
     vi.useFakeTimers();
     vi.mocked(tasksApi.getTask).mockResolvedValue(task());
     vi.mocked(tasksApi.listProjects).mockResolvedValue([project]);
@@ -87,14 +87,21 @@ describe('page editor', () => {
     const canvas = document.createElement('main');
     await renderPageEditor(canvas, { kind: 'task', id: 'task_lesson' });
 
-    expect(canvas.querySelector('.page-palette')).not.toBeNull();
+    expect(canvas.querySelector('.lesson-palette')).not.toBeNull();
+    expect(canvas.querySelector('.lesson-page')).not.toBeNull();
     expect(canvas.querySelector('.page-card .hub-card__title')?.textContent).toBe('Finish lesson pack');
-    expect(canvas.textContent).toMatch(/Add a heading or note/);
 
-    const heading = [...canvas.querySelectorAll('.page-palette__btn')].find(
-      (btn) => btn.textContent === 'Heading'
-    ) as HTMLButtonElement;
-    heading.click();
+    const basic = canvas.querySelector<HTMLButtonElement>(
+      '.lesson-palette__family[data-family="Basic"]'
+    );
+    expect(basic).not.toBeNull();
+    basic!.click();
+
+    const heading = canvas.querySelector<HTMLButtonElement>(
+      '.lesson-palette__card[data-block-type="heading"]'
+    );
+    expect(heading).not.toBeNull();
+    heading!.click();
 
     expect(canvas.querySelector('.block-editor__heading-text')).not.toBeNull();
     const field = canvas.querySelector<HTMLInputElement>('.block-editor__heading-text')!;
@@ -108,5 +115,41 @@ describe('page editor', () => {
     };
     expect(patch.page_blocks[0]?.block_type).toBe('heading');
     expect(patch.page_blocks[0]?.content.text).toBe('Term brief');
+  });
+
+  it('exposes every Teaching Hub lesson family, not the six-block stub', async () => {
+    vi.mocked(tasksApi.getTask).mockResolvedValue(task());
+    vi.mocked(tasksApi.listProjects).mockResolvedValue([project]);
+
+    const canvas = document.createElement('main');
+    await renderPageEditor(canvas, { kind: 'task', id: 'task_lesson' });
+
+    const families = [...canvas.querySelectorAll<HTMLButtonElement>('.lesson-palette__family')].map(
+      (btn) => btn.dataset.family
+    );
+    expect(families).toEqual(['Basic', 'Media', 'Teaching', 'Learning', 'Visualisation', 'Layout']);
+
+    const media = canvas.querySelector<HTMLButtonElement>(
+      '.lesson-palette__family[data-family="Media"]'
+    )!;
+    media.click();
+    expect(canvas.querySelector('[data-block-type="image"]')).not.toBeNull();
+    expect(canvas.querySelector('[data-block-type="video"]')).not.toBeNull();
+
+    const learning = canvas.querySelector<HTMLButtonElement>(
+      '.lesson-palette__family[data-family="Learning"]'
+    )!;
+    learning.click();
+    const flashcards = canvas.querySelector<HTMLButtonElement>('[data-block-type="flashcards"]')!;
+    flashcards.click();
+    expect(canvas.querySelector('.block-editor__flashcards-items')).not.toBeNull();
+
+    const visualisation = canvas.querySelector<HTMLButtonElement>(
+      '.lesson-palette__family[data-family="Visualisation"]'
+    )!;
+    visualisation.click();
+    const equation = canvas.querySelector<HTMLButtonElement>('[data-block-type="equation"]')!;
+    equation.click();
+    expect(canvas.querySelectorAll('.lesson-page__block').length).toBeGreaterThanOrEqual(2);
   });
 });

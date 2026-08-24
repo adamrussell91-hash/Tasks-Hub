@@ -1,42 +1,30 @@
 import { z } from 'zod';
+import { BlockSchema, type Block } from './block';
 
-/** Teaching Hub block shape, trimmed to the types a task/project page needs. */
-export const PageBlockTypeSchema = z.enum([
-  'heading',
-  'rich_text',
-  'callout',
-  'quote',
-  'divider',
-  'spacer'
-]);
+export type { Block as PageBlock };
+export type PageBlockType = Block['block_type'];
 
-export const CalloutStyleSchema = z.enum([
-  'information',
-  'important',
-  'warning',
-  'extension',
-  'scaffold',
-  'example',
-  'remember',
-  'teacher'
-]);
+/**
+ * The calendar PR shipped a six-block stub whose records omit `visibility`
+ * and stored quote copy on `content.text`. Accept those rows so existing
+ * task/project pages keep loading after the real Teaching Hub schema lands.
+ */
+function migrateStubPageBlock(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const block = { ...(value as Record<string, unknown>) };
+  if (block.visibility == null) block.visibility = 'student_teacher';
+  if (block.layout == null) block.layout = {};
+  if (block.print == null) block.print = {};
+  if (block.settings == null) block.settings = {};
+  if (block.block_type === 'quote' && block.content && typeof block.content === 'object') {
+    const content = { ...(block.content as Record<string, unknown>) };
+    if (typeof content.quote !== 'string' && typeof content.text === 'string') {
+      content.quote = content.text;
+      delete content.text;
+    }
+    block.content = content;
+  }
+  return block;
+}
 
-export const HeadingVariantSchema = z.enum(['page', 'section', 'subsection']);
-export const SpacerSizeSchema = z.enum(['small', 'medium', 'large']);
-
-export const PageBlockSchema = z.object({
-  id: z.string().min(1),
-  type: z.literal('block').default('block'),
-  block_type: PageBlockTypeSchema,
-  variant: z.string().default('medium'),
-  content: z.record(z.unknown()).default({}),
-  created_at: z.string(),
-  updated_at: z.string(),
-  schema_version: z.literal(1)
-});
-
-export type PageBlock = z.infer<typeof PageBlockSchema>;
-export type PageBlockType = z.infer<typeof PageBlockTypeSchema>;
-export type CalloutStyle = z.infer<typeof CalloutStyleSchema>;
-export type HeadingVariant = z.infer<typeof HeadingVariantSchema>;
-export type SpacerSize = z.infer<typeof SpacerSizeSchema>;
+export const PageBlockSchema = z.preprocess(migrateStubPageBlock, BlockSchema);

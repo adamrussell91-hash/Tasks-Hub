@@ -8,6 +8,8 @@ import '../styles/hub.css';
 import '../styles/views.css';
 import '../styles/cards.css';
 import '../styles/gantt.css';
+import '../styles/lesson-engine.css';
+import 'katex/dist/katex.min.css';
 
 import { fetchSession, logout, renderSignIn } from '@/auth/gate';
 import {
@@ -263,7 +265,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
       renderPageHeader(shell, {
         eyebrow: entity.kind === 'task' ? 'Task' : 'Project',
         title: 'Page',
-        supporting: 'Same block engine as Teaching Hub’s lesson builder.'
+        supporting: 'Build the page with Teaching Hub’s lesson blocks.'
       });
       try {
         await renderPageEditor(shell.canvas, entity);
