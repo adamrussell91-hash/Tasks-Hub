@@ -12,7 +12,6 @@ import type { Project } from '@/schemas/project';
 import { isBlocked } from '@/domain/board';
 import { tasksApi } from '@/services/client-api';
 import { hashQuery } from '@/shell/shell';
-import { layoutPipe } from '@/domain/pipe-layout';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderBoardTaskTile, renderTaskLinkList } from '@/views/task-tile';
 import { renderBlockerPipes } from '@/views/blocker-pipes';
@@ -134,19 +133,6 @@ function mountBlockerGraph(
   host.replaceChildren();
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const focusId = selectedId;
-  const layout = layoutPipe(focusId, tasks);
-
-  const hasLinks = tasks.some((task) => task.depends_on.length > 0);
-  if (!hasLinks && layout.mode === 'hub' && layout.components.length === 0) {
-    host.append(
-      el(
-        'p',
-        'empty-state',
-        'No blocked-by links yet. Add a blocker on a task to see the pipe here.'
-      )
-    );
-    return;
-  }
 
   if (focusId) {
     const back = el('button', 'btn btn--ghost blocker-pipe-back', '← Back to overview');
@@ -156,7 +142,7 @@ function mountBlockerGraph(
   }
 
   host.append(
-    renderBlockerPipes(layout, (gateId) => {
+    renderBlockerPipes(focusId, tasks, (gateId) => {
       onSelect(selectedId === gateId ? null : gateId);
     })
   );
