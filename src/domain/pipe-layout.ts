@@ -227,7 +227,9 @@ export function layoutFocusPipe(focusId: string, tasks: Task[]): FocusPipeLayout
 }
 
 export function layoutHubPipes(tasks: Task[], maxVisible = 6): HubPipeLayout {
-  const components = hubComponents(tasks).slice(0, maxVisible);
+  const components = hubComponents(tasks)
+    .filter((component) => component.fanOut > 0 || component.queuedCount > 0)
+    .slice(0, maxVisible);
   let y = MARGIN;
   const laidOut = components.map((component, index) => {
     const chamberHeight = chamberHeightUnits(component.blocked_since);

@@ -68,6 +68,7 @@ describe('pipe layout', () => {
     const blocked = baseTask({ id: 'blocked', title: 'Blocked', depends_on: ['gate'] });
     const layout = layoutHubPipes([gate, blocked]);
 
+    expect(layout.components.length).toBe(1);
     expect(layout.components[0]?.y).toBeLessThan(layout.height);
     expect(layout.srRows[0]?.role).toMatch(/clears/);
   });
