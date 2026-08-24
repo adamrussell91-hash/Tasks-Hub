@@ -91,6 +91,26 @@ describe('universe view chrome', () => {
     expect(shouldExitUniverseFullscreen('Enter', true)).toBe(false);
   });
 
+  it('lets fullscreen Escape win even when the visual key is open', () => {
+    const host = document.createElement('div');
+    host.innerHTML = `<div class="universe-wrap graph-host">${universeViewToolsHtml(false, true)}${universeExitHtml(true)}</div>`;
+    const wrap = host.querySelector<HTMLElement>('.universe-wrap')!;
+    let fullscreen = true;
+    bindUniverseView(host, {
+      getDark: () => false,
+      getFullscreen: () => fullscreen,
+      setDark: () => undefined,
+      setFullscreen: (on) => {
+        fullscreen = on;
+        applyUniverseViewState(wrap, document.body, false, fullscreen);
+      }
+    });
+    expect(shouldExitUniverseFullscreen('Escape', fullscreen)).toBe(true);
+    wrap.querySelector<HTMLButtonElement>('[data-universe-exit]')!.click();
+    expect(fullscreen).toBe(false);
+    expect(shouldExitUniverseFullscreen('Escape', fullscreen)).toBe(false);
+  });
+
   it('persists dark as an explicit opt-in, never by default', () => {
     const store = new Map<string, string>();
     const storage = {

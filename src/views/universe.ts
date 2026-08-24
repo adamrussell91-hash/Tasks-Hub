@@ -183,10 +183,11 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
   const onKeydown = (event: KeyboardEvent) => {
     if (!shouldExitUniverseFullscreen(event.key, fullscreen)) return;
     event.preventDefault();
+    event.stopPropagation();
     fullscreen = false;
     applyChrome();
   };
-  document.addEventListener('keydown', onKeydown);
+  document.addEventListener('keydown', onKeydown, true);
 
   search.addEventListener('input', () => {
     mount?.setSearch(search.value);
@@ -215,7 +216,7 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
   canvas.append(list);
 
   const cleanup = () => {
-    document.removeEventListener('keydown', onKeydown);
+    document.removeEventListener('keydown', onKeydown, true);
     window.removeEventListener('hashchange', cleanup);
     document.body.classList.remove('is-universe-fullscreen');
     mount?.();
