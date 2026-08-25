@@ -378,7 +378,7 @@ export function layoutGanttGroups(
   if (!range) return null;
 
   const dayCount = dayOffset(range.start, range.end) + 1;
-  const showHeaders = groups.length > 1;
+  const showHeaders = groups.length > 0;
   const bars: GanttBarLayout[] = [];
   const groupBounds: GanttGroupBound[] = [];
   let y = axisHeight;
@@ -710,31 +710,6 @@ export function dropTargetAt(
   return { kind: 'day', dateKey, projectId: fallbackProjectId };
 }
 
-export function moonPatchFromDrop(
-  task: Pick<Task, 'id' | 'parent_project_id' | 'parent_task_id'>,
-  target: GanttDropTarget,
-  fallbackProjectId: string | null
-): Partial<Task> {
-  const patch: Partial<Task> = { due_date: target.dateKey };
-  if (target.kind === 'bar' && target.bar.row.kind === 'task' && target.bar.row.id !== task.id) {
-    patch.parent_task_id = target.bar.row.id;
-    patch.parent_project_id =
-      target.bar.row.parentProjectId ?? fallbackProjectId ?? task.parent_project_id;
-    return patch;
-  }
-  if (target.kind === 'bar') {
-    patch.parent_project_id =
-      target.bar.row.parentProjectId ?? fallbackProjectId ?? task.parent_project_id;
-    return patch;
-  }
-  if (target.kind === 'group') {
-    patch.parent_project_id = target.projectId;
-    return patch;
-  }
-  patch.parent_project_id = target.projectId ?? fallbackProjectId ?? task.parent_project_id;
-  return patch;
-}
-
 export function wouldCreateCycle(
   dependencies: GanttDependency[],
   fromId: string,
@@ -784,24 +759,6 @@ export function placeholderGanttLayout(
     totalHeight: GANTT_AXIS_HEIGHT + GANTT_ROW_HEIGHT * 4,
     ticks: buildTicks(rangeStart, dayCount, GANTT_ZOOM[zoom].tickEvery)
   };
-}
-
-export function moonsForTray(
-  tasks: Task[],
-  filter: 'place' | 'all'
-): Task[] {
-  const open = tasks.filter(
-    (task) => task.status !== 'dead' && task.status !== 'done' && task.bucket !== 'someday'
-  );
-  const list =
-    filter === 'all'
-      ? open
-      : open.filter((task) => !task.due_date || !task.parent_project_id);
-  return [...list].sort((a, b) => {
-    const undated = Number(Boolean(a.due_date)) - Number(Boolean(b.due_date));
-    if (undated !== 0) return undated;
-    return a.title.localeCompare(b.title);
-  });
 }
 
 export { toDateKey };
