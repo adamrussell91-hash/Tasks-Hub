@@ -9,10 +9,13 @@ import {
 } from 'd3-force';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
+import { isBlocked } from '@/domain/board';
 import { tasksApi } from '@/services/client-api';
 import { hashQuery } from '@/shell/shell';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
-import { renderTaskEditor } from '@/views/task-editor';
+import { renderBoardTaskTile, renderTaskLinkList } from '@/views/task-tile';
+import { renderBlockerPipes } from '@/views/blocker-pipes';
+import { createVizNodeList } from '@/views/viz-node-list';
 import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 type GraphMode = 'blockers' | 'workstreams';
@@ -52,38 +55,10 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function buildModel(tasks: Task[], projects: Project[], mode: GraphMode): {
+function buildWorkstreamModel(tasks: Task[], projects: Project[]): {
   nodes: GraphNode[];
   links: GraphLink[];
 } {
-  if (mode === 'blockers') {
-    const involved = new Set<string>();
-    for (const task of tasks) {
-      if (task.depends_on.length) {
-        involved.add(task.id);
-        for (const id of task.depends_on) involved.add(id);
-      }
-    }
-    const nodes: GraphNode[] = tasks
-      .filter((t) => involved.has(t.id))
-      .map((t) => ({
-        id: t.id,
-        kind: 'task',
-        label: t.title,
-        domain: t.domain
-      }));
-    const links: GraphLink[] = [];
-    for (const task of tasks) {
-      for (const dep of task.depends_on) {
-        if (involved.has(task.id) && involved.has(dep)) {
-          links.push({ source: dep, target: task.id, kind: 'blocker' });
-        }
-      }
-    }
-    return { nodes, links };
-  }
-
-  // workstreams — projects as hubs, tasks as spokes
   const nodes: GraphNode[] = [
     ...projects.map((p) => ({
       id: p.id,
@@ -110,8 +85,109 @@ function buildModel(tasks: Task[], projects: Project[], mode: GraphMode): {
   return { nodes, links };
 }
 
-function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode: GraphMode): void {
-  const { nodes, links } = buildModel(tasks, projects, mode);
+function renderBlockerDetail(task: Task, tasks: Task[]): HTMLElement {
+  const byId = new Map(tasks.map((item) => [item.id, item]));
+  const detail = el('div', 'task-tile__detail-body');
+  const blockers = task.depends_on
+    .map((id) => byId.get(id))
+    .filter((item): item is Task => Boolean(item));
+  const blocking = tasks.filter((item) => item.depends_on.includes(task.id));
+
+  if (blockers.length) {
+    detail.append(
+      renderTaskLinkList(
+        'Blocked by',
+        blockers.map((blocker) => ({
+          title: blocker.title,
+          meta: blocker.status.replace('_', ' ')
+        }))
+      )
+    );
+  }
+  if (blocking.length) {
+    detail.append(
+      renderTaskLinkList(
+        'Blocking',
+        blocking.map((blocked) => ({
+          title: blocked.title,
+          meta: isBlocked(blocked, byId) ? 'blocked' : blocked.status.replace('_', ' ')
+        }))
+      )
+    );
+  }
+  if (!blockers.length && !blocking.length) {
+    detail.append(el('p', 'hierarchy-meta', 'No blocker links on this task.'));
+  }
+  return detail;
+}
+
+function mountBlockerGraph(
+  host: HTMLElement,
+  tasks: Task[],
+  projects: Project[],
+  editorHost: HTMLElement,
+  selectedId: string | null,
+  expandedId: string | null,
+  onSelect: (taskId: string | null) => void,
+  onExpand: (taskId: string, open: boolean) => void,
+  onRefresh: () => void
+): void {
+  host.replaceChildren();
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const focusId = selectedId;
+
+  if (focusId) {
+    const back = el('button', 'btn btn--ghost blocker-pipe-back', '← Back to overview');
+    back.type = 'button';
+    back.addEventListener('click', () => onSelect(null));
+    host.append(back);
+  }
+
+  host.append(
+    renderBlockerPipes(focusId, tasks, (gateId) => {
+      onSelect(selectedId === gateId ? null : gateId);
+    })
+  );
+
+  const expandHost = el('div', 'task-stack blocker-expand');
+  if (selectedId) {
+    const task = byId.get(selectedId);
+    if (task) {
+      const waitingOn = task.depends_on
+        .map((id) => byId.get(id)?.title)
+        .filter(Boolean)
+        .join(', ');
+      expandHost.append(
+        renderBoardTaskTile(
+          task,
+          waitingOn ? `waiting on ${waitingOn}` : 'blocker links',
+          renderBlockerDetail(task, tasks),
+          {
+            editorHost,
+            projects,
+            onSaved: onRefresh,
+            open: expandedId === selectedId,
+            onToggle: (taskId, open) => onExpand(taskId, open)
+          }
+        )
+      );
+    }
+  }
+  host.append(expandHost);
+}
+
+function mountWorkstreamGraph(
+  host: HTMLElement,
+  tasks: Task[],
+  projects: Project[],
+  editorHost: HTMLElement,
+  selectedId: string | null,
+  expandedId: string | null,
+  onSelect: (taskId: string | null) => void,
+  onExpand: (taskId: string, open: boolean) => void,
+  onRefresh: () => void
+): void {
+  const { nodes, links } = buildWorkstreamModel(tasks, projects);
   host.replaceChildren();
 
   if (!nodes.length) {
@@ -119,9 +195,7 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
       el(
         'p',
         'empty-state',
-        mode === 'blockers'
-          ? 'No blocked-by links match this filter. Clear search or add a blocker on a task.'
-          : 'No project workstreams match this filter. Assign tasks to a project.'
+        'No project workstreams match this filter. Assign tasks to a project.'
       )
     );
     return;
@@ -141,15 +215,11 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
   tip.hidden = true;
   host.append(tip);
 
-  const preview = el('aside', 'graph-preview');
-  preview.hidden = true;
-  host.append(preview);
-
   const ctx = canvas.getContext('2d')!;
   const simNodes = nodes.map((n) => ({ ...n }));
   const simLinks = links.map((l) => ({ ...l }));
 
-  let selected: string | null = null;
+  let selected: string | null = selectedId;
   let hover: GraphNode | null = null;
 
   const simulation: Simulation<GraphNode, GraphLink> = forceSimulation(simNodes)
@@ -157,16 +227,13 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
       'link',
       forceLink<GraphNode, GraphLink>(simLinks)
         .id((n) => n.id)
-        .distance(mode === 'blockers' ? 110 : 88)
+        .distance(88)
         .strength(0.45)
     )
-    .force('charge', forceManyBody<GraphNode>().strength(mode === 'workstreams' ? -640 : -380))
+    .force('charge', forceManyBody<GraphNode>().strength(-640))
     .force('x', forceX(width / 2).strength(0.04))
     .force('y', forceY(height / 2).strength(0.04))
-    .force(
-      'collide',
-      forceCollide<GraphNode>().radius((n) => (n.kind === 'project' ? 46 : 28))
-    )
+    .force('collide', forceCollide<GraphNode>().radius((n) => (n.kind === 'project' ? 46 : 28)))
     .on('tick', draw);
 
   function draw(): void {
@@ -178,8 +245,7 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
       const s = typeof link.source === 'object' ? link.source : null;
       const t = typeof link.target === 'object' ? link.target : null;
       if (!s || !t || s.x == null || t.x == null || s.y == null || t.y == null) continue;
-      ctx.strokeStyle =
-        link.kind === 'blocker' ? tokenColor('--danger-line', 'rgba(155, 44, 44, 0.28)') : tokenColor('--wave', '#376fb7');
+      ctx.strokeStyle = tokenColor('--wave', '#376fb7');
       ctx.beginPath();
       ctx.moveTo(s.x, s.y);
       ctx.lineTo(t.x, t.y);
@@ -215,41 +281,50 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
     return null;
   }
 
-  function showPreview(node: GraphNode): void {
+  function showSelection(node: GraphNode): void {
     selected = node.id;
-    preview.hidden = false;
-    preview.replaceChildren(
-      el('p', 'graph-preview__eyebrow', node.kind),
-      el('h3', 'graph-preview__title', node.label),
-      el('p', 'graph-preview__meta', node.domain ?? node.id)
-    );
-    if (node.kind === 'task') {
-      const task = tasks.find((t) => t.id === node.id);
-      if (task) {
-        const edit = el('button', 'btn btn--ghost', 'Edit');
-        edit.type = 'button';
-        edit.addEventListener('click', () => {
-          renderTaskEditor(preview, task, projects, () => {
-            location.hash = '#/board';
-          });
-        });
-        preview.append(edit);
-      }
-    }
+    if (node.kind === 'task') onSelect(node.id);
+    else onSelect(null);
     draw();
   }
 
-  const list = el('ul', 'viz-alt');
-  list.setAttribute('aria-label', mode === 'blockers' ? 'Blocker nodes' : 'Workstream nodes');
-  for (const node of simNodes) {
-    const item = el('li');
-    const btn = el('button', 'btn btn--ghost', `${node.kind}: ${node.label}`);
-    btn.type = 'button';
-    btn.addEventListener('click', () => showPreview(node));
-    item.append(btn);
-    list.append(item);
+  const expandHost = el('div', 'task-stack graph-expand');
+  if (selectedId) {
+    const task = tasks.find((item) => item.id === selectedId);
+    if (task) {
+      const project = projects.find((item) => item.id === task.parent_project_id);
+      const detail = el('div', 'task-tile__detail-body');
+      detail.append(
+        el(
+          'p',
+          'hierarchy-meta',
+          project ? `Project · ${project.title}` : 'No project assigned'
+        )
+      );
+      expandHost.append(
+        renderBoardTaskTile(task, project?.title ?? task.domain, detail, {
+          editorHost,
+          projects,
+          onSaved: onRefresh,
+          open: expandedId === selectedId,
+          onToggle: (taskId, open) => onExpand(taskId, open)
+        })
+      );
+    }
   }
-  host.append(list);
+  host.append(expandHost);
+
+  host.append(
+    createVizNodeList(
+      'Workstream nodes',
+      simNodes.map((node) => ({ id: node.id, kind: node.kind, label: node.label })),
+      (node) => {
+        const hit = simNodes.find((entry) => entry.id === node.id);
+        if (hit) showSelection(hit);
+      },
+      { selectedId: selected, collapsed: simNodes.length > 12 }
+    )
+  );
 
   canvas.addEventListener('mousemove', (event) => {
     const rect = canvas.getBoundingClientRect();
@@ -269,41 +344,99 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
   canvas.addEventListener('click', (event) => {
     const rect = canvas.getBoundingClientRect();
     const node = nodeAt(event.clientX - rect.left, event.clientY - rect.top);
-    if (node) showPreview(node);
+    if (node) showSelection(node);
   });
 
   simulation.alpha(1).restart();
 }
 
-/** Graph rail page — Knowledge-style force layout over blockers / workstreams. */
+/** Graph rail page — readable blocker map plus workstream force layout. */
 export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading graph…'));
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
 
-  let mode: GraphMode = hashQuery().get('mode') === 'workstreams' ? 'workstreams' : 'blockers';
+  const mode: GraphMode = hashQuery().get('mode') === 'workstreams' ? 'workstreams' : 'blockers';
   canvas.replaceChildren();
 
   const toolbar = createHubToolbar('graph-toolbar');
   toolbar.append(renderGraphFamilyPills('graph', mode));
   const search = createHubSearch({
-    placeholder: 'Filter nodes…',
+    placeholder: mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…',
     ariaLabel: 'Filter graph'
   });
   toolbar.append(search.el);
   canvas.append(toolbar);
 
+  const confirmHost = el('div', 'graph-confirm');
+  canvas.append(confirmHost);
+
   const host = el('div', 'graph-host');
+  const stage = el('div', 'graph-stage');
+  host.append(stage);
   canvas.append(host);
 
+  let selectedId: string | null = null;
+  let expandedId: string | null = null;
+
   const paint = () => {
+    confirmHost.replaceChildren();
     const q = search.input.value.trim().toLowerCase();
     const filteredTasks = q
-      ? tasks.filter((t) => t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q))
+      ? tasks.filter((task) => task.title.toLowerCase().includes(q) || task.description.toLowerCase().includes(q))
       : tasks;
     const filteredProjects = q
-      ? projects.filter((p) => p.title.toLowerCase().includes(q))
+      ? projects.filter((project) => project.title.toLowerCase().includes(q))
       : projects;
-    mountGraph(host, filteredTasks.length ? filteredTasks : tasks, filteredProjects, mode);
+    const scopedTasks = filteredTasks.length ? filteredTasks : tasks;
+
+    if (selectedId && !scopedTasks.some((task) => task.id === selectedId)) {
+      selectedId = null;
+      expandedId = null;
+    }
+    if (expandedId && expandedId !== selectedId) {
+      expandedId = null;
+    }
+
+    if (mode === 'blockers') {
+      mountBlockerGraph(
+        stage,
+        scopedTasks,
+        projects,
+        confirmHost,
+        selectedId,
+        expandedId,
+        (taskId) => {
+          selectedId = taskId;
+          expandedId = null;
+          paint();
+        },
+        (taskId, open) => {
+          expandedId = open ? taskId : null;
+          paint();
+        },
+        paint
+      );
+      return;
+    }
+
+    mountWorkstreamGraph(
+      stage,
+      scopedTasks,
+      filteredProjects.length ? filteredProjects : projects,
+      confirmHost,
+      selectedId,
+      expandedId,
+      (taskId) => {
+        selectedId = taskId;
+        expandedId = null;
+        paint();
+      },
+      (taskId, open) => {
+        expandedId = open ? taskId : null;
+        paint();
+      },
+      paint
+    );
   };
 
   search.input.addEventListener('input', () => paint());

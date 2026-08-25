@@ -37,6 +37,22 @@ type KbdState = {
   next: ChildNode | null;
 };
 
+/** Keep column counts and empty hints in sync after in-place add/delete. */
+export function updateBoardCounts(root: HTMLElement): void {
+  const board = root.matches('.board') ? root : root.querySelector<HTMLElement>('.board');
+  if (!board) return;
+  for (const col of board.querySelectorAll<HTMLElement>('.column')) {
+    const list = col.querySelector('.card-list');
+    if (!list) continue;
+    const count = list.querySelectorAll('.card').length;
+    const counter = col.querySelector('.column-count');
+    if (counter) counter.textContent = String(count).padStart(2, '0');
+    const hint = list.querySelector<HTMLElement>('.empty-hint');
+    const hasSlot = Boolean(list.querySelector('.card-slot'));
+    if (hint) hint.hidden = !(count === 0 && !hasSlot);
+  }
+}
+
 function isInteractive(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest('button, a, input, textarea, select, label'));
 }
@@ -77,16 +93,7 @@ export function initBoard(root: HTMLElement, options: InitBoardOptions = {}): ()
   }
 
   function updateCounts(): void {
-    for (const col of columns()) {
-      const list = col.querySelector('.card-list');
-      if (!list) continue;
-      const count = list.querySelectorAll('.card').length;
-      const counter = col.querySelector('.column-count');
-      if (counter) counter.textContent = String(count).padStart(2, '0');
-      const hint = list.querySelector<HTMLElement>('.empty-hint');
-      const hasSlot = Boolean(list.querySelector('.card-slot'));
-      if (hint) hint.hidden = !(count === 0 && !hasSlot);
-    }
+    updateBoardCounts(board);
   }
 
   function flip(lists: Array<ParentNode | null>, mutate: () => void): void {

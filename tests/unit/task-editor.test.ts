@@ -30,6 +30,7 @@ function sampleTask(overrides: Partial<Task> = {}): Task {
     updated_at: '2026-08-22T00:00:00.000Z',
     completed_at: null,
     status: 'open',
+    blocked_since: null,
     priority: 'medium',
     parent_project_id: null,
     parent_task_id: null,
@@ -52,7 +53,10 @@ describe('renderQuickAdd', () => {
   });
 
   it('posts a new task without stamping due_date', async () => {
-    const form = renderQuickAdd(() => undefined);
+    const created = sampleTask({ id: 'task_created', title: '[UX-AUDIT] backlog test', due_date: null });
+    vi.mocked(tasksApi.createTask).mockResolvedValue(created);
+    const onCreated = vi.fn();
+    const form = renderQuickAdd(onCreated);
     expect(form.querySelector('select')).toBeNull();
     expect(form.querySelector('.hub-filter')?.tagName).toBe('BUTTON');
     expect(form.querySelector('.hub-search')?.tagName).toBe('LABEL');
@@ -61,6 +65,7 @@ describe('renderQuickAdd', () => {
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await vi.waitFor(() => {
       expect(tasksApi.createTask).toHaveBeenCalledTimes(1);
+      expect(onCreated).toHaveBeenCalledWith(created);
     });
     const body = vi.mocked(tasksApi.createTask).mock.calls[0]?.[0] as Record<string, unknown>;
     expect(body.title).toBe('[UX-AUDIT] backlog test');

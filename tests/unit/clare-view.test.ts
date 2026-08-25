@@ -3,13 +3,17 @@ import { tasksApi } from '@/services/client-api';
 import { renderClareView } from '@/views/clare';
 import type { FrameworkEntry } from '@/schemas/templates';
 import type { ClareProposal } from '@/domain/clare';
+import type { ClareBriefing } from '@/domain/clare-desk';
 
 vi.mock('@/services/client-api', () => ({
   tasksApi: {
     listTemplates: vi.fn(),
     listClareCalibrations: vi.fn(),
+    briefWithClare: vi.fn(),
+    processDumpWithClare: vi.fn(),
     proposeWithClare: vi.fn(),
-    acceptClareProposal: vi.fn()
+    acceptClareProposal: vi.fn(),
+    acceptClareBatch: vi.fn()
   }
 }));
 
@@ -29,6 +33,7 @@ const proposal: ClareProposal = {
   description: '',
   priority: 'medium' as const,
   due_date: null,
+  parent_project_id: null,
   framework_id: 'fw_timeboxing',
   framework_name: 'Timeboxing',
   reasoning: 'Start with the smallest concrete move.',
@@ -36,6 +41,14 @@ const proposal: ClareProposal = {
   suggested_accepted_minutes: 25,
   calibration_note: null,
   protocol_id: 'shrink-first-step'
+};
+
+const briefing: ClareBriefing = {
+  protocol_id: 'morning-sweep',
+  lead: 'One thing before we start: Lock MindWorks term brief was due 22/08/26 and has not moved.',
+  closer: 'That is your day. Dump away.',
+  sections: [{ heading: 'Overdue', lines: ['Lock MindWorks term brief — was due 22/08/26, urgent.'] }],
+  flags: []
 };
 
 const storage = new Map<string, string>();
@@ -67,6 +80,7 @@ describe('Clare protocol controls', () => {
       project_templates: []
     });
     vi.mocked(tasksApi.listClareCalibrations).mockResolvedValue([]);
+    vi.mocked(tasksApi.briefWithClare).mockResolvedValue(briefing);
   });
 
   it('renders five one-sentence hover cards on real protocol controls', async () => {
@@ -74,10 +88,11 @@ describe('Clare protocol controls', () => {
     await renderClareView(canvas);
 
     expect(canvas.textContent).toMatch(/clare can/i);
+    expect(canvas.textContent).toContain(briefing.closer);
     expect(canvas.querySelector('select.hub-filter')).toBeNull();
     expect(canvas.querySelector('.clare-form .hub-filter')?.tagName).toBe('BUTTON');
-    expect(canvas.querySelector('.clare-form .hub-search')?.tagName).toBe('LABEL');
-    const pills = [...canvas.querySelectorAll<HTMLButtonElement>('[data-protocol-id]')];
+    expect(canvas.querySelector('[aria-label="Brain dump"]')?.tagName).toBe('TEXTAREA');
+    const pills = [...canvas.querySelectorAll<HTMLButtonElement>('[aria-label="Clare protocols"] [data-protocol-id]')];
     expect(pills).toHaveLength(5);
     for (const pill of pills) {
       expect(pill.title).toBe('');
@@ -90,17 +105,17 @@ describe('Clare protocol controls', () => {
 
   it('sends the selected protocol through Clare and rotates wait copy until the result arrives', async () => {
     vi.useFakeTimers();
-    const pending = deferred<typeof proposal>();
-    vi.mocked(tasksApi.proposeWithClare).mockReturnValue(pending.promise);
+    const pending = deferred<import('@/domain/clare').ClareDumpResult>();
+    vi.mocked(tasksApi.processDumpWithClare).mockReturnValue(pending.promise);
     const canvas = document.createElement('main');
     await renderClareView(canvas);
-    const title = canvas.querySelector<HTMLInputElement>('[aria-label="Task"]')!;
-    title.value = proposal.title;
+    const dump = canvas.querySelector<HTMLTextAreaElement>('[aria-label="Brain dump"]')!;
+    dump.value = proposal.title;
 
     canvas.querySelector<HTMLButtonElement>('[data-protocol-id="shrink-first-step"]')!.click();
-    await vi.waitFor(() => expect(tasksApi.proposeWithClare).toHaveBeenCalledTimes(1));
-    expect(tasksApi.proposeWithClare).toHaveBeenCalledWith(
-      expect.objectContaining({ protocol_id: 'shrink-first-step' })
+    await vi.waitFor(() => expect(tasksApi.processDumpWithClare).toHaveBeenCalledTimes(1));
+    expect(tasksApi.processDumpWithClare).toHaveBeenCalledWith(
+      expect.objectContaining({ protocol_id: 'shrink-first-step', text: proposal.title })
     );
     const first = canvas.querySelector('.canvas-status')?.textContent;
     expect(first).toBeTruthy();
@@ -111,12 +126,33 @@ describe('Clare protocol controls', () => {
     expect(second).toBeTruthy();
     expect(second).not.toBe(first);
 
-    pending.resolve(proposal);
+    pending.resolve({
+      voice: 'Right — one thing, and it actually has a shape. Here is my take.',
+      proposals: [proposal],
+      questions: [],
+      notes: [],
+      toolkit: null
+    });
     await vi.runOnlyPendingTimersAsync();
     await Promise.resolve();
     expect(canvas.querySelector('.canvas-status')).toBeNull();
-    expect(canvas.textContent).toContain('Clare proposes');
+    expect(canvas.textContent).toContain('Right — one thing');
+    expect(canvas.textContent).toContain(proposal.title);
     expect(canvas.textContent).not.toContain('Here’s what that protocol means');
     vi.useRealTimers();
+  });
+
+  it('runs a sprint briefing when the dump is empty', async () => {
+    vi.mocked(tasksApi.briefWithClare).mockResolvedValue({
+      ...briefing,
+      protocol_id: 'weekly-reset',
+      lead: 'Wednesday is the day to protect.',
+      closer: 'That is the shape of the week. Dump the rest and I will sort it.'
+    });
+    const canvas = document.createElement('main');
+    await renderClareView(canvas);
+    vi.mocked(tasksApi.briefWithClare).mockClear();
+    canvas.querySelector<HTMLButtonElement>('[data-protocol-id="weekly-reset"]')!.click();
+    await vi.waitFor(() => expect(tasksApi.briefWithClare).toHaveBeenCalledWith('weekly-reset'));
   });
 });

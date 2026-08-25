@@ -5,6 +5,16 @@ import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { buildUniverseModel } from '@/domain/universe';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderTaskEditor } from '@/views/task-editor';
+import {
+  applyUniverseViewState,
+  bindUniverseView,
+  readUniverseDark,
+  shouldExitUniverseFullscreen,
+  universeExitHtml,
+  universeViewToolsHtml,
+  universeWrapClass,
+  writeUniverseDark
+} from '@/views/universe-chrome';
 import { bindUniverseKey, universeKeyHtml } from '@/views/universe-key';
 import {
   UNIVERSE_BUILD,
@@ -65,23 +75,31 @@ function showPreview(
   if (excerpt) preview.append(el('p', 'graph-preview__meta', excerpt));
 }
 
+let lastUniverseCleanup: (() => void) | null = null;
+
 /** Knowledge Hub Universe engine over Tasks domains, projects, and tags. */
 export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
+  lastUniverseCleanup?.();
+  lastUniverseCleanup = null;
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading universe…'));
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
   const model = buildUniverseModel(tasks, projects);
 
-  canvas.replaceChildren();
-  const toolbar = createHubToolbar('graph-toolbar');
-  toolbar.append(renderGraphFamilyPills('universe'));
+  let dark = readUniverseDark(typeof localStorage === 'undefined' ? null : localStorage);
+  let fullscreen = false;
+  const clock = { speed: 0.5 };
 
+  canvas.replaceChildren();
+  canvas.append(renderGraphFamilyPills('universe'));
+
+  const wrap = el('div', universeWrapClass(dark, fullscreen));
+  const toolbar = createHubToolbar('graph-toolbar');
   const search = createHubSearch({
     placeholder: 'Search tasks, projects, domains…',
     ariaLabel: 'Filter universe'
   });
   toolbar.append(search.el);
 
-  const clock = { speed: 0.5 };
   const speed = el('label', 'graph-speed');
   speed.append(el('span', 'graph-speed__label', 'Orbit speed'));
   const slider = document.createElement('input');
@@ -100,15 +118,16 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
   });
   speed.append(slider, readout);
   toolbar.append(speed);
+  toolbar.insertAdjacentHTML('beforeend', universeViewToolsHtml(dark, fullscreen));
 
   const meta = el('p', 'graph-toolbar__meta', `Universe v${UNIVERSE_BUILD}`);
   toolbar.append(meta);
-  canvas.append(toolbar);
+  wrap.append(toolbar);
 
-  const wrap = el('div', 'universe-wrap graph-host');
   const stage = el('div', 'universe-stage');
   wrap.append(stage);
   wrap.insertAdjacentHTML('beforeend', universeKeyHtml(false));
+  wrap.insertAdjacentHTML('beforeend', universeExitHtml(fullscreen));
   canvas.append(wrap);
   bindUniverseKey(wrap, () => undefined);
 
@@ -122,10 +141,17 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
     if (!model.planets.length) text = 'No domains yet · Universe still has a sun';
     if (searching) {
       const hits = resolveSearchHits(model, query).size;
-      text += hits ? ` · search “${searching}” · ${hits} match${hits === 1 ? '' : 'es'}` : ` · search “${searching}” · no matches`;
+      text += hits
+        ? ` · search “${searching}” · ${hits} match${hits === 1 ? '' : 'es'}`
+        : ` · search “${searching}” · no matches`;
     }
     meta.textContent = text;
   };
+
+  const applyChrome = () => {
+    applyUniverseViewState(wrap, document.body, dark, fullscreen);
+  };
+  applyChrome();
 
   let mount: UniverseMount | null = mountUniverseView(stage, model, {
     search: '',
@@ -140,6 +166,29 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
     },
     clock
   });
+
+  bindUniverseView(wrap, {
+    getDark: () => dark,
+    getFullscreen: () => fullscreen,
+    setDark: (on) => {
+      dark = on;
+      writeUniverseDark(on, typeof localStorage === 'undefined' ? null : localStorage);
+      applyChrome();
+    },
+    setFullscreen: (on) => {
+      fullscreen = on;
+      applyChrome();
+    }
+  });
+
+  const onKeydown = (event: KeyboardEvent) => {
+    if (!shouldExitUniverseFullscreen(event.key, fullscreen)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    fullscreen = false;
+    applyChrome();
+  };
+  document.addEventListener('keydown', onKeydown, true);
 
   search.input.addEventListener('input', () => {
     mount?.setSearch(search.input.value);
@@ -166,4 +215,15 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
     list.append(item);
   }
   canvas.append(list);
+
+  const cleanup = () => {
+    document.removeEventListener('keydown', onKeydown, true);
+    window.removeEventListener('hashchange', cleanup);
+    document.body.classList.remove('is-universe-fullscreen');
+    mount?.();
+    mount = null;
+    if (lastUniverseCleanup === cleanup) lastUniverseCleanup = null;
+  };
+  lastUniverseCleanup = cleanup;
+  window.addEventListener('hashchange', cleanup);
 }

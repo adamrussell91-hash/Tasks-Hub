@@ -26,7 +26,7 @@ Agent writes: propose → **confirm card** → apply.
 | Surface | Role |
 |---------|------|
 | **Board** | Home. Task / project / excursion cards as Teaching tiles (glass, `--hub-tile-gap`). |
-| **Gantt** | Timeline for the same Cotton Glass cards. Every moon (task card) is droppable onto a day, a project planet, or another moon (parent). Bars are micro-cards: drag to reschedule, right-edge resize, ○ handle to link `depends_on` (FS / SS / FF). Critical path is a High Sea outline, not a new colour story. |
+| **Gantt** | Timeline over the same Task records as every other view. New Task adds a dated task (visible on Board, Today, and the rest). Projects sit in lanes. Bars are Cotton Glass micro-cards: drag to reschedule, right-edge resize, ○ handle to link `depends_on` (FS / SS / FF). Critical path is a High Sea outline, not a new colour story. |
 | **Goals** | Plan. Area → Goal → Project hierarchy; expand a project for milestones and tasks. |
 | **Someday** | Plan. Off-tree holding pen (`bucket: someday`); promote to goal, project, or task. |
 | **Graph** | A rail page, not home. Two modes on that page: **blockers** (task nodes, blocked-by edges) and **workstreams** (clustered projects / areas). |
@@ -38,7 +38,7 @@ Status colour uses existing tokens only: Wave, Marine, Depth, pastel chips. High
 
 ## Cards — micro, expanded, full page
 
-Every task/project card surface (Board, Today, Backlog, Search, Projects, calendar agenda, Gantt moons tray) uses the Cotton Glass recipes — do not draw a parallel `task-row` / flat tile.
+Every task/project card surface (Board, Today, Backlog, Search, Projects, calendar agenda) uses the Cotton Glass recipes — do not draw a parallel `task-row` / flat tile. Gantt plots those same tasks as bars, not a second card gallery.
 
 | View | Class | Role |
 |------|--------|------|

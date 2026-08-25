@@ -8,7 +8,9 @@ import type {
   ReviewLog
 } from '@/schemas/templates';
 import type { ClareCalibration, ClareNegotiationLog } from '@/schemas/clare';
-import type { ClareProposal, ClareProposalInput } from '@/domain/clare';
+import type { ClareDumpResult, ClareProposal, ClareProposalInput } from '@/domain/clare';
+import type { ClareBriefing } from '@/domain/clare-desk';
+import type { ClareProtocolId } from '@/domain/clare-protocols';
 import type { StallOutcome } from '@/domain/stall';
 import type { StressFlag } from '@/schemas/stress';
 import type { CapacityShare } from '@/schemas/capacity';
@@ -84,11 +86,27 @@ export interface TasksStore {
   getClareCalibration(domain: Task['domain']): Promise<ClareCalibration>;
   listClareCalibrations(): Promise<ClareCalibration[]>;
   proposeWithClare(input: ClareProposalInput): Promise<ClareProposal>;
+  briefWithClare(input?: { protocol_id?: ClareProtocolId; now?: Date }): Promise<ClareBriefing>;
+  processDumpWithClare(input: {
+    text: string;
+    domain?: Task['domain'];
+    protocol_id?: ClareProtocolId;
+    now?: Date;
+  }): Promise<ClareDumpResult>;
   acceptClareProposal(input: {
     proposal: ClareProposal;
     accepted_minutes: number;
     framework_id?: string;
   }): Promise<{ task: Task; negotiation: ClareNegotiationLog; calibration: ClareCalibration }>;
+  acceptClareBatch(items: Array<{
+    proposal: ClareProposal;
+    accepted_minutes: number;
+    framework_id?: string;
+  }>): Promise<{
+    tasks: Task[];
+    negotiations: ClareNegotiationLog[];
+    calibrations: ClareCalibration[];
+  }>;
   recordClareActual(
     taskId: string,
     actualMinutes: number

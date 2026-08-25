@@ -14,7 +14,7 @@ import type { TaskDomain } from '@/schemas/task';
 let somedayDomain: TaskDomain | 'all' = 'all';
 let somedayQuery = '';
 
-function renderSomedayCard(task: Task, onReload: () => void): HTMLElement {
+function renderSomedayCard(task: Task, onChange: (next: Task | null) => void): HTMLElement {
   const card = el('article', 'glass-tile someday-card');
   card.append(el('h3', 'someday-card__title', task.title));
   if (task.description) card.append(el('p', 'someday-card__copy', task.description));
@@ -27,7 +27,7 @@ function renderSomedayCard(task: Task, onReload: () => void): HTMLElement {
   promoteTask.addEventListener('click', () => {
     void tasksApi
       .updateTask(task.id, { bucket: 'active', status: 'open' })
-      .then(onReload)
+      .then(() => onChange(null))
       .catch((err) => window.alert(errorMessage(err)));
   });
   const promoteProject = el('button', 'btn btn--secondary', 'Promote to project');
@@ -36,7 +36,7 @@ function renderSomedayCard(task: Task, onReload: () => void): HTMLElement {
     void tasksApi
       .createProject({ title: task.title, description: task.description })
       .then(() => tasksApi.deleteTask(task.id))
-      .then(onReload)
+      .then(() => onChange(null))
       .catch((err) => window.alert(errorMessage(err)));
   });
   const promoteGoal = el('button', 'btn btn--ghost', 'Promote to goal');
@@ -45,14 +45,17 @@ function renderSomedayCard(task: Task, onReload: () => void): HTMLElement {
     void tasksApi
       .createGoal({ title: task.title, description: task.description })
       .then(() => tasksApi.deleteTask(task.id))
-      .then(onReload)
+      .then(() => onChange(null))
       .catch((err) => window.alert(errorMessage(err)));
   });
   const trash = el('button', 'btn btn--ghost', 'Remove');
   trash.type = 'button';
   trash.addEventListener('click', () => {
     if (!window.confirm(`Remove “${task.title}”?`)) return;
-    void tasksApi.deleteTask(task.id).then(onReload).catch((err) => window.alert(errorMessage(err)));
+    void tasksApi
+      .deleteTask(task.id)
+      .then(() => onChange(null))
+      .catch((err) => window.alert(errorMessage(err)));
   });
   actions.append(promoteTask, promoteProject, promoteGoal, trash);
   card.append(actions);
@@ -63,25 +66,31 @@ function renderSomedayCard(task: Task, onReload: () => void): HTMLElement {
 export async function renderSomedayView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading someday ideas…'));
   try {
-    const tasks = await tasksApi.listTasks();
-    paintSomeday(canvas, somedayTasks(tasks));
+    let items = somedayTasks(await tasksApi.listTasks());
+    const paint = () => {
+      paintSomeday(canvas, items, (next) => {
+        items = next;
+        paint();
+      });
+    };
+    paint();
   } catch (err) {
     canvas.replaceChildren(el('p', 'empty-state', errorMessage(err, 'Could not load someday items.')));
   }
 }
 
-function paintSomeday(canvas: HTMLElement, items: Task[]): void {
+function paintSomeday(
+  canvas: HTMLElement,
+  items: Task[],
+  setItems: (next: Task[]) => void
+): void {
   const restoreSearch =
     document.activeElement instanceof HTMLInputElement &&
     document.activeElement.getAttribute('aria-label') === 'Filter someday ideas';
   const searchPos = restoreSearch
     ? (document.activeElement as HTMLInputElement).selectionStart
     : null;
-
   canvas.replaceChildren();
-  const reload = () => {
-    void renderSomedayView(canvas);
-  };
 
   const hero = el('div', 'someday-hero');
   hero.append(
@@ -97,7 +106,7 @@ function paintSomeday(canvas: HTMLElement, items: Task[]): void {
     value: somedayQuery,
     onInput: (value) => {
       somedayQuery = value;
-      paintSomeday(canvas, items);
+      paintSomeday(canvas, items, setItems);
     }
   });
   filters.append(
@@ -110,7 +119,7 @@ function paintSomeday(canvas: HTMLElement, items: Task[]): void {
       value: somedayDomain,
       onChange: (value) => {
         somedayDomain = value as TaskDomain | 'all';
-        paintSomeday(canvas, items);
+        paintSomeday(canvas, items, setItems);
       }
     }).el
   );
@@ -130,14 +139,14 @@ function paintSomeday(canvas: HTMLElement, items: Task[]): void {
     event.preventDefault();
     submit.disabled = true;
     try {
-      await tasksApi.createTask({
+      const created = await tasksApi.createTask({
         title: title.input.value.trim(),
         domain: 'other',
         bucket: 'someday',
         status: 'deferred'
       });
       title.input.value = '';
-      reload();
+      setItems([created, ...items]);
     } catch (err) {
       canvas.append(el('p', 'empty-state', errorMessage(err)));
     } finally {
@@ -171,7 +180,13 @@ function paintSomeday(canvas: HTMLElement, items: Task[]): void {
   }
 
   const grid = el('div', 'someday-grid');
-  for (const item of visible) grid.append(renderSomedayCard(item, reload));
+  for (const item of visible) {
+    grid.append(
+      renderSomedayCard(item, (next) => {
+        setItems(next ? items.map((entry) => (entry.id === next.id ? next : entry)) : items.filter((entry) => entry.id !== item.id));
+      })
+    );
+  }
   canvas.append(grid);
 
   if (restoreSearch) {

@@ -62,12 +62,53 @@ export default async function handler(request: Request): Promise<Response> {
       return withCors(okResponse(200, proposal), request, env);
     }
 
+    if (action === 'brief') {
+      const briefing = await store.briefWithClare({
+        protocol_id:
+          body.protocol_id === undefined
+            ? undefined
+            : (String(body.protocol_id) as import('../../src/domain/clare-protocols').ClareProtocolId)
+      });
+      return withCors(okResponse(200, briefing), request, env);
+    }
+
+    if (action === 'dump') {
+      const result = await store.processDumpWithClare({
+        text: String(body.text ?? ''),
+        domain: body.domain === undefined ? undefined : (body.domain as 'teaching'),
+        protocol_id:
+          body.protocol_id === undefined
+            ? undefined
+            : (String(body.protocol_id) as import('../../src/domain/clare-protocols').ClareProtocolId)
+      });
+      return withCors(okResponse(200, result), request, env);
+    }
+
     if (action === 'accept') {
       const result = await store.acceptClareProposal({
         proposal: body.proposal as ClareProposal,
         accepted_minutes: Number(body.accepted_minutes),
         framework_id: body.framework_id === undefined ? undefined : String(body.framework_id)
       });
+      return withCors(okResponse(201, result), request, env);
+    }
+
+    if (action === 'accept_batch') {
+      const items = Array.isArray(body.items) ? body.items : [];
+      const result = await store.acceptClareBatch(
+        items.map((item) => {
+          const row = item as {
+            proposal: ClareProposal;
+            accepted_minutes: number;
+            framework_id?: string;
+          };
+          return {
+            proposal: row.proposal,
+            accepted_minutes: Number(row.accepted_minutes),
+            framework_id: row.framework_id
+          };
+        })
+      );
       return withCors(okResponse(201, result), request, env);
     }
 

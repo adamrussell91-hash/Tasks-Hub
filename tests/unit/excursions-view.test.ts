@@ -68,6 +68,7 @@ const task: Task = {
   updated_at: '2026-08-01T00:00:00.000Z',
   completed_at: null,
   status: 'open',
+  blocked_since: null,
   priority: 'high',
   parent_project_id: 'proj_ex_ethics_seed',
   parent_task_id: null,

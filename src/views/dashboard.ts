@@ -1,15 +1,22 @@
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
-import { adaptiveTodayTasks, backlogTasks, preferredDomains, searchEntities } from '@/domain/queries';
+import {
+  adaptiveTodayTasks,
+  backlogTasks,
+  preferredDomains,
+  searchEntities,
+  toDateKey
+} from '@/domain/queries';
 import { computeProjectVariance, formatSlip } from '@/domain/closure';
 import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { findStallCandidates } from '@/domain/stall';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
-import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
+import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
-import { mountProjectCard, mountTaskCard } from '@/views/hub-cards';
+import { deleteTaskNow } from '@/views/card-actions';
+import { mountProjectCard, mountTaskCard, removeMountedTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 import {
@@ -38,27 +45,33 @@ function appendTaskCard(
   host: HTMLElement,
   task: Task,
   confirmHost: HTMLElement,
-  reload: () => Promise<void>,
+  handlers: {
+    onRemoved: () => void | Promise<void>;
+    onChanged: () => void | Promise<void>;
+  },
   projects: Project[] = []
 ): void {
   mountTaskCard(host, task, {
-    onToggle: (current) => requestToggleDone(confirmHost, current, reload),
-    onDelete: (current) => confirmDeleteTask(confirmHost, current, reload),
-    onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void reload())
+    onToggle: (current) => requestToggleDone(confirmHost, current, async () => {
+      await handlers.onChanged();
+    }),
+    onDelete: (current) => deleteTaskNow(current, handlers.onRemoved, confirmHost),
+    onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void handlers.onChanged())
   });
 }
 
-function confirmDeleteTask(host: HTMLElement, task: Task, reload: () => Promise<void>): void {
-  showConfirmWrite(
-    host,
-    `Delete “${task.title}”`,
-    'This removes the task from the hub.',
-    async () => {
-      await tasksApi.deleteTask(task.id, { agent: 'Tasks Hub', reason: 'Row delete' });
-      await reload();
-    },
-    'Delete'
-  );
+function upsertTask(list: Task[], task: Task): Task[] {
+  const index = list.findIndex((entry) => entry.id === task.id);
+  if (index >= 0) {
+    list[index] = task;
+    return list;
+  }
+  list.push(task);
+  return list;
+}
+
+function dropTask(list: Task[], id: string): Task[] {
+  return list.filter((entry) => entry.id !== id);
 }
 
 export async function markTaskOpen(task: Task): Promise<void> {
@@ -141,137 +154,260 @@ export function requestToggleDone(
 
 export async function renderDayView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
-  const today = new Date();
-  const prefs = preferredDomains(today);
-  const list = adaptiveTodayTasks(tasks, today).filter((t) => {
-    if (dayDomain !== 'all' && t.domain !== dayDomain) return false;
-    if (dayPriority !== 'all' && t.priority !== dayPriority) return false;
-    return true;
-  });
-
-  canvas.replaceChildren();
-  const intro = el(
-    'p',
-    'view-lede',
-    `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`
-  );
-  canvas.append(intro);
-
-  const filters = createHubToolbar();
-  filters.append(
-    createHubFilter({
-      key: 'Domain',
-      label: 'Domain',
-      defaultValue: 'all',
-      options: domainFilterOptions(),
-      value: dayDomain,
-      onChange: (value) => {
-        dayDomain = value as TaskDomain | 'all';
-        void renderDayView(canvas);
-      }
-    }).el,
-    createHubFilter({
-      key: 'Priority',
-      label: 'Priority',
-      defaultValue: 'all',
-      options: priorityFilterOptions(),
-      value: dayPriority,
-      onChange: (value) => {
-        dayPriority = value as TaskPriority | 'all';
-        void renderDayView(canvas);
-      }
-    }).el
-  );
-  canvas.append(filters);
-
-  const clareLink = el('p', 'clare-inline');
-  const goClare = el('button', 'btn btn--secondary', 'Negotiate with Clare');
-  goClare.type = 'button';
-  goClare.addEventListener('click', () => {
-    location.hash = '#/clare';
-  });
-  clareLink.append(goClare);
-  canvas.append(clareLink);
-
-  const pressure = el('div', 'pressure-host');
-  renderPressureStrips(pressure, tasks, today, () => void renderDayView(canvas));
-  canvas.append(pressure);
-
-  const confirmHost = el('div', 'task-confirm');
-  canvas.append(renderQuickAdd(() => void renderDayView(canvas)));
-  canvas.append(confirmHost);
-
-  if (!list.length) {
-    canvas.append(el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.'));
+  let tasks: Task[];
+  let projects: Project[];
+  try {
+    [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderDayView(canvas), 'Could not load Today');
     return;
   }
-  const stack = el('div', 'task-stack');
-  for (const task of list) {
-    appendTaskCard(stack, task, confirmHost, () => renderDayView(canvas), projects);
+
+  function paint(): void {
+    const today = new Date();
+    const list = adaptiveTodayTasks(tasks, today).filter((t) => {
+      if (dayDomain !== 'all' && t.domain !== dayDomain) return false;
+      if (dayPriority !== 'all' && t.priority !== dayPriority) return false;
+      return true;
+    });
+    const prefs = preferredDomains(today);
+    const scrollTop = canvas.scrollTop;
+
+    canvas.replaceChildren();
+    canvas.append(
+      el('p', 'view-lede', `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`)
+    );
+
+    const filters = createHubToolbar();
+    filters.append(
+      createHubFilter({
+        key: 'Domain',
+        label: 'Domain',
+        defaultValue: 'all',
+        options: domainFilterOptions(),
+        value: dayDomain,
+        onChange: (value) => {
+          dayDomain = value as TaskDomain | 'all';
+          paint();
+        }
+      }).el,
+      createHubFilter({
+        key: 'Priority',
+        label: 'Priority',
+        defaultValue: 'all',
+        options: priorityFilterOptions(),
+        value: dayPriority,
+        onChange: (value) => {
+          dayPriority = value as TaskPriority | 'all';
+          paint();
+        }
+      }).el
+    );
+    canvas.append(filters);
+
+    const clareLink = el('p', 'clare-inline');
+    const goClare = el('button', 'btn btn--secondary', 'Talk to Clare');
+    goClare.type = 'button';
+    goClare.addEventListener('click', () => {
+      location.hash = '#/clare';
+    });
+    clareLink.append(goClare);
+    canvas.append(clareLink);
+
+    const pressure = el('div', 'pressure-host');
+    renderPressureStrips(pressure, tasks, today, () => void paint());
+    canvas.append(pressure);
+
+    const confirmHost = el('div', 'task-confirm');
+    canvas.append(
+      renderQuickAdd(
+        (created) => {
+          upsertTask(tasks, created);
+          const empty = canvas.querySelector('.empty-state');
+          empty?.remove();
+          let stack = canvas.querySelector<HTMLElement>('.task-stack');
+          if (!stack) {
+            stack = el('div', 'task-stack');
+            canvas.append(stack);
+          }
+          if (stack.querySelector(`[data-task-id="${created.id}"]`)) return;
+          if (adaptiveTodayTasks([created], today).length) {
+            appendTaskCard(
+              stack,
+              created,
+              confirmHost,
+              {
+                onRemoved: () => afterDayMutation(created.id),
+                onChanged: async () => {
+                  tasks = await tasksApi.listTasks().catch(() => tasks);
+                  paint();
+                }
+              },
+              projects
+            );
+            return;
+          }
+          paint();
+        },
+        null,
+        { dueDate: toDateKey(today) }
+      )
+    );
+    canvas.append(confirmHost);
+
+    async function afterDayMutation(taskId: string): Promise<void> {
+      removeMountedTaskCard(canvas, taskId);
+      tasks = dropTask(tasks, taskId);
+      const pressure = canvas.querySelector('.pressure-host');
+      if (pressure instanceof HTMLElement) {
+        renderPressureStrips(pressure, tasks, today, () => void paint());
+      }
+      if (!canvas.querySelector('.hub-card-slot') && !canvas.querySelector('.empty-state')) {
+        canvas.append(
+          el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.')
+        );
+      }
+    }
+
+    if (!list.length) {
+      canvas.append(
+        el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.')
+      );
+      canvas.scrollTop = scrollTop;
+      return;
+    }
+    const stack = el('div', 'task-stack');
+    for (const task of list) {
+      appendTaskCard(
+        stack,
+        task,
+        confirmHost,
+        {
+          onRemoved: () => afterDayMutation(task.id),
+          onChanged: async () => {
+            tasks = await tasksApi.listTasks().catch(() => tasks);
+            paint();
+          }
+        },
+        projects
+      );
+    }
+    canvas.append(stack);
+    canvas.scrollTop = scrollTop;
   }
-  canvas.append(stack);
+
+  paint();
 }
 
 export async function renderListView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
-  const tags = [...new Set(tasks.flatMap((t) => t.tags))].sort();
-  let list = backlogTasks(tasks);
-  if (backlogDomain !== 'all') list = list.filter((t) => t.domain === backlogDomain);
-  if (backlogPriority !== 'all') list = list.filter((t) => t.priority === backlogPriority);
-  if (backlogTag) list = list.filter((t) => t.tags.includes(backlogTag));
-  canvas.replaceChildren();
-
-  const filters = createHubToolbar('board-filter');
-  filters.append(
-    createHubFilter({
-      key: 'Domain',
-      label: 'Domain',
-      defaultValue: 'all',
-      options: domainFilterOptions(),
-      value: backlogDomain,
-      onChange: (value) => {
-        backlogDomain = value as TaskDomain | 'all';
-        void renderListView(canvas);
-      }
-    }).el,
-    createHubFilter({
-      key: 'Priority',
-      label: 'Priority',
-      defaultValue: 'all',
-      options: priorityFilterOptions(),
-      value: backlogPriority,
-      onChange: (value) => {
-        backlogPriority = value as TaskPriority | 'all';
-        void renderListView(canvas);
-      }
-    }).el,
-    createHubFilter({
-      key: 'Tag',
-      label: 'Tag',
-      defaultValue: '',
-      options: [{ value: '', label: 'All tags' }, ...tags.map((tag) => ({ value: tag, label: tag }))],
-      value: backlogTag,
-      onChange: (value) => {
-        backlogTag = value;
-        void renderListView(canvas);
-      }
-    }).el
-  );
-  canvas.append(filters);
-  canvas.append(renderQuickAdd(() => void renderListView(canvas)));
-  const confirmHost = el('div', 'task-confirm');
-  canvas.append(confirmHost);
-  if (!list.length) {
-    canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
+  let tasks: Task[];
+  let projects: Project[];
+  try {
+    [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderListView(canvas), 'Could not load Backlog');
     return;
   }
-  const stack = el('div', 'task-stack');
-  for (const task of list) {
-    appendTaskCard(stack, task, confirmHost, () => renderListView(canvas), projects);
+
+  function paint(): void {
+    const tags = [...new Set(tasks.flatMap((t) => t.tags))].sort();
+    let list = backlogTasks(tasks);
+    if (backlogDomain !== 'all') list = list.filter((t) => t.domain === backlogDomain);
+    if (backlogPriority !== 'all') list = list.filter((t) => t.priority === backlogPriority);
+    if (backlogTag) list = list.filter((t) => t.tags.includes(backlogTag));
+    const scrollTop = canvas.scrollTop;
+
+    canvas.replaceChildren();
+    const filters = createHubToolbar('board-filter');
+    filters.append(
+      createHubFilter({
+        key: 'Domain',
+        label: 'Domain',
+        defaultValue: 'all',
+        options: domainFilterOptions(),
+        value: backlogDomain,
+        onChange: (value) => {
+          backlogDomain = value as TaskDomain | 'all';
+          paint();
+        }
+      }).el,
+      createHubFilter({
+        key: 'Priority',
+        label: 'Priority',
+        defaultValue: 'all',
+        options: priorityFilterOptions(),
+        value: backlogPriority,
+        onChange: (value) => {
+          backlogPriority = value as TaskPriority | 'all';
+          paint();
+        }
+      }).el,
+      createHubFilter({
+        key: 'Tag',
+        label: 'Tag',
+        defaultValue: '',
+        options: [{ value: '', label: 'All tags' }, ...tags.map((tag) => ({ value: tag, label: tag }))],
+        value: backlogTag,
+        onChange: (value) => {
+          backlogTag = value;
+          paint();
+        }
+      }).el
+    );
+    canvas.append(filters);
+    const confirmHost = el('div', 'task-confirm');
+    canvas.append(
+      renderQuickAdd((created) => {
+        upsertTask(tasks, created);
+        canvas.querySelector('.empty-state')?.remove();
+        let stack = canvas.querySelector<HTMLElement>('.task-stack');
+        if (!stack) {
+          stack = el('div', 'task-stack');
+          canvas.append(stack);
+        }
+        if (!stack.querySelector(`[data-task-id="${created.id}"]`) && backlogTasks([created]).length) {
+          appendTaskCard(stack, created, confirmHost, backlogHandlers(created.id), projects);
+          return;
+        }
+        paint();
+      })
+    );
+    canvas.append(confirmHost);
+
+    function backlogHandlers(taskId: string): {
+      onRemoved: () => void;
+      onChanged: () => Promise<void>;
+    } {
+      return {
+        onRemoved: () => {
+          removeMountedTaskCard(canvas, taskId);
+          tasks = dropTask(tasks, taskId);
+          if (!canvas.querySelector('.hub-card-slot') && !canvas.querySelector('.empty-state')) {
+            canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
+          }
+        },
+        onChanged: async () => {
+          tasks = await tasksApi.listTasks().catch(() => tasks);
+          paint();
+        }
+      };
+    }
+
+    if (!list.length) {
+      canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
+      canvas.scrollTop = scrollTop;
+      return;
+    }
+    const stack = el('div', 'task-stack');
+    for (const task of list) {
+      appendTaskCard(stack, task, confirmHost, backlogHandlers(task.id), projects);
+    }
+    canvas.append(stack);
+    canvas.scrollTop = scrollTop;
   }
-  canvas.append(stack);
+
+  paint();
 }
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
@@ -747,7 +883,18 @@ function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): voi
   const confirmHost = host.parentElement?.querySelector('.task-confirm');
   for (const task of tasks) {
     if (confirmHost instanceof HTMLElement) {
-      appendTaskCard(host, task, confirmHost, () => refreshSearch(host), projects);
+      appendTaskCard(
+        host,
+        task,
+        confirmHost,
+        {
+          onRemoved: () => {
+            removeMountedTaskCard(host, task.id);
+          },
+          onChanged: () => refreshSearch(host)
+        },
+        projects
+      );
     }
   }
 }

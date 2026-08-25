@@ -13,6 +13,7 @@ import {
 } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { cardTransitionName, runContainerTransform } from '@/views/container-transform';
+import { closeCardMenu, renderCardMenu, type CardMenuItem } from '@/views/card-menu';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -23,28 +24,6 @@ function el<K extends keyof HTMLElementTagNameMap>(
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
-}
-
-function svg(paths: string[]): SVGSVGElement {
-  const node = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  node.setAttribute('viewBox', '0 0 24 24');
-  node.setAttribute('fill', 'none');
-  node.setAttribute('stroke', 'currentColor');
-  node.setAttribute('stroke-width', '1.8');
-  node.setAttribute('stroke-linecap', 'round');
-  node.setAttribute('stroke-linejoin', 'round');
-  node.setAttribute('aria-hidden', 'true');
-  node.innerHTML = paths.map((d) => `<path d="${d}"/>`).join('');
-  return node;
-}
-
-function iconButton(label: string, paths: string[], extraClass = ''): HTMLButtonElement {
-  const btn = el('button', `hub-icon-btn${extraClass ? ` ${extraClass}` : ''}`) as HTMLButtonElement;
-  btn.type = 'button';
-  btn.title = label;
-  btn.setAttribute('aria-label', label);
-  btn.append(svg(paths));
-  return btn;
 }
 
 function calendarIcon(): SVGSVGElement {
@@ -71,8 +50,7 @@ function chevron(up = false): SVGSVGElement {
   node.setAttribute('stroke-linejoin', 'round');
   node.setAttribute('aria-hidden', 'true');
   node.classList.add('proj-row__chev');
-  node.innerHTML = up ? '<path d="M6 15l6-6 6 6"/>' : '<path d="M6 9l6 6 6 6"/>';
-  if (!up) node.innerHTML = '<path d="M6 9l6 6 6-6"/>';
+  node.innerHTML = up ? '<path d="M6 15l6-6 6 6"/>' : '<path d="M6 9l6 6 6-6"/>';
   return node;
 }
 
@@ -94,6 +72,8 @@ export type TaskCardHandlers = {
   onDelete?: (task: Task) => void;
   onToggle?: (task: Task) => void;
   onOpenPage?: (task: Task) => void;
+  onExpand?: (task: Task) => void;
+  onCollapse?: (task: Task) => void;
 };
 
 export type ProjectCardHandlers = {
@@ -103,10 +83,69 @@ export type ProjectCardHandlers = {
   onClose?: (project: Project) => void;
   /** Compact-row click. Defaults to expanding the card in place. */
   onActivate?: (project: Project) => void;
+  onExpand?: (project: Project) => void;
+  onCollapse?: (project: Project) => void;
 };
 
 function isInteractive(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest('button, a, input, textarea, select, label'));
+}
+
+function openTaskPage(task: Task, handlers: TaskCardHandlers): void {
+  if (handlers.onOpenPage) handlers.onOpenPage(task);
+  else location.hash = taskPageHash(task.id);
+}
+
+function openProjectPage(project: Project, handlers: ProjectCardHandlers): void {
+  if (handlers.onOpenPage) handlers.onOpenPage(project);
+  else location.hash = projectPageHash(project.id);
+}
+
+function taskMenuItems(task: Task, handlers: TaskCardHandlers): CardMenuItem[] {
+  const items: CardMenuItem[] = [];
+  if (handlers.onExpand) {
+    items.push({ id: 'expand', label: 'Expand', onSelect: () => handlers.onExpand?.(task) });
+  }
+  if (handlers.onCollapse) {
+    items.push({ id: 'collapse', label: 'Collapse', onSelect: () => handlers.onCollapse?.(task) });
+  }
+  items.push({ id: 'page', label: 'Full page', onSelect: () => openTaskPage(task, handlers) });
+  if (handlers.onEdit) {
+    items.push({ id: 'edit', label: 'Edit', onSelect: () => handlers.onEdit?.(task) });
+  }
+  if (handlers.onToggle) {
+    items.push({
+      id: 'toggle',
+      label: task.status === 'done' ? 'Reopen' : 'Done',
+      onSelect: () => handlers.onToggle?.(task)
+    });
+  }
+  if (handlers.onDelete) {
+    items.push({ id: 'delete', label: 'Delete', danger: true, onSelect: () => handlers.onDelete?.(task) });
+  }
+  return items;
+}
+
+function projectMenuItems(project: Project, handlers: ProjectCardHandlers): CardMenuItem[] {
+  const items: CardMenuItem[] = [];
+  if (handlers.onExpand) {
+    items.push({ id: 'expand', label: 'Expand', onSelect: () => handlers.onExpand?.(project) });
+  }
+  if (handlers.onCollapse) {
+    items.push({ id: 'collapse', label: 'Collapse', onSelect: () => handlers.onCollapse?.(project) });
+  }
+  items.push({ id: 'page', label: 'Full page', onSelect: () => openProjectPage(project, handlers) });
+  if (handlers.onAddTask) {
+    items.push({ id: 'add', label: 'Add task', onSelect: () => handlers.onAddTask?.(project) });
+  }
+  if (handlers.onClose) {
+    items.push({ id: 'close', label: 'Close project', onSelect: () => handlers.onClose?.(project) });
+  }
+  return items;
+}
+
+function attachCardMenu(card: HTMLElement, label: string, items: CardMenuItem[]): void {
+  card.append(renderCardMenu(label, items));
 }
 
 export function renderTaskMicroCard(task: Task, handlers: TaskCardHandlers = {}): HTMLElement {
@@ -124,39 +163,9 @@ export function renderTaskMicroCard(task: Task, handlers: TaskCardHandlers = {})
   const due = dateBadge(task.due_date);
   if (due) meta.append(due);
   meta.append(el('span', 'hub-row__updated', formatRelativeUpdated(task.updated_at)));
-  const actions = el('div', 'hub-row__actions');
-  if (handlers.onToggle) {
-    const done = iconButton(task.status === 'done' ? 'Reopen task' : 'Mark task done', [
-      'M20 6L9 17l-5-5'
-    ]);
-    done.addEventListener('click', (event) => {
-      event.stopPropagation();
-      handlers.onToggle?.(task);
-    });
-    actions.append(done);
-  }
-  if (handlers.onEdit) {
-    const edit = iconButton('Edit task', ['M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z']);
-    edit.addEventListener('click', (event) => {
-      event.stopPropagation();
-      handlers.onEdit?.(task);
-    });
-    actions.append(edit);
-  }
-  if (handlers.onDelete) {
-    const remove = iconButton(
-      'Delete task',
-      ['M4 7h16', 'M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7', 'M6 7l1 13a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5l1-13', 'M10 11v6M14 11v6'],
-      'hub-icon-btn--danger'
-    );
-    remove.addEventListener('click', (event) => {
-      event.stopPropagation();
-      handlers.onDelete?.(task);
-    });
-    actions.append(remove);
-  }
-  foot.append(meta, actions);
+  foot.append(meta);
   row.append(title, chips, foot);
+  attachCardMenu(row, `${task.title} card menu`, taskMenuItems(task, handlers));
   return row;
 }
 
@@ -181,22 +190,8 @@ export function renderTaskExpandedCard(task: Task, handlers: TaskCardHandlers = 
   if (task.description) card.append(el('p', 'hub-card__meta', task.description));
   const foot = el('footer', 'task-card__foot');
   foot.append(el('span', 'hub-card__meta', formatRelativeUpdated(task.updated_at)));
-  const actions = el('div', 'hub-row__actions');
-  if (handlers.onToggle) {
-    const done = el('button', 'btn btn--ghost', task.status === 'done' ? 'Reopen' : 'Done');
-    done.type = 'button';
-    done.addEventListener('click', () => handlers.onToggle?.(task));
-    actions.append(done);
-  }
-  const open = el('button', 'btn btn--ghost', 'Open page');
-  open.type = 'button';
-  open.addEventListener('click', () => {
-    if (handlers.onOpenPage) handlers.onOpenPage(task);
-    else location.hash = taskPageHash(task.id);
-  });
-  actions.append(open);
-  foot.append(actions);
   card.append(foot);
+  attachCardMenu(card, `${task.title} card menu`, taskMenuItems(task, handlers));
   return card;
 }
 
@@ -224,7 +219,7 @@ export function renderProjectMicroCard(
     chevron(false)
   );
   row.append(main, meta);
-  void handlers;
+  attachCardMenu(row, `${project.title} card menu`, projectMenuItems(project, handlers));
   return row;
 }
 
@@ -244,11 +239,6 @@ export function renderProjectExpandedCard(
   }
   const card = el('article', 'hub-card proj-card');
   card.setAttribute('aria-label', `${project.title} project card`);
-  const collapse = iconButton(`Collapse ${project.title} project card`, []);
-  collapse.classList.add('proj-card__collapse');
-  collapse.dataset.toggle = 'collapse';
-  collapse.setAttribute('aria-expanded', 'true');
-  collapse.replaceChildren(chevron(true));
   const head = el('header', 'task-card__head');
   head.append(
     el('span', 'hub-card__eyebrow', project.type === 'excursion' ? 'Excursion' : 'Project'),
@@ -314,30 +304,19 @@ export function renderProjectExpandedCard(
   });
   const foot = el('footer', 'task-card__foot');
   foot.append(el('span', 'hub-card__meta', formatRelativeUpdated(project.updated_at)));
-  const actions = el('div', 'hub-row__actions');
-  if (handlers.onAddTask) {
-    const add = el('button', 'btn btn--ghost', '+ Add task');
-    add.type = 'button';
-    add.addEventListener('click', () => handlers.onAddTask?.(project));
-    actions.append(add);
-  }
-  const open = el('button', 'btn btn--ghost', 'Open page');
-  open.type = 'button';
-  open.addEventListener('click', () => {
-    if (handlers.onOpenPage) handlers.onOpenPage(project);
-    else location.hash = projectPageHash(project.id);
-  });
-  actions.append(open);
-  if (handlers.onClose) {
-    const close = el('button', 'btn btn--primary', 'Close project');
-    close.type = 'button';
-    close.addEventListener('click', () => handlers.onClose?.(project));
-    actions.append(close);
-  }
-  foot.append(actions);
-  card.append(collapse, head, title, tags, metrics, track, list, foot);
+  card.append(head, title, tags, metrics, track, list, foot);
+  attachCardMenu(card, `${project.title} card menu`, projectMenuItems(project, handlers));
   wrap.append(card);
   return wrap;
+}
+
+export function removeMountedTaskCard(host: HTMLElement, taskId: string): boolean {
+  const card =
+    host.querySelector<HTMLElement>(`[data-id="${taskId}"]`) ??
+    host.querySelector<HTMLElement>(`[data-task-id="${taskId}"]`)?.closest<HTMLElement>('.hub-card-slot');
+  if (!card) return false;
+  card.remove();
+  return true;
 }
 
 export function mountTaskCard(
@@ -359,8 +338,27 @@ export function mountTaskCard(
   const guard = { current: false };
   let expanded = false;
 
+  function cardHandlers(): TaskCardHandlers {
+    return {
+      ...handlers,
+      onExpand: expanded
+        ? undefined
+        : () => {
+            toggle();
+          },
+      onCollapse: expanded
+        ? () => {
+            toggle();
+          }
+        : undefined
+    };
+  }
+
   function paint(): void {
-    slot.replaceChildren(expanded ? renderTaskExpandedCard(task, handlers) : renderTaskMicroCard(task, handlers));
+    closeCardMenu();
+    slot.replaceChildren(
+      expanded ? renderTaskExpandedCard(task, cardHandlers()) : renderTaskMicroCard(task, cardHandlers())
+    );
     slot.dataset.state = expanded ? 'expanded' : 'compact';
     const trigger = slot.querySelector<HTMLElement>(expanded ? '.hub-card' : '.hub-row');
     if (!asListItem && trigger && !expanded) {
@@ -407,38 +405,44 @@ export function mountProjectCard(
   let expanded = false;
 
   function paint(): void {
-    slot.replaceChildren(
-      expanded
-        ? renderProjectExpandedCard(project, tasks, handlers)
-        : renderProjectMicroCard(project, tasks, handlers)
-    );
-    slot.dataset.state = expanded ? 'expanded' : 'compact';
     const expand = () =>
       runContainerTransform(() => {
         expanded = true;
         paint();
-        slot.querySelector<HTMLButtonElement>('[data-toggle="collapse"]')?.focus();
+        slot.querySelector<HTMLButtonElement>('.card-menu')?.focus();
       }, guard);
     const collapse = () =>
       runContainerTransform(() => {
         expanded = false;
         paint();
       }, guard);
+    const activate = () => {
+      if (handlers.onActivate) handlers.onActivate(project);
+      else expand();
+    };
+    const next: ProjectCardHandlers = {
+      ...handlers,
+      onExpand: expanded ? undefined : activate,
+      onCollapse: expanded ? collapse : undefined
+    };
+    closeCardMenu();
+    slot.replaceChildren(
+      expanded ? renderProjectExpandedCard(project, tasks, next) : renderProjectMicroCard(project, tasks, next)
+    );
+    slot.dataset.state = expanded ? 'expanded' : 'compact';
     if (!expanded) {
       const row = slot.querySelector<HTMLElement>('.proj-row');
-      const activate = () => {
-        if (handlers.onActivate) handlers.onActivate(project);
-        else expand();
-      };
-      row?.addEventListener('click', activate);
+      row?.addEventListener('click', (event) => {
+        if (isInteractive(event.target)) return;
+        activate();
+      });
       row?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
+          if (isInteractive(event.target)) return;
           activate();
         }
       });
-    } else {
-      slot.querySelector('[data-toggle="collapse"]')?.addEventListener('click', collapse);
     }
   }
 

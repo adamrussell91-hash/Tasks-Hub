@@ -11,11 +11,9 @@ import {
   criticalPath,
   dateKeyAtX,
   dropTargetAt,
-  moonPatchFromDrop,
   layoutGantt,
   layoutGanttGroups,
   linksPatchForTask,
-  moonsForTray,
   placeholderGanttLayout,
   requiredStartIdx,
   wouldCreateCycle
@@ -38,6 +36,7 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title' | 'due_date'>):
     updated_at: '2026-08-01T00:00:00.000Z',
     completed_at: null,
     status: 'open',
+    blocked_since: null,
     priority: 'medium',
     parent_project_id: 'proj_a',
     parent_task_id: null,
@@ -74,6 +73,8 @@ describe('gantt layout', () => {
     expect(layout!.totalWidth).toBeGreaterThan(layout!.labelWidth);
     expect(layout!.ticks.length).toBeGreaterThan(0);
     expect(layout!.ticks[0]).toHaveProperty('date');
+    expect(layout!.groupBounds).toHaveLength(1);
+    expect(layout!.groupBounds[0]?.title).toBe('Project');
   });
 
   it('returns null when project has no dated tasks or milestones', () => {
@@ -199,7 +200,7 @@ describe('gantt critical path and cascade', () => {
   });
 });
 
-describe('gantt drop targeting and moons', () => {
+describe('gantt drop targeting', () => {
   it('maps an x position to a local date and a bar hit', () => {
     const project = seed.projects.find((p) => p.id === 'proj_mindworks')!;
     const rows = buildProjectGanttRows(project, seed.tasks);
@@ -212,30 +213,9 @@ describe('gantt drop targeting and moons', () => {
     if (target?.kind === 'bar') expect(target.bar.row.id).toBe(first.row.id);
     const loose = dropTargetAt(layout, first.x + 80, 4, project.id);
     expect(loose).toMatchObject({ kind: 'day', projectId: project.id });
-    expect(
-      moonPatchFromDrop(
-        {
-          id: 'task_demo_backlog',
-          parent_project_id: null,
-          parent_task_id: null
-        },
-        { kind: 'day', dateKey: '2026-08-26', projectId: null },
-        project.id
-      )
-    ).toEqual({
-      due_date: '2026-08-26',
-      parent_project_id: project.id
-    });
   });
 
-  it('lists undated or unassigned moons first in the place tray', () => {
-    const list = moonsForTray(seed.tasks, 'place');
-    expect(list.every((item) => item.status !== 'done' && item.status !== 'dead')).toBe(true);
-    expect(list.some((item) => !item.due_date || !item.parent_project_id)).toBe(true);
-    expect(moonsForTray(seed.tasks, 'all').length).toBeGreaterThanOrEqual(list.length);
-  });
-
-  it('builds a droppable placeholder range when nothing is dated', () => {
+  it('builds a placeholder range when nothing is dated', () => {
     const layout = placeholderGanttLayout('week');
     expect(layout.bars).toHaveLength(0);
     expect(layout.dayCount).toBeGreaterThan(10);
