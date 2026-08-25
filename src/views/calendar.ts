@@ -15,7 +15,6 @@ import {
   itemsForDay,
   itemsInRange,
   isSameMonth,
-  isWeekend,
   monthTitle,
   overdueItems,
   parseCalendarAnchor,
@@ -23,7 +22,6 @@ import {
   visibleDays,
   visibleOverflow,
   weekdayShort,
-  WEEKDAY_HEADINGS,
   type CalendarFilters,
   type CalendarItem,
   type CalendarMode
@@ -43,7 +41,8 @@ import {
   el
 } from '@/views/hub-kit';
 
-const MONTH_EVENT_LIMIT = 3;
+const MONTH_EVENT_LIMIT = 2;
+const WEEKDAY_HEADINGS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
 
 const sessionFilters: CalendarFilters = {
   domain: 'all',
@@ -54,13 +53,25 @@ const sessionFilters: CalendarFilters = {
 };
 
 let selectedDateKey: string | null = null;
+let lastMonthDelta = 0;
 
-function eventClass(item: CalendarItem): string {
-  const parts = ['week-chip', 'cal-event', `cal-event--${item.kind}`];
-  if (item.domain) parts.push(`cal-event--${item.domain}`);
-  if (item.priority === 'urgent' || item.priority === 'high') parts.push(`cal-event--${item.priority}`);
-  if (item.status === 'done' || item.status === 'dead') parts.push('cal-event--done');
-  return parts.join(' ');
+type EventTint = 'blue' | 'sage' | 'peach' | 'gold' | 'lilac' | 'sand';
+
+function eventTint(item: CalendarItem): EventTint {
+  if (item.kind === 'key_date') return 'sand';
+  if (item.kind === 'milestone') return 'gold';
+  switch (item.domain) {
+    case 'teaching':
+      return 'blue';
+    case 'life':
+      return 'gold';
+    case 'wedding':
+      return 'peach';
+    case 'health':
+      return 'lilac';
+    default:
+      return 'sage';
+  }
 }
 
 function eventLabel(item: CalendarItem): string {
@@ -82,15 +93,26 @@ function renderEventChip(
   item: CalendarItem,
   onOpen: (item: CalendarItem) => void
 ): HTMLButtonElement {
-  const chip = el('button', eventClass(item), item.title);
+  const chip = el('button', 'event-chip');
   chip.type = 'button';
+  chip.dataset.tint = eventTint(item);
   chip.dataset.kind = item.kind;
   chip.dataset.date = item.date_key;
   chip.dataset.eventId = item.id;
   if (item.domain) chip.dataset.domain = item.domain;
   if (item.task) chip.dataset.taskId = item.task.id;
+  if (item.status === 'done' || item.status === 'dead') chip.classList.add('is-done');
+  if (item.priority === 'urgent') chip.classList.add('is-urgent');
   chip.setAttribute('aria-label', eventLabel(item));
   chip.draggable = item.movable;
+
+  const title = el('span', 'event-chip__title', item.title);
+  chip.append(title);
+  const metaBits = [item.kind === 'task' ? item.priority : item.subtitle, item.project_title]
+    .filter(Boolean)
+    .join(' · ');
+  if (metaBits) chip.append(el('span', 'event-chip__meta', metaBits));
+
   chip.addEventListener('click', (event) => {
     event.stopPropagation();
     onOpen(item);
@@ -134,19 +156,28 @@ function wireDropTarget(
   });
 }
 
-function renderModePills(mode: CalendarMode, anchor: Date): HTMLElement {
-  return createHubPills({
-    label: 'Calendar range',
-    role: 'tablist',
-    items: [
-      { id: 'week', label: 'Week' },
-      { id: 'month', label: 'Month' }
-    ],
-    value: mode,
-    onSelect: (id) => {
-      location.hash = calendarHash(id, anchor);
-    }
-  });
+function renderViewTabs(mode: CalendarMode, anchor: Date): HTMLElement {
+  const tabs = el('div', 'hub-pills calendar-view-tabs');
+  tabs.setAttribute('role', 'tablist');
+  tabs.setAttribute('aria-label', 'Calendar view');
+  for (const item of [
+    { id: 'week' as const, label: 'Week' },
+    { id: 'month' as const, label: 'Month' }
+  ]) {
+    const btn = el(
+      'button',
+      `hub-pills__btn calendar-view-tabs__tab${item.id === mode ? ' is-active' : ''}`,
+      item.label
+    );
+    btn.type = 'button';
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', item.id === mode ? 'true' : 'false');
+    btn.addEventListener('click', () => {
+      location.hash = calendarHash(item.id, anchor);
+    });
+    tabs.append(btn);
+  }
+  return tabs;
 }
 
 export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode): Promise<void> {
@@ -225,6 +256,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
   }
 
   function shiftRange(delta: number): void {
+    if (mode === 'month') lastMonthDelta = delta;
     anchor = mode === 'week' ? addWeeks(anchor, delta) : addMonths(anchor, delta);
     selectedDateKey = null;
     replaceHash(mode, anchor);
@@ -232,6 +264,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
   }
 
   function goTo(date: Date): void {
+    lastMonthDelta = 0;
     anchor = date;
     selectedDateKey = toDateKey(date);
     replaceHash(mode, date);
@@ -271,50 +304,12 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
 
     canvas.replaceChildren();
 
-    const toolbar = createHubToolbar('calendar-toolbar');
-    toolbar.append(renderModePills(mode, anchor));
-
-    const nav = el('div', 'calendar-nav');
-    nav.setAttribute('role', 'group');
-    nav.setAttribute('aria-label', mode === 'week' ? 'Week navigation' : 'Month navigation');
-    const prev = el('button', 'btn btn--ghost', 'Previous');
-    prev.type = 'button';
-    prev.setAttribute('aria-label', mode === 'week' ? 'Previous week' : 'Previous month');
-    prev.addEventListener('click', () => shiftRange(-1));
-    const next = el('button', 'btn btn--ghost', 'Next');
-    next.type = 'button';
-    next.setAttribute('aria-label', mode === 'week' ? 'Next week' : 'Next month');
-    next.addEventListener('click', () => shiftRange(1));
-    const todayBtn = el('button', 'btn btn--secondary', 'Today');
-    todayBtn.type = 'button';
-    todayBtn.addEventListener('click', () => goTo(today));
-    const label = el(
-      'p',
-      'calendar-nav__label',
-      mode === 'week' ? formatDisplayDateRange(rangeStart, rangeEnd) : monthTitle(anchor)
-    );
-    nav.append(prev, label, todayBtn, next);
-    nav.tabIndex = 0;
-    nav.addEventListener('keydown', (event) => {
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault();
-        shiftRange(-1);
-      }
-      if (event.key === 'ArrowRight') {
-        event.preventDefault();
-        shiftRange(1);
-      }
-    });
-    toolbar.append(nav);
-
-    const loadMinutes = dayTaskMinutes(rangeItems);
     const summary = el(
       'p',
       'calendar-summary',
-      `${rangeItems.length} on this ${mode} · ${formatLoad(loadMinutes) || 'no timed work'}`
+      `${rangeItems.length} on this ${mode} · ${formatLoad(dayTaskMinutes(rangeItems)) || 'no timed work'}`
     );
-    toolbar.append(summary);
-    canvas.append(toolbar);
+    canvas.append(summary);
 
     if (overdue.length) {
       const earliest = overdue[0]!;
@@ -406,13 +401,41 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
       void openItem(item, preview);
     };
 
+    const calendar = el('div', 'hub-calendar');
+    calendar.append(renderCalendarNav(mode, anchor, shiftRange, goTo, today));
+    const body = el('div', 'hub-calendar__body');
     if (mode === 'week') {
-      canvas.append(renderWeekGrid(days, items, pinchesByKey, todayKey, selectedDateKey!, showPreview, selectDay, dropTask));
+      body.append(
+        renderWeekGrid(
+          days,
+          items,
+          pinchesByKey,
+          todayKey,
+          selectedDateKey!,
+          showPreview,
+          selectDay,
+          dropTask
+        )
+      );
     } else {
-      canvas.append(renderMonthGrid(days, items, pinchesByKey, todayKey, selectedDateKey!, anchor, showPreview, selectDay, dropTask));
+      body.append(
+        renderMonthGrid(
+          days,
+          items,
+          pinchesByKey,
+          todayKey,
+          selectedDateKey!,
+          anchor,
+          showPreview,
+          selectDay,
+          dropTask,
+          lastMonthDelta
+        )
+      );
     }
-
-    canvas.append(renderAgenda(items, selectedDateKey!, mode, showPreview, () => void reload()));
+    calendar.append(body);
+    calendar.append(renderAgenda(items, selectedDateKey!, mode, showPreview, () => void reload()));
+    canvas.append(calendar);
     canvas.append(preview);
 
     canvas.scrollTop = scrollTop;
@@ -428,6 +451,49 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
   paint();
 }
 
+function renderCalendarNav(
+  mode: CalendarMode,
+  anchor: Date,
+  shiftRange: (delta: number) => void,
+  goTo: (date: Date) => void,
+  today: Date
+): HTMLElement {
+  const days = visibleDays(anchor, mode);
+  const rangeStart = days[0]!;
+  const rangeEnd = days[days.length - 1]!;
+
+  const nav = el('div', 'hub-calendar__nav');
+  const paging = el('div', 'hub-calendar__paging');
+  paging.setAttribute('role', 'group');
+  paging.setAttribute('aria-label', mode === 'week' ? 'Week navigation' : 'Month navigation');
+
+  const prev = el('button', 'hub-calendar__nav-btn');
+  prev.type = 'button';
+  prev.setAttribute('aria-label', mode === 'week' ? 'Previous week' : 'Previous month');
+  prev.textContent = '‹';
+  prev.addEventListener('click', () => shiftRange(-1));
+
+  const label = el(
+    'span',
+    'hub-calendar__month-label',
+    mode === 'week' ? formatDisplayDateRange(rangeStart, rangeEnd) : monthTitle(anchor)
+  );
+
+  const next = el('button', 'hub-calendar__nav-btn');
+  next.type = 'button';
+  next.setAttribute('aria-label', mode === 'week' ? 'Next week' : 'Next month');
+  next.textContent = '›';
+  next.addEventListener('click', () => shiftRange(1));
+
+  const todayBtn = el('button', 'hub-calendar__today', 'Today');
+  todayBtn.type = 'button';
+  todayBtn.addEventListener('click', () => goTo(today));
+
+  paging.append(prev, label, next, todayBtn);
+  nav.append(paging, renderViewTabs(mode, anchor));
+  return nav;
+}
+
 function renderWeekGrid(
   days: Date[],
   items: CalendarItem[],
@@ -438,49 +504,42 @@ function renderWeekGrid(
   onSelect: (day: Date) => void,
   onDrop: (taskId: string, dateKey: string) => void
 ): HTMLElement {
-  const grid = el('div', 'week-grid');
+  const grid = el('div', 'hub-calendar__week');
   grid.setAttribute('role', 'grid');
   grid.setAttribute('aria-label', 'Week calendar');
   for (const day of days) {
     const key = toDateKey(day);
     const pinch = pinchesByKey.get(key);
-    const mods = [
-      'week-col',
-      pinch ? `week-col--${pinch.severity}` : '',
-      key === todayKey ? 'week-col--today' : '',
-      key === selectedKey ? 'week-col--selected' : '',
-      isWeekend(day) ? 'week-col--weekend' : ''
-    ]
-      .filter(Boolean)
-      .join(' ');
-    const col = el('section', mods);
+    const col = el('div', 'hub-calendar__week-day');
     col.setAttribute('role', 'gridcell');
     col.dataset.date = key;
-    if (key === todayKey) col.setAttribute('aria-current', 'date');
+    if (key === todayKey) {
+      col.dataset.today = 'true';
+      col.setAttribute('aria-current', 'date');
+    }
+    if (key === selectedKey) col.dataset.selected = 'true';
+    if (pinch) col.dataset.pinch = pinch.severity;
     wireDropTarget(col, key, onDrop);
     col.addEventListener('click', () => onSelect(day));
 
-    const head = el('div', 'week-col__head');
-    const title = el('button', 'week-col__title', `${weekdayShort(day)} ${formatDisplayDate(day)}`);
-    title.type = 'button';
-    title.addEventListener('click', (event) => {
-      event.stopPropagation();
-      onSelect(day);
-    });
-    const add = el('button', 'btn btn--ghost week-col__add', '+');
+    const head = el('div', 'hub-calendar__week-heading');
+    const weekday = el('span', 'hub-calendar__week-weekday', weekdayShort(day));
+    const num = el('span', 'hub-calendar__day-num', String(day.getDate()));
+    const add = el('button', 'icon-plus-btn');
     add.type = 'button';
+    add.textContent = '+';
     add.setAttribute('aria-label', `Add task on ${formatDisplayDate(day)}`);
     add.addEventListener('click', (event) => {
       event.stopPropagation();
       onSelect(day);
       queueMicrotask(() => {
         const field = document.querySelector<HTMLInputElement>(
-          '.calendar-agenda .hub-search__input, .calendar-agenda .quick-add input'
+          '.hub-calendar__detail .hub-search__input, .hub-calendar__detail .quick-add input'
         );
         field?.focus();
       });
     });
-    head.append(title, add);
+    head.append(weekday, num, add);
     col.append(head);
 
     const dayItems = itemsForDay(items, day);
@@ -488,14 +547,14 @@ function renderWeekGrid(
     if (pinch || minutes) {
       const meta = el(
         'p',
-        'week-col__load',
+        'hub-calendar__week-empty',
         [pinch ? (pinch.severity === 'overloaded' ? 'overloaded' : 'watch') : null, formatLoad(minutes)]
           .filter(Boolean)
           .join(' · ')
       );
       col.append(meta);
     }
-    if (!dayItems.length) col.append(el('p', 'empty-state empty-state--compact', 'Nothing due.'));
+    if (!dayItems.length) col.append(el('p', 'hub-calendar__week-empty', 'Nothing due.'));
     for (const item of dayItems) col.append(renderEventChip(item, onOpen));
     grid.append(col);
   }
@@ -511,60 +570,64 @@ function renderMonthGrid(
   monthAnchor: Date,
   onOpen: (item: CalendarItem) => void,
   onSelect: (day: Date) => void,
-  onDrop: (taskId: string, dateKey: string) => void
+  onDrop: (taskId: string, dateKey: string) => void,
+  monthDelta: number
 ): HTMLElement {
-  const wrap = el('div', 'month-cal-wrap');
-  const grid = el('div', 'month-cal');
+  const grid = el('div', 'hub-calendar__grid');
   grid.setAttribute('role', 'grid');
   grid.setAttribute('aria-label', 'Month calendar');
+  if (monthDelta > 0) grid.dataset.motion = 'forward';
+  if (monthDelta < 0) grid.dataset.motion = 'back';
+
   for (const heading of WEEKDAY_HEADINGS) {
-    grid.append(el('div', 'month-cal__head', heading));
+    grid.append(el('span', 'hub-calendar__weekday', heading));
   }
   for (const day of days) {
     const key = toDateKey(day);
     const pinch = pinchesByKey.get(key);
     const outside = !isSameMonth(day, monthAnchor);
-    const mods = [
-      'month-cal__cell',
-      pinch ? `month-cal__cell--${pinch.severity}` : '',
-      key === todayKey ? 'month-cal__cell--today' : '',
-      key === selectedKey ? 'month-cal__cell--selected' : '',
-      outside ? 'month-cal__cell--outside' : '',
-      isWeekend(day) ? 'month-cal__cell--weekend' : ''
-    ]
-      .filter(Boolean)
-      .join(' ');
-    const cell = el('section', mods);
+    const cell = el('div', 'hub-calendar__day');
     cell.setAttribute('role', 'gridcell');
+    cell.tabIndex = 0;
     cell.dataset.date = key;
-    if (key === todayKey) cell.setAttribute('aria-current', 'date');
+    if (!outside) {
+      /* in-month — no data-outside */
+    } else {
+      cell.dataset.outside = 'true';
+    }
+    if (key === todayKey) {
+      cell.dataset.today = 'true';
+      cell.setAttribute('aria-current', 'date');
+    }
+    if (key === selectedKey) cell.dataset.selected = 'true';
+    if (pinch) cell.dataset.pinch = pinch.severity;
     wireDropTarget(cell, key, onDrop);
-    cell.addEventListener('click', () => onSelect(day));
+    const selectDay = (): void => onSelect(day);
+    cell.addEventListener('click', selectDay);
+    cell.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      selectDay();
+    });
     cell.addEventListener('dblclick', (event) => {
       event.preventDefault();
       onSelect(day);
       queueMicrotask(() => {
         const field = document.querySelector<HTMLInputElement>(
-          '.calendar-agenda .hub-search__input, .calendar-agenda .quick-add input'
+          '.hub-calendar__detail .hub-search__input, .hub-calendar__detail .quick-add input'
         );
         field?.focus();
       });
     });
 
-    const num = el('button', 'month-cal__num', String(day.getDate()));
-    num.type = 'button';
-    num.setAttribute('aria-label', formatDisplayDate(day));
-    num.addEventListener('click', (event) => {
-      event.stopPropagation();
-      onSelect(day);
-    });
+    const num = el('span', 'hub-calendar__day-num', String(day.getDate()));
     cell.append(num);
 
     const dayItems = itemsForDay(items, day);
     const { visible, hidden } = visibleOverflow(dayItems, MONTH_EVENT_LIMIT);
     for (const item of visible) cell.append(renderEventChip(item, onOpen));
     if (hidden) {
-      const more = el('button', 'month-cal__more', `+${hidden} more`);
+      const more = el('button', 'event-chip-more', `+${hidden} more`);
       more.type = 'button';
       more.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -574,8 +637,7 @@ function renderMonthGrid(
     }
     grid.append(cell);
   }
-  wrap.append(grid);
-  return wrap;
+  return grid;
 }
 
 function renderAgenda(
@@ -586,33 +648,36 @@ function renderAgenda(
   onReload: () => void
 ): HTMLElement {
   const dayItems = itemsForDay(items, dateKey);
-  const agenda = el('section', 'calendar-agenda');
-  const head = el('div', 'calendar-agenda__head');
-  head.append(el('h2', 'section-title', formatDisplayDate(dateKey)));
+  const agenda = el('section', 'hub-calendar__detail');
+  const heading = el('h3', 'hub-calendar__detail-heading', formatDisplayDate(dateKey));
+  agenda.append(heading);
+
+  const headActions = el('div', 'calendar-agenda__head');
   if (mode === 'month') {
     const openWeek = el('button', 'btn btn--secondary', 'Open week');
     openWeek.type = 'button';
     openWeek.addEventListener('click', () => {
       location.hash = calendarHash('week', parseCalendarAnchor(dateKey));
     });
-    head.append(openWeek);
+    headActions.append(openWeek);
   } else {
     const openMonth = el('button', 'btn btn--secondary', 'Open month');
     openMonth.type = 'button';
     openMonth.addEventListener('click', () => {
       location.hash = calendarHash('month', parseCalendarAnchor(dateKey));
     });
-    head.append(openMonth);
+    headActions.append(openMonth);
   }
-  agenda.append(head);
+  agenda.append(headActions);
+
   agenda.append(
-    el(
-      'p',
-      'view-lede',
-      dayItems.length
-        ? `${dayItems.length} on this day · ${formatLoad(dayTaskMinutes(dayItems)) || 'no timed work'}`
-        : 'Nothing on this day yet — add one below.'
-    )
+    dayItems.length
+      ? el(
+          'p',
+          'hub-calendar__detail-empty',
+          `${dayItems.length} on this day · ${formatLoad(dayTaskMinutes(dayItems)) || 'no timed work'}`
+        )
+      : el('p', 'hub-calendar__detail-empty', 'Nothing on this day yet — add one below.')
   );
 
   const stack = el('div', 'task-stack calendar-agenda__stack');
@@ -669,4 +734,5 @@ export function resetCalendarSession(): void {
   sessionFilters.includeDone = false;
   sessionFilters.includeDates = true;
   selectedDateKey = null;
+  lastMonthDelta = 0;
 }
