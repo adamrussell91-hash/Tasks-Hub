@@ -126,6 +126,7 @@ async function apiRequestOnce<T>(
     response = await fetch(url, {
       method,
       credentials: 'include',
+      cache: 'no-store',
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal

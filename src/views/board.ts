@@ -3,11 +3,11 @@ import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { openTasks } from '@/domain/queries';
 import { BOARD_COLUMNS, columnForTask, statusForColumn, type BoardColumnId } from '@/domain/board';
-import { boardTasks } from '@/domain/hierarchy';
+import { boardTasks, isBoardTask } from '@/domain/hierarchy';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { errorMessage } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
-import { initBoard, type BoardMoveDetail } from '@/views/sprint-board';
+import { initBoard, updateBoardCounts, type BoardMoveDetail } from '@/views/sprint-board';
 import { deleteTaskNow } from '@/views/card-actions';
 import { mountTaskCard } from '@/views/hub-cards';
 
@@ -32,7 +32,7 @@ function appendBoardCard(
   projects: Project[],
   editorHost: HTMLElement,
   onDelete: (task: Task) => void,
-  onReload: () => void
+  onReload: (task?: Task) => void
 ): HTMLElement {
   return mountTaskCard(
     list,
@@ -67,11 +67,22 @@ function persistMove(
   );
 }
 
+function inScope(task: Task): boolean {
+  if (task.status === 'dead' || !isBoardTask(task)) return false;
+  return boardProjectFilter === 'all' || task.parent_project_id === boardProjectFilter;
+}
+
+function listForColumn(board: HTMLElement, column: BoardColumnId): HTMLElement | null {
+  return board.querySelector(`.card-list[data-col="${column}"]`);
+}
+
 /** Board is the Tasks Hub home surface — sprint-board drag over hub tiles. */
 export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   teardownBoard?.();
   teardownBoard = null;
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading board…'));
+  if (!canvas.querySelector('.board')) {
+    canvas.replaceChildren(el('p', 'canvas-status', 'Loading board…'));
+  }
   let tasks: Awaited<ReturnType<typeof tasksApi.listTasks>>;
   let projects: Awaited<ReturnType<typeof tasksApi.listProjects>>;
   try {
@@ -87,20 +98,21 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     return;
   }
   const byId = new Map(tasks.map((t) => [t.id, t]));
-  const eligible = boardTasks(tasks.filter((t) => t.status !== 'dead'));
-  const scoped =
-    boardProjectFilter === 'all'
+
+  function scoped(): Task[] {
+    const eligible = boardTasks(tasks.filter((t) => t.status !== 'dead'));
+    return boardProjectFilter === 'all'
       ? eligible
       : eligible.filter((t) => t.parent_project_id === boardProjectFilter);
+  }
 
   canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      `${openTasks(scoped).length} open in scope · drag cards between columns, or focus one and press Space.`
-    )
+  const lede = el(
+    'p',
+    'view-lede',
+    `${openTasks(scoped()).length} open in scope · drag cards between columns, or focus one and press Space.`
   );
+  canvas.append(lede);
 
   const filterRow = el('div', 'board-filter');
   const scope = createHubFilter({
@@ -121,13 +133,67 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   canvas.append(filterRow);
 
   const confirmHost = el('div', 'board-confirm');
-  canvas.append(
-    renderQuickAdd(() => void renderBoardView(canvas), boardProjectFilter === 'all' ? null : boardProjectFilter)
-  );
-  canvas.append(confirmHost);
 
   const board = el('div', 'board board-grid');
   board.setAttribute('aria-label', 'Task board');
+
+  function syncChrome(): void {
+    lede.textContent = `${openTasks(scoped()).length} open in scope · drag cards between columns, or focus one and press Space.`;
+    updateBoardCounts(board);
+  }
+
+  function upsertTask(task: Task): void {
+    const index = tasks.findIndex((entry) => entry.id === task.id);
+    if (index >= 0) tasks[index] = task;
+    else tasks.push(task);
+    byId.set(task.id, task);
+    const existing = board.querySelector<HTMLElement>(`[data-id="${task.id}"]`);
+    if (!inScope(task)) {
+      existing?.remove();
+      syncChrome();
+      return;
+    }
+    const column = columnForTask(task, byId);
+    const list = listForColumn(board, column);
+    if (!list) return;
+    existing?.remove();
+    const card = appendBoardCard(
+      list,
+      task,
+      projects,
+      confirmHost,
+      (current) => removeTask(current),
+      (updated) => {
+        if (updated) upsertTask(updated);
+        else void tasksApi.getTask(task.id).then(upsertTask);
+        confirmHost.replaceChildren();
+      }
+    );
+    card.dataset.col = column;
+    const hint = list.querySelector('.empty-hint');
+    if (hint) list.insertBefore(card, hint);
+    syncChrome();
+  }
+
+  function dropBoardTask(task: Task): void {
+    const card = board.querySelector<HTMLElement>(`[data-id="${task.id}"]`);
+    card?.remove();
+    tasks = tasks.filter((entry) => entry.id !== task.id);
+    byId.delete(task.id);
+    syncChrome();
+  }
+
+  function removeTask(task: Task): void {
+    dropBoardTask(task);
+    deleteTaskNow(task, () => undefined, confirmHost);
+  }
+
+  canvas.append(
+    renderQuickAdd((created) => {
+      upsertTask(created);
+    }, boardProjectFilter === 'all' ? null : boardProjectFilter)
+  );
+  canvas.append(confirmHost);
 
   for (const col of BOARD_COLUMNS) {
     const section = el('section', 'column board-col');
@@ -145,15 +211,19 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     list.className = 'card-list board-col__stack';
     list.dataset.col = col.id;
 
-    const items = scoped.filter((t) => columnForTask(t, byId) === col.id);
+    const items = scoped().filter((t) => columnForTask(t, byId) === col.id);
     for (const task of items) {
       const card = appendBoardCard(
         list,
         task,
         projects,
         confirmHost,
-        (t) => deleteTaskNow(t, () => void renderBoardView(canvas), confirmHost),
-        () => void renderBoardView(canvas)
+        (current) => removeTask(current),
+        (updated) => {
+          if (updated) upsertTask(updated);
+          else void tasksApi.getTask(task.id).then(upsertTask);
+          confirmHost.replaceChildren();
+        }
       );
       card.dataset.col = col.id;
     }

@@ -518,6 +518,7 @@ export function createMockApi({ seed }: MockApiOptions) {
       const result = await handle(req.method ?? 'GET', req.url ?? '/', body);
       res.statusCode = result.status;
       res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.setHeader('cache-control', 'no-store');
       res.end(JSON.stringify(result.body));
     }
   };
