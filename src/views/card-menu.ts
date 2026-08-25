@@ -56,7 +56,7 @@ function openItems(btn: HTMLButtonElement, items: CardMenuItem[], heading: strin
   const menu = el('div', 'hub-menu card-menu__panel');
   menu.setAttribute('role', 'menu');
   menu.setAttribute('aria-label', heading);
-  menu.append(el('div', 'hub-menu__head', heading));
+  menu.append(el('div', 'hub-menu__head', 'Card'));
 
   const buttons: HTMLButtonElement[] = [];
   for (const item of items) {
