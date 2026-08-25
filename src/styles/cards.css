@@ -641,8 +641,16 @@
   color: var(--wave);
 }
 
+.page-card > .hub-search:has(textarea) {
+  width: 100%;
+  align-items: flex-start;
+  min-height: 0;
+}
+
 .page-card__notes {
   width: 100%;
+  min-height: 4.5rem;
+  resize: vertical;
 }
 
 .page-editor__add {

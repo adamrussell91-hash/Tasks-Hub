@@ -92,14 +92,18 @@ describe('page editor', () => {
     expect(canvas.querySelector('.page-card__back')?.textContent).toBe('← Board');
     expect(canvas.querySelector('.task-card__foot .btn')).toBeNull();
 
+    expect(canvas.querySelector('select')).toBeNull();
+    expect(canvas.querySelector('.page-card__domain')?.tagName).toBe('BUTTON');
+    expect(canvas.querySelector('.page-card__status')?.classList.contains('hub-filter')).toBe(true);
+    expect(canvas.querySelector('.page-card__notes')?.tagName).toBe('TEXTAREA');
+
     const title = canvas.querySelector<HTMLInputElement>('.page-card__title-input')!;
     expect(title.value).toBe('Finish lesson pack');
     title.value = 'Term brief rewrite';
     title.dispatchEvent(new Event('input', { bubbles: true }));
 
-    const domain = canvas.querySelector<HTMLSelectElement>('.page-card__domain')!;
-    domain.value = 'life';
-    domain.dispatchEvent(new Event('change', { bubbles: true }));
+    canvas.querySelector<HTMLButtonElement>('.page-card__domain')!.click();
+    document.querySelector<HTMLButtonElement>('[data-hub-option="life"]')!.click();
 
     await vi.advanceTimersByTimeAsync(400);
     expect(tasksApi.updateTask).toHaveBeenCalled();

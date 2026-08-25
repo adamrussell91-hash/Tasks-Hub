@@ -10,6 +10,14 @@ import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountBlockInsert } from '@/views/block-insert';
 import { paintExcursionPage } from '@/views/excursion-timeline';
+import {
+  createHubField,
+  createHubFilter,
+  createHubTextarea,
+  domainFilterOptions,
+  priorityFilterOptions,
+  type HubFilterOption
+} from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -24,8 +32,6 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 const TASK_STATUSES: TaskStatus[] = ['open', 'in_progress', 'done', 'deferred', 'dead'];
 const PROJECT_STATUSES: ProjectStatus[] = ['active', 'stalled', 'revived', 'archived_dead'];
-const DOMAINS: TaskDomain[] = ['teaching', 'life', 'wedding', 'health', 'other'];
-const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
 export type EntityPageRef = { kind: 'task' | 'project'; id: string };
 
@@ -33,23 +39,23 @@ function pageBlocksOf(entity: Task | Project): Block[] {
   return Array.isArray(entity.page_blocks) ? entity.page_blocks : [];
 }
 
-function selectControl(
+function pageFilter(
   className: string,
-  label: string,
-  values: readonly string[],
-  selected: string,
-  labels?: (value: string) => string
-): HTMLSelectElement {
-  const select = el('select', `hub-filter ${className}`) as HTMLSelectElement;
-  select.setAttribute('aria-label', label);
-  for (const value of values) {
-    const opt = document.createElement('option');
-    opt.value = value;
-    opt.textContent = labels ? labels(value) : value;
-    if (value === selected) opt.selected = true;
-    select.append(opt);
-  }
-  return select;
+  key: string,
+  options: HubFilterOption[],
+  value: string,
+  onChange: (value: string) => void
+) {
+  const filter = createHubFilter({
+    key,
+    label: key,
+    defaultValue: value,
+    options,
+    value,
+    onChange
+  });
+  filter.el.classList.add(className);
+  return filter;
 }
 
 function titleInput(value: string, label: string): HTMLInputElement {
@@ -169,47 +175,61 @@ function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): vo
     if (!title.value.trim()) title.value = current.title;
   });
 
-  const fields = el('div', 'page-card__fields');
-  const status = selectControl('page-card__status', 'Status', TASK_STATUSES, task.status, statusLabel);
-  status.addEventListener('change', () => persist({ status: status.value as TaskStatus }));
-
-  const domain = selectControl('page-card__domain', 'Domain', DOMAINS, task.domain);
-  domain.addEventListener('change', () => persist({ domain: domain.value as TaskDomain }));
-
-  const priority = selectControl('page-card__priority', 'Priority', PRIORITIES, task.priority);
-  priority.addEventListener('change', () => persist({ priority: priority.value as TaskPriority }));
-
-  const due = el('input', 'hub-search page-card__due') as HTMLInputElement;
-  due.type = 'date';
-  due.value = task.due_date ?? '';
-  due.setAttribute('aria-label', 'Due date');
-  due.addEventListener('change', () => persist({ due_date: due.value || null }));
-
-  const project = selectControl(
+  const fields = el('div', 'page-card__fields hub-toolbar');
+  const status = pageFilter(
+    'page-card__status',
+    'Status',
+    TASK_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
+    task.status,
+    (value) => persist({ status: value as TaskStatus })
+  );
+  const domain = pageFilter(
+    'page-card__domain',
+    'Domain',
+    domainFilterOptions(false),
+    task.domain,
+    (value) => persist({ domain: value as TaskDomain })
+  );
+  const priority = pageFilter(
+    'page-card__priority',
+    'Priority',
+    priorityFilterOptions(false),
+    task.priority,
+    (value) => persist({ priority: value as TaskPriority })
+  );
+  const due = createHubField({
+    type: 'date',
+    ariaLabel: 'Due date',
+    value: task.due_date ?? '',
+    className: 'page-card__due',
+    onChange: (value) => persist({ due_date: value || null })
+  });
+  const project = pageFilter(
     'page-card__project',
     'Project',
-    ['', ...projects.filter((item) => item.status !== 'archived_dead').map((item) => item.id)],
+    [
+      { value: '', label: 'No project' },
+      ...projects
+        .filter((item) => item.status !== 'archived_dead')
+        .map((item) => ({ value: item.id, label: item.title }))
+    ],
     task.parent_project_id ?? '',
-    (value) => {
-      if (!value) return 'No project';
-      return projects.find((item) => item.id === value)?.title ?? value;
-    }
+    (value) => persist({ parent_project_id: value || null })
   );
-  project.addEventListener('change', () => persist({ parent_project_id: project.value || null }));
 
-  fields.append(status, domain, priority, due, project);
+  fields.append(status.el, domain.el, priority.el, due.el, project.el);
 
-  const notes = document.createElement('textarea');
-  notes.className = 'hub-search task-editor__notes page-card__notes';
-  notes.value = task.description;
-  notes.rows = 3;
-  notes.setAttribute('aria-label', 'Notes');
-  notes.addEventListener('input', () => persist({ description: notes.value }));
+  const notes = createHubTextarea({
+    ariaLabel: 'Notes',
+    className: 'page-card__notes',
+    value: task.description
+  });
+  notes.input.addEventListener('input', () => persist({ description: notes.input.value }));
 
   const foot = el('footer', 'task-card__foot');
   foot.append(updated);
 
-  card.append(head, title, fields, notes, foot);
+  card.append(head, title, fields, notes.el, foot);
 
   const canvasHost = el('div', 'block-canvas');
   const layout = el('div', 'page-editor__layout');
@@ -279,29 +299,31 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
     if (!title.value.trim()) title.value = current.title;
   });
 
-  const fields = el('div', 'page-card__fields');
-  const status = selectControl(
+  const fields = el('div', 'page-card__fields hub-toolbar');
+  const status = pageFilter(
     'page-card__status',
     'Status',
-    PROJECT_STATUSES,
+    PROJECT_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
     project.status,
-    statusLabel
+    (value) => persist({ status: value as ProjectStatus })
   );
-  status.addEventListener('change', () => persist({ status: status.value as ProjectStatus }));
+  const due = createHubField({
+    type: 'date',
+    ariaLabel: 'Target date',
+    value: project.current_end_date ?? '',
+    className: 'page-card__due',
+    onChange: (value) => persist({ current_end_date: value || null })
+  });
+  fields.append(status.el, due.el);
 
-  const due = el('input', 'hub-search page-card__due') as HTMLInputElement;
-  due.type = 'date';
-  due.value = project.current_end_date ?? '';
-  due.setAttribute('aria-label', 'Target date');
-  due.addEventListener('change', () => persist({ current_end_date: due.value || null }));
-  fields.append(status, due);
-
-  const notes = document.createElement('textarea');
-  notes.className = 'hub-search task-editor__notes page-card__notes';
-  notes.value = project.arc_summary || project.description;
-  notes.rows = 3;
-  notes.setAttribute('aria-label', 'Summary');
-  notes.addEventListener('input', () => persist({ arc_summary: notes.value, description: notes.value }));
+  const notes = createHubTextarea({
+    ariaLabel: 'Summary',
+    className: 'page-card__notes',
+    value: project.arc_summary || project.description
+  });
+  notes.input.addEventListener('input', () =>
+    persist({ arc_summary: notes.input.value, description: notes.input.value })
+  );
 
   const metrics = el('div', 'task-card__progress');
   const metric = el('div');
@@ -316,7 +338,7 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
   const foot = el('footer', 'task-card__foot');
   foot.append(updated);
 
-  card.append(head, title, fields, notes, metrics, track);
+  card.append(head, title, fields, notes.el, metrics, track);
   card.append(renderQuickAdd(() => void renderPageEditor(canvas, { kind: 'project', id: project.id }), project.id));
   card.append(foot);
 
