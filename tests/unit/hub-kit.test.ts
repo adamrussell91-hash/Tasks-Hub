@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createEditorFilter,
   createHubField,
   createHubFilter,
   createHubPills,
@@ -22,6 +23,23 @@ describe('hub-kit controls', () => {
     expect(search.input.className).toBe('hub-search__input');
     expect(search.input.value).toBe('mind');
     expect(search.el.querySelector('.visually-hidden')?.textContent).toBe('Filter items');
+  });
+
+  it('adds extra classes to editor filter buttons', () => {
+    const filter = createEditorFilter({
+      key: 'Level',
+      value: 'section',
+      options: [
+        { value: 'page', label: 'page' },
+        { value: 'section', label: 'section' }
+      ],
+      className: 'block-editor__heading-variant',
+      onChange: () => undefined
+    });
+    expect(filter.el.tagName).toBe('BUTTON');
+    expect(filter.el.classList.contains('hub-filter')).toBe(true);
+    expect(filter.el.classList.contains('block-editor__heading-variant')).toBe(true);
+    expect(filter.getValue()).toBe('section');
   });
 
   it('builds a kit filter button instead of a native select', () => {

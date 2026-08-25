@@ -8,6 +8,7 @@ import {
   type NewBlockType
 } from '@/blocks/create-block';
 import type { Block } from '@/schemas/block';
+import { createEditorFilter, type HubFilterControl } from '@/views/hub-kit';
 
 export interface NestedBlocksEditorOptions {
   blocks: Block[];
@@ -101,28 +102,28 @@ export function createNestedBlocksEditor(options: NestedBlocksEditorOptions): HT
 
       const columnMove = options.columnMove;
       if (columnMove && columnMove.columnCount > 1) {
-        const move = document.createElement('select');
-        move.className = 'block-editor__nested-move-column';
-        move.setAttribute('aria-label', 'Move to column');
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = 'Move to column…';
-        move.append(placeholder);
-        for (let i = 0; i < columnMove.columnCount; i += 1) {
-          if (i === columnMove.columnIndex) continue;
-          const opt = document.createElement('option');
-          opt.value = String(i);
-          opt.textContent = `Column ${i + 1}`;
-          move.append(opt);
-        }
-        move.addEventListener('change', () => {
-          if (move.value === '') return;
-          const to = Number.parseInt(move.value, 10);
-          move.value = '';
-          if (!Number.isFinite(to)) return;
-          columnMove.onMoveToColumn(to, index);
+        let move: HubFilterControl;
+        move = createEditorFilter({
+          key: 'Move',
+          value: '',
+          defaultValue: '',
+          options: [
+            { value: '', label: 'Move to column…' },
+            ...Array.from({ length: columnMove.columnCount }, (_, i) => i)
+              .filter((i) => i !== columnMove.columnIndex)
+              .map((i) => ({ value: String(i), label: `Column ${i + 1}` }))
+          ],
+          className: 'block-editor__nested-move-column',
+          ariaLabel: 'Move to column',
+          onChange: (value) => {
+            if (!value) return;
+            const to = Number.parseInt(value, 10);
+            move.setValue('');
+            if (!Number.isFinite(to)) return;
+            columnMove.onMoveToColumn(to, index);
+          }
         });
-        controls.append(move);
+        controls.append(move.el);
 
         row.draggable = true;
         row.addEventListener('dragstart', (event) => {
@@ -152,32 +153,31 @@ export function createNestedBlocksEditor(options: NestedBlocksEditorOptions): HT
     const addRow = document.createElement('div');
     addRow.className = 'block-editor__nested-add-row';
 
-    const select = document.createElement('select');
-    select.setAttribute('aria-label', 'Add nested block type');
-    for (const group of BLOCK_GROUPS) {
+    const addTypeOptions = BLOCK_GROUPS.flatMap((group) => {
       const baseTypes = group.types.filter((t) => options.allowedTypes.includes(t));
-      const menuTypes = expandGroupTypesForMenu(baseTypes);
-      if (menuTypes.length === 0) continue;
-      const og = document.createElement('optgroup');
-      og.label = group.label;
-      for (const type of menuTypes) {
-        const opt = document.createElement('option');
-        opt.value = type;
-        opt.textContent = INSERT_MENU_LABEL[type];
-        og.append(opt);
-      }
-      select.append(og);
-    }
+      return expandGroupTypesForMenu(baseTypes).map((type) => ({
+        value: type,
+        label: INSERT_MENU_LABEL[type]
+      }));
+    });
+    const addType = createEditorFilter({
+      key: 'Add',
+      value: addTypeOptions[0]?.value ?? 'rich_text',
+      options: addTypeOptions,
+      className: 'block-editor__add-nested-type',
+      ariaLabel: 'Add nested block type',
+      onChange: () => undefined
+    });
 
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'btn btn--ghost block-editor__nested-add';
     addBtn.textContent = 'Add block';
     addBtn.addEventListener('click', () => {
-      emit([...blocks, createFromInsertMenu(select.value, nextId())]);
+      emit([...blocks, createFromInsertMenu(addType.getValue(), nextId())]);
     });
 
-    addRow.append(select, addBtn);
+    addRow.append(addType.el, addBtn);
     root.append(addRow);
   }
 

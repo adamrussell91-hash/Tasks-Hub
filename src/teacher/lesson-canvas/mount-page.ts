@@ -23,6 +23,7 @@ import {
   type PedagogicalMode
 } from '@/curriculum/pedagogical-mode';
 import { renderEntityBanner, type EntityBannerHandle } from '@/teacher/entity-banner';
+import { createEditorFilter } from '@/views/hub-kit';
 import {
   deleteBlocksById,
   findBlockLocation,
@@ -808,21 +809,21 @@ export function mountLessonPage(host: HTMLElement, options: MountLessonPageOptio
   const modeLabel = document.createElement('span');
   modeLabel.className = 'lesson-page__mode-label';
   modeLabel.textContent = 'Pedagogical mode';
-  const modeSelect = document.createElement('select');
-  modeSelect.className = 'lesson-page__mode-select';
-  modeSelect.setAttribute('aria-label', 'Pedagogical mode');
-  for (const mode of PEDAGOGICAL_MODES) {
-    const option = document.createElement('option');
-    option.value = mode;
-    option.textContent = PEDAGOGICAL_MODE_LABELS[mode];
-    modeSelect.append(option);
-  }
-  modeSelect.value = resolvePedagogicalMode(lesson.pedagogical_mode);
-  modeSelect.addEventListener('change', () => {
-    const pedagogical_mode = modeSelect.value as PedagogicalMode;
-    emitLesson({ ...lesson, pedagogical_mode });
+  const modeSelect = createEditorFilter({
+    key: 'Mode',
+    value: resolvePedagogicalMode(lesson.pedagogical_mode),
+    options: PEDAGOGICAL_MODES.map((mode) => ({
+      value: mode,
+      label: PEDAGOGICAL_MODE_LABELS[mode]
+    })),
+    className: 'lesson-page__mode-select',
+    ariaLabel: 'Pedagogical mode',
+    onChange: (value) => {
+      const pedagogical_mode = value as PedagogicalMode;
+      emitLesson({ ...lesson, pedagogical_mode });
+    }
   });
-  modeRow.append(modeLabel, modeSelect);
+  modeRow.append(modeLabel, modeSelect.el);
 
   const canvasHost = document.createElement('div');
   canvasHost.className = 'lesson-page__canvas';
@@ -877,7 +878,7 @@ export function mountLessonPage(host: HTMLElement, options: MountLessonPageOptio
       lesson = next;
       if (nextMedia) media = nextMedia;
       title.value = lesson.title;
-      modeSelect.value = resolvePedagogicalMode(lesson.pedagogical_mode);
+      modeSelect.setValue(resolvePedagogicalMode(lesson.pedagogical_mode));
       banner.update({
         cover: lesson.cover ?? null,
         title: lesson.title,

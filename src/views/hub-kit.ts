@@ -8,6 +8,32 @@ import {
 export { createHubFilter };
 export type { HubFilterControl, HubFilterOption };
 
+/** Kit filter button for lesson-engine / page editors (not a native select). */
+export function createEditorFilter(options: {
+  key: string;
+  value: string;
+  options: HubFilterOption[];
+  className?: string;
+  ariaLabel?: string;
+  defaultValue?: string;
+  onChange: (value: string) => void;
+}): HubFilterControl {
+  const filter = createHubFilter({
+    key: options.key,
+    label: options.ariaLabel ?? options.key,
+    value: options.value,
+    defaultValue: options.defaultValue ?? '',
+    options: options.options,
+    onChange: options.onChange
+  });
+  if (options.className) {
+    for (const name of options.className.split(/\s+/).filter(Boolean)) {
+      filter.el.classList.add(name);
+    }
+  }
+  return filter;
+}
+
 export const TASK_DOMAINS: TaskDomain[] = ['teaching', 'life', 'wedding', 'health', 'other'];
 export const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 

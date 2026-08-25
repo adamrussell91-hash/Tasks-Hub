@@ -120,6 +120,8 @@ describe('page editor', () => {
     expect(canvas.querySelector('[data-block-type="equation"]')).not.toBeNull();
 
     canvas.querySelector<HTMLButtonElement>('[data-block-type="heading"]')!.click();
+    expect(canvas.querySelector('select')).toBeNull();
+    expect(canvas.querySelector('.block-editor__heading-variant')?.tagName).toBe('BUTTON');
     expect(canvas.querySelector('.block-editor__heading-text')).not.toBeNull();
     const field = canvas.querySelector<HTMLInputElement>('.block-editor__heading-text')!;
     field.value = 'Term brief';
