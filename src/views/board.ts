@@ -5,9 +5,10 @@ import { openTasks } from '@/domain/queries';
 import { BOARD_COLUMNS, columnForTask, statusForColumn, type BoardColumnId } from '@/domain/board';
 import { boardTasks } from '@/domain/hierarchy';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
-import { errorMessage, showConfirmWrite } from '@/views/feedback';
+import { errorMessage } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { initBoard, type BoardMoveDetail } from '@/views/sprint-board';
+import { deleteTaskNow } from '@/views/card-actions';
 import { mountTaskCard } from '@/views/hub-cards';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -151,21 +152,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
         task,
         projects,
         confirmHost,
-        (t) => {
-          showConfirmWrite(
-            confirmHost,
-            `Delete “${t.title}”`,
-            'This removes the task from the hub.',
-            async () => {
-              await tasksApi.deleteTask(t.id, {
-                agent: 'Tasks Hub',
-                reason: 'Board delete'
-              });
-              await renderBoardView(canvas);
-            },
-            'Delete'
-          );
-        },
+        (t) => deleteTaskNow(t, () => void renderBoardView(canvas), confirmHost),
         () => void renderBoardView(canvas)
       );
       card.dataset.col = col.id;

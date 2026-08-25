@@ -8,8 +8,9 @@ import { renderPressureStrips } from '@/views/pinch-strip';
 import { findStallCandidates } from '@/domain/stall';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
-import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
+import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
+import { deleteTaskNow } from '@/views/card-actions';
 import { mountProjectCard, mountTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
@@ -34,22 +35,9 @@ function appendTaskCard(
 ): void {
   mountTaskCard(host, task, {
     onToggle: (current) => requestToggleDone(confirmHost, current, reload),
-    onDelete: (current) => confirmDeleteTask(confirmHost, current, reload),
+    onDelete: (current) => deleteTaskNow(current, reload, confirmHost),
     onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void reload())
   });
-}
-
-function confirmDeleteTask(host: HTMLElement, task: Task, reload: () => Promise<void>): void {
-  showConfirmWrite(
-    host,
-    `Delete “${task.title}”`,
-    'This removes the task from the hub.',
-    async () => {
-      await tasksApi.deleteTask(task.id, { agent: 'Tasks Hub', reason: 'Row delete' });
-      await reload();
-    },
-    'Delete'
-  );
 }
 
 export async function markTaskOpen(task: Task): Promise<void> {
