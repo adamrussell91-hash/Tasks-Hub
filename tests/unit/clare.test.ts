@@ -116,6 +116,33 @@ describe('clare estimates + calibration', () => {
   });
 });
 
+describe('clare store dump + batch', () => {
+  it('splits a dump, accepts the batch, and tags comms', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+
+    const dump = await store.processDumpWithClare({
+      text: 'Email parents about the excursion\nMarking year 9 essays due tomorrow',
+      domain: 'teaching',
+      now: new Date('2026-08-25T09:00:00')
+    });
+    expect(dump.proposals.length).toBeGreaterThanOrEqual(2);
+    expect(dump.voice.toLowerCase()).toMatch(/dump|thing/);
+    const email = dump.proposals.find((p) => /email/i.test(p.title));
+    expect(email?.dump_kind).toBe('communication');
+
+    const { tasks } = await store.acceptClareBatch(
+      dump.proposals.map((proposal) => ({
+        proposal,
+        accepted_minutes: proposal.proposed_minutes
+      }))
+    );
+    expect(tasks).toHaveLength(dump.proposals.length);
+    expect(tasks.some((t) => t.tags.includes('comms'))).toBe(true);
+  });
+});
+
 describe('clare store negotiation', () => {
   it('proposes, accepts, and records actuals through the shared store', async () => {
     const kv = memoryKv();

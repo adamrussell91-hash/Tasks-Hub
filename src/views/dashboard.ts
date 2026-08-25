@@ -3,15 +3,10 @@ import type { Project } from '@/schemas/project';
 import {
   adaptiveTodayTasks,
   backlogTasks,
-  milestonesInMonth,
-  excursionKeyDatesInMonth,
   preferredDomains,
-  toDateKey,
-  weekDays,
-  tasksForDay,
-  searchEntities
+  searchEntities,
+  toDateKey
 } from '@/domain/queries';
-import { detectPinchPoints } from '@/domain/pinch';
 import { computeProjectVariance, formatSlip } from '@/domain/closure';
 import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
@@ -19,8 +14,11 @@ import { renderPressureStrips } from '@/views/pinch-strip';
 import { findStallCandidates } from '@/domain/stall';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
-import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
+import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
+import { deleteTaskNow } from '@/views/card-actions';
+import { mountProjectCard, mountTaskCard, removeMountedTaskCard } from '@/views/hub-cards';
+import { projectPageHash } from '@/domain/cards';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -34,70 +32,37 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function priorityClass(p: Task['priority']): string {
-  return `task-row__priority task-row__priority--${p}`;
-}
-
-function renderTaskRow(
+function appendTaskCard(
+  host: HTMLElement,
   task: Task,
-  onToggle: (t: Task) => void,
-  onDelete?: (t: Task) => void,
-  onEdit?: (t: Task) => void
-): HTMLElement {
-  const row = el('article', 'task-row');
-  row.dataset.domain = task.domain;
-
-  const top = el('div', 'task-row__top');
-  const title = el('h3', 'task-row__title', task.title);
-  const pri = el('span', priorityClass(task.priority), task.priority);
-  top.append(title, pri);
-
-  const meta = el('div', 'task-row__meta');
-  meta.append(
-    el('span', 'chip', task.domain),
-    el('span', 'chip chip--muted', task.status.replace('_', ' '))
-  );
-  if (task.due_date) meta.append(el('span', 'chip chip--muted', `Due ${formatDisplayDate(task.due_date)}`));
-  if (task.recurrence_rule) meta.append(el('span', 'chip', 'Repeats'));
-  if (task.remind_at) meta.append(el('span', 'chip', 'Notify'));
-  if (task.framework_used) meta.append(el('span', 'chip', 'framework'));
-
-  const actions = el('div', 'task-row__actions');
-  if (onEdit) {
-    const edit = el('button', 'btn btn--ghost', 'Edit');
-    edit.type = 'button';
-    edit.addEventListener('click', () => onEdit(task));
-    actions.append(edit);
-  }
-  const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
-  done.type = 'button';
-  done.addEventListener('click', () => {
-    onToggle(task);
+  confirmHost: HTMLElement,
+  handlers: {
+    onRemoved: () => void | Promise<void>;
+    onChanged: () => void | Promise<void>;
+  },
+  projects: Project[] = []
+): void {
+  mountTaskCard(host, task, {
+    onToggle: (current) => requestToggleDone(confirmHost, current, async () => {
+      await handlers.onChanged();
+    }),
+    onDelete: (current) => deleteTaskNow(current, handlers.onRemoved, confirmHost),
+    onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void handlers.onChanged())
   });
-  actions.append(done);
-  if (onDelete) {
-    const remove = el('button', 'btn btn--ghost', 'Delete');
-    remove.type = 'button';
-    remove.addEventListener('click', () => onDelete(task));
-    actions.append(remove);
-  }
-
-  if (task.description) row.append(top, el('p', 'task-row__desc', task.description), meta, actions);
-  else row.append(top, meta, actions);
-  return row;
 }
 
-function confirmDeleteTask(host: HTMLElement, task: Task, reload: () => Promise<void>): void {
-  showConfirmWrite(
-    host,
-    `Delete “${task.title}”`,
-    'This removes the task from the hub.',
-    async () => {
-      await tasksApi.deleteTask(task.id, { agent: 'Tasks Hub', reason: 'Row delete' });
-      await reload();
-    },
-    'Delete'
-  );
+function upsertTask(list: Task[], task: Task): Task[] {
+  const index = list.findIndex((entry) => entry.id === task.id);
+  if (index >= 0) {
+    list[index] = task;
+    return list;
+  }
+  list.push(task);
+  return list;
+}
+
+function dropTask(list: Task[], id: string): Task[] {
+  return list.filter((entry) => entry.id !== id);
 }
 
 export async function markTaskOpen(task: Task): Promise<void> {
@@ -179,167 +144,118 @@ export function requestToggleDone(
 
 export async function renderDayView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
-  const today = new Date();
-  const list = adaptiveTodayTasks(tasks, today);
-  const prefs = preferredDomains(today);
-
-  canvas.replaceChildren();
-  const intro = el(
-    'p',
-    'view-lede',
-    `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`
-  );
-  canvas.append(intro);
-
-  const clareLink = el('p', 'clare-inline');
-  const goClare = el('button', 'btn btn--secondary', 'Negotiate with Clare');
-  goClare.type = 'button';
-  goClare.addEventListener('click', () => {
-    location.hash = '#/clare';
-  });
-  clareLink.append(goClare);
-  canvas.append(clareLink);
-
-  const pressure = el('div', 'pressure-host');
-  renderPressureStrips(pressure, tasks, today, () => void renderDayView(canvas));
-  canvas.append(pressure);
-
-  const confirmHost = el('div', 'task-confirm');
-  canvas.append(renderQuickAdd(() => void renderDayView(canvas)));
-  canvas.append(confirmHost);
-
-  if (!list.length) {
-    canvas.append(el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.'));
+  let tasks: Task[];
+  let projects: Project[];
+  try {
+    [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderDayView(canvas), 'Could not load Today');
     return;
   }
-  const stack = el('div', 'task-stack');
-  for (const task of list) {
-    stack.append(
-      renderTaskRow(
-        task,
-        (t) => requestToggleDone(confirmHost, t, () => renderDayView(canvas)),
-        (t) => confirmDeleteTask(confirmHost, t, () => renderDayView(canvas)),
-        (t) => renderTaskEditor(confirmHost, t, projects, () => void renderDayView(canvas))
+
+  function paint(): void {
+    const today = new Date();
+    const list = adaptiveTodayTasks(tasks, today);
+    const prefs = preferredDomains(today);
+    const scrollTop = canvas.scrollTop;
+
+    canvas.replaceChildren();
+    canvas.append(
+      el('p', 'view-lede', `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`)
+    );
+
+    const clareLink = el('p', 'clare-inline');
+    const goClare = el('button', 'btn btn--secondary', 'Talk to Clare');
+    goClare.type = 'button';
+    goClare.addEventListener('click', () => {
+      location.hash = '#/clare';
+    });
+    clareLink.append(goClare);
+    canvas.append(clareLink);
+
+    const pressure = el('div', 'pressure-host');
+    renderPressureStrips(pressure, tasks, today, () => void paint());
+    canvas.append(pressure);
+
+    const confirmHost = el('div', 'task-confirm');
+    canvas.append(
+      renderQuickAdd(
+        (created) => {
+          upsertTask(tasks, created);
+          const empty = canvas.querySelector('.empty-state');
+          empty?.remove();
+          let stack = canvas.querySelector<HTMLElement>('.task-stack');
+          if (!stack) {
+            stack = el('div', 'task-stack');
+            canvas.append(stack);
+          }
+          if (stack.querySelector(`[data-task-id="${created.id}"]`)) return;
+          if (adaptiveTodayTasks([created], today).length) {
+            appendTaskCard(
+              stack,
+              created,
+              confirmHost,
+              {
+                onRemoved: () => afterDayMutation(created.id),
+                onChanged: async () => {
+                  tasks = await tasksApi.listTasks().catch(() => tasks);
+                  paint();
+                }
+              },
+              projects
+            );
+            return;
+          }
+          paint();
+        },
+        null,
+        { dueDate: toDateKey(today) }
       )
     );
-  }
-  canvas.append(stack);
-}
+    canvas.append(confirmHost);
 
-export async function renderWeekView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const tasks = await tasksApi.listTasks();
-  const today = new Date();
-  const days = weekDays(today);
-  const pinchesByKey = new Map(
-    detectPinchPoints(tasks, today, { days: 7 }).map((p) => [p.date_key, p])
-  );
-
-  canvas.replaceChildren();
-  const pressure = el('div', 'pressure-host');
-  renderPressureStrips(pressure, tasks, today, () => void renderWeekView(canvas));
-  canvas.append(pressure);
-
-  const preview = el('aside', 'graph-preview week-preview');
-  preview.hidden = true;
-  preview.setAttribute('aria-live', 'polite');
-
-  const grid = el('div', 'week-grid');
-  for (const day of days) {
-    const key = toDateKey(day);
-    const pinch = pinchesByKey.get(key);
-    const col = el('section', pinch ? `week-col week-col--${pinch.severity}` : 'week-col');
-    const title = el(
-      'h3',
-      'week-col__title',
-      `${day.toLocaleDateString('en-AU', { weekday: 'short' })} ${formatDisplayDate(day)}`
-    );
-    col.append(title);
-    if (pinch) {
-      col.append(el('span', 'chip', pinch.severity === 'overloaded' ? 'overloaded' : 'watch'));
-    }
-    const dayTasks = tasksForDay(tasks, day);
-    if (!dayTasks.length) col.append(el('p', 'empty-state empty-state--compact', 'Nothing due.'));
-    for (const task of dayTasks) {
-      const item = el('button', 'week-chip', task.title);
-      item.type = 'button';
-      item.dataset.domain = task.domain;
-      item.setAttribute('aria-label', `${task.title}, ${task.priority}, due ${task.due_date ? formatDisplayDate(task.due_date) : 'undated'}`);
-      item.addEventListener('click', async () => {
-        const projects = await tasksApi.listProjects().catch(() => [] as Project[]);
-        preview.hidden = false;
-        preview.replaceChildren(
-          el('p', 'graph-preview__eyebrow', task.domain),
-          el('h3', 'graph-preview__title', task.title),
-          el(
-            'p',
-            'graph-preview__meta',
-            [task.priority, task.due_date ? `Due ${formatDisplayDate(task.due_date)}` : null, task.status.replace('_', ' ')]
-              .filter(Boolean)
-              .join(' · ')
-          )
+    async function afterDayMutation(taskId: string): Promise<void> {
+      removeMountedTaskCard(canvas, taskId);
+      tasks = dropTask(tasks, taskId);
+      const pressure = canvas.querySelector('.pressure-host');
+      if (pressure instanceof HTMLElement) {
+        renderPressureStrips(pressure, tasks, today, () => void paint());
+      }
+      if (!canvas.querySelector('.hub-card-slot') && !canvas.querySelector('.empty-state')) {
+        canvas.append(
+          el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.')
         );
-        const edit = el('button', 'btn btn--ghost', 'Edit');
-        edit.type = 'button';
-        edit.addEventListener('click', () => {
-          renderTaskEditor(preview, task, projects, () => void renderWeekView(canvas));
-        });
-        const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
-        done.type = 'button';
-        done.addEventListener('click', () => {
-          requestToggleDone(preview, task, () => renderWeekView(canvas));
-        });
-        preview.append(edit, done);
-      });
-      col.append(item);
+      }
     }
-    grid.append(col);
-  }
-  canvas.append(grid, preview);
-}
 
-export async function renderMonthView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const projects = await tasksApi.listProjects();
-  const month = new Date();
-  const items = milestonesInMonth(projects, month);
-  const keyDates = excursionKeyDatesInMonth(projects, month);
-  canvas.replaceChildren();
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) + ' · milestones & key dates'
-    )
-  );
-  if (!items.length && !keyDates.length) {
-    canvas.append(el('p', 'empty-state', 'No milestones or excursion key dates this month.'));
-    return;
+    if (!list.length) {
+      canvas.append(
+        el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.')
+      );
+      canvas.scrollTop = scrollTop;
+      return;
+    }
+    const stack = el('div', 'task-stack');
+    for (const task of list) {
+      appendTaskCard(
+        stack,
+        task,
+        confirmHost,
+        {
+          onRemoved: () => afterDayMutation(task.id),
+          onChanged: async () => {
+            tasks = await tasksApi.listTasks().catch(() => tasks);
+            paint();
+          }
+        },
+        projects
+      );
+    }
+    canvas.append(stack);
+    canvas.scrollTop = scrollTop;
   }
-  const stack = el('div', 'task-stack');
-  for (const { project, milestone } of items) {
-    const row = el('article', 'task-row');
-    const meta = el('div', 'task-row__meta');
-    meta.append(
-      el('span', 'chip', project.title),
-      el('span', 'chip chip--muted', milestone.due_date ? formatDisplayDate(milestone.due_date) : '')
-    );
-    row.append(el('h3', 'task-row__title', milestone.title), meta);
-    stack.append(row);
-  }
-  for (const { project, label, due_date } of keyDates) {
-    const row = el('article', 'task-row');
-    const meta = el('div', 'task-row__meta');
-    meta.append(
-      el('span', 'chip', project.title),
-      el('span', 'chip', 'key date'),
-      el('span', 'chip chip--muted', formatDisplayDate(due_date))
-    );
-    row.append(el('h3', 'task-row__title', label), meta);
-    stack.append(row);
-  }
-  canvas.append(stack);
+
+  paint();
 }
 
 let backlogDomain: TaskDomain | 'all' = 'all';
@@ -348,79 +264,122 @@ let backlogTag = '';
 
 export async function renderListView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
-  const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
-  const tags = [...new Set(tasks.flatMap((t) => t.tags))].sort();
-  let list = backlogTasks(tasks);
-  if (backlogDomain !== 'all') list = list.filter((t) => t.domain === backlogDomain);
-  if (backlogPriority !== 'all') list = list.filter((t) => t.priority === backlogPriority);
-  if (backlogTag) list = list.filter((t) => t.tags.includes(backlogTag));
-  canvas.replaceChildren();
-
-  const filters = el('div', 'board-filter');
-  filters.append(
-    createHubFilter({
-      key: 'Domain',
-      label: 'Domain',
-      defaultValue: 'all',
-      options: [
-        { value: 'all', label: 'All domains' },
-        ...(['teaching', 'life', 'wedding', 'health', 'other'] as const).map((d) => ({
-          value: d,
-          label: d
-        }))
-      ],
-      value: backlogDomain,
-      onChange: (value) => {
-        backlogDomain = value as TaskDomain | 'all';
-        void renderListView(canvas);
-      }
-    }).el,
-    createHubFilter({
-      key: 'Priority',
-      label: 'Priority',
-      defaultValue: 'all',
-      options: [
-        { value: 'all', label: 'All priorities' },
-        ...(['urgent', 'high', 'medium', 'low'] as const).map((p) => ({ value: p, label: p }))
-      ],
-      value: backlogPriority,
-      onChange: (value) => {
-        backlogPriority = value as TaskPriority | 'all';
-        void renderListView(canvas);
-      }
-    }).el,
-    createHubFilter({
-      key: 'Tag',
-      label: 'Tag',
-      defaultValue: '',
-      options: [{ value: '', label: 'All tags' }, ...tags.map((tag) => ({ value: tag, label: tag }))],
-      value: backlogTag,
-      onChange: (value) => {
-        backlogTag = value;
-        void renderListView(canvas);
-      }
-    }).el
-  );
-  canvas.append(filters);
-  canvas.append(renderQuickAdd(() => void renderListView(canvas)));
-  const confirmHost = el('div', 'task-confirm');
-  canvas.append(confirmHost);
-  if (!list.length) {
-    canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
+  let tasks: Task[];
+  let projects: Project[];
+  try {
+    [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderListView(canvas), 'Could not load Backlog');
     return;
   }
-  const stack = el('div', 'task-stack');
-  for (const task of list) {
-    stack.append(
-      renderTaskRow(
-        task,
-        (t) => requestToggleDone(confirmHost, t, () => renderListView(canvas)),
-        (t) => confirmDeleteTask(confirmHost, t, () => renderListView(canvas)),
-        (t) => renderTaskEditor(confirmHost, t, projects, () => void renderListView(canvas))
-      )
+
+  function paint(): void {
+    const tags = [...new Set(tasks.flatMap((t) => t.tags))].sort();
+    let list = backlogTasks(tasks);
+    if (backlogDomain !== 'all') list = list.filter((t) => t.domain === backlogDomain);
+    if (backlogPriority !== 'all') list = list.filter((t) => t.priority === backlogPriority);
+    if (backlogTag) list = list.filter((t) => t.tags.includes(backlogTag));
+    const scrollTop = canvas.scrollTop;
+
+    canvas.replaceChildren();
+    const filters = el('div', 'board-filter');
+    filters.append(
+      createHubFilter({
+        key: 'Domain',
+        label: 'Domain',
+        defaultValue: 'all',
+        options: [
+          { value: 'all', label: 'All domains' },
+          ...(['teaching', 'life', 'wedding', 'health', 'other'] as const).map((d) => ({
+            value: d,
+            label: d
+          }))
+        ],
+        value: backlogDomain,
+        onChange: (value) => {
+          backlogDomain = value as TaskDomain | 'all';
+          paint();
+        }
+      }).el,
+      createHubFilter({
+        key: 'Priority',
+        label: 'Priority',
+        defaultValue: 'all',
+        options: [
+          { value: 'all', label: 'All priorities' },
+          ...(['urgent', 'high', 'medium', 'low'] as const).map((p) => ({ value: p, label: p }))
+        ],
+        value: backlogPriority,
+        onChange: (value) => {
+          backlogPriority = value as TaskPriority | 'all';
+          paint();
+        }
+      }).el,
+      createHubFilter({
+        key: 'Tag',
+        label: 'Tag',
+        defaultValue: '',
+        options: [{ value: '', label: 'All tags' }, ...tags.map((tag) => ({ value: tag, label: tag }))],
+        value: backlogTag,
+        onChange: (value) => {
+          backlogTag = value;
+          paint();
+        }
+      }).el
     );
+    canvas.append(filters);
+    const confirmHost = el('div', 'task-confirm');
+    canvas.append(
+      renderQuickAdd((created) => {
+        upsertTask(tasks, created);
+        canvas.querySelector('.empty-state')?.remove();
+        let stack = canvas.querySelector<HTMLElement>('.task-stack');
+        if (!stack) {
+          stack = el('div', 'task-stack');
+          canvas.append(stack);
+        }
+        if (!stack.querySelector(`[data-task-id="${created.id}"]`) && backlogTasks([created]).length) {
+          appendTaskCard(stack, created, confirmHost, backlogHandlers(created.id), projects);
+          return;
+        }
+        paint();
+      })
+    );
+    canvas.append(confirmHost);
+
+    function backlogHandlers(taskId: string): {
+      onRemoved: () => void;
+      onChanged: () => Promise<void>;
+    } {
+      return {
+        onRemoved: () => {
+          removeMountedTaskCard(canvas, taskId);
+          tasks = dropTask(tasks, taskId);
+          if (!canvas.querySelector('.hub-card-slot') && !canvas.querySelector('.empty-state')) {
+            canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
+          }
+        },
+        onChanged: async () => {
+          tasks = await tasksApi.listTasks().catch(() => tasks);
+          paint();
+        }
+      };
+    }
+
+    if (!list.length) {
+      canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
+      canvas.scrollTop = scrollTop;
+      return;
+    }
+    const stack = el('div', 'task-stack');
+    for (const task of list) {
+      appendTaskCard(stack, task, confirmHost, backlogHandlers(task.id), projects);
+    }
+    canvas.append(stack);
+    canvas.scrollTop = scrollTop;
   }
-  canvas.append(stack);
+
+  paint();
 }
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
@@ -492,13 +451,11 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     canvas.append(el('h2', 'section-title', 'Closed, buried & frankensteined'));
     const deadStack = el('div', 'task-stack');
     for (const project of closed) {
-      const row = el('article', 'task-row');
-      row.append(
-        el('h3', 'task-row__title', project.title),
-        el('p', 'task-row__desc', project.review_summary || project.arc_summary || ''),
-        el('span', 'chip chip--muted', project.status)
-      );
-      deadStack.append(row);
+      mountProjectCard(deadStack, project, tasks, {
+        onOpenPage: (current) => {
+          location.hash = projectPageHash(current.id);
+        }
+      });
     }
     canvas.append(deadStack);
   }
@@ -534,40 +491,23 @@ function renderProjectClosureCard(
   onDone: () => void
 ): HTMLElement {
   const variance = computeProjectVariance(project, tasks);
-  const row = el('article', variance.ready_to_close ? 'task-row closure-card' : 'task-row');
-  const openCount = tasks.filter(
-    (t) => t.parent_project_id === project.id && t.status !== 'done' && t.status !== 'dead'
-  ).length;
-  row.append(
-    el('h3', 'task-row__title', project.title),
-    el('p', 'task-row__desc', project.arc_summary || project.description),
-    el('div', 'task-row__meta')
-  );
-  const meta = row.querySelector('.task-row__meta')!;
-  meta.append(
-    el('span', 'chip', project.type),
-    el('span', 'chip chip--muted', project.status),
-    el('span', 'chip chip--muted', `${project.milestones.length} milestones`),
-    el('span', 'chip chip--muted', `${openCount} open tasks`),
-    el('span', 'chip chip--muted', formatSlip(variance.slip_days)),
-    el(
-      'span',
-      'chip chip--muted',
-      `baseline ${variance.baseline_end_date ? formatDisplayDate(variance.baseline_end_date) : '—'} → now ${variance.derived_end_date ? formatDisplayDate(variance.derived_end_date) : '—'}`
-    )
-  );
-
-  if (variance.ready_to_close) {
-    const actions = el('div', 'task-row__actions');
-    const closeBtn = el('button', 'btn btn--primary', 'Close project');
-    closeBtn.type = 'button';
-    closeBtn.addEventListener('click', () => {
-      showCloseConfirm(confirmHost, project, variance.slip_days, onDone);
-    });
-    actions.append(closeBtn);
-    row.append(actions);
+  const wrap = el('div', variance.ready_to_close ? 'closure-card' : '');
+  mountProjectCard(wrap, project, tasks, {
+    onToggleChild: (task) => requestToggleDone(confirmHost, task, async () => onDone()),
+    onAddTask: () => {
+      confirmHost.replaceChildren(renderQuickAdd(async () => onDone(), project.id));
+    },
+    onOpenPage: (current) => {
+      location.hash = projectPageHash(current.id);
+    },
+    onClose: variance.ready_to_close
+      ? () => showCloseConfirm(confirmHost, project, variance.slip_days, onDone)
+      : undefined
+  });
+  if (variance.slip_days !== null) {
+    wrap.append(el('p', 'hub-card__meta', `Baseline ${formatSlip(variance.slip_days)}`));
   }
-  return row;
+  return wrap;
 }
 
 function showCloseConfirm(
@@ -804,31 +744,28 @@ function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): voi
     return;
   }
   for (const project of projects) {
-    const row = el('article', 'task-row');
-    row.append(el('h3', 'task-row__title', project.title), el('span', 'chip', 'project'));
-    host.append(row);
+    mountProjectCard(host, project, tasks, {
+      onOpenPage: (current) => {
+        location.hash = projectPageHash(current.id);
+      }
+    });
   }
+  const confirmHost = host.parentElement?.querySelector('.task-confirm');
   for (const task of tasks) {
-    host.append(
-      renderTaskRow(
+    if (confirmHost instanceof HTMLElement) {
+      appendTaskCard(
+        host,
         task,
-        (t) => {
-          const confirmHost = host.parentElement?.querySelector('.task-confirm');
-          if (!(confirmHost instanceof HTMLElement)) return;
-          requestToggleDone(confirmHost, t, () => refreshSearch(host));
+        confirmHost,
+        {
+          onRemoved: () => {
+            removeMountedTaskCard(host, task.id);
+          },
+          onChanged: () => refreshSearch(host)
         },
-        (t) => {
-          const confirmHost = host.parentElement?.querySelector('.task-confirm');
-          if (!(confirmHost instanceof HTMLElement)) return;
-          confirmDeleteTask(confirmHost, t, () => refreshSearch(host));
-        },
-        (t) => {
-          const confirmHost = host.parentElement?.querySelector('.task-confirm');
-          if (!(confirmHost instanceof HTMLElement)) return;
-          renderTaskEditor(confirmHost, t, projects, () => void refreshSearch(host));
-        }
-      )
-    );
+        projects
+      );
+    }
   }
 }
 

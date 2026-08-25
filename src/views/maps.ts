@@ -1,7 +1,9 @@
-import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap } from '@/schemas/map';
+import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap, YearTrack } from '@/schemas/map';
 import type { Project } from '@/schemas/project';
+import { projectPageHash } from '@/domain/cards';
 import { tasksApi } from '@/services/client-api';
 import { exportMapHtml, pickCurrentYearMap } from '@/domain/maps';
+import { createFilteredPicker, createMapIndex, type MapIndexItem, type PickerGroup } from '@/views/map-nav';
 import {
   applyDateSpanToStation,
   applyDateToTickAttach,
@@ -15,16 +17,24 @@ import {
   normalizeLineColors,
   schoolTerms,
   wrapEventLines,
+  YEAR_TRACKS,
+  YEAR_TRACK_LABELS,
   yearLinePoints,
   yToDate,
   type MapCanvasLayout
 } from '@/domain/maps-layout';
+import { discCss, fillCss, letterCss, strokeCss } from '@/domain/maps-colors';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 
 export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] {
   const list = maps && maps.length > 0 ? maps : [mindWorks2026Map()];
   return list.map((map) => normalizeLineColors(map));
+}
+
+/** Hide rail + page header so the map can fill the viewport. */
+export function setMapFullscreenChrome(on: boolean): void {
+  document.documentElement.classList.toggle('is-map-fullscreen', on);
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -42,37 +52,15 @@ function newId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
 }
 
-const STROKE_VAR: Record<MapColorToken, string> = {
-  wave: 'var(--wave)',
-  success: 'var(--success)',
-  lilac: 'var(--pastel-lilac-ink)',
-  'high-sea': 'var(--high-sea)',
-  'high-sea-ink': 'var(--high-sea-ink)',
-  marine: 'var(--marine)',
-  navy: 'var(--navy)',
-  depth: 'var(--depth)'
-};
-
-const FILL_VAR: Record<MapColorToken, string> = {
-  wave: 'var(--pastel-blue)',
-  success: 'var(--pastel-sage)',
-  lilac: 'var(--pastel-lilac)',
-  'high-sea': 'var(--pastel-gold)',
-  'high-sea-ink': 'var(--pastel-gold)',
-  marine: 'var(--pastel-blue)',
-  navy: 'var(--pastel-blue)',
-  depth: 'var(--pastel-blue)'
-};
-
 type Mode = 'view' | 'edit';
 type DraftKind = 'line' | 'station' | 'event' | null;
 
 function strokeOf(color: MapColorToken): string {
-  return STROKE_VAR[color];
+  return strokeCss(color);
 }
 
 function fillOf(color: MapColorToken): string {
-  return FILL_VAR[color];
+  return fillCss(color);
 }
 
 function findLine(map: TransitMap, id: string): MapLine | undefined {
@@ -94,50 +82,93 @@ function lineForTick(map: TransitMap, tick: MapTick | undefined): MapLine | unde
   );
 }
 
-function fillTargetSelect(
-  select: HTMLSelectElement,
+function targetPickerGroups(map: TransitMap, skipId?: string | null): PickerGroup[] {
+  return [
+    {
+      label: 'Lines',
+      options: map.lines.map((item) => ({
+        value: `line:${item.id}`,
+        label: `${item.letter} · ${item.name}`
+      }))
+    },
+    {
+      label: 'Stations',
+      options: map.stations.map((item) => {
+        const line = findLine(map, item.line_id);
+        return {
+          value: `station:${item.id}`,
+          label: `${line?.letter ?? '?'} · ${item.label}`
+        };
+      })
+    },
+    {
+      label: 'Competitions',
+      options: map.ticks
+        .filter((item) => item.id !== skipId)
+        .map((item) => ({ value: `event:${item.id}`, label: item.label }))
+    }
+  ];
+}
+
+function projectLinkGroups(projects: Project[], excursions: Project[]): PickerGroup[] {
+  return [
+    {
+      label: 'Projects',
+      options: projects
+        .filter((project) => project.type !== 'excursion')
+        .map((project) => ({
+          value: `project:${project.id}`,
+          label: project.title
+        }))
+    },
+    {
+      label: 'Excursions',
+      options: excursions.map((project) => ({
+        value: `excursion:${project.id}`,
+        label: project.title
+      }))
+    }
+  ];
+}
+
+function projectLinkValue(link: MapStation['link'] | MapTick['link']): string {
+  if (!link) return '';
+  return `${link.type === 'excursion' ? 'excursion' : 'project'}:${link.id}`;
+}
+
+function buildMapIndexItems(
   map: TransitMap,
-  opts: { includeBlank?: string; skipId?: string | null; selected?: string }
-): void {
-  select.replaceChildren();
-  if (opts.includeBlank !== undefined) {
-    const blank = document.createElement('option');
-    blank.value = '';
-    blank.textContent = opts.includeBlank;
-    select.append(blank);
+  layout: MapCanvasLayout
+): MapIndexItem[] {
+  const items: MapIndexItem[] = [];
+  for (const station of map.stations) {
+    const line = findLine(map, station.line_id);
+    const laid = layout.stations.find((item) => item.id === station.id);
+    items.push({
+      id: station.id,
+      kind: 'station',
+      label: station.label,
+      group: line ? `${line.letter} · ${line.name}` : 'Programs',
+      y: laid ? laid.y + laid.h / 2 : station.y
+    });
   }
-  const lines = document.createElement('optgroup');
-  lines.label = 'Lines';
-  for (const item of map.lines) {
-    const opt = document.createElement('option');
-    opt.value = `line:${item.id}`;
-    opt.textContent = `${item.letter} · ${item.name}`;
-    if (opts.selected === opt.value) opt.selected = true;
-    lines.append(opt);
+  for (const tick of map.ticks) {
+    const line = lineForTick(map, tick);
+    const laid = layout.ticks.find((item) => item.id === tick.id);
+    items.push({
+      id: tick.id,
+      kind: 'event',
+      label: tick.label,
+      group: line ? `${line.letter} · competitions` : 'Competitions',
+      y: laid?.cy ?? 200
+    });
   }
-  select.append(lines);
-  const stations = document.createElement('optgroup');
-  stations.label = 'Stations';
-  for (const item of map.stations) {
-    const line = findLine(map, item.line_id);
-    const opt = document.createElement('option');
-    opt.value = `station:${item.id}`;
-    opt.textContent = `${line?.letter ?? '?'} · ${item.label}`;
-    if (opts.selected === opt.value) opt.selected = true;
-    stations.append(opt);
-  }
-  select.append(stations);
-  const events = document.createElement('optgroup');
-  events.label = 'Competitions';
-  for (const item of map.ticks) {
-    if (item.id === opts.skipId) continue;
-    const opt = document.createElement('option');
-    opt.value = `event:${item.id}`;
-    opt.textContent = item.label;
-    if (opts.selected === opt.value) opt.selected = true;
-    events.append(opt);
-  }
-  select.append(events);
+  return items.sort((a, b) => a.y - b.y || a.label.localeCompare(b.label));
+}
+
+function focusCameraOnY(layout: MapCanvasLayout, targetY: number, zoom: number): number {
+  const viewH = layout.height / zoom;
+  return Math.max(0, Math.min(layout.height - viewH, targetY - viewH / 3));
 }
 
 function attachSelectValue(tick: MapTick): string {
@@ -250,16 +281,59 @@ function portDot(x: number, y: number, id: string, color: string): SVGCircleElem
   });
 }
 
-function connectorPath(d: string, color: string, dash: boolean, under = false): SVGPathElement {
+function connectorPath(
+  id: string,
+  d: string,
+  color: string,
+  dash: boolean,
+  under = false
+): SVGPathElement {
   const path = svgEl('path', {
     d,
     fill: 'none',
     stroke: color,
     'stroke-width': '3',
-    class: under ? 'map-connector map-connector--under' : 'map-connector'
+    class: under ? 'map-connector map-connector--under' : 'map-connector',
+    'data-connector-id': id
   });
   if (dash) path.setAttribute('stroke-dasharray', '5 4');
   return path;
+}
+
+function patchConnectorPathY(d: string, dy: number, shiftFrom: boolean, shiftTo: boolean): string {
+  if (!dy || (!shiftFrom && !shiftTo)) return d;
+  const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number);
+  if (!nums || nums.length < 4) return d;
+  const next = [...nums];
+  if (shiftFrom) next[1] = (next[1] ?? 0) + dy;
+  if (shiftTo) next[next.length - 1] = (next[next.length - 1] ?? 0) + dy;
+  let index = 0;
+  return d.replace(/-?\d+(?:\.\d+)?/g, () => String(next[index++] ?? 0));
+}
+
+function connectorRefs(
+  svg: SVGSVGElement,
+  layout: MapCanvasLayout,
+  ownerId: string
+): Array<{ els: NodeListOf<Element>; shiftFrom: boolean; shiftTo: boolean; base: string }> {
+  return layout.connectors
+    .filter((connector) => connector.from.ownerId === ownerId || connector.to.ownerId === ownerId)
+    .map((connector) => ({
+      base: connector.path,
+      shiftFrom: connector.from.ownerId === ownerId,
+      shiftTo: connector.to.ownerId === ownerId,
+      els: svg.querySelectorAll(`[data-connector-id="${connector.id}"]`)
+    }));
+}
+
+function liveShiftConnectors(
+  refs: Array<{ els: NodeListOf<Element>; shiftFrom: boolean; shiftTo: boolean; base: string }>,
+  dy: number
+): void {
+  for (const ref of refs) {
+    const next = patchConnectorPathY(ref.base, dy, ref.shiftFrom, ref.shiftTo);
+    ref.els.forEach((node) => node.setAttribute('d', next));
+  }
 }
 
 function ownerLineId(layout: MapCanvasLayout, ownerId: string, owner: string): string | null {
@@ -268,28 +342,27 @@ function ownerLineId(layout: MapCanvasLayout, ownerId: string, owner: string): s
   return layout.ticks.find((item) => item.id === ownerId)?.lineId ?? null;
 }
 
-const lastLineX = new Map<string, number>();
+const DRAG_THRESHOLD = 4;
+
+type MapHit =
+  | JoinPick
+  | { kind: 'station-resize'; id: string; edge: 'top' | 'bottom' }
+  | null;
 
 function letterFill(color: MapColorToken): string {
-  return color === 'high-sea' ? 'var(--high-sea-ink)' : 'var(--paper)';
+  return letterCss(color);
 }
 
 function discFill(color: MapColorToken): string {
-  return color === 'high-sea' ? 'var(--pastel-gold)' : strokeOf(color);
-}
-
-function slideLine(node: SVGElement, prev: number | undefined, x: number): void {
-  if (prev == null || prev === x) return;
-  node.setAttribute('transform', `translate(${prev - x} 0)`);
-  const reset = () => node.setAttribute('transform', 'translate(0 0)');
-  requestAnimationFrame(() => requestAnimationFrame(reset));
+  return discCss(color);
 }
 
 function renderMapSvg(
   host: SVGSVGElement,
   layout: MapCanvasLayout,
   selectedId: string | null,
-  showPorts: boolean
+  showPorts: boolean,
+  editMode: boolean
 ): void {
   host.replaceChildren();
   host.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
@@ -332,49 +405,55 @@ function renderMapSvg(
       class: 'map-line-group map-line-group--track',
       'data-line': line.id
     });
-    const prev = lastLineX.get(line.id);
-    slideLine(track, prev, line.x);
-    track.append(
-      svgEl('line', {
-        x1: String(line.x),
-        y1: String(line.y0),
-        x2: String(line.x),
-        y2: String(line.y1),
-        stroke: color,
-        'stroke-width': '8',
-        class: 'map-line'
-      })
-    );
-    const head = svgEl('g', { class: 'map-line-head' });
-    const disc = svgEl('circle', {
-      cx: String(line.disc.cx),
-      cy: String(line.disc.cy),
-      r: String(line.disc.r),
-      fill: discFill(line.color),
-      class: 'map-line-disc'
-    });
-    if (line.color === 'high-sea') {
-      disc.setAttribute('stroke', color);
-      disc.setAttribute('stroke-width', '3');
+    for (const item of line.tracks) {
+      for (const cut of item.cuts) {
+        track.append(
+          svgEl('line', {
+            x1: String(item.x),
+            y1: String(cut.y0),
+            x2: String(item.x),
+            y2: String(cut.y1),
+            stroke: color,
+            'stroke-width': '8',
+            'stroke-linecap': 'butt',
+            class: 'map-line'
+          })
+        );
+      }
+      const label = svgEl('text', {
+        x: String(item.disc.cx),
+        y: String(item.disc.cy - item.disc.r - 30),
+        'text-anchor': 'middle',
+        class: 'map-track-label',
+        fill: color
+      });
+      label.textContent = item.label;
+      const disc = svgEl('circle', {
+        cx: String(item.disc.cx),
+        cy: String(item.disc.cy),
+        r: String(item.disc.r),
+        fill: discFill(line.color),
+        class: 'map-line-disc'
+      });
+      const letter = svgEl('text', {
+        x: String(item.disc.cx),
+        y: String(item.disc.cy + 6),
+        'text-anchor': 'middle',
+        class: 'map-line-letter',
+        fill: letterFill(line.color)
+      });
+      letter.textContent = line.letter;
+      track.append(label, disc, letter);
     }
-    head.append(disc);
-    const letter = svgEl('text', {
-      x: String(line.disc.cx),
-      y: String(line.disc.cy + 8),
-      'text-anchor': 'middle',
-      class: 'map-line-letter',
-      fill: letterFill(line.color)
-    });
-    letter.textContent = line.letter;
-    head.append(letter);
-    track.append(head);
     root.append(track);
   }
 
   for (const connector of layout.connectors) {
     if (!connector.under) continue;
     localConnectors.add(connector.id);
-    root.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash, true));
+    root.append(
+      connectorPath(connector.id, connector.path, strokeOf(connector.color), connector.dash, true)
+    );
   }
 
   for (const line of layout.lines) {
@@ -382,9 +461,6 @@ function renderMapSvg(
       class: 'map-line-group',
       'data-line': line.id
     });
-    const prev = lastLineX.get(line.id);
-    slideLine(group, prev, line.x);
-    lastLineX.set(line.id, line.x);
 
     for (const connector of layout.connectors) {
       if (connector.under) continue;
@@ -392,7 +468,9 @@ function renderMapSvg(
       const toLine = ownerLineId(layout, connector.to.ownerId, connector.to.owner);
       if (fromLine !== line.id || toLine !== line.id) continue;
       localConnectors.add(connector.id);
-      group.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash, false));
+      group.append(
+        connectorPath(connector.id, connector.path, strokeOf(connector.color), connector.dash, false)
+      );
     }
 
     for (const station of layout.stations.filter((item) => item.line_id === line.id)) {
@@ -401,33 +479,42 @@ function renderMapSvg(
         class: `map-station${selectedId === station.id ? ' is-selected' : ''}`,
         'data-id': station.id
       });
-      if (station.lane > 0) {
+      for (const body of station.bodies) {
         g.append(
-          svgEl('path', {
-            d: `M ${station.lineX} ${station.y} H ${station.x} V ${station.y + 18}`,
-            fill: 'none',
+          svgEl('rect', {
+            x: String(body.x - body.w / 2),
+            y: String(body.y),
+            width: String(body.w),
+            height: String(body.h),
+            rx: String(body.w / 2),
+            fill: fillOf(station.color),
             stroke: stationColor,
-            'stroke-width': '6',
-            class: 'map-station__jog'
+            'stroke-width': '3.5',
+            class: 'map-station__body'
           })
         );
+        if (editMode) {
+          g.append(
+            svgEl('rect', {
+              x: String(body.x - body.w / 2),
+              y: String(body.y),
+              width: String(body.w),
+              height: '10',
+              class: 'map-station__resize map-station__resize--top',
+              'data-resize': 'top'
+            }),
+            svgEl('rect', {
+              x: String(body.x - body.w / 2),
+              y: String(body.y + body.h - 10),
+              width: String(body.w),
+              height: '10',
+              class: 'map-station__resize map-station__resize--bottom',
+              'data-resize': 'bottom'
+            })
+          );
+        }
+        g.append(verticalText(body.x, body.y + body.h / 2, station.label, 'map-station__label', stationColor));
       }
-      g.append(
-        svgEl('rect', {
-          x: String(station.x - station.w / 2),
-          y: String(station.y),
-          width: String(station.w),
-          height: String(station.h),
-          rx: String(station.w / 2),
-          fill: fillOf(station.color),
-          stroke: stationColor,
-          'stroke-width': '3.5',
-          class: 'map-station__body'
-        })
-      );
-      g.append(
-        verticalText(station.x, station.y + station.h / 2, station.label, 'map-station__label', stationColor)
-      );
       if (showPorts) {
         for (const port of station.ports) {
           g.append(portDot(port.x, port.y, port.id, stationColor));
@@ -486,7 +573,7 @@ function renderMapSvg(
   for (const connector of layout.connectors) {
     if (localConnectors.has(connector.id)) continue;
     root.insertBefore(
-      connectorPath(connector.path, strokeOf(connector.color), connector.dash),
+      connectorPath(connector.id, connector.path, strokeOf(connector.color), connector.dash),
       root.querySelector('.map-line-group')
     );
   }
@@ -506,7 +593,13 @@ function clientToMap(svg: SVGSVGElement, event: PointerEvent): { x: number; y: n
   return { x: loc.x, y: loc.y };
 }
 
-function hitMap(layout: MapCanvasLayout, x: number, y: number, showPorts: boolean): JoinPick | null {
+function hitMap(
+  layout: MapCanvasLayout,
+  x: number,
+  y: number,
+  showPorts: boolean,
+  editMode: boolean
+): MapHit {
   if (showPorts) {
     const port = layout.ports.find((item) => Math.hypot(x - item.x, y - item.y) < 12);
     if (port) {
@@ -523,20 +616,27 @@ function hitMap(layout: MapCanvasLayout, x: number, y: number, showPorts: boolea
     }
   }
   for (const station of layout.stations) {
-    if (
-      x >= station.x - station.w / 2 - 6 &&
-      x <= station.x + station.w / 2 + 6 &&
-      y >= station.y &&
-      y <= station.y + station.h
-    ) {
+    for (const body of station.bodies) {
+      const left = body.x - body.w / 2 - 6;
+      const right = body.x + body.w / 2 + 6;
+      const top = body.y;
+      const bottom = body.y + body.h;
+      if (x < left || x > right || y < top || y > bottom) continue;
+      if (editMode) {
+        if (y <= top + 10) return { kind: 'station-resize', id: station.id, edge: 'top' };
+        if (y >= bottom - 10) return { kind: 'station-resize', id: station.id, edge: 'bottom' };
+      }
       return { kind: 'station', id: station.id };
     }
   }
   for (const line of layout.lines) {
-    if (Math.hypot(x - line.disc.cx, y - line.disc.cy) <= line.disc.r + 6) {
+    if (line.tracks.some((track) => Math.hypot(x - track.disc.cx, y - track.disc.cy) <= track.disc.r + 6)) {
       return { kind: 'line', id: line.id };
     }
-    if (showPorts && Math.abs(x - line.x) <= 12 && y >= line.y0 - 8 && y <= line.y1 + 8) {
+    if (
+      showPorts &&
+      line.tracks.some((track) => Math.abs(x - track.x) <= 12 && y >= line.y0 - 8 && y <= line.y1 + 8)
+    ) {
       return { kind: 'line', id: line.id };
     }
   }
@@ -580,6 +680,37 @@ function shiftStationDates(station: MapStation, dy: number, year: number): void 
   const next = applyDateSpanToStation(station, year);
   station.y = next.y;
   station.height = next.height;
+}
+
+function resizeStationDates(
+  station: MapStation,
+  dy: number,
+  edge: 'top' | 'bottom',
+  year: number
+): void {
+  const startY = station.starts_on ? dateToY(station.starts_on, year) : station.y;
+  const endY = station.ends_on ? dateToY(station.ends_on, year) : startY + station.height;
+  const minSpan = 14;
+  if (edge === 'top') {
+    station.starts_on = yToDate(Math.min(startY + dy, endY - minSpan), year);
+  } else {
+    station.ends_on = yToDate(Math.max(endY + dy, startY + minSpan), year);
+  }
+  const next = applyDateSpanToStation(station, year);
+  station.y = next.y;
+  station.height = next.height;
+  station.starts_on = next.starts_on;
+  station.ends_on = next.ends_on;
+}
+
+function joinPick(hit: MapHit): JoinPick | null {
+  if (!hit || hit.kind === 'station-resize') return null;
+  return hit;
+}
+
+function hitOwnerId(hit: MapHit): string | null {
+  if (!hit) return null;
+  return hit.id;
 }
 
 function downloadHtml(map: TransitMap): void {
@@ -637,8 +768,30 @@ function dateInput(value: string, aria: string): HTMLInputElement {
   return input;
 }
 
+function trackPicker(selected: YearTrack[]): { root: HTMLElement; value: () => YearTrack[] } {
+  const root = el('div', 'map-tracks');
+  root.setAttribute('role', 'group');
+  root.setAttribute('aria-label', 'Year lines');
+  const boxes = YEAR_TRACKS.map((track) => {
+    const label = el('label', 'map-tracks__item');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.value = track;
+    box.checked = selected.includes(track);
+    label.append(box, document.createTextNode(YEAR_TRACK_LABELS[track]));
+    root.append(label);
+    return box;
+  });
+  return {
+    root,
+    value: () => {
+      const picked = boxes.filter((box) => box.checked).map((box) => box.value as YearTrack);
+      return picked.length ? picked : ['junior'];
+    }
+  };
+}
+
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
-  lastLineX.clear();
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading maps…'));
   const [listed, projects] = await Promise.all([
     tasksApi.listMaps().catch(() => [] as TransitMap[]),
@@ -661,7 +814,8 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         /* keep the corrected colours on screen even if Blobs write fails */
       });
   }
-  let mode: Mode = 'edit';
+  let mode: Mode = 'view';
+  let fullscreen = false;
   let draft: DraftKind = null;
   let selectedId: string | null = null;
   let zoom = 1;
@@ -679,9 +833,40 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     svg.setAttribute('viewBox', `${camX} ${camY} ${vw} ${vh}`);
   };
 
+  const applyFullscreen = (on: boolean) => {
+    fullscreen = on;
+    setMapFullscreenChrome(on);
+  };
+
+  const leaveFullscreen = () => {
+    if (!fullscreen) return;
+    applyFullscreen(false);
+    paint();
+  };
+
+  const onFullscreenKey = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !fullscreen) return;
+    event.preventDefault();
+    leaveFullscreen();
+  };
+
+  const onFullscreenHash = () => {
+    if (location.hash.startsWith('#/maps')) return;
+    applyFullscreen(false);
+    window.removeEventListener('keydown', onFullscreenKey);
+    window.removeEventListener('hashchange', onFullscreenHash);
+  };
+
+  window.addEventListener('keydown', onFullscreenKey);
+  window.addEventListener('hashchange', onFullscreenHash);
+  setMapFullscreenChrome(false);
+
   const excursions = projects.filter((p) => p.type === 'excursion');
 
   const paint = () => {
+    canvas.classList.toggle('map-page', true);
+    canvas.classList.toggle('map-page--fullscreen', fullscreen);
+    setMapFullscreenChrome(fullscreen);
     const year = current.year ?? yearNow;
     const terms = schoolTerms(year);
     const layout = layoutMap(current);
@@ -738,7 +923,33 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       paint();
     });
 
-    toolbar.append(select, pills, exportBtn, newBtn);
+    const fullBtn = el(
+      'button',
+      fullscreen ? 'btn btn--primary' : 'btn btn--ghost',
+      fullscreen ? 'Exit full screen' : 'Full screen'
+    );
+    fullBtn.type = 'button';
+    fullBtn.setAttribute('aria-pressed', fullscreen ? 'true' : 'false');
+    fullBtn.addEventListener('click', () => {
+      applyFullscreen(!fullscreen);
+      paint();
+    });
+
+    toolbar.append(select, pills, exportBtn, newBtn, fullBtn);
+
+    const termPills = el('div', 'hub-pills map-term-pills');
+    termPills.setAttribute('role', 'group');
+    termPills.setAttribute('aria-label', 'Jump to term');
+    for (const term of layout.terms) {
+      const btn = el('button', 'hub-pills__btn', term.label);
+      btn.type = 'button';
+      btn.addEventListener('click', () => {
+        camY = focusCameraOnY(layout, term.y, zoom);
+        paint();
+      });
+      termPills.append(btn);
+    }
+    toolbar.append(termPills);
 
     if (mode === 'edit') {
       const addLine = el('button', draft === 'line' ? 'btn btn--primary' : 'btn btn--ghost', '+ Line');
@@ -821,18 +1032,20 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       left.addEventListener('click', () => void shift(-1));
       right.addEventListener('click', () => void shift(1));
       const mark = el('span', 'map-key__disc', line.letter);
-      if (line.color === 'high-sea') {
-        mark.style.background = 'var(--pastel-gold)';
-        mark.style.color = 'var(--high-sea-ink)';
-        mark.style.boxShadow = 'inset 0 0 0 2px var(--high-sea)';
-      } else {
-        mark.style.background = strokeOf(line.color);
+      mark.style.background = discFill(line.color);
+      mark.style.color = letterFill(line.color);
+      if (line.color === 'yellow' || line.color === 'high-sea') {
+        mark.style.boxShadow = `inset 0 0 0 2px ${strokeOf(line.color)}`;
       }
       item.append(left, mark, el('span', 'map-key__name', `${line.name} Line`), right);
       key.append(item);
     }
     canvas.append(key);
+    const tracksKey = el('p', 'map-key__tracks');
+    tracksKey.textContent = 'Each strand has three lines: Junior, Rozelle, and Senior.';
+    canvas.append(tracksKey);
 
+    const body = el('div', 'map-body');
     const stage = el('div', `map-stage${joining ? ' is-joining' : ''}${mode === 'edit' ? ' is-edit' : ''}`);
     const svg = svgEl('svg', {
       class: 'map-svg',
@@ -840,7 +1053,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       preserveAspectRatio: 'xMinYMin slice',
       'aria-label': `${current.title} · ${year} calendar year`
     });
-    renderMapSvg(svg, layout, selectedId, joining);
+    renderMapSvg(svg, layout, selectedId, joining, mode === 'edit');
     applyCamera(svg, layout);
 
     const zoomBar = el('div', 'map-zoom');
@@ -872,6 +1085,14 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     zoomBar.append(out, reset, inn);
     stage.append(svg, zoomBar);
 
+    const indexItems = buildMapIndexItems(current, layout);
+    const index = createMapIndex(indexItems, selectedId, (item) => {
+      selectedId = item.id;
+      camY = focusCameraOnY(layout, item.y, zoom);
+      paint();
+    });
+    body.append(stage, index);
+
     svg.addEventListener(
       'wheel',
       (event) => {
@@ -883,18 +1104,20 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
 
     svg.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
+      event.preventDefault();
       const start = clientToMap(svg, event);
-      const hit = hitMap(layout, start.x, start.y, joining);
+      const hit = hitMap(layout, start.x, start.y, joining, mode === 'edit' && !joining);
       if (joining) {
-        if (!hit) return;
+        const joinHit = joinPick(hit);
+        if (!joinHit) return;
         if (!joinFrom) {
-          joinFrom = hit;
-          selectedId = hit.kind === 'line' ? null : hit.id;
-          toast = `Join from ${hit.kind}. Click the thing to connect.`;
+          joinFrom = joinHit;
+          selectedId = joinHit.kind === 'line' ? null : joinHit.id;
+          toast = `Join from ${joinHit.kind}. Click the thing to connect.`;
           paint();
           return;
         }
-        if (applyJoin(current, joinFrom, hit, start.y, year)) {
+        if (applyJoin(current, joinFrom, joinHit, start.y, year)) {
           toast = 'Joined.';
           void persist();
         } else {
@@ -906,8 +1129,14 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         return;
       }
 
-      const canDrag =
-        mode === 'edit' && Boolean(hit) && (hit!.kind === 'event' || hit!.kind === 'station' || hit!.kind === 'line');
+      const dragKind =
+        mode === 'edit' && hit
+          ? hit.kind === 'station-resize'
+            ? 'resize-station'
+            : hit.kind === 'event' || hit.kind === 'station' || hit.kind === 'line'
+              ? `move-${hit.kind}`
+              : null
+          : null;
       let moved = false;
       let lastX = event.clientX;
       let lastY = event.clientY;
@@ -918,48 +1147,108 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       const rect = svg.getBoundingClientRect();
       const unitX = layout.width / zoom / Math.max(1, rect.width);
       const unitY = layout.height / zoom / Math.max(1, rect.height);
-      const dragged = hit && canDrag ? svg.querySelector(`[data-id="${hit.id}"]`) : null;
-      const lineGroups = hit?.kind === 'line' ? [...svg.querySelectorAll(`[data-line="${hit.id}"]`)] : [];
+      const ownerId = hitOwnerId(hit);
+      const dragged =
+        ownerId && dragKind?.startsWith('move-') && hit?.kind !== 'line'
+          ? svg.querySelector(`[data-id="${ownerId}"]`)
+          : null;
+      const lineGroups =
+        hit?.kind === 'line' ? [...svg.querySelectorAll(`[data-line="${hit.id}"]`)] : [];
+      const connectorLinks =
+        ownerId && dragKind && dragKind !== 'move-line' ? connectorRefs(svg, layout, ownerId) : [];
+      const resizeEdge = hit?.kind === 'station-resize' ? hit.edge : null;
+      const resizeStation =
+        resizeEdge && ownerId ? (svg.querySelector(`[data-id="${ownerId}"]`) as SVGGElement | null) : null;
+      const resizeBodies = resizeStation ? [...resizeStation.querySelectorAll('.map-station__body')] : [];
+      const resizeBase = resizeBodies.map((body) => ({
+        y: Number(body.getAttribute('y') ?? 0),
+        h: Number(body.getAttribute('height') ?? 0)
+      }));
+
+      try {
+        stage.setPointerCapture(event.pointerId);
+      } catch {
+        /* ignore */
+      }
 
       const onMove = (move: PointerEvent) => {
+        move.preventDefault();
         lastX = move.clientX;
         lastY = move.clientY;
         const dx = lastX - originX;
         const dy = lastY - originY;
-        if (!moved && Math.hypot(dx, dy) < 8) return;
-        moved = true;
-        if (canDrag && hit?.kind === 'line') {
-          for (const node of lineGroups) node.setAttribute('transform', `translate(${dx * unitX} 0)`);
+        if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        if (!moved) {
+          moved = true;
+          stage.classList.add('is-dragging');
+          if (dragKind === 'move-line') {
+            for (const node of lineGroups) node.classList.add('is-live-drag');
+          }
+          dragged?.classList.add('is-live-drag');
+        }
+        const mapDy = dy * unitY;
+        const mapDx = dx * unitX;
+        if (dragKind === 'move-line') {
+          for (const node of lineGroups) node.setAttribute('transform', `translate(${mapDx} 0)`);
           return;
         }
-        if (canDrag && dragged) {
-          dragged.setAttribute('transform', `translate(0 ${dy * unitY})`);
+        if (dragKind === 'resize-station' && resizeStation && resizeEdge) {
+          for (const [index, body] of resizeBodies.entries()) {
+            const base = resizeBase[index];
+            if (!base) continue;
+            if (resizeEdge === 'top') {
+              body.setAttribute('y', String(base.y + mapDy));
+              body.setAttribute('height', String(Math.max(14, base.h - mapDy)));
+            } else {
+              body.setAttribute('height', String(Math.max(14, base.h + mapDy)));
+            }
+          }
+          liveShiftConnectors(connectorLinks, mapDy);
+          return;
+        }
+        if (dragged) {
+          dragged.setAttribute('transform', `translate(0 ${mapDy})`);
+          liveShiftConnectors(connectorLinks, mapDy);
           return;
         }
         stage.classList.add('is-panning');
-        camX = startCamX - dx * unitX;
-        camY = startCamY - dy * unitY;
+        camX = startCamX - mapDx;
+        camY = startCamY - mapDy;
         applyCamera(svg, layout);
       };
 
       const onUp = () => {
         window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-        stage.classList.remove('is-panning');
+        stage.classList.remove('is-panning', 'is-dragging');
+        for (const node of lineGroups) node.classList.remove('is-live-drag');
+        dragged?.classList.remove('is-live-drag');
+        try {
+          stage.releasePointerCapture(event.pointerId);
+        } catch {
+          /* ignore */
+        }
         const dx = (lastX - originX) * unitX;
         const dy = (lastY - originY) * unitY;
         if (!moved) {
-          selectedId = hit && hit.kind !== 'line' ? hit.id : null;
+          selectedId = hit && hit.kind !== 'line' && hit.kind !== 'station-resize' ? hit.id : null;
           paint();
           return;
         }
-        if (!canDrag || !hit) return;
+        if (!dragKind || !hit) return;
         if (hit.kind === 'line') {
           const lane = layout.lines.length > 1 ? Math.abs(layout.lines[1]!.x - layout.lines[0]!.x) : 280;
           if (Math.abs(dx) >= lane / 2) {
             current.lines = moveLine(current.lines, hit.id, dx > 0 ? 1 : -1);
             void persist();
           }
+          paint();
+          return;
+        }
+        if (hit.kind === 'station-resize') {
+          const station = current.stations.find((item) => item.id === hit.id);
+          if (station) resizeStationDates(station, dy, hit.edge, year);
+          selectedId = hit.id;
+          void persist();
           paint();
           return;
         }
@@ -991,10 +1280,10 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       };
 
       window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointerup', onUp, { once: true });
     });
 
-    canvas.append(stage);
+    canvas.append(body);
 
     const preview = el('aside', 'graph-preview map-preview');
     const selectedStation = current.stations.find((s) => s.id === selectedId);
@@ -1015,12 +1304,60 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         el(
           'p',
           'graph-preview__meta',
-          [line ? `${line.letter} ${line.name}` : null, dates || null].filter(Boolean).join(' · ')
+          [
+            line ? `${line.letter} ${line.name}` : null,
+            selectedStation ? selectedStation.tracks.map((track) => YEAR_TRACK_LABELS[track]).join(', ') : null,
+            dates || null
+          ]
+            .filter(Boolean)
+            .join(' · ')
         )
       );
       const linked = item.link ? projects.find((p) => p.id === item.link!.id) : null;
       if (linked) {
-        preview.append(el('p', 'graph-preview__meta', `Linked project → ${linked.title}`));
+        const actions = el('div', 'map-preview__actions');
+        const open = el('button', 'btn btn--secondary', `Open ${linked.title}`);
+        open.type = 'button';
+        open.addEventListener('click', () => {
+          location.hash = projectPageHash(linked.id);
+        });
+        const gantt = el('button', 'btn btn--ghost', 'Gantt');
+        gantt.type = 'button';
+        gantt.addEventListener('click', () => {
+          location.hash = `#/gantt?project=${encodeURIComponent(linked.id)}`;
+        });
+        const branch = el('button', 'btn btn--ghost', 'Branch');
+        branch.type = 'button';
+        branch.addEventListener('click', () => {
+          location.hash = `#/branch?project=${encodeURIComponent(linked.id)}`;
+        });
+        actions.append(open, gantt, branch);
+        preview.append(actions);
+      }
+
+      if (selectedTick?.connects_to) {
+        const connected =
+          current.ticks.find(
+            (tick) =>
+              tick.label === selectedTick.connects_to ||
+              tick.id === selectedTick.connects_to ||
+              tick.label.toLowerCase().includes(selectedTick.connects_to!.toLowerCase())
+          ) ?? null;
+        if (connected) {
+          const jump = el('button', 'btn btn--ghost', `Connected → ${connected.label}`);
+          jump.type = 'button';
+          jump.addEventListener('click', () => {
+            selectedId = connected.id;
+            const laid = layout.ticks.find((entry) => entry.id === connected.id);
+            if (laid) camY = focusCameraOnY(layout, laid.cy, zoom);
+            paint();
+          });
+          preview.append(jump);
+        } else {
+          preview.append(
+            el('p', 'graph-preview__meta', `Connects to ${selectedTick.connects_to}`)
+          );
+        }
       }
 
       if (mode === 'edit') {
@@ -1028,55 +1365,47 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         const name = textInput(item.label, 'Name');
         const start = dateInput(item.starts_on ?? terms.t1, 'Starts');
         const end = dateInput(item.ends_on ?? item.starts_on ?? terms.e, 'Ends');
-        const link = document.createElement('select');
-        link.className = 'hub-filter';
-        const none = document.createElement('option');
-        none.value = '';
-        none.textContent = 'No project link';
-        link.append(none);
-        for (const project of [...projects.filter((p) => p.type !== 'excursion'), ...excursions]) {
-          const opt = document.createElement('option');
-          opt.value = `${project.type === 'excursion' ? 'excursion' : 'project'}:${project.id}`;
-          opt.textContent = project.title;
-          if (item.link?.id === project.id) opt.selected = true;
-          link.append(opt);
-        }
-        const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
-        attachTo.setAttribute('aria-label', 'Attach to');
-        const also = el('select', 'hub-filter') as HTMLSelectElement;
-        also.setAttribute('aria-label', 'Also connect to');
-        if (selectedTick) {
-          fillTargetSelect(attachTo, current, {
-            skipId: selectedTick.id,
-            selected: attachSelectValue(selectedTick)
-          });
-          fillTargetSelect(also, current, {
-            includeBlank: 'No extra connection',
-            skipId: selectedTick.id,
-            selected: connectSelectValue(current, selectedTick.connects_to)
-          });
-        }
+        const linkPicker = createFilteredPicker(
+          projectLinkGroups(projects, excursions),
+          projectLinkValue(item.link),
+          { ariaLabel: 'Project link', blankLabel: 'No project link', placeholder: 'Search projects…' }
+        );
+        const attachPicker = selectedTick
+          ? createFilteredPicker(targetPickerGroups(current, selectedTick.id), attachSelectValue(selectedTick), {
+              ariaLabel: 'Attach to',
+              placeholder: 'Search lines, stations…'
+            })
+          : null;
+        const alsoPicker = selectedTick
+          ? createFilteredPicker(targetPickerGroups(current, selectedTick.id), connectSelectValue(current, selectedTick.connects_to), {
+              ariaLabel: 'Also connect to',
+              blankLabel: 'No extra connection',
+              placeholder: 'Search connections…'
+            })
+          : null;
+        const tracks = selectedStation ? trackPicker(selectedStation.tracks) : null;
         const save = el('button', 'btn btn--primary', 'Save');
         save.type = 'button';
         save.addEventListener('click', async () => {
           item.label = name.value.trim() || item.label;
           item.starts_on = start.value || null;
           item.ends_on = selectedStation ? end.value || null : end.value || start.value || null;
-          const [type, id] = link.value.split(':');
+          const [type, id] = linkPicker.getValue().split(':');
           item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
           if (selectedStation) {
+            selectedStation.tracks = tracks?.value() ?? selectedStation.tracks;
             const next = applyDateSpanToStation(selectedStation, year);
             selectedStation.starts_on = next.starts_on;
             selectedStation.ends_on = next.ends_on;
             selectedStation.y = next.y;
             selectedStation.height = next.height;
-          } else if (selectedTick) {
+          } else if (selectedTick && attachPicker && alsoPicker) {
             selectedTick.attach = parseAttachValue(
-              attachTo.value,
+              attachPicker.getValue(),
               current.lines[0]?.id ?? '',
               selectedTick.attach.kind === 'line' ? selectedTick.attach.y : 200
             );
-            selectedTick.connects_to = parseConnectValue(also.value, current);
+            selectedTick.connects_to = parseConnectValue(alsoPicker.getValue(), current);
             const next = applyDateToTickAttach(selectedTick, year);
             selectedTick.attach = next.attach;
           }
@@ -1096,11 +1425,15 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         });
         form.append(name);
         form.append(selectedStation ? field('Starts', start) : field('Date', start));
-        if (selectedStation) form.append(field('Ends', end));
-        if (selectedTick) {
-          form.append(field('Attach to', attachTo), field('Also connect to', also));
+        if (selectedStation) {
+          form.append(field('Ends', end));
+          if (tracks) form.append(field('Year lines', tracks.root));
         }
-        form.append(link, save, del);
+        form.append(field('Project link', linkPicker.root));
+        if (selectedTick && attachPicker && alsoPicker) {
+          form.append(field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root));
+        }
+        form.append(save, del);
         preview.append(form);
       }
     } else {
@@ -1148,7 +1481,7 @@ function renderDraftForm(
   const titles = { line: 'Add line', station: 'Add station', event: 'Add event' };
   const copy = {
     line: 'A new vertical line for the calendar year, from T1 through E.',
-    station: 'A program on one line. Start and end dates place it on the year.',
+    station: 'A program on one strand. Pick Junior, Rozelle, and/or Senior. Start and end dates place it on the year.',
     event: 'A competition. Attach it to a line, a station, or another competition’s border.'
   };
   card.append(
@@ -1179,20 +1512,29 @@ function renderDraftForm(
   }
   const start = dateInput(terms.t1, kind === 'event' ? 'Date' : 'Starts');
   const end = dateInput(terms.e, 'Ends');
-  const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
-  attachTo.setAttribute('aria-label', 'Attach to');
-  fillTargetSelect(attachTo, map, {
-    selected: map.lines[0] ? `line:${map.lines[0].id}` : ''
+  const tracks = trackPicker(['junior']);
+  const attachPicker = createFilteredPicker(
+    targetPickerGroups(map),
+    map.lines[0] ? `line:${map.lines[0].id}` : '',
+    { ariaLabel: 'Attach to', placeholder: 'Search lines, stations…' }
+  );
+  const alsoPicker = createFilteredPicker(targetPickerGroups(map), '', {
+    ariaLabel: 'Also connect to',
+    blankLabel: 'No extra connection',
+    placeholder: 'Search connections…'
   });
-  const also = el('select', 'hub-filter') as HTMLSelectElement;
-  also.setAttribute('aria-label', 'Also connect to');
-  fillTargetSelect(also, map, { includeBlank: 'No extra connection' });
 
   if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color));
   else if (kind === 'station') {
-    card.append(field('Name', name), field('Line', line), field('Starts', start), field('Ends', end));
+    card.append(
+      field('Name', name),
+      field('Line', line),
+      field('Year lines', tracks.root),
+      field('Starts', start),
+      field('Ends', end)
+    );
   } else {
-    card.append(field('Name', name), field('Attach to', attachTo), field('Also connect to', also), field('Date', start));
+    card.append(field('Name', name), field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root), field('Date', start));
   }
 
   const actions = el('div', 'confirm-card__actions');
@@ -1213,7 +1555,7 @@ function renderDraftForm(
         id: newId('line'),
         name: title,
         letter: (letter.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
-        color: (color.value as MapColorToken) || 'navy',
+        color: (color.value as MapColorToken) || 'blue',
         points: yearLinePoints(x)
       });
     } else if (kind === 'station') {
@@ -1227,6 +1569,7 @@ function renderDraftForm(
         label: title,
         y: 80,
         height: 110,
+        tracks: tracks.value(),
         in_stroke: 'solid',
         out_stroke: 'solid',
         starts_on: start.value || terms.t1,
@@ -1242,9 +1585,9 @@ function renderDraftForm(
       const draftTick: MapTick = {
         id: newId('tk'),
         label: title,
-        attach: parseAttachValue(attachTo.value, map.lines[0]!.id, 200),
+        attach: parseAttachValue(attachPicker.getValue(), map.lines[0]!.id, 200),
         stroke: 'solid',
-        connects_to: parseConnectValue(also.value, map),
+        connects_to: parseConnectValue(alsoPicker.getValue(), map),
         starts_on: start.value || terms.t1,
         ends_on: null,
         link: null

@@ -1,11 +1,14 @@
 import type { Project } from '@/schemas/project';
-import type { Task } from '@/schemas/task';
 import type { ExcursionTemplate } from '@/schemas/templates';
 import { tasksApi } from '@/services/client-api';
 import { buildExcursionPlan, formatLeadTimes } from '@/domain/excursion';
+import { projectPageHash } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, toDateKey } from '@/domain/queries';
 import { hashQuery } from '@/shell/shell';
+import { requestToggleDone } from '@/views/dashboard';
+import { renderQuickAdd } from '@/views/task-editor';
+import { mountProjectCard } from '@/views/hub-cards';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -61,134 +64,11 @@ function showConfirm(
   card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
-function renderDrafts(project: Project): HTMLElement {
-  const wrap = el('div', 'excursion-drafts');
-  wrap.append(el('h3', 'section-title', 'Drafted documents'));
-  const docs = project.drafted_documents;
-  if (!docs?.permission_note_draft && !docs?.staff_absence_email_draft) {
-    wrap.append(el('p', 'empty-state', 'No drafts on this excursion.'));
-    return wrap;
-  }
-  if (docs.permission_note_draft) {
-    wrap.append(el('h4', 'excursion-drafts__label', 'Permission note'));
-    const pre = el('pre', 'excursion-draft');
-    pre.textContent = docs.permission_note_draft;
-    wrap.append(pre);
-  }
-  if (docs.staff_absence_email_draft) {
-    wrap.append(el('h4', 'excursion-drafts__label', 'Staff absence email'));
-    const pre = el('pre', 'excursion-draft');
-    pre.textContent = docs.staff_absence_email_draft;
-    wrap.append(pre);
-  }
-  return wrap;
+function openProjectPage(project: Project): void {
+  location.hash = projectPageHash(project.id);
 }
 
-function renderExcursionCard(
-  project: Project,
-  tasks: Task[],
-  templatesById: Map<string, ExcursionTemplate>,
-  onSelect: () => void
-): HTMLElement {
-  const row = el('article', 'task-row');
-  row.tabIndex = 0;
-  row.setAttribute('role', 'button');
-  const tplName =
-    (project.competition_or_event_type &&
-      templatesById.get(project.competition_or_event_type)?.name) ||
-    project.competition_or_event_type ||
-    'excursion';
-  row.append(
-    el('h3', 'task-row__title', project.title),
-    el('p', 'task-row__desc', project.arc_summary || project.description)
-  );
-  const meta = el('div', 'task-row__meta');
-  meta.append(
-    el('span', 'chip', tplName),
-    el('span', 'chip chip--muted', project.current_end_date ? formatDisplayDate(project.current_end_date) : 'no date'),
-    el('span', 'chip chip--muted', `${project.generated_admin_tasks.length} admin tasks`)
-  );
-  row.append(meta);
-  const open = () => onSelect();
-  row.addEventListener('click', open);
-  row.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      open();
-    }
-  });
-  void tasks;
-  return row;
-}
-
-function renderDetail(
-  host: HTMLElement,
-  project: Project,
-  tasks: Task[],
-  template: ExcursionTemplate | undefined
-): void {
-  host.replaceChildren();
-  host.append(el('h2', 'section-title', project.title));
-  host.append(
-    el(
-      'p',
-      'view-lede',
-      template
-        ? `${template.name} · lead times ${formatLeadTimes(template)}`
-        : project.arc_summary || 'Excursion detail'
-    )
-  );
-
-  const keys = el('div', 'excursion-key-dates');
-  keys.append(el('h3', 'section-title', 'Key dates'));
-  const kd = project.key_dates;
-  if (!kd) {
-    keys.append(el('p', 'empty-state', 'No key dates.'));
-  } else {
-    const list = el('ul', 'excursion-key-dates__list');
-    const rows: Array<[string, string | null | undefined]> = [
-      ['Permission note', kd.permission_note_due],
-      ['Staff notification', kd.staff_notification_due],
-      ['Risk assessment', kd.risk_assessment_due],
-      ['Payment', kd.payment_due],
-      ['Event', project.current_end_date]
-    ];
-    for (const [label, date] of rows) {
-      if (!date) continue;
-      const li = el('li');
-      li.append(el('span', 'chip', label), el('span', 'chip chip--muted', formatDisplayDate(date)));
-      list.append(li);
-    }
-    keys.append(list);
-  }
-  host.append(keys);
-
-  const admin = el('div', 'task-stack');
-  admin.append(el('h3', 'section-title', 'Scheduled admin tasks'));
-  const adminTasks = tasks.filter((t) => project.generated_admin_tasks.includes(t.id));
-  if (!adminTasks.length) {
-    admin.append(el('p', 'empty-state', 'No admin tasks linked.'));
-  } else {
-    for (const task of adminTasks.sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))) {
-      const row = el('article', 'task-row');
-      row.append(
-        el('h3', 'task-row__title', task.title),
-        el('div', 'task-row__meta')
-      );
-      const meta = row.querySelector('.task-row__meta')!;
-      meta.append(
-        el('span', 'chip chip--muted', task.due_date ? formatDisplayDate(task.due_date) : 'undated'),
-        el('span', 'chip', task.priority),
-        el('span', 'chip chip--muted', task.source)
-      );
-      admin.append(row);
-    }
-  }
-  host.append(admin);
-  host.append(renderDrafts(project));
-}
-
-/** Dedicated excursions module — create from template with auto-scheduled admin tasks. */
+/** Dedicated excursions module — create from template, then open as a project. */
 export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursions…'));
   const [projects, tasks, templatesPayload] = await Promise.all([
@@ -273,7 +153,6 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   );
 
   const confirmHost = el('div', 'excursion-confirm');
-  const detailHost = el('div', 'excursion-detail');
   const listHost = el('div', 'task-stack');
 
   form.addEventListener('submit', (event) => {
@@ -302,36 +181,35 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
           el('p', 'canvas-status', `Created ${result.project.title} with ${result.tasks.length} tasks.`)
         );
         title.value = '';
-        await renderExcursionsView(canvas);
-        location.hash = '#/excursions';
+        openProjectPage(result.project);
       }
     );
   });
 
   canvas.append(form, confirmHost);
 
-  canvas.append(el('h2', 'section-title', 'Active excursions'));
+  canvas.append(
+    el('h2', 'section-title', 'Active excursions'),
+    el('p', 'view-lede', 'Excursions are projects. Click a card to open its page.')
+  );
   if (!excursions.length) {
     listHost.append(
       el('p', 'empty-state', 'No excursions yet. Ethics Olympiad and Da Vinci Decathlon templates are ready above.')
     );
   } else {
+    const reload = async () => {
+      await renderExcursionsView(canvas);
+    };
     for (const project of excursions) {
-      listHost.append(
-        renderExcursionCard(project, tasks, templatesById, () => {
-          renderDetail(detailHost, project, tasks, templatesById.get(project.competition_or_event_type ?? ''));
-        })
-      );
+      mountProjectCard(listHost, project, tasks, {
+        onToggleChild: (task) => requestToggleDone(confirmHost, task, reload),
+        onAddTask: () => {
+          confirmHost.replaceChildren(renderQuickAdd(() => void reload(), project.id));
+        },
+        onOpenPage: openProjectPage,
+        onActivate: openProjectPage
+      });
     }
   }
-  canvas.append(listHost, detailHost);
-
-  if (excursions[0]) {
-    renderDetail(
-      detailHost,
-      excursions[0],
-      tasks,
-      templatesById.get(excursions[0].competition_or_event_type ?? '')
-    );
-  }
+  canvas.append(listHost);
 }

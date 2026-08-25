@@ -29,16 +29,18 @@ import { buildExcursionPlan } from '@/domain/excursion';
 import { addDays, backlogTasks, toDateKey } from '@/domain/queries';
 import {
   affectedIdsForBlockedSince,
-  reconcileBlockedSince,
   reconcileBlockedSinceBatch
 } from '@/domain/blocked-since';
 import {
+  assembleDumpResult,
   buildProposal,
   emptyCalibration,
   recordActualSample,
   recordNegotiationSample,
   type ClareProposalInput
 } from '@/domain/clare';
+import { parseBrainDump } from '@/domain/clare-dump';
+import { buildClareBriefing } from '@/domain/clare-desk';
 import { DEFAULT_STALL_WEEKS, findStallCandidates, outcomeProjectStatus } from '@/domain/stall';
 import { agentSlug, detectStressPatterns } from '@/domain/stress';
 import { buildCapacitySnapshot, toCoreyPublicView } from '@/domain/capacity';
@@ -188,6 +190,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         parent_project_id: input.parent_project_id ?? null,
         parent_task_id: input.parent_task_id ?? null,
         depends_on: input.depends_on ?? [],
+        dependency_links: input.dependency_links,
         tags: input.tags ?? [],
         recurrence_rule: input.recurrence_rule ?? null,
         due_time: input.due_time ?? null,
@@ -195,7 +198,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         remind_dismissed_at: input.remind_dismissed_at ?? null,
         attachments: input.attachments ?? [],
         source: input.source ?? 'manual',
-        blocked_since: null
+        blocked_since: null,
+        page_blocks: input.page_blocks ?? []
       });
       await kv.setJSON(keys.taskKey(task.id), task);
       const ids = await readIndex(kv, keys.tasksIndexKey());
@@ -292,7 +296,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         key_dates: input.key_dates ?? null,
         student_group_reference: input.student_group_reference ?? null,
         generated_admin_tasks: input.generated_admin_tasks ?? [],
-        drafted_documents: input.drafted_documents ?? null
+        drafted_documents: input.drafted_documents ?? null,
+        page_blocks: input.page_blocks ?? []
       });
       await kv.setJSON(keys.projectKey(project.id), project);
       const ids = await readIndex(kv, keys.projectsIndexKey());
@@ -631,18 +636,50 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         calibration.sample_count > 0 ? calibration : null
       );
     },
+    async briefWithClare(input = {}) {
+      const tasks = await this.listTasks();
+      return buildClareBriefing(tasks, input.protocol_id, input.now ?? new Date());
+    },
+    async processDumpWithClare(input) {
+      const now = input.now ?? new Date();
+      const [frameworks, tasks, projects, calibrations] = await Promise.all([
+        this.listFrameworks(),
+        this.listTasks(),
+        this.listProjects(),
+        this.listClareCalibrations()
+      ]);
+      const byDomain = new Map(calibrations.map((c) => [c.domain, c]));
+      const items = parseBrainDump(input.text, {
+        now,
+        preferredDomain: input.domain,
+        tasks,
+        projects
+      });
+      return assembleDumpResult(
+        items,
+        frameworks,
+        (domain) => {
+          const cal = byDomain.get(domain);
+          return cal && cal.sample_count > 0 ? cal : null;
+        },
+        input.protocol_id
+      );
+    },
     async acceptClareProposal({ proposal, accepted_minutes, framework_id }) {
       const stamp = nowIso();
+      const tags = ['clare'];
+      if (proposal.dump_kind === 'communication') tags.push('comms');
       const task = await this.createTask({
         title: proposal.title,
         description: proposal.description,
         domain: proposal.domain,
         priority: proposal.priority,
         due_date: proposal.due_date,
+        parent_project_id: proposal.parent_project_id ?? null,
         framework_used: framework_id ?? proposal.framework_id,
         estimated_duration: accepted_minutes,
         source: 'suggested_by_agent',
-        tags: ['clare']
+        tags
       });
 
       const negotiation = ClareNegotiationLogSchema.parse({
@@ -685,6 +722,18 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       await kv.setJSON(keys.agentActionLogKey(log.id), log);
 
       return { task, negotiation, calibration };
+    },
+    async acceptClareBatch(items) {
+      const tasks = [];
+      const negotiations = [];
+      const calibrations = [];
+      for (const item of items) {
+        const result = await this.acceptClareProposal(item);
+        tasks.push(result.task);
+        negotiations.push(result.negotiation);
+        calibrations.push(result.calibration);
+      }
+      return { tasks, negotiations, calibrations };
     },
     async recordClareActual(taskId, actualMinutes) {
       const task = await this.updateTask(taskId, {

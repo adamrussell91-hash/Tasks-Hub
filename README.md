@@ -54,6 +54,8 @@ To redeploy:
 
 Until Functions redeploy, new routes (`/api/clare`, `/api/stall`, …) 404 and the Blobs store stays empty.
 
+If every `/api/*` call (and even `https://tasks-api.adam-russell.com/`) returns HTTP **503** `{ "error": "usage_exceeded" }`, the Netlify team is over its credit / Functions limit. The GitHub Pages app still loads, but sign-in cannot succeed and opening the API host will not help. Add credits or wait for the billing cycle on the team that owns `artasks-hub` (`c6696619-f478-4ac1-b0cd-1e4cfd3101df`). Teaching Hub’s API is usually down at the same time. Local `npm run dev` is unaffected.
+
 ## Build sequence status
 
 | Step | Status |
@@ -61,7 +63,7 @@ Until Functions redeploy, new routes (`/api/clare`, `/api/stall`, …) 404 and t
 | 1–3 Data model, CRUD, Board/Graph + calendar views | on `main` |
 | 4 Gantt + Board project filter | integrated |
 | 5–6 Excursion engine + admin scheduling | integrated |
-| 7 Clare negotiation + frameworks | integrated |
+| 7 Clare desk (dump, sprints, negotiation) | integrated |
 | 8 Pinch / shrink / due-soon | integrated |
 | 9 Stalled revive / Frankenstein / bury | integrated |
 | 10 StressFlag routing | integrated |

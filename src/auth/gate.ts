@@ -50,8 +50,14 @@ export function messageForSignInFailure(err: unknown): string {
     if (err.code === 'forbidden') {
       return `This origin is blocked. Open ${API_SIGN_IN_URL}`;
     }
+    if (err.code === 'usage_exceeded') {
+      return 'Sign-in is paused: the Netlify API host is over its usage limit. Add credits on artasks-hub, then try again.';
+    }
+    if (err.code === 'platform_unavailable') {
+      return 'The sign-in service is unavailable. Try again in a few minutes.';
+    }
     if (err.code === 'network_error') {
-      return `Could not reach the API. Try again, or open ${API_SIGN_IN_URL}`;
+      return `Could not reach the API. If ${API_SIGN_IN_URL} is also down, Netlify usage on artasks-hub is exceeded.`;
     }
     return err.message || 'Unable to sign in. Please try again.';
   }
@@ -68,6 +74,7 @@ export async function logout(): Promise<void> {
 
 export interface SignInOptions {
   onSuccess?: (session: SessionInfo) => void;
+  initialError?: string;
 }
 
 const SIGN_IN_HAZE_HTML = `
@@ -190,4 +197,6 @@ export function renderSignIn(container: HTMLElement, options?: SignInOptions): v
     error.textContent = message;
     error.hidden = false;
   }
+
+  if (options?.initialError) showError(options.initialError);
 }

@@ -12,6 +12,8 @@ import {
   sortByPriorityThenDue
 } from '@/domain/queries';
 import type { Task } from '@/schemas/task';
+import { createBlock } from '@/blocks/create-block';
+import { PageBlockSchema } from '@/schemas/page-block';
 
 function memoryKv(): KvAdapter {
   const map = new Map<string, unknown>();
@@ -54,6 +56,45 @@ describe('tasks store', () => {
 
     await store.deleteTask(created.id, { agent: 'Clare DeMind', reason: 'test cleanup' });
     expect(await store.getTask(created.id)).toBeNull();
+  });
+
+  it('persists page_blocks on tasks and projects', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    const created = await store.createTask({
+      title: 'Page task',
+      domain: 'teaching',
+      page_blocks: [createBlock('heading', 'block_h1')]
+    });
+    expect(created.page_blocks?.[0]).toMatchObject({
+      block_type: 'heading',
+      content: { text: '' }
+    });
+
+    const updated = await store.updateTask(created.id, {
+      page_blocks: [createBlock('rich_text', 'block_rt')]
+    });
+    expect(updated.page_blocks?.[0]?.block_type).toBe('rich_text');
+
+    const stubQuote = PageBlockSchema.parse({
+      id: 'block_q',
+      type: 'block',
+      block_type: 'quote',
+      variant: 'medium',
+      content: { text: 'Hold the line', attribution: 'Adam' },
+      created_at: '2026-08-01T00:00:00.000Z',
+      updated_at: '2026-08-01T00:00:00.000Z',
+      schema_version: 1
+    });
+    const project = (await store.listProjects())[0]!;
+    const next = await store.updateProject(project.id, {
+      page_blocks: [stubQuote]
+    });
+    expect(next.page_blocks?.[0]?.content).toMatchObject({
+      quote: 'Hold the line',
+      attribution: 'Adam'
+    });
   });
 
   it('saves and instantiates task templates', async () => {

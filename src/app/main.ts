@@ -3,14 +3,20 @@ import '../../design-kit/css/overlays.css';
 import '../../design-kit/css/chrome.css';
 import '../../design-kit/css/rail.css';
 import '../../design-kit/css/filters.css';
+import '../../design-kit/css/calendar.css';
 import '../../design-kit/css/sign-in.css';
 import '../styles/hub.css';
 import '../styles/views.css';
+import '../styles/cards.css';
+import '../styles/gantt.css';
+import '../styles/lesson-engine.css';
+import 'katex/dist/katex.min.css';
 
-import { fetchSession, logout, renderSignIn } from '@/auth/gate';
+import { fetchSession, logout, messageForSignInFailure, renderSignIn } from '@/auth/gate';
 import {
   isKnownHashView,
   parseCapacityShareToken,
+  parseEntityPage,
   parseHashRoute,
   renderHubShell,
   renderPageHeader,
@@ -33,16 +39,17 @@ import { renderStressView } from '@/views/stress';
 import { renderCoreyView, renderPublicCapacityView } from '@/views/corey';
 import {
   renderDayView,
-  renderWeekView,
-  renderMonthView,
   renderListView,
   renderSearchView,
   renderTemplatesView,
   renderProjectsView
 } from '@/views/dashboard';
+import { renderWeekView, renderMonthView } from '@/views/calendar';
+import { renderPageEditor } from '@/views/page-editor';
 import { renderGoalsView } from '@/views/goals';
 import { renderSomedayView } from '@/views/someday';
 import { renderReminderStrip } from '@/views/reminder-strip';
+import { tasksApi } from '@/services/client-api';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
@@ -61,9 +68,9 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Ideas parked over the rainbow until you promote them.'
   },
   clare: {
-    eyebrow: 'Negotiate',
+    eyebrow: 'Desk',
     title: 'Clare DeMind',
-    supporting: 'Tell Clare what needs doing. She proposes a time and a way in.'
+    supporting: 'Dump the chaos. She sorts it, then you confirm.'
   },
   graph: {
     eyebrow: 'Structure',
@@ -76,9 +83,9 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Transit diagrams for programs and projects.'
   },
   gantt: {
-    eyebrow: 'Schedule',
+    eyebrow: 'Project planning',
     title: 'Gantt',
-    supporting: 'Pick a project to see its timeline.'
+    supporting: 'Same tasks as every other view, plotted on a timeline. Projects sit in lanes.'
   },
   orbit: {
     eyebrow: 'Explore',
@@ -108,12 +115,12 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   week: {
     eyebrow: 'Shape',
     title: 'Week',
-    supporting: 'Due work with pinch watch and overload cues.'
+    supporting: 'Seven-day calendar — drag to move a due date, click a day to add.'
   },
   month: {
     eyebrow: 'Horizon',
     title: 'Month',
-    supporting: 'Milestones and excursion key dates this month.'
+    supporting: 'Full month of tasks, milestones, and excursion key dates.'
   },
   list: {
     eyebrow: 'Inbox',
@@ -244,6 +251,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
 
   async function paint() {
     window.scrollTo(0, 0);
+    document.body.classList.remove('is-universe-fullscreen');
     const canvasWrap = shell.canvas.closest('.hub-canvas');
     if (canvasWrap instanceof HTMLElement) canvasWrap.scrollTop = 0;
     shell.canvas.scrollTop = 0;
@@ -251,6 +259,34 @@ async function bootApp(root: HTMLElement): Promise<void> {
     const share = parseCapacityShareToken();
     if (share) {
       await bootPublicCapacity(root, share);
+      return;
+    }
+    const entity = parseEntityPage();
+    if (entity) {
+      let rail: HubViewId = entity.kind === 'project' ? 'projects' : 'board';
+      let eyebrow = entity.kind === 'task' ? 'Task' : 'Project';
+      let title = 'Page';
+      if (entity.kind === 'project') {
+        const project = await tasksApi.getProject(entity.id).catch(() => null);
+        if (project) {
+          title = project.title;
+          if (project.type === 'excursion') {
+            rail = 'excursions';
+            eyebrow = 'Excursion';
+          }
+        }
+      }
+      renderPrimaryNav(shell.railNav, rail);
+      renderPageHeader(shell, {
+        eyebrow,
+        title,
+        supporting: 'Build the page with Teaching Hub’s lesson blocks.'
+      });
+      try {
+        await renderPageEditor(shell.canvas, entity);
+      } catch (err) {
+        renderLoadError(shell.canvas, err, () => void paint(), 'Could not open page');
+      }
       return;
     }
     if (!isKnownHashView()) {
@@ -304,8 +340,9 @@ async function boot(root: HTMLElement): Promise<void> {
       return;
     }
     await bootApp(root);
-  } catch {
+  } catch (err) {
     renderSignIn(root, {
+      initialError: messageForSignInFailure(err),
       onSuccess: () => {
         void bootApp(root);
       }

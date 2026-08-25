@@ -146,16 +146,6 @@ function mountUtilities(refs: HubShellRefs): HTMLElement {
   return utilities;
 }
 
-function hubMark(): HTMLImageElement {
-  const mark = document.createElement('img');
-  mark.className = 'hub-mark';
-  mark.src = new URL('icons/tasks.svg', document.baseURI).href;
-  mark.alt = '';
-  mark.width = 32;
-  mark.height = 32;
-  return mark;
-}
-
 /** Shell from design-kit/snippets/shell.html — Tasks brand + labeled rail. */
 export function renderHubShell(root: HTMLElement, options: HubShellOptions = {}): HubShellRefs {
   root.replaceChildren();
@@ -217,7 +207,7 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
     refreshButton
   };
 
-  headerActions.append(mountUtilities(refs), hubMark());
+  headerActions.append(mountUtilities(refs));
   pageHeader.append(headerActions);
   canvasWrap.append(pageHeader, reminderHost, canvas);
   layout.append(rail, canvasWrap);
@@ -282,7 +272,7 @@ export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): 
   refs.pageHeader.append(copy);
   refs.headerActions.replaceChildren();
   if (config.actions) refs.headerActions.append(config.actions);
-  refs.headerActions.append(mountUtilities(refs), hubMark());
+  refs.headerActions.append(mountUtilities(refs));
   refs.pageHeader.append(refs.headerActions);
 }
 
@@ -301,9 +291,20 @@ export function hashQuery(): URLSearchParams {
   return new URLSearchParams(query);
 }
 
+/** Full task/project page: `#/task/:id` or `#/project/:id` — not rail destinations. */
+export function parseEntityPage(hash = location.hash): { kind: 'task' | 'project'; id: string } | null {
+  const path = hash.replace(/^#\/?/, '').split('?')[0] ?? '';
+  const parts = path.split('/');
+  if ((parts[0] === 'task' || parts[0] === 'project') && parts[1]) {
+    return { kind: parts[0], id: decodeURIComponent(parts[1]) };
+  }
+  return null;
+}
+
 export function isKnownHashView(hash = location.hash): boolean {
   const id = hashViewId(hash);
   if (id === 'capacity') return true;
+  if (parseEntityPage(hash)) return true;
   return KNOWN_VIEWS.includes(id as HubViewId);
 }
 

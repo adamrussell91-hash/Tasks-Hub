@@ -2,6 +2,15 @@ import type { FrameworkEntry } from '@/schemas/templates';
 import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
 import type { ClareCalibration } from '@/schemas/clare';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
+import type { DumpItem } from '@/domain/clare-dump';
+import { dumpVoiceLine } from '@/domain/clare-dump';
+import {
+  buildOpenLoopsToolkit,
+  buildShatterToolkit,
+  buildTimeMapToolkit,
+  sortOpenLoops,
+  type ClareToolkitResult
+} from '@/domain/clare-desk';
 
 export type ClareProposalInput = {
   title: string;
@@ -9,6 +18,7 @@ export type ClareProposalInput = {
   description?: string;
   priority?: TaskPriority;
   due_date?: string | null;
+  parent_project_id?: string | null;
   /** Open backlog titles used to detect “sitting untouched” patterns. */
   backlog_titles?: string[];
   protocol_id?: ClareProtocolId;
@@ -25,6 +35,7 @@ export type ClareProposal = {
   description: string;
   priority: TaskPriority;
   due_date: string | null;
+  parent_project_id: string | null;
   framework_id: string;
   framework_name: string;
   reasoning: string;
@@ -33,6 +44,8 @@ export type ClareProposal = {
   suggested_accepted_minutes: number;
   calibration_note: string | null;
   protocol_id?: ClareProtocolId;
+  dump_kind?: 'task' | 'communication' | 'note';
+  question?: string | null;
 };
 
 const BASE_BY_DOMAIN: Record<TaskDomain, number> = {
@@ -147,23 +160,27 @@ export function buildProposal(
   let proposedMinutes = minutes;
   let protocolReasoning = reasoning;
   switch (input.protocol_id) {
-    case 'estimate-it':
-      protocolReasoning += ` The ${proposedMinutes}-minute boundary includes the task type and your recent calibration.`;
-      break;
-    case 'choose-framework':
-      protocolReasoning += ` ${framework.name} is the clearest fit for how this work needs to move.`;
-      break;
-    case 'stress-test':
-      protocolReasoning += ' Stress test: protect the boundary from hidden setup, handoffs, and scope creep.';
-      break;
-    case 'flag-pinch':
-      protocolReasoning += input.due_date
-        ? ` Pinch point: the ${input.due_date} deadline leaves the least room for drift.`
-        : ` Pinch point: ${input.priority ?? 'medium'} priority without a deadline can leave this sitting untouched.`;
-      break;
     case 'shrink-first-step':
       proposedMinutes = Math.min(25, proposedMinutes);
       protocolReasoning += ' Start with one small first move, then decide whether the rest deserves another block.';
+      break;
+    case 'shatter-start':
+      proposedMinutes = Math.min(15, proposedMinutes);
+      protocolReasoning += ' Sixty seconds, one physical cue — then we talk about the rest.';
+      break;
+    case 'time-map':
+      proposedMinutes = Math.max(proposedMinutes, Math.round((minutes * 2) / 5) * 5);
+      protocolReasoning += ' Time map: hidden setup and wrap almost always double the honest guess.';
+      break;
+    case 'high-stakes':
+      protocolReasoning += input.due_date
+        ? ` High-stakes: ${input.due_date} is close and this has not moved.`
+        : ' High-stakes: name the finish line or it will keep sliding.';
+      break;
+    case 'open-loops':
+      protocolReasoning += ' This is a Now item — one next action, not a new guilt pile.';
+      break;
+    default:
       break;
   }
   return {
@@ -172,6 +189,7 @@ export function buildProposal(
     description: input.description?.trim() ?? '',
     priority: input.priority ?? 'medium',
     due_date: input.due_date ?? null,
+    parent_project_id: input.parent_project_id ?? null,
     framework_id: framework.id,
     framework_name: framework.name,
     reasoning: protocolReasoning,
@@ -252,4 +270,103 @@ export function recordActualSample(
 export function frameworkLabel(task: Task, frameworks: FrameworkEntry[]): string | null {
   if (!task.framework_used) return null;
   return frameworks.find((f) => f.id === task.framework_used)?.name ?? task.framework_used;
+}
+
+export type ClareDumpResult = {
+  voice: string;
+  proposals: ClareProposal[];
+  questions: string[];
+  notes: string[];
+  toolkit: ClareToolkitResult | null;
+};
+
+function proposalFromDumpItem(
+  item: DumpItem,
+  frameworks: FrameworkEntry[],
+  calibration: ClareCalibration | null,
+  protocolId?: ClareProtocolId
+): ClareProposal {
+  const proposal = buildProposal(
+    {
+      title: item.title,
+      domain: item.domain,
+      priority: item.priority,
+      due_date: item.due_date,
+      parent_project_id: item.parent_project_id,
+      protocol_id: protocolId
+    },
+    frameworks,
+    calibration
+  );
+  return {
+    ...proposal,
+    dump_kind: item.kind,
+    question: item.question
+  };
+}
+
+/** Turn parsed dump items into negotiated proposals. Notes stay questions, not writes. */
+export function assembleDumpResult(
+  items: DumpItem[],
+  frameworks: FrameworkEntry[],
+  calibrationFor: (domain: TaskDomain) => ClareCalibration | null,
+  protocolId?: ClareProtocolId
+): ClareDumpResult {
+  const questions: string[] = [];
+  const notes: string[] = [];
+  let working = items;
+
+  if (protocolId === 'open-loops') {
+    const loops = sortOpenLoops(items);
+    working = loops.now;
+    for (const item of loops.later) {
+      notes.push(`Later: ${item.title}`);
+    }
+    for (const item of loops.trash) {
+      notes.push(`Trash: ${item.title}`);
+    }
+  }
+
+  if (protocolId === 'shatter-start') {
+    const first = working.find((item) => item.kind !== 'note') ?? working[0];
+    working = first ? [first] : [];
+  }
+
+  const proposals: ClareProposal[] = [];
+  for (const item of working) {
+    if (item.kind === 'note') {
+      notes.push(item.title);
+      if (item.question) questions.push(item.question);
+      continue;
+    }
+    if (item.existing_title) {
+      if (item.question) questions.push(item.question);
+      continue;
+    }
+    const proposal = proposalFromDumpItem(
+      item,
+      frameworks,
+      calibrationFor(item.domain),
+      protocolId
+    );
+    proposals.push(proposal);
+    if (item.question) questions.push(item.question);
+  }
+
+  let toolkit: ClareToolkitResult | null = null;
+  const focus = items.find((item) => item.kind !== 'note') ?? items[0];
+  if (protocolId === 'shatter-start' && focus) toolkit = buildShatterToolkit(focus);
+  if (protocolId === 'time-map' && focus) {
+    const minutes = proposals[0]?.proposed_minutes ?? 45;
+    toolkit = buildTimeMapToolkit(focus, minutes);
+  }
+  if (protocolId === 'open-loops') toolkit = buildOpenLoopsToolkit(items);
+
+  return {
+    voice: dumpVoiceLine(items),
+    proposals,
+    questions,
+    notes,
+    toolkit
+  };
 }

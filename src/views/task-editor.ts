@@ -225,7 +225,7 @@ function renderSteps(
   host: HTMLElement,
   task: Task,
   allTasks: Task[],
-  onSaved: () => void | Promise<void>
+  onSaved: (task?: Task) => void | Promise<void>
 ): void {
   const section = el('section', 'task-editor__steps');
   section.append(el('h3', 'task-editor__steps-title', 'Steps'));
@@ -303,7 +303,7 @@ export async function renderTaskEditor(
   host: HTMLElement,
   task: Task,
   projects: Project[],
-  onSaved: () => void | Promise<void>
+  onSaved: (task?: Task) => void | Promise<void>
 ): Promise<void> {
   host.replaceChildren();
   const allTasks = await tasksApi.listTasks();
@@ -389,7 +389,7 @@ export async function renderTaskEditor(
       const dueValue = due.value || null;
       const dueTimeValue = remind.dueTimeInput.value || null;
       const reminder = remind.read(dueValue, dueTimeValue);
-      await tasksApi.updateTask(task.id, {
+      const updated = await tasksApi.updateTask(task.id, {
         title: nextTitle,
         due_date: dueValue,
         due_time: dueTimeValue,
@@ -402,7 +402,7 @@ export async function renderTaskEditor(
         remind_at: reminder.remind_at,
         remind_dismissed_at: reminder.remind_dismissed_at
       });
-      await onSaved();
+      await onSaved(updated);
     } catch (err) {
       save.disabled = false;
       discard.disabled = false;
@@ -425,14 +425,20 @@ export async function renderTaskEditor(
 }
 
 export function renderQuickAdd(
-  onCreated: () => void,
-  projectId: string | null = null
+  onCreated: (task: Task) => void,
+  projectId: string | null = null,
+  options: { dueDate?: string | null } = {}
 ): HTMLElement {
   const form = el('form', 'quick-add');
   const title = el('input', 'hub-search') as HTMLInputElement;
   title.placeholder = 'New task title';
   title.required = true;
   title.setAttribute('aria-label', 'New task title');
+  const due = el('input', 'hub-search') as HTMLInputElement;
+  due.type = 'date';
+  due.value = options.dueDate ?? '';
+  due.setAttribute('aria-label', 'Due date');
+  if (options.dueDate) due.dataset.calendarDue = options.dueDate;
   const domain = el('select', 'hub-filter') as HTMLSelectElement;
   domain.setAttribute('aria-label', 'Domain');
   for (const d of DOMAINS) {
@@ -443,20 +449,33 @@ export function renderQuickAdd(
   }
   const submit = el('button', 'btn btn--primary', 'Add');
   submit.type = 'submit';
-  form.append(title, domain, submit);
+  if (options.dueDate) form.append(title, due, domain, submit);
+  else form.append(title, domain, submit);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     submit.disabled = true;
     try {
-      await tasksApi.createTask({
+      const body: {
+        title: string;
+        domain: string;
+        parent_project_id: string | null;
+        due_date?: string;
+        kind: 'task';
+        bucket: 'active';
+      } = {
         title: title.value.trim(),
         domain: domain.value,
         parent_project_id: projectId,
         kind: 'task',
         bucket: 'active'
-      });
+      };
+      if (options.dueDate) {
+        const nextDue = due.value.trim();
+        if (nextDue) body.due_date = nextDue;
+      }
+      const created = await tasksApi.createTask(body);
       title.value = '';
-      onCreated();
+      onCreated(created);
     } catch (err) {
       form.append(el('p', 'empty-state', errorMessage(err)));
     } finally {
