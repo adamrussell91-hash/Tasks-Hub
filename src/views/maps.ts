@@ -1,7 +1,9 @@
 import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap, YearTrack } from '@/schemas/map';
 import type { Project } from '@/schemas/project';
+import { projectPageHash } from '@/domain/cards';
 import { tasksApi } from '@/services/client-api';
 import { exportMapHtml, pickCurrentYearMap } from '@/domain/maps';
+import { createFilteredPicker, createMapIndex, type MapIndexItem, type PickerGroup } from '@/views/map-nav';
 import {
   applyDateSpanToStation,
   applyDateToTickAttach,
@@ -28,6 +30,11 @@ import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] {
   const list = maps && maps.length > 0 ? maps : [mindWorks2026Map()];
   return list.map((map) => normalizeLineColors(map));
+}
+
+/** Hide rail + page header so the map can fill the viewport. */
+export function setMapFullscreenChrome(on: boolean): void {
+  document.documentElement.classList.toggle('is-map-fullscreen', on);
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -75,50 +82,93 @@ function lineForTick(map: TransitMap, tick: MapTick | undefined): MapLine | unde
   );
 }
 
-function fillTargetSelect(
-  select: HTMLSelectElement,
+function targetPickerGroups(map: TransitMap, skipId?: string | null): PickerGroup[] {
+  return [
+    {
+      label: 'Lines',
+      options: map.lines.map((item) => ({
+        value: `line:${item.id}`,
+        label: `${item.letter} · ${item.name}`
+      }))
+    },
+    {
+      label: 'Stations',
+      options: map.stations.map((item) => {
+        const line = findLine(map, item.line_id);
+        return {
+          value: `station:${item.id}`,
+          label: `${line?.letter ?? '?'} · ${item.label}`
+        };
+      })
+    },
+    {
+      label: 'Competitions',
+      options: map.ticks
+        .filter((item) => item.id !== skipId)
+        .map((item) => ({ value: `event:${item.id}`, label: item.label }))
+    }
+  ];
+}
+
+function projectLinkGroups(projects: Project[], excursions: Project[]): PickerGroup[] {
+  return [
+    {
+      label: 'Projects',
+      options: projects
+        .filter((project) => project.type !== 'excursion')
+        .map((project) => ({
+          value: `project:${project.id}`,
+          label: project.title
+        }))
+    },
+    {
+      label: 'Excursions',
+      options: excursions.map((project) => ({
+        value: `excursion:${project.id}`,
+        label: project.title
+      }))
+    }
+  ];
+}
+
+function projectLinkValue(link: MapStation['link'] | MapTick['link']): string {
+  if (!link) return '';
+  return `${link.type === 'excursion' ? 'excursion' : 'project'}:${link.id}`;
+}
+
+function buildMapIndexItems(
   map: TransitMap,
-  opts: { includeBlank?: string; skipId?: string | null; selected?: string }
-): void {
-  select.replaceChildren();
-  if (opts.includeBlank !== undefined) {
-    const blank = document.createElement('option');
-    blank.value = '';
-    blank.textContent = opts.includeBlank;
-    select.append(blank);
+  layout: MapCanvasLayout
+): MapIndexItem[] {
+  const items: MapIndexItem[] = [];
+  for (const station of map.stations) {
+    const line = findLine(map, station.line_id);
+    const laid = layout.stations.find((item) => item.id === station.id);
+    items.push({
+      id: station.id,
+      kind: 'station',
+      label: station.label,
+      group: line ? `${line.letter} · ${line.name}` : 'Programs',
+      y: laid ? laid.y + laid.h / 2 : station.y
+    });
   }
-  const lines = document.createElement('optgroup');
-  lines.label = 'Lines';
-  for (const item of map.lines) {
-    const opt = document.createElement('option');
-    opt.value = `line:${item.id}`;
-    opt.textContent = `${item.letter} · ${item.name}`;
-    if (opts.selected === opt.value) opt.selected = true;
-    lines.append(opt);
+  for (const tick of map.ticks) {
+    const line = lineForTick(map, tick);
+    const laid = layout.ticks.find((item) => item.id === tick.id);
+    items.push({
+      id: tick.id,
+      kind: 'event',
+      label: tick.label,
+      group: line ? `${line.letter} · competitions` : 'Competitions',
+      y: laid?.cy ?? 200
+    });
   }
-  select.append(lines);
-  const stations = document.createElement('optgroup');
-  stations.label = 'Stations';
-  for (const item of map.stations) {
-    const line = findLine(map, item.line_id);
-    const opt = document.createElement('option');
-    opt.value = `station:${item.id}`;
-    opt.textContent = `${line?.letter ?? '?'} · ${item.label}`;
-    if (opts.selected === opt.value) opt.selected = true;
-    stations.append(opt);
-  }
-  select.append(stations);
-  const events = document.createElement('optgroup');
-  events.label = 'Competitions';
-  for (const item of map.ticks) {
-    if (item.id === opts.skipId) continue;
-    const opt = document.createElement('option');
-    opt.value = `event:${item.id}`;
-    opt.textContent = item.label;
-    if (opts.selected === opt.value) opt.selected = true;
-    events.append(opt);
-  }
-  select.append(events);
+  return items.sort((a, b) => a.y - b.y || a.label.localeCompare(b.label));
+}
+
+function focusCameraOnY(layout: MapCanvasLayout, targetY: number, zoom: number): number {
+  const viewH = layout.height / zoom;
+  return Math.max(0, Math.min(layout.height - viewH, targetY - viewH / 3));
 }
 
 function attachSelectValue(tick: MapTick): string {
@@ -764,7 +814,8 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         /* keep the corrected colours on screen even if Blobs write fails */
       });
   }
-  let mode: Mode = 'edit';
+  let mode: Mode = 'view';
+  let fullscreen = false;
   let draft: DraftKind = null;
   let selectedId: string | null = null;
   let zoom = 1;
@@ -782,10 +833,40 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     svg.setAttribute('viewBox', `${camX} ${camY} ${vw} ${vh}`);
   };
 
+  const applyFullscreen = (on: boolean) => {
+    fullscreen = on;
+    setMapFullscreenChrome(on);
+  };
+
+  const leaveFullscreen = () => {
+    if (!fullscreen) return;
+    applyFullscreen(false);
+    paint();
+  };
+
+  const onFullscreenKey = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !fullscreen) return;
+    event.preventDefault();
+    leaveFullscreen();
+  };
+
+  const onFullscreenHash = () => {
+    if (location.hash.startsWith('#/maps')) return;
+    applyFullscreen(false);
+    window.removeEventListener('keydown', onFullscreenKey);
+    window.removeEventListener('hashchange', onFullscreenHash);
+  };
+
+  window.addEventListener('keydown', onFullscreenKey);
+  window.addEventListener('hashchange', onFullscreenHash);
+  setMapFullscreenChrome(false);
+
   const excursions = projects.filter((p) => p.type === 'excursion');
 
   const paint = () => {
-    canvas.classList.add('map-page');
+    canvas.classList.toggle('map-page', true);
+    canvas.classList.toggle('map-page--fullscreen', fullscreen);
+    setMapFullscreenChrome(fullscreen);
     const year = current.year ?? yearNow;
     const terms = schoolTerms(year);
     const layout = layoutMap(current);
@@ -842,7 +923,33 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       paint();
     });
 
-    toolbar.append(select, pills, exportBtn, newBtn);
+    const fullBtn = el(
+      'button',
+      fullscreen ? 'btn btn--primary' : 'btn btn--ghost',
+      fullscreen ? 'Exit full screen' : 'Full screen'
+    );
+    fullBtn.type = 'button';
+    fullBtn.setAttribute('aria-pressed', fullscreen ? 'true' : 'false');
+    fullBtn.addEventListener('click', () => {
+      applyFullscreen(!fullscreen);
+      paint();
+    });
+
+    toolbar.append(select, pills, exportBtn, newBtn, fullBtn);
+
+    const termPills = el('div', 'hub-pills map-term-pills');
+    termPills.setAttribute('role', 'group');
+    termPills.setAttribute('aria-label', 'Jump to term');
+    for (const term of layout.terms) {
+      const btn = el('button', 'hub-pills__btn', term.label);
+      btn.type = 'button';
+      btn.addEventListener('click', () => {
+        camY = focusCameraOnY(layout, term.y, zoom);
+        paint();
+      });
+      termPills.append(btn);
+    }
+    toolbar.append(termPills);
 
     if (mode === 'edit') {
       const addLine = el('button', draft === 'line' ? 'btn btn--primary' : 'btn btn--ghost', '+ Line');
@@ -938,6 +1045,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     tracksKey.textContent = 'Each strand has three lines: Junior, Rozelle, and Senior.';
     canvas.append(tracksKey);
 
+    const body = el('div', 'map-body');
     const stage = el('div', `map-stage${joining ? ' is-joining' : ''}${mode === 'edit' ? ' is-edit' : ''}`);
     const svg = svgEl('svg', {
       class: 'map-svg',
@@ -976,6 +1084,14 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     });
     zoomBar.append(out, reset, inn);
     stage.append(svg, zoomBar);
+
+    const indexItems = buildMapIndexItems(current, layout);
+    const index = createMapIndex(indexItems, selectedId, (item) => {
+      selectedId = item.id;
+      camY = focusCameraOnY(layout, item.y, zoom);
+      paint();
+    });
+    body.append(stage, index);
 
     svg.addEventListener(
       'wheel',
@@ -1167,7 +1283,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       window.addEventListener('pointerup', onUp, { once: true });
     });
 
-    canvas.append(stage);
+    canvas.append(body);
 
     const preview = el('aside', 'graph-preview map-preview');
     const selectedStation = current.stations.find((s) => s.id === selectedId);
@@ -1199,7 +1315,49 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       );
       const linked = item.link ? projects.find((p) => p.id === item.link!.id) : null;
       if (linked) {
-        preview.append(el('p', 'graph-preview__meta', `Linked project → ${linked.title}`));
+        const actions = el('div', 'map-preview__actions');
+        const open = el('button', 'btn btn--secondary', `Open ${linked.title}`);
+        open.type = 'button';
+        open.addEventListener('click', () => {
+          location.hash = projectPageHash(linked.id);
+        });
+        const gantt = el('button', 'btn btn--ghost', 'Gantt');
+        gantt.type = 'button';
+        gantt.addEventListener('click', () => {
+          location.hash = `#/gantt?project=${encodeURIComponent(linked.id)}`;
+        });
+        const branch = el('button', 'btn btn--ghost', 'Branch');
+        branch.type = 'button';
+        branch.addEventListener('click', () => {
+          location.hash = `#/branch?project=${encodeURIComponent(linked.id)}`;
+        });
+        actions.append(open, gantt, branch);
+        preview.append(actions);
+      }
+
+      if (selectedTick?.connects_to) {
+        const connected =
+          current.ticks.find(
+            (tick) =>
+              tick.label === selectedTick.connects_to ||
+              tick.id === selectedTick.connects_to ||
+              tick.label.toLowerCase().includes(selectedTick.connects_to!.toLowerCase())
+          ) ?? null;
+        if (connected) {
+          const jump = el('button', 'btn btn--ghost', `Connected → ${connected.label}`);
+          jump.type = 'button';
+          jump.addEventListener('click', () => {
+            selectedId = connected.id;
+            const laid = layout.ticks.find((entry) => entry.id === connected.id);
+            if (laid) camY = focusCameraOnY(layout, laid.cy, zoom);
+            paint();
+          });
+          preview.append(jump);
+        } else {
+          preview.append(
+            el('p', 'graph-preview__meta', `Connects to ${selectedTick.connects_to}`)
+          );
+        }
       }
 
       if (mode === 'edit') {
@@ -1207,34 +1365,24 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         const name = textInput(item.label, 'Name');
         const start = dateInput(item.starts_on ?? terms.t1, 'Starts');
         const end = dateInput(item.ends_on ?? item.starts_on ?? terms.e, 'Ends');
-        const link = document.createElement('select');
-        link.className = 'hub-filter';
-        const none = document.createElement('option');
-        none.value = '';
-        none.textContent = 'No project link';
-        link.append(none);
-        for (const project of [...projects.filter((p) => p.type !== 'excursion'), ...excursions]) {
-          const opt = document.createElement('option');
-          opt.value = `${project.type === 'excursion' ? 'excursion' : 'project'}:${project.id}`;
-          opt.textContent = project.title;
-          if (item.link?.id === project.id) opt.selected = true;
-          link.append(opt);
-        }
-        const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
-        attachTo.setAttribute('aria-label', 'Attach to');
-        const also = el('select', 'hub-filter') as HTMLSelectElement;
-        also.setAttribute('aria-label', 'Also connect to');
-        if (selectedTick) {
-          fillTargetSelect(attachTo, current, {
-            skipId: selectedTick.id,
-            selected: attachSelectValue(selectedTick)
-          });
-          fillTargetSelect(also, current, {
-            includeBlank: 'No extra connection',
-            skipId: selectedTick.id,
-            selected: connectSelectValue(current, selectedTick.connects_to)
-          });
-        }
+        const linkPicker = createFilteredPicker(
+          projectLinkGroups(projects, excursions),
+          projectLinkValue(item.link),
+          { ariaLabel: 'Project link', blankLabel: 'No project link', placeholder: 'Search projects…' }
+        );
+        const attachPicker = selectedTick
+          ? createFilteredPicker(targetPickerGroups(current, selectedTick.id), attachSelectValue(selectedTick), {
+              ariaLabel: 'Attach to',
+              placeholder: 'Search lines, stations…'
+            })
+          : null;
+        const alsoPicker = selectedTick
+          ? createFilteredPicker(targetPickerGroups(current, selectedTick.id), connectSelectValue(current, selectedTick.connects_to), {
+              ariaLabel: 'Also connect to',
+              blankLabel: 'No extra connection',
+              placeholder: 'Search connections…'
+            })
+          : null;
         const tracks = selectedStation ? trackPicker(selectedStation.tracks) : null;
         const save = el('button', 'btn btn--primary', 'Save');
         save.type = 'button';
@@ -1242,7 +1390,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           item.label = name.value.trim() || item.label;
           item.starts_on = start.value || null;
           item.ends_on = selectedStation ? end.value || null : end.value || start.value || null;
-          const [type, id] = link.value.split(':');
+          const [type, id] = linkPicker.getValue().split(':');
           item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
           if (selectedStation) {
             selectedStation.tracks = tracks?.value() ?? selectedStation.tracks;
@@ -1251,13 +1399,13 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
             selectedStation.ends_on = next.ends_on;
             selectedStation.y = next.y;
             selectedStation.height = next.height;
-          } else if (selectedTick) {
+          } else if (selectedTick && attachPicker && alsoPicker) {
             selectedTick.attach = parseAttachValue(
-              attachTo.value,
+              attachPicker.getValue(),
               current.lines[0]?.id ?? '',
               selectedTick.attach.kind === 'line' ? selectedTick.attach.y : 200
             );
-            selectedTick.connects_to = parseConnectValue(also.value, current);
+            selectedTick.connects_to = parseConnectValue(alsoPicker.getValue(), current);
             const next = applyDateToTickAttach(selectedTick, year);
             selectedTick.attach = next.attach;
           }
@@ -1281,10 +1429,11 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           form.append(field('Ends', end));
           if (tracks) form.append(field('Year lines', tracks.root));
         }
-        if (selectedTick) {
-          form.append(field('Attach to', attachTo), field('Also connect to', also));
+        form.append(field('Project link', linkPicker.root));
+        if (selectedTick && attachPicker && alsoPicker) {
+          form.append(field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root));
         }
-        form.append(link, save, del);
+        form.append(save, del);
         preview.append(form);
       }
     } else {
@@ -1364,14 +1513,16 @@ function renderDraftForm(
   const start = dateInput(terms.t1, kind === 'event' ? 'Date' : 'Starts');
   const end = dateInput(terms.e, 'Ends');
   const tracks = trackPicker(['junior']);
-  const attachTo = el('select', 'hub-filter') as HTMLSelectElement;
-  attachTo.setAttribute('aria-label', 'Attach to');
-  fillTargetSelect(attachTo, map, {
-    selected: map.lines[0] ? `line:${map.lines[0].id}` : ''
+  const attachPicker = createFilteredPicker(
+    targetPickerGroups(map),
+    map.lines[0] ? `line:${map.lines[0].id}` : '',
+    { ariaLabel: 'Attach to', placeholder: 'Search lines, stations…' }
+  );
+  const alsoPicker = createFilteredPicker(targetPickerGroups(map), '', {
+    ariaLabel: 'Also connect to',
+    blankLabel: 'No extra connection',
+    placeholder: 'Search connections…'
   });
-  const also = el('select', 'hub-filter') as HTMLSelectElement;
-  also.setAttribute('aria-label', 'Also connect to');
-  fillTargetSelect(also, map, { includeBlank: 'No extra connection' });
 
   if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color));
   else if (kind === 'station') {
@@ -1383,7 +1534,7 @@ function renderDraftForm(
       field('Ends', end)
     );
   } else {
-    card.append(field('Name', name), field('Attach to', attachTo), field('Also connect to', also), field('Date', start));
+    card.append(field('Name', name), field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root), field('Date', start));
   }
 
   const actions = el('div', 'confirm-card__actions');
@@ -1434,9 +1585,9 @@ function renderDraftForm(
       const draftTick: MapTick = {
         id: newId('tk'),
         label: title,
-        attach: parseAttachValue(attachTo.value, map.lines[0]!.id, 200),
+        attach: parseAttachValue(attachPicker.getValue(), map.lines[0]!.id, 200),
         stroke: 'solid',
-        connects_to: parseConnectValue(also.value, map),
+        connects_to: parseConnectValue(alsoPicker.getValue(), map),
         starts_on: start.value || terms.t1,
         ends_on: null,
         link: null

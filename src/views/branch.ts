@@ -1,11 +1,13 @@
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
+import { hashQuery } from '@/shell/shell';
 import { layoutProjectBranch, type BranchNode } from '@/domain/branch';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderTaskEditor } from '@/views/task-editor';
+import { createVizNodeList } from '@/views/viz-node-list';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -152,18 +154,33 @@ function mountBranch(
   }
   svg.append(nodes);
 
-  const list = el('ul', 'viz-alt');
-  list.setAttribute('aria-label', `Branch nodes for ${project.title}`);
-  for (const node of layout.nodes) {
-    const item = el('li');
-    const btn = el('button', 'btn btn--ghost', `${node.kind}: ${node.label}`);
-    btn.type = 'button';
-    btn.addEventListener('click', () => showPreview(preview, node, byId.get(node.id)));
-    item.append(btn);
-    list.append(item);
-  }
-
-  host.append(svg, tip, preview, list);
+  host.append(
+    svg,
+    tip,
+    preview,
+    createVizNodeList(
+      `Branch nodes for ${project.title}`,
+      layout.nodes.map((node) => ({ id: node.id, kind: node.kind, label: node.label })),
+      (entry) => {
+        const node = nodeMap.get(entry.id);
+        if (node) {
+          showPreview(preview, node, byId.get(node.id));
+          const task = byId.get(node.id);
+          if (task) {
+            const edit = el('button', 'btn btn--ghost', 'Edit');
+            edit.type = 'button';
+            edit.addEventListener('click', () => {
+              renderTaskEditor(preview, task, projects, () =>
+                mountBranch(host, project, tasks, projects)
+              );
+            });
+            preview.append(edit);
+          }
+        }
+      },
+      { collapsed: layout.nodes.length > 10 }
+    )
+  );
 }
 
 /** Spec §6.5 — hierarchical / depends_on tree for one project. */
@@ -182,7 +199,11 @@ export async function renderBranchView(canvas: HTMLElement): Promise<void> {
 
   const toolbar = el('div', 'graph-toolbar');
   const preferred = active.find((p) => p.id === 'proj_mindworks') ?? active[0];
-  let projectId = preferred.id;
+  const queryProject = hashQuery().get('project');
+  let projectId =
+    queryProject && active.some((project) => project.id === queryProject)
+      ? queryProject
+      : preferred.id;
   const projectFilter = createHubFilter({
     key: 'Project',
     label: 'Project',
