@@ -29,6 +29,7 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title' | 'due_date' | 
     updated_at: '2026-08-14T00:00:00.000Z',
     completed_at: null,
     status: 'open',
+    blocked_since: null,
     parent_project_id: null,
     parent_task_id: null,
     depends_on: [],

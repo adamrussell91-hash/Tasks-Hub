@@ -28,6 +28,10 @@ import { catalogPrograms } from '@/domain/programs-seed';
 import { buildExcursionPlan } from '@/domain/excursion';
 import { addDays, backlogTasks, toDateKey } from '@/domain/queries';
 import {
+  affectedIdsForBlockedSince,
+  reconcileBlockedSinceBatch
+} from '@/domain/blocked-since';
+import {
   assembleDumpResult,
   buildProposal,
   emptyCalibration,
@@ -194,18 +198,24 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         remind_dismissed_at: input.remind_dismissed_at ?? null,
         attachments: input.attachments ?? [],
         source: input.source ?? 'manual',
+        blocked_since: null,
         page_blocks: input.page_blocks ?? []
       });
       await kv.setJSON(keys.taskKey(task.id), task);
       const ids = await readIndex(kv, keys.tasksIndexKey());
       ids.push(task.id);
       await writeIndex(kv, keys.tasksIndexKey(), ids);
-      return task;
+      const all = await this.listTasks();
+      const merged = all.map((item) => (item.id === task.id ? task : item));
+      const affected = affectedIdsForBlockedSince(task.id, merged.length ? merged : [task]);
+      const updates = await reconcileBlockedSinceBatch(merged.length ? merged : [task], affected);
+      const reconciled = updates.get(task.id);
+      return reconciled ?? task;
     },
     async updateTask(id, patch) {
       const existing = await this.getTask(id);
       if (!existing) throw new Error(`Task not found: ${id}`);
-      const next = TaskSchema.parse({
+      let next = TaskSchema.parse({
         ...existing,
         ...patch,
         id: existing.id,
@@ -223,6 +233,14 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       if (patch.status === 'done' && existing.status !== 'done') {
         await spawnRecurringSuccessor(this, next);
       }
+      const all = await this.listTasks();
+      const merged = all.map((item) => (item.id === id ? next : item));
+      const affected = affectedIdsForBlockedSince(id, merged);
+      const updates = await reconcileBlockedSinceBatch(merged, affected);
+      for (const [taskId, task] of updates) {
+        await kv.setJSON(keys.taskKey(taskId), task);
+      }
+      next = updates.get(id) ?? next;
       return next;
     },
     async deleteTask(id, meta) {
