@@ -90,7 +90,10 @@ export async function renderPageEditor(canvas: HTMLElement, ref: EntityPageRef):
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading page…'));
   try {
     if (ref.kind === 'task') {
-      const [task, projects] = await Promise.all([tasksApi.getTask(ref.id), tasksApi.listProjects()]);
+      const [task, projects] = await Promise.all([
+        tasksApi.getTask(ref.id),
+        tasksApi.listProjects().catch(() => [] as Project[])
+      ]);
       if (!task) throw new Error('Task not found');
       paintTaskPage(canvas, task, projects);
       return;
@@ -210,7 +213,13 @@ function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): vo
 
   const canvasHost = el('div', 'block-canvas');
   const layout = el('div', 'page-editor__layout');
-  mountEngine(layout, canvasHost, pageBlocksOf(current), (blocks) => persist({ page_blocks: blocks }));
+  try {
+    mountEngine(layout, canvasHost, pageBlocksOf(current), (blocks) => persist({ page_blocks: blocks }));
+  } catch (err) {
+    layout.replaceChildren(
+      el('p', 'empty-state', `Could not open the lesson canvas: ${errorMessage(err)}`)
+    );
+  }
 
   page.append(card, errorHost, layout);
   canvas.replaceChildren(page);
@@ -313,7 +322,13 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
 
   const canvasHost = el('div', 'block-canvas');
   const layout = el('div', 'page-editor__layout');
-  mountEngine(layout, canvasHost, pageBlocksOf(current), (blocks) => persist({ page_blocks: blocks }));
+  try {
+    mountEngine(layout, canvasHost, pageBlocksOf(current), (blocks) => persist({ page_blocks: blocks }));
+  } catch (err) {
+    layout.replaceChildren(
+      el('p', 'empty-state', `Could not open the lesson canvas: ${errorMessage(err)}`)
+    );
+  }
 
   page.append(card, errorHost, layout);
   canvas.replaceChildren(page);

@@ -24,6 +24,34 @@
   font-size: var(--text-sm);
 }
 
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--navy) 32%, transparent);
+}
+
+.confirm-overlay .confirm-card {
+  width: min(28rem, 100%);
+}
+
+.confirm-card .page-header__title {
+  font-size: var(--text-lg);
+}
+
+.confirm-card .page-header__supporting {
+  font-size: var(--text-sm);
+}
+
+.board-confirm:empty,
+.task-confirm:empty,
+.excursion-confirm:empty {
+  display: none;
+}
+
 .task-stack {
   display: flex;
   flex-direction: column;
