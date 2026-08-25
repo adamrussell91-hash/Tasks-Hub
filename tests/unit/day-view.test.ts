@@ -110,8 +110,9 @@ describe('Today view mutations', () => {
     canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')?.click();
 
     await vi.waitFor(() => {
-      expect(canvas.textContent).not.toContain('Due today');
+      expect(canvas.querySelector('[data-task-id="task_today"]')).toBeNull();
     });
     expect(canvas.querySelector('.canvas-status')).toBeNull();
+    expect(canvas.textContent).toContain('Nothing due today');
   });
 });

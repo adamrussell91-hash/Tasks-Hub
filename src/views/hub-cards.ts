@@ -340,6 +340,15 @@ export function renderProjectExpandedCard(
   return wrap;
 }
 
+export function removeMountedTaskCard(host: HTMLElement, taskId: string): boolean {
+  const card =
+    host.querySelector<HTMLElement>(`[data-id="${taskId}"]`) ??
+    host.querySelector<HTMLElement>(`[data-task-id="${taskId}"]`)?.closest<HTMLElement>('.hub-card-slot');
+  if (!card) return false;
+  card.remove();
+  return true;
+}
+
 export function mountTaskCard(
   host: HTMLElement,
   task: Task,

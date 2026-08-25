@@ -16,7 +16,7 @@ import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
-import { mountProjectCard, mountTaskCard } from '@/views/hub-cards';
+import { mountProjectCard, mountTaskCard, removeMountedTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 
@@ -35,24 +35,33 @@ function appendTaskCard(
   host: HTMLElement,
   task: Task,
   confirmHost: HTMLElement,
-  reload: () => Promise<void>,
+  handlers: {
+    onRemoved: () => void | Promise<void>;
+    onChanged: () => void | Promise<void>;
+  },
   projects: Project[] = []
 ): void {
   mountTaskCard(host, task, {
-    onToggle: (current) => requestToggleDone(confirmHost, current, reload),
-    onDelete: (current) => confirmDeleteTask(confirmHost, current, reload),
-    onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void reload())
+    onToggle: (current) => requestToggleDone(confirmHost, current, async () => {
+      await handlers.onChanged();
+    }),
+    onDelete: (current) => confirmDeleteTask(confirmHost, current, handlers.onRemoved),
+    onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void handlers.onChanged())
   });
 }
 
-function confirmDeleteTask(host: HTMLElement, task: Task, reload: () => Promise<void>): void {
+function confirmDeleteTask(
+  host: HTMLElement,
+  task: Task,
+  onRemoved: () => void | Promise<void>
+): void {
   showConfirmWrite(
     host,
     `Delete “${task.title}”`,
     'This removes the task from the hub.',
     async () => {
+      await onRemoved();
       await tasksApi.deleteTask(task.id, { agent: 'Tasks Hub', reason: 'Row delete' });
-      await reload();
     },
     'Delete'
   );
@@ -189,6 +198,30 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
       renderQuickAdd(
         (created) => {
           upsertTask(tasks, created);
+          const empty = canvas.querySelector('.empty-state');
+          empty?.remove();
+          let stack = canvas.querySelector<HTMLElement>('.task-stack');
+          if (!stack) {
+            stack = el('div', 'task-stack');
+            canvas.append(stack);
+          }
+          if (stack.querySelector(`[data-task-id="${created.id}"]`)) return;
+          if (adaptiveTodayTasks([created], today).length) {
+            appendTaskCard(
+              stack,
+              created,
+              confirmHost,
+              {
+                onRemoved: () => afterDayMutation(created.id),
+                onChanged: async () => {
+                  tasks = await tasksApi.listTasks().catch(() => tasks);
+                  paint();
+                }
+              },
+              projects
+            );
+            return;
+          }
           paint();
         },
         null,
@@ -196,6 +229,20 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
       )
     );
     canvas.append(confirmHost);
+
+    async function afterDayMutation(taskId: string): Promise<void> {
+      removeMountedTaskCard(canvas, taskId);
+      tasks = dropTask(tasks, taskId);
+      const pressure = canvas.querySelector('.pressure-host');
+      if (pressure instanceof HTMLElement) {
+        renderPressureStrips(pressure, tasks, today, () => void paint());
+      }
+      if (!canvas.querySelector('.hub-card-slot') && !canvas.querySelector('.empty-state')) {
+        canvas.append(
+          el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.')
+        );
+      }
+    }
 
     if (!list.length) {
       canvas.append(
@@ -210,9 +257,12 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
         stack,
         task,
         confirmHost,
-        async () => {
-          tasks = await tasksApi.listTasks().catch(() => dropTask(tasks, task.id));
-          paint();
+        {
+          onRemoved: () => afterDayMutation(task.id),
+          onChanged: async () => {
+            tasks = await tasksApi.listTasks().catch(() => tasks);
+            paint();
+          }
         },
         projects
       );
@@ -294,14 +344,44 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
       }).el
     );
     canvas.append(filters);
+    const confirmHost = el('div', 'task-confirm');
     canvas.append(
       renderQuickAdd((created) => {
         upsertTask(tasks, created);
+        canvas.querySelector('.empty-state')?.remove();
+        let stack = canvas.querySelector<HTMLElement>('.task-stack');
+        if (!stack) {
+          stack = el('div', 'task-stack');
+          canvas.append(stack);
+        }
+        if (!stack.querySelector(`[data-task-id="${created.id}"]`) && backlogTasks([created]).length) {
+          appendTaskCard(stack, created, confirmHost, backlogHandlers(created.id), projects);
+          return;
+        }
         paint();
       })
     );
-    const confirmHost = el('div', 'task-confirm');
     canvas.append(confirmHost);
+
+    function backlogHandlers(taskId: string): {
+      onRemoved: () => void;
+      onChanged: () => Promise<void>;
+    } {
+      return {
+        onRemoved: () => {
+          removeMountedTaskCard(canvas, taskId);
+          tasks = dropTask(tasks, taskId);
+          if (!canvas.querySelector('.hub-card-slot') && !canvas.querySelector('.empty-state')) {
+            canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
+          }
+        },
+        onChanged: async () => {
+          tasks = await tasksApi.listTasks().catch(() => tasks);
+          paint();
+        }
+      };
+    }
+
     if (!list.length) {
       canvas.append(el('p', 'empty-state', 'Backlog is clear.'));
       canvas.scrollTop = scrollTop;
@@ -309,16 +389,7 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
     }
     const stack = el('div', 'task-stack');
     for (const task of list) {
-      appendTaskCard(
-        stack,
-        task,
-        confirmHost,
-        async () => {
-          tasks = await tasksApi.listTasks().catch(() => dropTask(tasks, task.id));
-          paint();
-        },
-        projects
-      );
+      appendTaskCard(stack, task, confirmHost, backlogHandlers(task.id), projects);
     }
     canvas.append(stack);
     canvas.scrollTop = scrollTop;
@@ -698,7 +769,18 @@ function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): voi
   const confirmHost = host.parentElement?.querySelector('.task-confirm');
   for (const task of tasks) {
     if (confirmHost instanceof HTMLElement) {
-      appendTaskCard(host, task, confirmHost, () => refreshSearch(host), projects);
+      appendTaskCard(
+        host,
+        task,
+        confirmHost,
+        {
+          onRemoved: () => {
+            removeMountedTaskCard(host, task.id);
+          },
+          onChanged: () => refreshSearch(host)
+        },
+        projects
+      );
     }
   }
 }
