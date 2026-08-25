@@ -1,6 +1,14 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/api/client';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
+import {
+  filterCachedTasks,
+  mergeListedTasks,
+  rememberCreatedTask,
+  rememberDeletedTask,
+  rememberUpdatedTask,
+  restoreDeletedTask
+} from '@/services/task-cache';
 import type { TransitMap } from '@/schemas/map';
 import type { Program } from '@/schemas/program';
 import type {
@@ -12,13 +20,34 @@ import type {
 
 /** Browser client that mirrors the shared TasksStore surface (Clare will use the same server store). */
 export const tasksApi = {
-  listTasks: () => apiGet<{ tasks: Task[] }>('/api/tasks').then((r) => r.tasks),
-  getTask: (id: string) => apiGet<Task>(`/api/tasks?id=${encodeURIComponent(id)}`),
-  createTask: (body: unknown) => apiPost<Task>('/api/tasks', body),
+  listTasks: () => apiGet<{ tasks: Task[] }>('/api/tasks').then((r) => mergeListedTasks(r.tasks)),
+  getTask: (id: string) =>
+    apiGet<Task>(`/api/tasks?id=${encodeURIComponent(id)}`).then((task) => {
+      rememberUpdatedTask(task);
+      return task;
+    }),
+  createTask: (body: unknown) =>
+    apiPost<Task>('/api/tasks', body).then((task) => {
+      rememberCreatedTask(task);
+      return task;
+    }),
   updateTask: (id: string, body: unknown) =>
-    apiPatch<Task>(`/api/tasks?id=${encodeURIComponent(id)}`, body),
-  deleteTask: (id: string, meta?: { agent?: string; reason?: string }) =>
-    apiDelete<{ deleted: boolean }>(`/api/tasks?id=${encodeURIComponent(id)}`, meta),
+    apiPatch<Task>(`/api/tasks?id=${encodeURIComponent(id)}`, body).then((task) => {
+      rememberUpdatedTask(task);
+      return task;
+    }),
+  deleteTask: async (id: string, meta?: { agent?: string; reason?: string }) => {
+    rememberDeletedTask(id);
+    try {
+      return await apiDelete<{ deleted: boolean }>(
+        `/api/tasks?id=${encodeURIComponent(id)}`,
+        meta
+      );
+    } catch (err) {
+      restoreDeletedTask(id);
+      throw err;
+    }
+  },
 
   listProjects: () => apiGet<{ projects: Project[] }>('/api/projects').then((r) => r.projects),
   getProject: (id: string) => apiGet<Project>(`/api/projects?id=${encodeURIComponent(id)}`),
@@ -189,7 +218,9 @@ export const tasksApi = {
     }>('/api/reviews', { action: 'close', project_id, reason }),
 
   search: (q: string) =>
-    apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`),
+    apiGet<{ tasks: Task[]; projects: Project[] }>(`/api/search?q=${encodeURIComponent(q)}`).then(
+      (r) => ({ ...r, tasks: filterCachedTasks(r.tasks) })
+    ),
 
   listMaps: () => apiGet<{ maps: TransitMap[] }>('/api/maps').then((r) => r.maps),
   getMap: (id: string) => apiGet<TransitMap>(`/api/maps?id=${encodeURIComponent(id)}`),

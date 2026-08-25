@@ -225,7 +225,7 @@ function renderSteps(
   host: HTMLElement,
   task: Task,
   allTasks: Task[],
-  onSaved: () => void | Promise<void>
+  onSaved: (task?: Task) => void | Promise<void>
 ): void {
   const section = el('section', 'task-editor__steps');
   section.append(el('h3', 'task-editor__steps-title', 'Steps'));
@@ -303,7 +303,7 @@ export async function renderTaskEditor(
   host: HTMLElement,
   task: Task,
   projects: Project[],
-  onSaved: () => void | Promise<void>
+  onSaved: (task?: Task) => void | Promise<void>
 ): Promise<void> {
   host.replaceChildren();
   const allTasks = await tasksApi.listTasks();
@@ -389,7 +389,7 @@ export async function renderTaskEditor(
       const dueValue = due.value || null;
       const dueTimeValue = remind.dueTimeInput.value || null;
       const reminder = remind.read(dueValue, dueTimeValue);
-      await tasksApi.updateTask(task.id, {
+      const updated = await tasksApi.updateTask(task.id, {
         title: nextTitle,
         due_date: dueValue,
         due_time: dueTimeValue,
@@ -402,7 +402,7 @@ export async function renderTaskEditor(
         remind_at: reminder.remind_at,
         remind_dismissed_at: reminder.remind_dismissed_at
       });
-      await onSaved();
+      await onSaved(updated);
     } catch (err) {
       save.disabled = false;
       discard.disabled = false;
@@ -425,7 +425,7 @@ export async function renderTaskEditor(
 }
 
 export function renderQuickAdd(
-  onCreated: () => void,
+  onCreated: (task: Task) => void,
   projectId: string | null = null,
   options: { dueDate?: string | null } = {}
 ): HTMLElement {
@@ -473,9 +473,9 @@ export function renderQuickAdd(
         const nextDue = due.value.trim();
         if (nextDue) body.due_date = nextDue;
       }
-      await tasksApi.createTask(body);
+      const created = await tasksApi.createTask(body);
       title.value = '';
-      onCreated();
+      onCreated(created);
     } catch (err) {
       form.append(el('p', 'empty-state', errorMessage(err)));
     } finally {

@@ -451,7 +451,15 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
       );
     }
     calendar.append(body);
-    calendar.append(renderAgenda(items, selectedDateKey!, mode, showPreview, () => void reload()));
+    calendar.append(
+      renderAgenda(items, selectedDateKey!, mode, showPreview, (created) => {
+        const index = tasks.findIndex((entry) => entry.id === created.id);
+        if (index >= 0) tasks[index] = created;
+        else tasks.push(created);
+        if (created.due_date) selectedDateKey = created.due_date;
+        paint();
+      })
+    );
     canvas.append(calendar);
     canvas.append(preview);
 
@@ -658,7 +666,7 @@ function renderAgenda(
   dateKey: string,
   mode: CalendarMode,
   onOpen: (item: CalendarItem) => void,
-  onReload: () => void
+  onCreated: (task: Task) => void
 ): HTMLElement {
   const dayItems = itemsForDay(items, dateKey);
   const agenda = el('section', 'hub-calendar__detail');
@@ -727,7 +735,7 @@ function renderAgenda(
     stack.append(row);
   }
   agenda.append(stack);
-  agenda.append(renderQuickAdd(onReload, null, { dueDate: dateKey }));
+  agenda.append(renderQuickAdd(onCreated, null, { dueDate: dateKey }));
   return agenda;
 }
 
