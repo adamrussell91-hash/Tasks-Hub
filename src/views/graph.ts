@@ -13,6 +13,7 @@ import { tasksApi } from '@/services/client-api';
 import { hashQuery } from '@/shell/shell';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderTaskEditor } from '@/views/task-editor';
+import { createVizNodeList } from '@/views/viz-node-list';
 
 type GraphMode = 'blockers' | 'workstreams';
 
@@ -238,17 +239,17 @@ function mountGraph(host: HTMLElement, tasks: Task[], projects: Project[], mode:
     draw();
   }
 
-  const list = el('ul', 'viz-alt');
-  list.setAttribute('aria-label', mode === 'blockers' ? 'Blocker nodes' : 'Workstream nodes');
-  for (const node of simNodes) {
-    const item = el('li');
-    const btn = el('button', 'btn btn--ghost', `${node.kind}: ${node.label}`);
-    btn.type = 'button';
-    btn.addEventListener('click', () => showPreview(node));
-    item.append(btn);
-    list.append(item);
-  }
-  host.append(list);
+  host.append(
+    createVizNodeList(
+      mode === 'blockers' ? 'Blocker nodes' : 'Workstream nodes',
+      simNodes.map((node) => ({ id: node.id, kind: node.kind, label: node.label })),
+      (node) => {
+        const hit = simNodes.find((entry) => entry.id === node.id);
+        if (hit) showPreview(hit);
+      },
+      { selectedId: selected, collapsed: simNodes.length > 12 }
+    )
+  );
 
   canvas.addEventListener('mousemove', (event) => {
     const rect = canvas.getBoundingClientRect();

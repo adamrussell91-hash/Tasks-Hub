@@ -1,6 +1,7 @@
 import type { Task } from '@/schemas/task';
 import type { Project, Milestone } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
+import { hashQuery } from '@/shell/shell';
 import {
   GANTT_BAR_HEIGHT,
   GANTT_GROUP_HEADER_HEIGHT,
@@ -208,7 +209,11 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
   }
 
   const liveProjects = projects.filter((project) => project.status !== 'archived_dead');
-  if (!session.projectId || !liveProjects.some((project) => project.id === session.projectId)) {
+  const queryProject = hashQuery().get('project');
+  if (queryProject && liveProjects.some((project) => project.id === queryProject)) {
+    session.scope = 'project';
+    session.projectId = queryProject;
+  } else if (!session.projectId || !liveProjects.some((project) => project.id === session.projectId)) {
     const dated = liveProjects.find((project) => buildScopedGanttRows([project], tasks, 'project', project.id).length);
     session.projectId = dated?.id ?? liveProjects[0]?.id ?? '';
   }
