@@ -1,0 +1,303 @@
+import type { Project } from '@/schemas/project';
+import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
+import { addDays, toDateKey } from '@/domain/queries';
+
+export type DumpKind = 'task' | 'communication' | 'note';
+
+export type DumpItem = {
+  raw: string;
+  title: string;
+  kind: DumpKind;
+  domain: TaskDomain;
+  priority: TaskPriority;
+  due_date: string | null;
+  parent_project_id: string | null;
+  question: string | null;
+  existing_title: string | null;
+};
+
+const WEEKDAYS: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6
+};
+
+const TEACHING = [
+  'year',
+  'lesson',
+  'marking',
+  'class',
+  'student',
+  'parent',
+  'unit',
+  'assessment',
+  'excursion',
+  'period',
+  'faculty',
+  'staff',
+  'permission',
+  'olympiad',
+  'mindworks'
+];
+const WEDDING = ['florist', 'venue', 'wedding', 'suit', 'photographer', 'caterer', 'rsvp'];
+const HEALTH = [
+  'gp',
+  'doctor',
+  'blood',
+  'dex',
+  'vyvanse',
+  'physio',
+  'sleep',
+  'script',
+  'medical',
+  'appointment'
+];
+const LIFE = ['grocer', 'rent', 'bills', 'fragrance', 'laundry', 'home', 'car', 'council'];
+const COMMS = [
+  'email',
+  'call',
+  'phone',
+  'meeting',
+  'message',
+  'text',
+  'zoom',
+  'follow-up',
+  'follow up',
+  'reply',
+  'write back'
+];
+const NOTE = ['remember', 'note:', 'fyi', 'just so', 'ref:', 'for later', 'idea:'];
+
+function includesAny(hay: string, needles: string[]): boolean {
+  return needles.some((n) => hay.includes(n));
+}
+
+function stripListPrefix(line: string): string {
+  return line
+    .replace(/^[-*•]\s+/, '')
+    .replace(/^\d+[.)]\s+/, '')
+    .replace(/^(?:and then|also|then|plus)\s+/i, '')
+    .trim();
+}
+
+function titleCaseAction(line: string): string {
+  const cleaned = stripDuePhrases(stripListPrefix(line));
+  if (!cleaned) return '';
+  const first = cleaned.charAt(0).toUpperCase();
+  return `${first}${cleaned.slice(1)}`.replace(/\s+/g, ' ').replace(/[.]+$/, '');
+}
+
+function stripDuePhrases(line: string): string {
+  return line
+    .replace(/\b(?:due\s+)?(?:today|tomorrow|tonight|this afternoon|this week|next week)\b/gi, '')
+    .replace(/\b(?:on|this|next)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
+    .replace(/\bdue\s+\d{4}-\d{2}-\d{2}\b/gi, '')
+    .replace(/\bdue\s+\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/gi, '')
+    .replace(/[,\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function inferDomain(text: string, preferred: TaskDomain): TaskDomain {
+  if (includesAny(text, TEACHING)) return 'teaching';
+  if (includesAny(text, WEDDING)) return 'wedding';
+  if (includesAny(text, HEALTH)) return 'health';
+  if (includesAny(text, LIFE)) return 'life';
+  return preferred;
+}
+
+function inferPriority(text: string): TaskPriority {
+  if (includesAny(text, ['urgent', 'asap', 'now', 'critical', 'today or die'])) return 'urgent';
+  if (includesAny(text, ['high', 'important', 'deadline', 'must', 'overdue'])) return 'high';
+  if (includesAny(text, ['low', 'someday', 'maybe', 'whenever'])) return 'low';
+  return 'medium';
+}
+
+function inferKind(text: string): DumpKind {
+  if (NOTE.some((n) => text.startsWith(n) || text.includes(` ${n}`))) return 'note';
+  if (includesAny(text, COMMS)) return 'communication';
+  return 'task';
+}
+
+function nextWeekday(from: Date, weekday: number): Date {
+  const start = new Date(from);
+  start.setHours(0, 0, 0, 0);
+  const delta = (weekday - start.getDay() + 7) % 7;
+  return addDays(start, delta === 0 ? 7 : delta);
+}
+
+function parseExplicitDate(text: string, now: Date): string | null {
+  const iso = /\b(\d{4})-(\d{2})-(\d{2})\b/.exec(text);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dmy = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/.exec(text);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const month = Number(dmy[2]);
+    const year = dmy[3]
+      ? Number(dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3])
+      : now.getFullYear();
+    return toDateKey(new Date(year, month - 1, day));
+  }
+  return null;
+}
+
+function inferDue(text: string, now: Date): { due_date: string | null; hint: string | null } {
+  const explicit = parseExplicitDate(text, now);
+  if (explicit) return { due_date: explicit, hint: null };
+  if (/\btoday\b/.test(text) || /\bthis afternoon\b/.test(text) || /\btonight\b/.test(text)) {
+    return { due_date: toDateKey(now), hint: null };
+  }
+  if (/\btomorrow\b/.test(text)) {
+    return { due_date: toDateKey(addDays(now, 1)), hint: null };
+  }
+  const weekday = Object.keys(WEEKDAYS).find((name) => new RegExp(`\\b${name}\\b`).test(text));
+  if (weekday) {
+    return { due_date: toDateKey(nextWeekday(now, WEEKDAYS[weekday]!)), hint: null };
+  }
+  if (/\bthis week\b/.test(text)) return { due_date: null, hint: 'this-week' };
+  if (/\bnext week\b/.test(text)) return { due_date: null, hint: 'next-week' };
+  return { due_date: null, hint: null };
+}
+
+function matchProject(text: string, projects: Project[]): string | null {
+  let best: { id: string; len: number } | null = null;
+  for (const project of projects) {
+    const name = project.title.trim().toLowerCase();
+    if (name.length < 3) continue;
+    if (text.includes(name) && (!best || name.length > best.len)) {
+      best = { id: project.id, len: name.length };
+    }
+  }
+  return best?.id ?? null;
+}
+
+function matchExisting(title: string, tasks: Task[]): string | null {
+  const needle = title.trim().toLowerCase();
+  const hit = tasks.find(
+    (t) =>
+      t.status !== 'done' &&
+      t.status !== 'dead' &&
+      t.title.trim().toLowerCase() === needle
+  );
+  return hit?.title ?? null;
+}
+
+function questionFor(item: {
+  title: string;
+  kind: DumpKind;
+  due_date: string | null;
+  hint: string | null;
+  existing_title: string | null;
+}): string | null {
+  if (item.existing_title) {
+    return `“${item.title}” is already on the board. Leave it, or make a new one?`;
+  }
+  if (item.kind === 'note') {
+    return `“${item.title}” looks like a note — task, comms, or ignore?`;
+  }
+  if (item.hint === 'this-week' || item.hint === 'next-week') {
+    return `Is “${item.title}” due this week or next week?`;
+  }
+  if (!item.due_date) {
+    return `“${item.title}” has no due date. Want one, or is it living its best life?`;
+  }
+  return null;
+}
+
+/** Split a brain dump into lines without turning “Year 9 and 10” into two tasks. */
+export function splitDumpLines(text: string): string[] {
+  const raw = text.replace(/\r\n/g, '\n').trim();
+  if (!raw) return [];
+  const chunks = raw
+    .split(/\n+|(?:^|\s)(?:[-*•]|\d+[.)])\s+|;\s+|\s+and then\s+|,\s+(?:also|then|plus)\s+/i)
+    .map((line) => stripListPrefix(line))
+    .filter(Boolean);
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const line of chunks) {
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(line);
+  }
+  return unique.map((line) => stripListPrefix(line));
+}
+
+export function parseBrainDump(
+  text: string,
+  options: {
+    now?: Date;
+    preferredDomain?: TaskDomain;
+    tasks?: Task[];
+    projects?: Project[];
+  } = {}
+): DumpItem[] {
+  const now = options.now ?? new Date();
+  const preferred = options.preferredDomain ?? 'teaching';
+  const tasks = options.tasks ?? [];
+  const projects = options.projects ?? [];
+  return splitDumpLines(text).map((line) => {
+    const lower = line.toLowerCase();
+    const kind = inferKind(lower);
+    const { due_date, hint } = inferDue(lower, now);
+    const title = titleCaseAction(line) || stripListPrefix(line);
+    const existing_title = matchExisting(title, tasks);
+    const item = {
+      raw: line,
+      title,
+      kind,
+      domain: inferDomain(lower, preferred),
+      priority: inferPriority(lower),
+      due_date,
+      parent_project_id: matchProject(lower, projects),
+      existing_title,
+      hint
+    };
+    return {
+      raw: item.raw,
+      title: item.title,
+      kind: item.kind,
+      domain: item.domain,
+      priority: item.priority,
+      due_date: item.due_date,
+      parent_project_id: item.parent_project_id,
+      existing_title: item.existing_title,
+      question: questionFor(item)
+    };
+  });
+}
+
+export function dumpVoiceLine(items: DumpItem[]): string {
+  const tasks = items.filter((i) => i.kind !== 'note' && !i.existing_title);
+  const notes = items.filter((i) => i.kind === 'note');
+  const twins = items.filter((i) => i.existing_title);
+  if (!items.length) {
+    return 'That dump came through empty. Try again — I only sort chaos that actually arrives.';
+  }
+  if (items.length === 1 && tasks.length === 1) {
+    return 'Right — one thing, and it actually has a shape. Here is my take.';
+  }
+  const bits = [
+    `OK so I have ${items.length} thing${items.length === 1 ? '' : 's'} from that dump`
+  ];
+  if (twins.length) {
+    bits.push(
+      twins.length === 1
+        ? '1 already living on the board'
+        : `${twins.length} already living on the board`
+    );
+  }
+  if (notes.length) {
+    bits.push(
+      notes.length === 1 ? '1 looks like a note, not work' : `${notes.length} look like notes, not work`
+    );
+  }
+  if (tasks.length && tasks.length < items.length) {
+    bits.push(`I can propose ${tasks.length} now`);
+  }
+  return `${bits.join(' — ')}. Let me untangle that for you.`;
+}

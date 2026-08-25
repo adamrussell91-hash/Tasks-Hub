@@ -61,7 +61,7 @@ Until Functions redeploy, new routes (`/api/clare`, `/api/stall`, …) 404 and t
 | 1–3 Data model, CRUD, Board/Graph + calendar views | on `main` |
 | 4 Gantt + Board project filter | integrated |
 | 5–6 Excursion engine + admin scheduling | integrated |
-| 7 Clare negotiation + frameworks | integrated |
+| 7 Clare desk (dump, sprints, negotiation) | integrated |
 | 8 Pinch / shrink / due-soon | integrated |
 | 9 Stalled revive / Frankenstein / bury | integrated |
 | 10 StressFlag routing | integrated |

@@ -133,7 +133,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   canvas.append(intro);
 
   const clareLink = el('p', 'clare-inline');
-  const goClare = el('button', 'btn btn--secondary', 'Negotiate with Clare');
+  const goClare = el('button', 'btn btn--secondary', 'Talk to Clare');
   goClare.type = 'button';
   goClare.addEventListener('click', () => {
     location.hash = '#/clare';

@@ -106,6 +106,20 @@ export function backlogTasks(tasks: Task[]): Task[] {
   );
 }
 
+/** Open work whose due date is a local calendar day before `day`. */
+export function overdueTasks(tasks: Task[], day: Date = new Date()): Task[] {
+  const start = startOfDay(day);
+  return sortByPriorityThenDue(
+    tasks.filter((t) => {
+      if (!isBoardTask(t)) return false;
+      if (t.status === 'done' || t.status === 'dead') return false;
+      const due = parseDue(t.due_date);
+      if (!due) return false;
+      return startOfDay(due).getTime() < start.getTime();
+    })
+  );
+}
+
 export function adaptiveTodayTasks(tasks: Task[], date: Date = new Date()): Task[] {
   const prefs = new Set(preferredDomains(date));
   const day = tasksForDay(tasks, date);

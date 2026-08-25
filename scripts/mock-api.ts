@@ -320,6 +320,30 @@ export function createMockApi({ seed }: MockApiOptions) {
             })
           });
         }
+        if (b.action === 'brief') {
+          return json(200, {
+            ok: true,
+            data: await s.briefWithClare({
+              protocol_id:
+                b.protocol_id === undefined
+                  ? undefined
+                  : (String(b.protocol_id) as import('../src/domain/clare-protocols').ClareProtocolId)
+            })
+          });
+        }
+        if (b.action === 'dump') {
+          return json(200, {
+            ok: true,
+            data: await s.processDumpWithClare({
+              text: String(b.text ?? ''),
+              domain: b.domain === undefined ? undefined : (b.domain as 'teaching'),
+              protocol_id:
+                b.protocol_id === undefined
+                  ? undefined
+                  : (String(b.protocol_id) as import('../src/domain/clare-protocols').ClareProtocolId)
+            })
+          });
+        }
         if (b.action === 'accept') {
           return json(201, {
             ok: true,
@@ -328,6 +352,26 @@ export function createMockApi({ seed }: MockApiOptions) {
               accepted_minutes: Number(b.accepted_minutes),
               framework_id: b.framework_id === undefined ? undefined : String(b.framework_id)
             })
+          });
+        }
+        if (b.action === 'accept_batch') {
+          const items = Array.isArray(b.items) ? b.items : [];
+          return json(201, {
+            ok: true,
+            data: await s.acceptClareBatch(
+              items.map((item) => {
+                const row = item as {
+                  proposal: import('../src/domain/clare').ClareProposal;
+                  accepted_minutes: number;
+                  framework_id?: string;
+                };
+                return {
+                  proposal: row.proposal,
+                  accepted_minutes: Number(row.accepted_minutes),
+                  framework_id: row.framework_id
+                };
+              })
+            )
           });
         }
         if (b.action === 'record_actual') {

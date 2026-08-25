@@ -1146,15 +1146,88 @@ select.hub-filter {
 
 .clare-form {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.clare-form__tools {
+  display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
-  margin-bottom: var(--space-4);
+}
+
+.clare-dump {
+  display: block;
+  width: 100%;
+  min-height: 7rem;
+  padding: 0.55rem 0.85rem;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--glass);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: 1.45;
+}
+
+.clare-dump::placeholder {
+  color: var(--muted);
+}
+
+.clare-dump:focus-visible {
+  background: var(--paper);
+  outline: 2px solid var(--wave);
+  outline-offset: 2px;
 }
 
 .clare-form .hub-search {
   flex: 1 1 16rem;
   min-width: 12rem;
+}
+
+.clare-briefing-host {
+  margin-bottom: var(--space-4);
+}
+
+.clare-briefing__heading {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.clare-briefing__list,
+.clare-questions {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--ink);
+  font-size: var(--text-md);
+}
+
+.clare-questions {
+  color: var(--navy);
+}
+
+.clare-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.clare-extras {
+  margin-top: var(--space-5);
+}
+
+.clare-extras summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--text-sm);
 }
 
 .clare-proposal,
