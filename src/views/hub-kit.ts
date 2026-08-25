@@ -102,7 +102,7 @@ export function createHubTextarea(options: {
   className?: string;
   placeholder?: string;
 }): { el: HTMLLabelElement; input: HTMLTextAreaElement } {
-  const wrap = el('label', 'hub-search');
+  const wrap = el('label', 'hub-search hub-search--multiline');
   const hidden = el('span', 'visually-hidden', options.ariaLabel);
   const notes = document.createElement('textarea');
   notes.className = ['hub-search__input', options.className].filter(Boolean).join(' ');

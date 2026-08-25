@@ -220,7 +220,14 @@
   color: var(--muted);
 }
 
+.hub-search--multiline {
+  display: block;
+  align-items: flex-start;
+  min-height: 0;
+}
+
 .task-editor__notes {
+  display: block;
   min-height: 5rem;
   resize: vertical;
 }

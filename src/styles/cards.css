@@ -641,13 +641,15 @@
   color: var(--wave);
 }
 
+.page-card > .hub-search--multiline,
 .page-card > .hub-search:has(textarea) {
+  display: block;
   width: 100%;
-  align-items: flex-start;
   min-height: 0;
 }
 
 .page-card__notes {
+  display: block;
   width: 100%;
   min-height: 4.5rem;
   resize: vertical;
