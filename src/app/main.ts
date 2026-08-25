@@ -68,9 +68,9 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Ideas parked over the rainbow until you promote them.'
   },
   clare: {
-    eyebrow: 'Negotiate',
+    eyebrow: 'Desk',
     title: 'Clare DeMind',
-    supporting: 'Tell Clare what needs doing. She proposes a time and a way in.'
+    supporting: 'Dump the chaos. She sorts it, then you confirm.'
   },
   graph: {
     eyebrow: 'Structure',
