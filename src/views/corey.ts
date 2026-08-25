@@ -2,6 +2,7 @@ import type { CapacityLevel, CapacitySnapshot } from '@/domain/capacity';
 import type { CapacityShare } from '@/schemas/capacity';
 import { tasksApi } from '@/services/client-api';
 import { renderLoadError } from '@/views/feedback';
+import { createHubSearch } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -94,10 +95,13 @@ function paintCorey(canvas: HTMLElement, snapshot: CapacitySnapshot, share: Capa
   const shareBox = el('div', 'capacity-share');
   shareBox.append(el('h2', 'section-title', 'Share with Corey'));
   const url = shareUrl(share.token);
-  const input = el('input', 'hub-search') as HTMLInputElement;
-  input.readOnly = true;
-  input.value = url;
-  input.setAttribute('aria-label', 'Share URL');
+  const shareField = createHubSearch({
+    type: 'text',
+    ariaLabel: 'Share URL',
+    value: url,
+    readOnly: true
+  });
+  const input = shareField.input;
   const copy = el('button', 'btn btn--primary', 'Copy link');
   copy.type = 'button';
   copy.addEventListener('click', async () => {
@@ -114,7 +118,7 @@ function paintCorey(canvas: HTMLElement, snapshot: CapacitySnapshot, share: Capa
     const next = await tasksApi.rotateCapacityShare();
     paintCorey(canvas, snapshot, next.share);
   });
-  shareBox.append(input, copy, rotate);
+  shareBox.append(shareField.el, copy, rotate);
   canvas.append(shareBox);
 }
 

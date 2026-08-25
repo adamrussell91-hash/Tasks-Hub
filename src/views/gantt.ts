@@ -29,7 +29,7 @@ import {
 } from '@/domain/gantt';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { toDateKey } from '@/domain/queries';
-import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
+import { createHubField, createHubFilter, createHubToolbar } from '@/views/hub-kit';
 import { renderTaskEditor } from '@/views/task-editor';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 
@@ -195,7 +195,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     }, 2400);
   }
 
-  const toolbar = el('div', 'gantt-toolbar');
+  const toolbar = createHubToolbar('gantt-toolbar');
   const left = el('div', 'gantt-toolbar__group');
   const right = el('div', 'gantt-toolbar__group');
 
@@ -452,40 +452,37 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     card.append(el('p', 'page-header__eyebrow', 'New task'));
     card.append(el('h2', 'page-header__title', 'Add a task to the timeline'));
 
-    const title = el('input', 'hub-search') as HTMLInputElement;
-    title.placeholder = 'Task title';
-    title.required = true;
-    title.setAttribute('aria-label', 'Task title');
+    const title = createHubField({
+      ariaLabel: 'Task title',
+      placeholder: 'Task title',
+      required: true
+    });
 
-    const due = el('input', 'hub-search') as HTMLInputElement;
-    due.type = 'date';
-    due.value = toDateKey(new Date());
-    due.required = true;
-    due.setAttribute('aria-label', 'Due date');
+    const due = createHubField({
+      type: 'date',
+      ariaLabel: 'Due date',
+      value: toDateKey(new Date()),
+      required: true
+    });
 
-    const project = el('select', 'hub-filter') as HTMLSelectElement;
-    project.setAttribute('aria-label', 'Project');
-    const none = document.createElement('option');
-    none.value = '';
-    none.textContent = 'No project';
-    project.append(none);
-    for (const item of liveProjects) {
-      const opt = document.createElement('option');
-      opt.value = item.id;
-      opt.textContent = item.title;
-      if (item.id === session.projectId) opt.selected = true;
-      project.append(opt);
-    }
-    if (session.scope === 'project' && session.projectId) project.value = session.projectId;
+    const project = createHubFilter({
+      key: 'Project',
+      label: 'Project',
+      defaultValue: '',
+      options: [
+        { value: '', label: 'No project' },
+        ...liveProjects.map((item) => ({ value: item.id, label: item.title }))
+      ],
+      value: session.scope === 'project' && session.projectId ? session.projectId : ''
+    });
 
-    const domain = el('select', 'hub-filter') as HTMLSelectElement;
-    domain.setAttribute('aria-label', 'Domain');
-    for (const value of DOMAINS) {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = value;
-      domain.append(opt);
-    }
+    const domain = createHubFilter({
+      key: 'Domain',
+      label: 'Domain',
+      defaultValue: DOMAINS[0] ?? 'teaching',
+      options: DOMAINS.map((value) => ({ value, label: value })),
+      value: DOMAINS[0] ?? 'teaching'
+    });
 
     const hint = el(
       'p',
@@ -500,12 +497,12 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     save.type = 'button';
     cancel.addEventListener('click', () => formHost.replaceChildren());
     save.addEventListener('click', async () => {
-      const nextTitle = title.value.trim();
+      const nextTitle = title.input.value.trim();
       if (!nextTitle) {
         formHost.append(el('p', 'empty-state', 'Add a title.'));
         return;
       }
-      if (!due.value) {
+      if (!due.input.value) {
         formHost.append(el('p', 'empty-state', 'Pick a due date so it lands on the timeline.'));
         return;
       }
@@ -514,9 +511,9 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
       try {
         const created = await tasksApi.createTask({
           title: nextTitle,
-          domain: domain.value,
-          due_date: due.value,
-          parent_project_id: project.value || null,
+          domain: domain.getValue(),
+          due_date: due.input.value,
+          parent_project_id: project.getValue() || null,
           kind: 'task',
           bucket: 'active'
         });
@@ -532,9 +529,9 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
       }
     });
     actions.append(cancel, save);
-    card.append(title, due, project, domain, hint, actions);
+    card.append(title.el, due.el, project.el, domain.el, hint, actions);
     formHost.append(card);
-    title.focus();
+    title.input.focus();
     card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
@@ -642,24 +639,27 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     pop.style.top = `${clientY - hostRect.top + 12}px`;
     pop.append(el('h4', undefined, 'Dependency'));
 
+    const typeFilter = createHubFilter({
+      key: 'Type',
+      label: 'Type',
+      defaultValue: 'FS',
+      options: [
+        { value: 'FS', label: 'FS' },
+        { value: 'SS', label: 'SS' },
+        { value: 'FF', label: 'FF' }
+      ],
+      value: edge.type
+    });
     const typeRow = el('div', 'gantt-popover__row');
-    typeRow.append(el('label', undefined, 'Type'));
-    const select = document.createElement('select');
-    for (const type of ['FS', 'SS', 'FF'] as const) {
-      const option = document.createElement('option');
-      option.value = type;
-      option.textContent = type;
-      select.append(option);
-    }
-    select.value = edge.type;
-    typeRow.append(select);
+    typeRow.append(typeFilter.el);
 
+    const offset = createHubField({
+      type: 'number',
+      ariaLabel: 'Offset (d)',
+      value: String(edge.offsetDays)
+    });
     const offsetRow = el('div', 'gantt-popover__row');
-    offsetRow.append(el('label', undefined, 'Offset (d)'));
-    const offset = document.createElement('input');
-    offset.type = 'number';
-    offset.value = String(edge.offsetDays);
-    offsetRow.append(offset);
+    offsetRow.append(el('span', undefined, 'Offset (d)'), offset.el);
 
     const actions = el('div', 'gantt-popover__actions');
     const del = el('button', 'btn btn--secondary', 'Delete link');
@@ -672,7 +672,11 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     apply.type = 'button';
     apply.addEventListener('click', () => {
       closePopover();
-      void updateLink(edge, select.value as GanttDependency['type'], Number(offset.value) || 0);
+      void updateLink(
+        edge,
+        typeFilter.getValue() as GanttDependency['type'],
+        Number(offset.input.value) || 0
+      );
     });
     actions.append(del, apply);
     pop.append(typeRow, offsetRow, actions);

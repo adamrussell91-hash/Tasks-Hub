@@ -89,6 +89,9 @@ describe('Clare protocol controls', () => {
 
     expect(canvas.textContent).toMatch(/clare can/i);
     expect(canvas.textContent).toContain(briefing.closer);
+    expect(canvas.querySelector('select.hub-filter')).toBeNull();
+    expect(canvas.querySelector('.clare-form .hub-filter')?.tagName).toBe('BUTTON');
+    expect(canvas.querySelector('[aria-label="Brain dump"]')?.tagName).toBe('TEXTAREA');
     const pills = [...canvas.querySelectorAll<HTMLButtonElement>('[aria-label="Clare protocols"] [data-protocol-id]')];
     expect(pills).toHaveLength(5);
     for (const pill of pills) {

@@ -2,17 +2,10 @@ import type { StressFlag } from '@/schemas/stress';
 import { tasksApi } from '@/services/client-api';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderLoadError } from '@/views/feedback';
+import { createHubFilter, createHubToolbar, el } from '@/views/hub-kit';
+import type { StressAgent } from '@/schemas/stress';
 
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+let stressRoute: StressAgent | 'all' = 'all';
 
 function renderFlag(flag: StressFlag): HTMLElement {
   const row = el('article', 'stress-card');
@@ -61,6 +54,26 @@ export async function renderStressView(canvas: HTMLElement): Promise<void> {
 
   canvas.replaceChildren();
 
+  const agents = [...new Set(flags.flatMap((flag) => flag.routed_to))].sort();
+  const toolbar = createHubToolbar();
+  toolbar.append(
+    createHubFilter({
+      key: 'Routed to',
+      label: 'Routed to',
+      defaultValue: 'all',
+      options: [
+        { value: 'all', label: 'All agents' },
+        ...agents.map((agent) => ({ value: agent, label: agent }))
+      ],
+      value: stressRoute,
+      onChange: (value) => {
+        stressRoute = value as StressAgent | 'all';
+        void renderStressView(canvas);
+      }
+    }).el
+  );
+  canvas.append(toolbar);
+
   const status = el('p', 'stress-scan-status');
   if (scanError) {
     status.textContent = `Scan failed: ${scanError instanceof Error ? scanError.message : 'Request failed'}`;
@@ -80,10 +93,15 @@ export async function renderStressView(canvas: HTMLElement): Promise<void> {
 
   canvas.append(el('h2', 'section-title', 'Open flags'));
   const stack = el('div', 'task-stack');
-  if (!flags.length) {
-    stack.append(el('p', 'empty-state', 'No StressFlags yet.'));
+  let visibleFlags = flags;
+  if (stressRoute !== 'all') {
+    const agent = stressRoute;
+    visibleFlags = flags.filter((flag) => flag.routed_to.includes(agent));
+  }
+  if (!visibleFlags.length) {
+    stack.append(el('p', 'empty-state', flags.length ? 'No flags for that agent.' : 'No StressFlags yet.'));
   } else {
-    for (const flag of [...flags].reverse()) {
+    for (const flag of [...visibleFlags].reverse()) {
       stack.append(renderFlag(flag));
     }
   }

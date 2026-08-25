@@ -1,4 +1,3 @@
-import type { TaskDomain } from '@/schemas/task';
 import type { FrameworkEntry } from '@/schemas/templates';
 import type { ClareDumpResult, ClareProposal } from '@/domain/clare';
 import type { ClareBriefing } from '@/domain/clare-desk';
@@ -14,6 +13,7 @@ import {
   type ClareProtocol,
   type ClareProtocolId
 } from '@/domain/clare-protocols';
+import { createHubField, createHubFilter, domainFilterOptions } from '@/views/hub-kit';
 
 export { CLARE_ADHD_PROTOCOLS, CLARE_PROTOCOLS, CLARE_WAIT_LINES } from '@/domain/clare-protocols';
 
@@ -36,17 +36,6 @@ function skipReasoning(): boolean {
 
 function setSkipReasoning(on: boolean): void {
   localStorage.setItem(SKIP_REASONING_KEY, on ? '1' : '0');
-}
-
-function domainOptions(select: HTMLSelectElement, preferred: TaskDomain): void {
-  select.replaceChildren();
-  for (const d of ['teaching', 'life', 'wedding', 'health', 'other'] as const) {
-    const opt = document.createElement('option');
-    opt.value = d;
-    opt.textContent = d;
-    if (d === preferred) opt.selected = true;
-    select.append(opt);
-  }
 }
 
 function protocolButton(protocol: ClareProtocol, onPick: (id: ClareProtocolId) => void): HTMLButtonElement {
@@ -90,11 +79,11 @@ function collectAccepted(
 ): Array<{ proposal: ClareProposal; accepted_minutes: number; framework_id: string }> {
   return proposals.map((proposal, index) => {
     const minutes = host.querySelector<HTMLInputElement>(`[data-clare-minutes="${index}"]`);
-    const framework = host.querySelector<HTMLSelectElement>(`[data-clare-framework="${index}"]`);
+    const framework = host.querySelector<HTMLElement>(`[data-clare-framework="${index}"]`);
     return {
       proposal,
       accepted_minutes: Number(minutes?.value) || proposal.proposed_minutes,
-      framework_id: framework?.value || proposal.framework_id
+      framework_id: framework?.dataset.hubValue || proposal.framework_id
     };
   });
 }
@@ -167,27 +156,26 @@ function paintDumpResult(
     }
     const estimateRow = el('div', 'clare-estimate');
     estimateRow.append(el('span', 'chip chip--muted', `Clare: ${proposal.proposed_minutes}m`));
-    const minutes = el('input', 'hub-search') as HTMLInputElement;
-    minutes.type = 'number';
-    minutes.min = '5';
-    minutes.step = '5';
-    minutes.value = String(proposal.suggested_accepted_minutes);
-    minutes.dataset.clareMinutes = String(index);
-    minutes.setAttribute('aria-label', `Your estimate for ${proposal.title} (minutes)`);
-    estimateRow.append(el('span', undefined, 'Your estimate'), minutes, el('span', undefined, 'min'));
+    const minutes = createHubField({
+      type: 'number',
+      min: '5',
+      step: '5',
+      ariaLabel: `Your estimate for ${proposal.title} (minutes)`,
+      value: String(proposal.suggested_accepted_minutes)
+    });
+    minutes.input.dataset.clareMinutes = String(index);
+    estimateRow.append(el('span', undefined, 'Your estimate'), minutes.el, el('span', undefined, 'min'));
     row.append(estimateRow);
 
-    const fwSelect = el('select', 'hub-filter') as HTMLSelectElement;
-    fwSelect.setAttribute('aria-label', `Framework for ${proposal.title}`);
-    fwSelect.dataset.clareFramework = String(index);
-    for (const fw of frameworks) {
-      const opt = document.createElement('option');
-      opt.value = fw.id;
-      opt.textContent = fw.name;
-      if (fw.id === proposal.framework_id) opt.selected = true;
-      fwSelect.append(opt);
-    }
-    row.append(el('span', 'chip chip--muted', 'Framework'), fwSelect);
+    const fwSelect = createHubFilter({
+      key: 'Framework',
+      label: `Framework for ${proposal.title}`,
+      defaultValue: proposal.framework_id,
+      options: frameworks.map((fw) => ({ value: fw.id, label: fw.name })),
+      value: proposal.framework_id
+    });
+    fwSelect.el.dataset.clareFramework = String(index);
+    row.append(el('span', 'chip chip--muted', 'Framework'), fwSelect.el);
     card.append(row);
   });
 
@@ -354,14 +342,19 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
   dump.setAttribute('aria-label', 'Brain dump');
   dump.rows = 5;
 
-  const domain = el('select', 'hub-filter') as HTMLSelectElement;
-  domain.setAttribute('aria-label', 'Default domain');
-  domainOptions(domain, preferredDomains()[0] ?? 'teaching');
+  const defaultDomain = preferredDomains()[0] ?? 'teaching';
+  const domain = createHubFilter({
+    key: 'Domain',
+    label: 'Default domain',
+    defaultValue: defaultDomain,
+    options: domainFilterOptions(false),
+    value: defaultDomain
+  });
 
   const ask = el('button', 'btn btn--primary', 'Ask Clare');
   ask.type = 'submit';
   const tools = el('div', 'clare-form__tools');
-  tools.append(domain, ask);
+  tools.append(domain.el, ask);
   form.append(dump, tools);
   canvas.append(form);
 
@@ -454,7 +447,7 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
     const result = await withWait(() =>
       tasksApi.processDumpWithClare({
         text,
-        domain: domain.value,
+        domain: domain.getValue(),
         protocol_id: selectedProtocolId
       })
     );

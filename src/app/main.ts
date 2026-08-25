@@ -266,7 +266,10 @@ async function bootApp(root: HTMLElement): Promise<void> {
       let rail: HubViewId = entity.kind === 'project' ? 'projects' : 'board';
       let eyebrow = entity.kind === 'task' ? 'Task' : 'Project';
       let title = 'Page';
-      if (entity.kind === 'project') {
+      if (entity.kind === 'task') {
+        const task = await tasksApi.getTask(entity.id).catch(() => null);
+        if (task) title = task.title;
+      } else {
         const project = await tasksApi.getProject(entity.id).catch(() => null);
         if (project) {
           title = project.title;

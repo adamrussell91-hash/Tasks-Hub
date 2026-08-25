@@ -26,6 +26,12 @@ import {
 import { discCss, fillCss, letterCss, strokeCss } from '@/domain/maps-colors';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import {
+  createHubField,
+  createHubFilter,
+  createHubPills,
+  createHubToolbar
+} from '@/views/hub-kit';
 
 export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] {
   const list = maps && maps.length > 0 ? maps : [mindWorks2026Map()];
@@ -754,18 +760,12 @@ function field(label: string, control: HTMLElement): HTMLElement {
   return wrap;
 }
 
-function textInput(value: string, aria: string): HTMLInputElement {
-  const input = el('input', 'hub-search') as HTMLInputElement;
-  input.value = value;
-  input.setAttribute('aria-label', aria);
-  return input;
+function textInput(value: string, aria: string): { el: HTMLLabelElement; input: HTMLInputElement } {
+  return createHubField({ ariaLabel: aria, value });
 }
 
-function dateInput(value: string, aria: string): HTMLInputElement {
-  const input = textInput('', aria);
-  input.type = 'date';
-  input.value = value;
-  return input;
+function dateInput(value: string, aria: string): { el: HTMLLabelElement; input: HTMLInputElement } {
+  return createHubField({ type: 'date', ariaLabel: aria, value });
 }
 
 function trackPicker(selected: YearTrack[]): { root: HTMLElement; value: () => YearTrack[] } {
@@ -871,43 +871,41 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     const terms = schoolTerms(year);
     const layout = layoutMap(current);
     canvas.replaceChildren();
-    const toolbar = el('div', 'map-toolbar');
-    const select = el('select', 'hub-filter') as HTMLSelectElement;
-    select.setAttribute('aria-label', 'Map');
-    for (const map of maps) {
-      const opt = document.createElement('option');
-      opt.value = map.id;
-      opt.textContent = map.title;
-      if (map.id === current.id) opt.selected = true;
-      select.append(opt);
-    }
-    select.addEventListener('change', () => {
-      const next = maps.find((m) => m.id === select.value);
-      if (next) {
-        current = next;
-        selectedId = null;
-        paint();
+    const toolbar = createHubToolbar('map-toolbar');
+    const select = createHubFilter({
+      key: 'Map',
+      label: 'Map',
+      defaultValue: current.id,
+      options: maps.map((map) => ({ value: map.id, label: map.title })),
+      value: current.id,
+      onChange: (value) => {
+        const next = maps.find((m) => m.id === value);
+        if (next) {
+          current = next;
+          selectedId = null;
+          paint();
+        }
       }
     });
 
-    const pills = el('div', 'hub-pills');
-    pills.setAttribute('role', 'group');
-    const viewBtn = el('button', `hub-pills__btn${mode === 'view' ? ' is-active' : ''}`, 'View');
-    const editBtn = el('button', `hub-pills__btn${mode === 'edit' ? ' is-active' : ''}`, 'Edit');
-    viewBtn.type = 'button';
-    editBtn.type = 'button';
-    viewBtn.addEventListener('click', () => {
-      mode = 'view';
-      draft = null;
-      joining = false;
-      joinFrom = null;
-      paint();
+    const pills = createHubPills({
+      label: 'Map mode',
+      role: 'group',
+      items: [
+        { id: 'view', label: 'View' },
+        { id: 'edit', label: 'Edit' }
+      ],
+      value: mode,
+      onSelect: (id) => {
+        mode = id;
+        if (id === 'view') {
+          draft = null;
+          joining = false;
+          joinFrom = null;
+        }
+        paint();
+      }
     });
-    editBtn.addEventListener('click', () => {
-      mode = 'edit';
-      paint();
-    });
-    pills.append(viewBtn, editBtn);
 
     const exportBtn = el('button', 'btn btn--secondary', 'Export');
     exportBtn.type = 'button';
@@ -935,7 +933,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       paint();
     });
 
-    toolbar.append(select, pills, exportBtn, newBtn, fullBtn);
+    toolbar.append(select.el, pills, exportBtn, newBtn, fullBtn);
 
     const termPills = el('div', 'hub-pills map-term-pills');
     termPills.setAttribute('role', 'group');
@@ -1387,9 +1385,9 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         const save = el('button', 'btn btn--primary', 'Save');
         save.type = 'button';
         save.addEventListener('click', async () => {
-          item.label = name.value.trim() || item.label;
-          item.starts_on = start.value || null;
-          item.ends_on = selectedStation ? end.value || null : end.value || start.value || null;
+          item.label = name.input.value.trim() || item.label;
+          item.starts_on = start.input.value || null;
+          item.ends_on = selectedStation ? end.input.value || null : end.input.value || start.input.value || null;
           const [type, id] = linkPicker.getValue().split(':');
           item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
           if (selectedStation) {
@@ -1423,10 +1421,10 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
             paint();
           });
         });
-        form.append(name);
-        form.append(selectedStation ? field('Starts', start) : field('Date', start));
+        form.append(name.el);
+        form.append(selectedStation ? field('Starts', start.el) : field('Date', start.el));
         if (selectedStation) {
-          form.append(field('Ends', end));
+          form.append(field('Ends', end.el));
           if (tracks) form.append(field('Year lines', tracks.root));
         }
         form.append(field('Project link', linkPicker.root));
@@ -1491,25 +1489,23 @@ function renderDraftForm(
   );
 
   const name = textInput('', 'Name');
-  name.placeholder = kind === 'line' ? 'Justice' : kind === 'station' ? 'Young Diplomats Program' : 'Rotary MUNA';
+  name.input.placeholder = kind === 'line' ? 'Justice' : kind === 'station' ? 'Young Diplomats Program' : 'Rotary MUNA';
   const letter = textInput(nextLineLetter(map.lines), 'Letter');
-  letter.maxLength = 4;
-  const color = el('select', 'hub-filter') as HTMLSelectElement;
-  color.setAttribute('aria-label', 'Colour');
-  for (const token of LINE_COLORS) {
-    const opt = document.createElement('option');
-    opt.value = token;
-    opt.textContent = token.replace('-', ' ');
-    color.append(opt);
-  }
-  const line = el('select', 'hub-filter') as HTMLSelectElement;
-  line.setAttribute('aria-label', 'Line');
-  for (const item of map.lines) {
-    const opt = document.createElement('option');
-    opt.value = item.id;
-    opt.textContent = `${item.letter} · ${item.name}`;
-    line.append(opt);
-  }
+  letter.input.maxLength = 4;
+  const color = createHubFilter({
+    key: 'Colour',
+    label: 'Colour',
+    defaultValue: LINE_COLORS[0] ?? 'blue',
+    options: LINE_COLORS.map((token) => ({ value: token, label: token.replace('-', ' ') })),
+    value: LINE_COLORS[0] ?? 'blue'
+  });
+  const line = createHubFilter({
+    key: 'Line',
+    label: 'Line',
+    defaultValue: map.lines[0]?.id ?? '',
+    options: map.lines.map((item) => ({ value: item.id, label: `${item.letter} · ${item.name}` })),
+    value: map.lines[0]?.id ?? ''
+  });
   const start = dateInput(terms.t1, kind === 'event' ? 'Date' : 'Starts');
   const end = dateInput(terms.e, 'Ends');
   const tracks = trackPicker(['junior']);
@@ -1524,17 +1520,17 @@ function renderDraftForm(
     placeholder: 'Search connections…'
   });
 
-  if (kind === 'line') card.append(field('Name', name), field('Letter', letter), field('Colour', color));
+  if (kind === 'line') card.append(field('Name', name.el), field('Letter', letter.el), field('Colour', color.el));
   else if (kind === 'station') {
     card.append(
-      field('Name', name),
-      field('Line', line),
+      field('Name', name.el),
+      field('Line', line.el),
       field('Year lines', tracks.root),
-      field('Starts', start),
-      field('Ends', end)
+      field('Starts', start.el),
+      field('Ends', end.el)
     );
   } else {
-    card.append(field('Name', name), field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root), field('Date', start));
+    card.append(field('Name', name.el), field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root), field('Date', start.el));
   }
 
   const actions = el('div', 'confirm-card__actions');
@@ -1544,7 +1540,7 @@ function renderDraftForm(
   confirm.type = 'button';
   discard.addEventListener('click', () => onCancel());
   confirm.addEventListener('click', () => {
-    const title = name.value.trim();
+    const title = name.input.value.trim();
     if (!title) {
       host.append(el('p', 'empty-state', 'Add a name.'));
       return;
@@ -1554,8 +1550,8 @@ function renderDraftForm(
       map.lines.push({
         id: newId('line'),
         name: title,
-        letter: (letter.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
-        color: (color.value as MapColorToken) || 'blue',
+        letter: (letter.input.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
+        color: (color.getValue() as MapColorToken) || 'blue',
         points: yearLinePoints(x)
       });
     } else if (kind === 'station') {
@@ -1565,15 +1561,15 @@ function renderDraftForm(
       }
       const draftStation: MapStation = {
         id: newId('st'),
-        line_id: line.value || map.lines[0]!.id,
+        line_id: line.getValue() || map.lines[0]!.id,
         label: title,
         y: 80,
         height: 110,
         tracks: tracks.value(),
         in_stroke: 'solid',
         out_stroke: 'solid',
-        starts_on: start.value || terms.t1,
-        ends_on: end.value || terms.e,
+        starts_on: start.input.value || terms.t1,
+        ends_on: end.input.value || terms.e,
         link: null
       };
       map.stations.push(applyDateSpanToStation(draftStation, year));
@@ -1588,7 +1584,7 @@ function renderDraftForm(
         attach: parseAttachValue(attachPicker.getValue(), map.lines[0]!.id, 200),
         stroke: 'solid',
         connects_to: parseConnectValue(alsoPicker.getValue(), map),
-        starts_on: start.value || terms.t1,
+        starts_on: start.input.value || terms.t1,
         ends_on: null,
         link: null
       };

@@ -41,32 +41,49 @@ export function showConfirmWrite(
   confirmLabel = 'Confirm'
 ): void {
   host.replaceChildren();
+  const overlay = el('div', 'confirm-overlay');
+  overlay.setAttribute('role', 'presentation');
   const card = el('section', 'confirm-card');
-  card.setAttribute('role', 'region');
+  card.setAttribute('role', 'alertdialog');
+  card.setAttribute('aria-modal', 'true');
   card.setAttribute('aria-label', 'Confirm change');
-  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
-  card.append(el('h2', 'page-header__title', title));
-  card.append(el('p', 'page-header__supporting', `${summary} Do not apply until Confirm.`));
+  const destructive = confirmLabel.toLowerCase() === 'delete';
+  card.append(el('p', 'page-header__eyebrow', destructive ? 'Delete' : 'Proposed write'));
+  const heading = el('h2', 'page-header__title', title);
+  heading.style.fontSize = 'var(--text-lg)';
+  card.append(heading);
+  card.append(
+    el(
+      'p',
+      'page-header__supporting',
+      destructive ? summary : `${summary} Do not apply until Confirm.`
+    )
+  );
   const actions = el('div', 'confirm-card__actions');
   const discard = el('button', 'btn btn--ghost', 'Discard');
   discard.type = 'button';
-  const confirm = el('button', 'btn btn--primary', confirmLabel);
+  const confirm = el('button', destructive ? 'btn btn--decisive' : 'btn btn--primary', confirmLabel);
   confirm.type = 'button';
-  discard.addEventListener('click', () => host.replaceChildren());
+  const close = (): void => host.replaceChildren();
+  discard.addEventListener('click', close);
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) close();
+  });
   confirm.addEventListener('click', async () => {
     confirm.disabled = true;
     discard.disabled = true;
     try {
       await onConfirm();
-      host.replaceChildren(el('p', 'canvas-status', 'Applied.'));
+      close();
     } catch (err) {
       host.replaceChildren(el('p', 'empty-state', errorMessage(err)));
     }
   });
   actions.append(discard, confirm);
   card.append(actions);
-  host.append(card);
-  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  overlay.append(card);
+  host.append(overlay);
+  confirm.focus();
 }
 
 export async function withBusy<T>(

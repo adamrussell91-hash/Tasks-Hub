@@ -2,6 +2,7 @@ import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
 import { buildConstellation, type ConstellationModel } from '@/domain/constellation';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
+import { createHubToolbar } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -133,7 +134,9 @@ export async function renderConstellationView(canvas: HTMLElement): Promise<void
   const model = buildConstellation(tasks);
 
   canvas.replaceChildren();
-  canvas.append(renderGraphFamilyPills('constellation'));
+  const toolbar = createHubToolbar('graph-toolbar');
+  toolbar.append(renderGraphFamilyPills('constellation'));
+  canvas.append(toolbar);
   canvas.append(el('p', 'view-lede', model.headline));
   const host = el('div', 'constellation-host graph-host');
   canvas.append(host);

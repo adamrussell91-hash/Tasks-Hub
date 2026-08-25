@@ -5,6 +5,7 @@ import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { domainFill, layoutOrbit, type OrbitBody } from '@/domain/orbit';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderTaskEditor } from '@/views/task-editor';
+import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -191,8 +192,26 @@ export async function renderOrbitView(canvas: HTMLElement): Promise<void> {
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
 
   canvas.replaceChildren();
-  canvas.append(renderGraphFamilyPills('orbit'));
+  const toolbar = createHubToolbar('graph-toolbar');
+  toolbar.append(renderGraphFamilyPills('orbit'));
+  const search = createHubSearch({
+    placeholder: 'Filter orbit…',
+    ariaLabel: 'Filter orbit'
+  });
+  toolbar.append(search.el);
+  canvas.append(toolbar);
   const host = el('div', 'orbit-host graph-host');
   canvas.append(host);
-  mountOrbit(host, tasks, projects);
+  const paint = () => {
+    const q = search.input.value.trim().toLowerCase();
+    const filteredTasks = q
+      ? tasks.filter((t) => t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q))
+      : tasks;
+    const filteredProjects = q
+      ? projects.filter((p) => p.title.toLowerCase().includes(q))
+      : projects;
+    mountOrbit(host, filteredTasks.length ? filteredTasks : tasks, filteredProjects);
+  };
+  search.input.addEventListener('input', paint);
+  paint();
 }

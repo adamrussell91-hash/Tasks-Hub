@@ -136,7 +136,7 @@ async function apiRequestOnce<T>(
     const timedOut = cause instanceof DOMException && cause.name === 'TimeoutError';
     const message = timedOut
       ? `Timed out calling ${url}`
-      : raw === 'Failed to fetch' || raw === 'Network request failed'
+      : raw === 'Failed to fetch' || raw === 'Network request failed' || raw === 'Load failed'
         ? `Could not reach ${url}. Check CORS, the Functions deploy, or the Network tab.`
         : raw;
     throw new ApiClientError({

@@ -80,12 +80,16 @@ describe('gantt view', () => {
 
     const form = canvas.querySelector('.gantt-new-task')!;
     expect(form).not.toBeNull();
+    expect(form.querySelector('select')).toBeNull();
     const title = form.querySelector<HTMLInputElement>('input[aria-label="Task title"]')!;
     const due = form.querySelector<HTMLInputElement>('input[aria-label="Due date"]')!;
-    const project = form.querySelector<HTMLSelectElement>('select[aria-label="Project"]')!;
     title.value = 'Gantt new task';
     due.value = '2026-08-28';
-    project.value = 'proj_mindworks';
+    const project = [...form.querySelectorAll<HTMLButtonElement>('.hub-filter')].find(
+      (btn) => btn.querySelector('.hub-filter__key')?.textContent === 'Project'
+    );
+    project?.click();
+    document.querySelector<HTMLButtonElement>('[data-hub-option="proj_mindworks"]')?.click();
 
     form.querySelector<HTMLButtonElement>('.btn--primary')?.click();
 

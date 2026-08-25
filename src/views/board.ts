@@ -1,29 +1,24 @@
-import type { Task } from '@/schemas/task';
+import type { Task, TaskDomain } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { openTasks } from '@/domain/queries';
 import { BOARD_COLUMNS, columnForTask, statusForColumn, type BoardColumnId } from '@/domain/board';
 import { boardTasks, isBoardTask } from '@/domain/hierarchy';
-import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
 import { errorMessage } from '@/views/feedback';
+import {
+  createHubFilter,
+  createHubToolbar,
+  domainFilterOptions,
+  el
+} from '@/views/hub-kit';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { initBoard, updateBoardCounts, type BoardMoveDetail } from '@/views/sprint-board';
 import { deleteTaskNow } from '@/views/card-actions';
 import { mountTaskCard } from '@/views/hub-cards';
 
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
-/** Session-scoped project filter for Kanban (spec: project-scoped board). */
+/** Session-scoped project / domain filters for Kanban. */
 let boardProjectFilter: string | 'all' = 'all';
+let boardDomainFilter: TaskDomain | 'all' = 'all';
 let teardownBoard: (() => void) | null = null;
 
 function appendBoardCard(
@@ -69,7 +64,9 @@ function persistMove(
 
 function inScope(task: Task): boolean {
   if (task.status === 'dead' || !isBoardTask(task)) return false;
-  return boardProjectFilter === 'all' || task.parent_project_id === boardProjectFilter;
+  if (boardProjectFilter !== 'all' && task.parent_project_id !== boardProjectFilter) return false;
+  if (boardDomainFilter !== 'all' && task.domain !== boardDomainFilter) return false;
+  return true;
 }
 
 function listForColumn(board: HTMLElement, column: BoardColumnId): HTMLElement | null {
@@ -98,12 +95,13 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     return;
   }
   const byId = new Map(tasks.map((t) => [t.id, t]));
-
   function scoped(): Task[] {
     const eligible = boardTasks(tasks.filter((t) => t.status !== 'dead'));
-    return boardProjectFilter === 'all'
-      ? eligible
-      : eligible.filter((t) => t.parent_project_id === boardProjectFilter);
+    return eligible.filter((t) => {
+      if (boardProjectFilter !== 'all' && t.parent_project_id !== boardProjectFilter) return false;
+      if (boardDomainFilter !== 'all' && t.domain !== boardDomainFilter) return false;
+      return true;
+    });
   }
 
   canvas.replaceChildren();
@@ -114,7 +112,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   );
   canvas.append(lede);
 
-  const filterRow = el('div', 'board-filter');
+  const filterRow = createHubToolbar('board-filter');
   const scope = createHubFilter({
     key: 'Scope',
     label: 'Board project scope',
@@ -129,7 +127,18 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
       void renderBoardView(canvas);
     }
   });
-  filterRow.append(scope.el);
+  const domain = createHubFilter({
+    key: 'Domain',
+    label: 'Domain',
+    defaultValue: 'all',
+    options: domainFilterOptions(),
+    value: boardDomainFilter,
+    onChange: (value) => {
+      boardDomainFilter = value as TaskDomain | 'all';
+      void renderBoardView(canvas);
+    }
+  });
+  filterRow.append(scope.el, domain.el);
   canvas.append(filterRow);
 
   const confirmHost = el('div', 'board-confirm');

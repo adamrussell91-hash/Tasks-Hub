@@ -9,17 +9,7 @@ import { hashQuery } from '@/shell/shell';
 import { requestToggleDone } from '@/views/dashboard';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountProjectCard } from '@/views/hub-cards';
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+import { createHubField, createHubFilter, createHubSearch, el } from '@/views/hub-kit';
 
 function defaultEventDate(): string {
   return toDateKey(addDays(new Date(), 45));
@@ -87,84 +77,76 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
 
   const prefillId = hashQuery().get('template');
 
-  const templateSelect = el('select', 'hub-filter') as HTMLSelectElement;
-  templateSelect.setAttribute('aria-label', 'Excursion template');
-  templateSelect.required = true;
-  for (const t of templates) {
-    const opt = document.createElement('option');
-    opt.value = t.id;
-    opt.textContent = t.name;
-    if (t.id === prefillId) opt.selected = true;
-    templateSelect.append(opt);
-  }
-
-  const title = el('input', 'hub-search') as HTMLInputElement;
-  title.placeholder = 'Excursion title';
-  title.required = true;
-  title.setAttribute('aria-label', 'Title');
   const prefillTpl = templates.find((t) => t.id === prefillId);
-  if (prefillTpl && !title.value) title.value = prefillTpl.name;
+  const templateSelect = createHubFilter({
+    key: 'Template',
+    label: 'Excursion template',
+    defaultValue: prefillId ?? templates[0]?.id ?? '',
+    options: templates.map((t) => ({ value: t.id, label: t.name })),
+    value: prefillId ?? templates[0]?.id ?? '',
+    onChange: () => refreshPreview()
+  });
 
-  const eventDate = el('input', 'hub-search') as HTMLInputElement;
-  eventDate.type = 'date';
-  eventDate.required = true;
-  eventDate.value = defaultEventDate();
-  eventDate.setAttribute('aria-label', 'Event date');
+  const title = createHubSearch({
+    type: 'text',
+    placeholder: 'Excursion title',
+    ariaLabel: 'Title',
+    required: true,
+    value: prefillTpl?.name ?? '',
+    onInput: () => refreshPreview()
+  });
 
-  const group = el('input', 'hub-search') as HTMLInputElement;
-  group.placeholder = 'Student group (e.g. Year 10 Ethics team)';
-  group.setAttribute('aria-label', 'Student group');
+  const eventDate = createHubField({
+    type: 'date',
+    ariaLabel: 'Event date',
+    required: true,
+    value: defaultEventDate(),
+    onChange: () => refreshPreview()
+  });
+
+  const group = createHubField({
+    ariaLabel: 'Student group',
+    placeholder: 'Student group (e.g. Year 10 Ethics team)'
+  });
 
   const preview = el('p', 'excursion-preview');
   const refreshPreview = () => {
-    const tpl = templatesById.get(templateSelect.value);
-    if (!tpl || !eventDate.value) {
+    const tpl = templatesById.get(templateSelect.getValue());
+    if (!tpl || !eventDate.input.value) {
       preview.textContent = '';
       return;
     }
     try {
       const plan = buildExcursionPlan(tpl, {
-        title: title.value.trim() || tpl.name,
-        event_date: eventDate.value,
-        student_group_reference: group.value
+        title: title.input.value.trim() || tpl.name,
+        event_date: eventDate.input.value,
+        student_group_reference: group.input.value
       });
       preview.textContent = `Will schedule ${plan.admin_tasks.length} tasks · ${formatLeadTimes(tpl)} · permission ${formatDisplayDate(plan.key_dates.permission_note_due)} · risk ${formatDisplayDate(plan.key_dates.risk_assessment_due)} · event ${formatDisplayDate(plan.event_date)}`;
     } catch {
       preview.textContent = '';
     }
   };
-  templateSelect.addEventListener('change', refreshPreview);
-  eventDate.addEventListener('change', refreshPreview);
-  title.addEventListener('input', refreshPreview);
   refreshPreview();
 
   const submit = el('button', 'btn btn--primary', 'Review & create');
   submit.type = 'submit';
 
-  form.append(
-    el('span', 'chip chip--muted', 'Template'),
-    templateSelect,
-    title,
-    el('span', 'chip chip--muted', 'Event date'),
-    eventDate,
-    group,
-    preview,
-    submit
-  );
+  form.append(templateSelect.el, title.el, eventDate.el, group.el, preview, submit);
 
   const confirmHost = el('div', 'excursion-confirm');
   const listHost = el('div', 'task-stack');
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    const tpl = templatesById.get(templateSelect.value);
+    const tpl = templatesById.get(templateSelect.getValue());
     if (!tpl) return;
-    const name = title.value.trim();
-    if (!name || !eventDate.value) return;
+    const name = title.input.value.trim();
+    if (!name || !eventDate.input.value) return;
     const plan = buildExcursionPlan(tpl, {
       title: name,
-      event_date: eventDate.value,
-      student_group_reference: group.value
+      event_date: eventDate.input.value,
+      student_group_reference: group.input.value
     });
     showConfirm(
       confirmHost,
@@ -174,13 +156,13 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
         const result = await tasksApi.createExcursionFromTemplate({
           excursion_template_id: tpl.id,
           title: name,
-          event_date: eventDate.value,
-          student_group_reference: group.value.trim() || null
+          event_date: eventDate.input.value,
+          student_group_reference: group.input.value.trim() || null
         });
         confirmHost.replaceChildren(
           el('p', 'canvas-status', `Created ${result.project.title} with ${result.tasks.length} tasks.`)
         );
-        title.value = '';
+        title.input.value = '';
         openProjectPage(result.project);
       }
     );

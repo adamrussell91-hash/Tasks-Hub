@@ -16,6 +16,7 @@ import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderBoardTaskTile, renderTaskLinkList } from '@/views/task-tile';
 import { renderBlockerPipes } from '@/views/blocker-pipes';
 import { createVizNodeList } from '@/views/viz-node-list';
+import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 type GraphMode = 'blockers' | 'workstreams';
 
@@ -357,14 +358,13 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   const mode: GraphMode = hashQuery().get('mode') === 'workstreams' ? 'workstreams' : 'blockers';
   canvas.replaceChildren();
 
-  const toolbar = el('div', 'graph-toolbar');
+  const toolbar = createHubToolbar('graph-toolbar');
   toolbar.append(renderGraphFamilyPills('graph', mode));
-  const search = el('input', 'hub-search') as HTMLInputElement;
-  search.type = 'search';
-  search.placeholder = mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…';
-  search.setAttribute('aria-label', 'Filter graph');
-
-  toolbar.append(search);
+  const search = createHubSearch({
+    placeholder: mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…',
+    ariaLabel: 'Filter graph'
+  });
+  toolbar.append(search.el);
   canvas.append(toolbar);
 
   const confirmHost = el('div', 'graph-confirm');
@@ -380,7 +380,7 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
 
   const paint = () => {
     confirmHost.replaceChildren();
-    const q = search.value.trim().toLowerCase();
+    const q = search.input.value.trim().toLowerCase();
     const filteredTasks = q
       ? tasks.filter((task) => task.title.toLowerCase().includes(q) || task.description.toLowerCase().includes(q))
       : tasks;
@@ -439,6 +439,6 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
     );
   };
 
-  search.addEventListener('input', () => paint());
+  search.input.addEventListener('input', () => paint());
   paint();
 }
