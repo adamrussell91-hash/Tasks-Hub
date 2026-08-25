@@ -76,15 +76,30 @@ function includesAny(hay: string, needles: string[]): boolean {
   return needles.some((n) => hay.includes(n));
 }
 
-function titleCaseAction(line: string): string {
-  const cleaned = line
+function stripListPrefix(line: string): string {
+  return line
     .replace(/^[-*•]\s+/, '')
     .replace(/^\d+[.)]\s+/, '')
     .replace(/^(?:and then|also|then|plus)\s+/i, '')
     .trim();
+}
+
+function titleCaseAction(line: string): string {
+  const cleaned = stripDuePhrases(stripListPrefix(line));
   if (!cleaned) return '';
   const first = cleaned.charAt(0).toUpperCase();
   return `${first}${cleaned.slice(1)}`.replace(/\s+/g, ' ').replace(/[.]+$/, '');
+}
+
+function stripDuePhrases(line: string): string {
+  return line
+    .replace(/\b(?:due\s+)?(?:today|tomorrow|tonight|this afternoon|this week|next week)\b/gi, '')
+    .replace(/\b(?:on|this|next)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
+    .replace(/\bdue\s+\d{4}-\d{2}-\d{2}\b/gi, '')
+    .replace(/\bdue\s+\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/gi, '')
+    .replace(/[,\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function inferDomain(text: string, preferred: TaskDomain): TaskDomain {
@@ -199,7 +214,7 @@ export function splitDumpLines(text: string): string[] {
   if (!raw) return [];
   const chunks = raw
     .split(/\n+|(?:^|\s)(?:[-*•]|\d+[.)])\s+|;\s+|\s+and then\s+|,\s+(?:also|then|plus)\s+/i)
-    .map((line) => titleCaseAction(line))
+    .map((line) => stripListPrefix(line))
     .filter(Boolean);
   const unique: string[] = [];
   const seen = new Set<string>();
@@ -209,7 +224,7 @@ export function splitDumpLines(text: string): string[] {
     seen.add(key);
     unique.push(line);
   }
-  return unique;
+  return unique.map((line) => stripListPrefix(line));
 }
 
 export function parseBrainDump(
@@ -229,7 +244,7 @@ export function parseBrainDump(
     const lower = line.toLowerCase();
     const kind = inferKind(lower);
     const { due_date, hint } = inferDue(lower, now);
-    const title = titleCaseAction(line);
+    const title = titleCaseAction(line) || stripListPrefix(line);
     const existing_title = matchExisting(title, tasks);
     const item = {
       raw: line,
@@ -269,8 +284,18 @@ export function dumpVoiceLine(items: DumpItem[]): string {
   const bits = [
     `OK so I have ${items.length} thing${items.length === 1 ? '' : 's'} from that dump`
   ];
-  if (twins.length) bits.push(`${twins.length} already living on the board`);
-  if (notes.length) bits.push(`${notes.length} look like notes, not work`);
+  if (twins.length) {
+    bits.push(
+      twins.length === 1
+        ? '1 already living on the board'
+        : `${twins.length} already living on the board`
+    );
+  }
+  if (notes.length) {
+    bits.push(
+      notes.length === 1 ? '1 looks like a note, not work' : `${notes.length} look like notes, not work`
+    );
+  }
   if (tasks.length && tasks.length < items.length) {
     bits.push(`I can propose ${tasks.length} now`);
   }

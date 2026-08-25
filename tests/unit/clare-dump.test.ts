@@ -31,7 +31,7 @@ describe('brain dump parsing', () => {
   it('splits lines, bullets, and and-then without breaking Year 9 and 10', () => {
     expect(
       splitDumpLines('Email parents\n- marking year 9 and 10\nand then book the GP')
-    ).toEqual(['Email parents', 'Marking year 9 and 10', 'Book the GP']);
+    ).toEqual(['Email parents', 'marking year 9 and 10', 'book the GP']);
   });
 
   it('classifies comms, dates, domains, and notes', () => {
@@ -44,6 +44,7 @@ describe('brain dump parsing', () => {
     expect(email.kind).toBe('communication');
     expect(email.domain).toBe('teaching');
     const marking = items.find((i) => /marking/i.test(i.title))!;
+    expect(marking.title).toBe('Marking year 9 essays');
     expect(marking.due_date).toBe('2026-08-26');
     expect(marking.domain).toBe('teaching');
     const note = items.find((i) => /dex/i.test(i.title))!;
@@ -51,6 +52,13 @@ describe('brain dump parsing', () => {
     const florist = items.find((i) => /florist/i.test(i.title))!;
     expect(florist.domain).toBe('wedding');
     expect(florist.question).toMatch(/due date|living its best life/i);
+    const result = assembleDumpResult(items, frameworks, () => null);
+    expect(result.voice).toMatch(/1 looks like a note/);
+    expect(result.proposals.map((p) => p.title)).toEqual([
+      'Email parents about the excursion',
+      'Marking year 9 essays',
+      'Florist quote'
+    ]);
   });
 
   it('does not propose notes or existing titles', () => {
