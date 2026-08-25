@@ -206,11 +206,11 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
     canvas.append(filters);
 
     const clareLink = el('p', 'clare-inline');
-    const goClare = el('button', 'btn btn--secondary', 'Talk to Clare');
-    goClare.type = 'button';
-    goClare.addEventListener('click', () => {
-      location.hash = '#/clare';
-    });
+  const goClare = el('button', 'btn btn--secondary', 'Talk to Clare');
+  goClare.type = 'button';
+  goClare.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('tasks-hub:open-clare'));
+  });
     clareLink.append(goClare);
     canvas.append(clareLink);
 

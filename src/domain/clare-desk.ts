@@ -405,3 +405,23 @@ export function buildOpenLoopsToolkit(items: DumpItem[]): ClareToolkitResult {
     steps: lines
   };
 }
+
+/** Flatten a briefing into safe markdown for a chat bubble. */
+export function briefingToMarkdown(briefing: ClareBriefing): string {
+  const parts = [briefing.lead];
+  for (const section of briefing.sections) {
+    parts.push(`**${section.heading}**`);
+    for (const line of section.lines) {
+      parts.push(`- ${line}`);
+    }
+  }
+  for (const flag of briefing.flags) {
+    parts.push(flag.text);
+  }
+  parts.push(briefing.closer);
+  return parts.filter((line) => line.trim()).join('\n');
+}
+
+export function toolkitToMarkdown(toolkit: ClareToolkitResult): string {
+  return [`**${toolkit.title}**`, toolkit.body, ...toolkit.steps.map((step) => `- ${step}`)].join('\n');
+}
