@@ -6,7 +6,14 @@ import {
   type SolarModel
 } from '@/domain/universe';
 
-export const UNIVERSE_BUILD = 1;
+export const UNIVERSE_BUILD = 21;
+
+/**
+ * Kepler years in the solar model are thousands of simulation seconds.
+ * At 1× on the slider this many sim-seconds elapse per wall-clock second, so
+ * planets actually crawl instead of looking bolted to the canvas.
+ */
+export const ORBIT_TIME_SCALE = 192;
 
 export type UniverseNotePayload = { pageId: string; title: string; excerpt: string };
 
@@ -104,9 +111,88 @@ export function solarCamera(
   return { k, x: width / 2 - focus.x * k, y: height / 2 - focus.y * k };
 }
 
-export function advanceOrbitClock(seconds: number, deltaMs: number, speed: number, freeze: boolean): number {
-  if (freeze) return 0;
-  return seconds + (Math.max(deltaMs, 0) / 1000) * speed;
+export type SolarStageCamera = {
+  width: number;
+  height: number;
+  fitK: number;
+  kMin: number;
+  kMax: number;
+  k: number;
+  x: number;
+  y: number;
+};
+
+/** Keep the same world focus and relative zoom when the stage is resized (fullscreen). */
+export function applySolarStageResize(
+  prev: SolarStageCamera,
+  nextSize: { width: number; height: number },
+  reach: number,
+  tightest: number
+): SolarStageCamera {
+  if (nextSize.width < 32 || nextSize.height < 32) return prev;
+  if (nextSize.width === prev.width && nextSize.height === prev.height) return prev;
+  const z = prev.k / Math.max(prev.fitK, 1e-9);
+  const focusX = (prev.width / 2 - prev.x) / Math.max(prev.k, 1e-9);
+  const focusY = (prev.height / 2 - prev.y) / Math.max(prev.k, 1e-9);
+  const scales = solarScales(reach, tightest, nextSize.width, nextSize.height);
+  const k = solarZoomClamp(z * scales.fitK, scales.kMin, scales.kMax);
+  return {
+    width: nextSize.width,
+    height: nextSize.height,
+    ...scales,
+    k,
+    x: nextSize.width / 2 - focusX * k,
+    y: nextSize.height / 2 - focusY * k
+  };
+}
+
+const NARROW_VIEWPORT_PX = 720;
+
+export function isNarrowViewport(innerWidth: number): boolean {
+  return innerWidth <= NARROW_VIEWPORT_PX;
+}
+
+/** Desktop canvas size is unchanged. Phones use the leftover viewport, not a 720px floor. */
+export function solarStageSize(
+  host: { clientWidth: number; clientHeight: number },
+  viewport: { innerWidth: number; innerHeight: number }
+): { width: number; height: number } {
+  const width = host.clientWidth || 1100;
+  if (isNarrowViewport(viewport.innerWidth)) {
+    const fallback = Math.max(360, Math.floor(viewport.innerHeight * 0.58));
+    return { width, height: Math.max(host.clientHeight || 0, fallback) };
+  }
+  return { width, height: Math.max(720, Math.floor(viewport.innerHeight * 0.8)) };
+}
+
+export function cameraFromWorld(
+  world: { x: number; y: number },
+  nextK: number,
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number }
+): { k: number; x: number; y: number } {
+  return {
+    k: nextK,
+    x: clientX - rect.left - world.x * nextK,
+    y: clientY - rect.top - world.y * nextK
+  };
+}
+
+export function pinchDistance(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+export function pinchMidpoint(
+  a: { x: number; y: number },
+  b: { x: number; y: number }
+): { x: number; y: number } {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+export function advanceOrbitClock(seconds: number, deltaMs: number, speed: number, _freeze = false): number {
+  if (speed <= 0) return seconds;
+  return seconds + (Math.max(deltaMs, 0) / 1000) * speed * ORBIT_TIME_SCALE;
 }
 
 export function isSolarSearching(query: string): boolean {
@@ -130,10 +216,6 @@ export function resolveSearchHits(model: SolarModel, query: string): Set<number>
 export function glowSpread(z: number, giant: boolean): number {
   if (z < 2.4) return 0;
   return giant ? 2.6 : 2.1;
-}
-
-function prefersReducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 function kindLabel(kind: BodyKind): string {
@@ -218,19 +300,19 @@ export function mountUniverseView(
   model: SolarModel,
   options: UniverseViewOptions
 ): UniverseMount {
-  const width = host.clientWidth || 1100;
-  const height = Math.max(720, Math.floor(window.innerHeight * 0.8));
+  const firstSize = solarStageSize(host, window);
+  let width = firstSize.width;
+  let height = firstSize.height;
   host.innerHTML = '';
-  host.style.height = `${height}px`;
+  if (host.clientHeight < 32) host.style.height = `${height}px`;
   const onNoteSelect = options.onNoteSelect;
-  const freeze = prefersReducedMotion();
   const B = model.bodies;
   const n = B.length;
   const X = new Float64Array(n);
   const Y = new Float64Array(n);
   const VIS = new Uint8Array(n);
   const maxTag = Math.max(1, ...model.planets.map((planet) => planet.count));
-  const { fitK, kMin, kMax } = solarScales(model.reach, model.tightest, width, height);
+  let { fitK, kMin, kMax } = solarScales(model.reach, model.tightest, width, height);
   const view = { k: fitK, x: width / 2, y: height / 2 };
   const dpr = typeof devicePixelRatio === 'number' ? devicePixelRatio : 1;
 
@@ -247,6 +329,19 @@ export function mountUniverseView(
   tip.className = 'graph-tip';
   tip.hidden = true;
   host.appendChild(tip);
+
+  const narrow = isNarrowViewport(window.innerWidth);
+  if (narrow) {
+    const zoom = document.createElement('div');
+    zoom.className = 'universe-zoom';
+    zoom.setAttribute('role', 'group');
+    zoom.setAttribute('aria-label', 'Universe zoom');
+    zoom.innerHTML = `
+      <button class="btn btn--ghost" type="button" data-universe-zoom="in" aria-label="Zoom in">+</button>
+      <button class="btn btn--ghost" type="button" data-universe-zoom="out" aria-label="Zoom out">−</button>
+    `;
+    host.appendChild(zoom);
+  }
 
   const ctx = canvas.getContext('2d')!;
   let hoverIdx = -1;
@@ -371,7 +466,7 @@ export function mountUniverseView(
   }
 
   function draw(now: number): void {
-    orbitSeconds = advanceOrbitClock(orbitSeconds, now - lastFrame, options.clock?.speed ?? 1, freeze);
+    orbitSeconds = advanceOrbitClock(orbitSeconds, now - lastFrame, options.clock?.speed ?? 1);
     lastFrame = now;
     const z = zNow();
     const band = zoomBand(z);
@@ -481,60 +576,129 @@ export function mountUniverseView(
     raf = requestAnimationFrame(loop);
   }
 
+  function zoomAt(clientX: number, clientY: number, factor: number): void {
+    const world = toWorld(clientX, clientY);
+    const next = solarZoomClamp(view.k * factor, kMin, kMax);
+    const rect = canvas.getBoundingClientRect();
+    Object.assign(view, cameraFromWorld(world, next, clientX, clientY, rect));
+  }
+
   canvas.addEventListener(
     'wheel',
     (event) => {
       event.preventDefault();
-      const world = toWorld(event.clientX, event.clientY);
-      const next = solarZoomClamp(view.k * (event.deltaY < 0 ? 1.08 : 0.92), kMin, kMax);
-      const rect = canvas.getBoundingClientRect();
-      view.x = event.clientX - rect.left - world.x * next;
-      view.y = event.clientY - rect.top - world.y * next;
-      view.k = next;
+      zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 1.08 : 0.92);
     },
     { passive: false }
   );
 
-  canvas.addEventListener('pointerdown', (event) => {
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const origin = { ...view };
-    let panned = false;
-    const onMove = (move: PointerEvent) => {
-      if (Math.hypot(move.clientX - startX, move.clientY - startY) < 4 && !panned) return;
-      panned = true;
-      view.x = origin.x + (move.clientX - startX);
-      view.y = origin.y + (move.clientY - startY);
-    };
-    const onUp = (up: PointerEvent) => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      if (panned) return;
-      const world = toWorld(up.clientX, up.clientY);
-      const z = zNow();
-      const i = findBody(world.x, world.y, z);
-      if (i < 0) {
-        selectedIdx = null;
-        recomputeHot();
-        onNoteSelect(null);
-        return;
-      }
-      const now = performance.now();
-      const doubled = lastClickIdx === i && now - lastClickAt < 400;
-      lastClickIdx = i;
-      lastClickAt = now;
-      if (doubled) frameBody(i);
-      const body = B[i]!;
-      selectedIdx = i;
+  host.querySelectorAll<HTMLButtonElement>('[data-universe-zoom]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const rect = canvas.getBoundingClientRect();
+      zoomAt(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+        button.dataset.universeZoom === 'in' ? 1.18 : 0.85
+      );
+    });
+  });
+
+  const pointers = new Map<number, { x: number; y: number }>();
+  let gestureOrigin = { x: 0, y: 0 };
+  let gestureStart = { x: 0, y: 0 };
+  let gesturePointerId = 1;
+  let panned = false;
+  let pinch: { dist: number; k: number; world: { x: number; y: number } } | null = null;
+
+  function pointerIdOf(event: PointerEvent): number {
+    return event.pointerId ?? 1;
+  }
+
+  function beginPinch(): void {
+    if (pointers.size < 2) return;
+    const [a, b] = [...pointers.values()] as [{ x: number; y: number }, { x: number; y: number }];
+    const mid = pinchMidpoint(a, b);
+    pinch = { dist: pinchDistance(a, b), k: view.k, world: toWorld(mid.x, mid.y) };
+    panned = true;
+  }
+
+  function applyPinch(): void {
+    if (!pinch || pointers.size < 2 || pinch.dist < 1) return;
+    const [a, b] = [...pointers.values()] as [{ x: number; y: number }, { x: number; y: number }];
+    const mid = pinchMidpoint(a, b);
+    const next = solarZoomClamp(pinch.k * (pinchDistance(a, b) / pinch.dist), kMin, kMax);
+    const rect = canvas.getBoundingClientRect();
+    Object.assign(view, cameraFromWorld(pinch.world, next, mid.x, mid.y, rect));
+  }
+
+  function selectAt(clientX: number, clientY: number): void {
+    const world = toWorld(clientX, clientY);
+    const z = zNow();
+    const i = findBody(world.x, world.y, z);
+    if (i < 0) {
+      selectedIdx = null;
       recomputeHot();
-      if (body.pageId) {
-        onNoteSelect({ pageId: body.pageId, title: body.label, excerpt: body.excerpt ?? '' });
-      } else {
-        onNoteSelect(null);
-      }
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+      onNoteSelect(null);
+      return;
+    }
+    const now = performance.now();
+    const doubled = lastClickIdx === i && now - lastClickAt < 400;
+    lastClickIdx = i;
+    lastClickAt = now;
+    if (doubled) frameBody(i);
+    const body = B[i]!;
+    selectedIdx = i;
+    recomputeHot();
+    if (body.pageId) {
+      onNoteSelect({ pageId: body.pageId, title: body.label, excerpt: body.excerpt ?? '' });
+    } else {
+      onNoteSelect(null);
+    }
+  }
+
+  const onGestureMove = (move: PointerEvent) => {
+    const id = pointerIdOf(move);
+    if (!pointers.has(id)) return;
+    pointers.set(id, { x: move.clientX, y: move.clientY });
+    if (pointers.size >= 2) {
+      if (!pinch) beginPinch();
+      applyPinch();
+      return;
+    }
+    if (id !== gesturePointerId) return;
+    if (Math.hypot(move.clientX - gestureStart.x, move.clientY - gestureStart.y) < 4 && !panned) return;
+    panned = true;
+    view.x = gestureOrigin.x + (move.clientX - gestureStart.x);
+    view.y = gestureOrigin.y + (move.clientY - gestureStart.y);
+  };
+
+  const onGestureUp = (up: PointerEvent) => {
+    const id = pointerIdOf(up);
+    if (!pointers.has(id)) return;
+    pointers.delete(id);
+    if (pointers.size < 2) pinch = null;
+    if (pointers.size > 0) return;
+    window.removeEventListener('pointermove', onGestureMove);
+    window.removeEventListener('pointerup', onGestureUp);
+    if (panned) return;
+    selectAt(up.clientX, up.clientY);
+  };
+
+  canvas.addEventListener('pointerdown', (event) => {
+    const id = pointerIdOf(event);
+    if (pointers.size === 0) {
+      panned = false;
+      pinch = null;
+      gesturePointerId = id;
+      gestureStart = { x: event.clientX, y: event.clientY };
+      gestureOrigin = { ...view };
+      window.addEventListener('pointermove', onGestureMove);
+      window.addEventListener('pointerup', onGestureUp);
+    }
+    pointers.set(id, { x: event.clientX, y: event.clientY });
+    if (pointers.size === 2) beginPinch();
   });
 
   canvas.addEventListener('pointermove', (event) => {
@@ -559,11 +723,43 @@ export function mountUniverseView(
     tip.hidden = true;
   });
 
+  function applyHostSize(): void {
+    const next = applySolarStageResize(
+      { width, height, fitK, kMin, kMax, k: view.k, x: view.x, y: view.y },
+      { width: host.clientWidth, height: host.clientHeight },
+      model.reach,
+      model.tightest
+    );
+    if (next.width === width && next.height === height) return;
+    width = next.width;
+    height = next.height;
+    fitK = next.fitK;
+    kMin = next.kMin;
+    kMax = next.kMax;
+    view.k = next.k;
+    view.x = next.x;
+    view.y = next.y;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+  }
+
+  const resizeObserver =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => {
+          applyHostSize();
+        })
+      : null;
+  resizeObserver?.observe(host);
+  requestAnimationFrame(() => applyHostSize());
+
   raf = requestAnimationFrame(loop);
 
   const stop = (() => {
     stopped = true;
     cancelAnimationFrame(raf);
+    resizeObserver?.disconnect();
     host.innerHTML = '';
   }) as UniverseMount;
 

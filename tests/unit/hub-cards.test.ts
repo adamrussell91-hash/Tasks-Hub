@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import { mountProjectCard, mountTaskCard } from '@/views/hub-cards';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { closeCardMenu } from '@/views/card-menu';
+import { mountProjectCard, mountTaskCard, renderTaskMicroCard } from '@/views/hub-cards';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 
@@ -58,30 +59,52 @@ const project: Project = {
   drafted_documents: null
 };
 
+function reduceMotion(): void {
+  vi.spyOn(window, 'matchMedia').mockReturnValue({
+    matches: true,
+    media: '(prefers-reduced-motion: reduce)',
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn()
+  } as unknown as MediaQueryList);
+}
+
+function openMenu(root: ParentNode): HTMLElement {
+  const trigger = root.querySelector<HTMLButtonElement>('.card-menu');
+  expect(trigger).not.toBeNull();
+  trigger!.click();
+  const menu = document.querySelector<HTMLElement>('.card-menu__panel');
+  expect(menu).not.toBeNull();
+  return menu!;
+}
+
+function menuLabels(menu: HTMLElement): string[] {
+  return [...menu.querySelectorAll('.hub-menu__opt')].map((item) => item.textContent ?? '');
+}
+
+afterEach(() => {
+  closeCardMenu();
+});
+
 describe('hub cards', () => {
   it('renders a Cotton Glass micro task card and expands in place', () => {
-    vi.spyOn(window, 'matchMedia').mockReturnValue({
-      matches: true,
-      media: '(prefers-reduced-motion: reduce)',
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn()
-    } as unknown as MediaQueryList);
-
+    reduceMotion();
     const host = document.createElement('div');
     const slot = mountTaskCard(host, task({ id: 'task_lesson', title: 'Finish lesson pack' }), {});
     expect(slot.querySelector('.hub-row__title')?.textContent).toBe('Finish lesson pack');
     expect(slot.querySelector('.hub-chip')?.textContent).toBe('Teaching');
     expect(slot.querySelector('.priority-chip')?.textContent).toBe('high');
     expect(slot.dataset.state).toBe('compact');
+    expect(slot.querySelector('.card-menu')).not.toBeNull();
 
     slot.querySelector('.hub-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(slot.dataset.state).toBe('expanded');
     expect(slot.querySelector('.hub-card__title')?.textContent).toBe('Finish lesson pack');
-    expect(slot.querySelector('button')?.textContent).toBe('Open page');
+    expect(slot.querySelector('.card-menu')).not.toBeNull();
+    expect([...slot.querySelectorAll('button')].some((btn) => btn.textContent === 'Open page')).toBe(false);
   });
 
   it('keeps the sprint-board card contract on list items', () => {
@@ -90,30 +113,76 @@ describe('hub cards', () => {
     expect(slot.classList.contains('card')).toBe(true);
     expect(slot.dataset.id).toBe('task_a');
     expect(slot.querySelector('.card-title')?.textContent).toBe('Alpha');
+    expect(slot.querySelector('.card-menu')).not.toBeNull();
+  });
+
+  it('puts edit, delete, expand, and full page in the card menu — not as icons', () => {
+    const host = document.createElement('div');
+    const onEdit = vi.fn();
+    const onDelete = vi.fn();
+    const current = task({ id: 'task_menu', title: 'Outline MindWorks units' });
+    const slot = mountTaskCard(host, current, { onEdit, onDelete });
+
+    expect(slot.querySelector('[aria-label="Edit task"]')).toBeNull();
+    expect(slot.querySelector('[aria-label="Delete task"]')).toBeNull();
+    expect(slot.querySelector('.hub-icon-btn--danger')).toBeNull();
+
+    const menu = openMenu(slot);
+    expect(menuLabels(menu)).toEqual(['Expand', 'Full page', 'Edit', 'Delete']);
+
+    menu.querySelector<HTMLButtonElement>('[data-card-menu-item="delete"]')?.click();
+    expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'task_menu' }));
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(host.querySelector('.confirm-card')).toBeNull();
+    expect(document.body.textContent).not.toContain('Proposed write');
+  });
+
+  it('expands from the card menu and offers collapse plus full page', () => {
+    reduceMotion();
+    const host = document.createElement('div');
+    const slot = mountTaskCard(host, task({ id: 'task_expand', title: 'Finish lesson pack' }), {});
+
+    openMenu(slot).querySelector<HTMLButtonElement>('[data-card-menu-item="expand"]')?.click();
+    expect(slot.dataset.state).toBe('expanded');
+
+    const menu = openMenu(slot);
+    expect(menuLabels(menu)).toEqual(['Collapse', 'Full page']);
+    expect(slot.querySelector('.hub-row__actions')).toBeNull();
+  });
+
+  it('opens the full page from the menu', () => {
+    const host = document.createElement('div');
+    const onOpenPage = vi.fn();
+    const current = task({ id: 'task_page', title: 'Open me' });
+    const slot = mountTaskCard(host, current, { onOpenPage });
+    openMenu(slot).querySelector<HTMLButtonElement>('[data-card-menu-item="page"]')?.click();
+    expect(onOpenPage).toHaveBeenCalledWith(expect.objectContaining({ id: 'task_page' }));
+  });
+
+  it('shows the same overflow menu on standalone micro cards', () => {
+    const card = renderTaskMicroCard(task({ id: 'task_gantt', title: 'Moon' }), {
+      onEdit: vi.fn()
+    });
+    expect(card.querySelector('.card-menu')).not.toBeNull();
+    expect(card.querySelector('[aria-label="Edit task"]')).toBeNull();
+    expect(menuLabels(openMenu(card))).toEqual(['Full page', 'Edit']);
   });
 
   it('expands a project card to the progress checklist', () => {
-    vi.spyOn(window, 'matchMedia').mockReturnValue({
-      matches: true,
-      media: '(prefers-reduced-motion: reduce)',
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn()
-    } as unknown as MediaQueryList);
-
+    reduceMotion();
     const host = document.createElement('div');
     const slot = mountProjectCard(host, project, [
       task({ id: 'a', title: 'Lock brief', status: 'done' }),
       task({ id: 'b', title: 'Write case study', due_date: '2026-08-17' })
     ]);
+    expect(slot.querySelector('.card-menu')).not.toBeNull();
     slot.querySelector('.proj-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(slot.dataset.state).toBe('expanded');
     expect(slot.querySelector('.hub-hero-metric')?.textContent).toContain('50');
     expect(slot.querySelectorAll('.task-item')).toHaveLength(2);
-    expect(slot.textContent).toContain('Open page');
+    expect(slot.querySelector('.card-menu')).not.toBeNull();
+    expect(slot.textContent).not.toContain('Open page');
+    expect(menuLabels(openMenu(slot))).toEqual(['Collapse', 'Full page']);
   });
 
   it('opens via onActivate instead of expanding when that handler is set', () => {

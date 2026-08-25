@@ -5,9 +5,10 @@ import { openTasks } from '@/domain/queries';
 import { BOARD_COLUMNS, columnForTask, statusForColumn, type BoardColumnId } from '@/domain/board';
 import { boardTasks, isBoardTask } from '@/domain/hierarchy';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
-import { errorMessage, showConfirmWrite } from '@/views/feedback';
+import { errorMessage } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { initBoard, updateBoardCounts, type BoardMoveDetail } from '@/views/sprint-board';
+import { deleteTaskNow } from '@/views/card-actions';
 import { mountTaskCard } from '@/views/hub-cards';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -174,31 +175,17 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     syncChrome();
   }
 
+  function dropBoardTask(task: Task): void {
+    const card = board.querySelector<HTMLElement>(`[data-id="${task.id}"]`);
+    card?.remove();
+    tasks = tasks.filter((entry) => entry.id !== task.id);
+    byId.delete(task.id);
+    syncChrome();
+  }
+
   function removeTask(task: Task): void {
-    showConfirmWrite(
-      confirmHost,
-      `Delete “${task.title}”`,
-      'This removes the task from the hub.',
-      async () => {
-        const card = board.querySelector<HTMLElement>(`[data-id="${task.id}"]`);
-        card?.remove();
-        tasks = tasks.filter((entry) => entry.id !== task.id);
-        byId.delete(task.id);
-        syncChrome();
-        try {
-          await tasksApi.deleteTask(task.id, {
-            agent: 'Tasks Hub',
-            reason: 'Board delete'
-          });
-        } catch (err) {
-          tasks.push(task);
-          byId.set(task.id, task);
-          upsertTask(task);
-          throw err;
-        }
-      },
-      'Delete'
-    );
+    dropBoardTask(task);
+    deleteTaskNow(task, () => undefined, confirmHost);
   }
 
   canvas.append(

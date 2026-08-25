@@ -12,7 +12,7 @@ import '../styles/gantt.css';
 import '../styles/lesson-engine.css';
 import 'katex/dist/katex.min.css';
 
-import { fetchSession, logout, renderSignIn } from '@/auth/gate';
+import { fetchSession, logout, messageForSignInFailure, renderSignIn } from '@/auth/gate';
 import {
   isKnownHashView,
   parseCapacityShareToken,
@@ -68,9 +68,9 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Ideas parked over the rainbow until you promote them.'
   },
   clare: {
-    eyebrow: 'Negotiate',
+    eyebrow: 'Desk',
     title: 'Clare DeMind',
-    supporting: 'Tell Clare what needs doing. She proposes a time and a way in.'
+    supporting: 'Dump the chaos. She sorts it, then you confirm.'
   },
   graph: {
     eyebrow: 'Structure',
@@ -85,8 +85,7 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   gantt: {
     eyebrow: 'Project planning',
     title: 'Gantt',
-    supporting:
-      'Same moon, same card — drop it on the timeline, nest it under a parent, or link it to a project.'
+    supporting: 'Same tasks as every other view, plotted on a timeline. Projects sit in lanes.'
   },
   orbit: {
     eyebrow: 'Explore',
@@ -252,6 +251,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
 
   async function paint() {
     window.scrollTo(0, 0);
+    document.body.classList.remove('is-universe-fullscreen');
     const canvasWrap = shell.canvas.closest('.hub-canvas');
     if (canvasWrap instanceof HTMLElement) canvasWrap.scrollTop = 0;
     shell.canvas.scrollTop = 0;
@@ -340,8 +340,9 @@ async function boot(root: HTMLElement): Promise<void> {
       return;
     }
     await bootApp(root);
-  } catch {
+  } catch (err) {
     renderSignIn(root, {
+      initialError: messageForSignInFailure(err),
       onSuccess: () => {
         void bootApp(root);
       }

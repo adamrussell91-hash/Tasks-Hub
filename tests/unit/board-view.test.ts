@@ -108,8 +108,8 @@ describe('board view mutations', () => {
     document.body.append(canvas);
     await renderBoardView(canvas);
 
-    canvas.querySelector<HTMLButtonElement>('[aria-label="Delete task"]')?.click();
-    canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')?.click();
+    canvas.querySelector<HTMLButtonElement>('.card-menu')?.click();
+    document.querySelector<HTMLButtonElement>('[data-card-menu-item="delete"]')?.click();
 
     await vi.waitFor(() => {
       expect(canvas.querySelector('[data-id="task_old"]')).toBeNull();

@@ -14,8 +14,9 @@ import { renderPressureStrips } from '@/views/pinch-strip';
 import { findStallCandidates } from '@/domain/stall';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { createHubFilter } from '../../design-kit/js/hub-filter-menu.js';
-import { errorMessage, renderLoadError, showConfirmWrite } from '@/views/feedback';
+import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
+import { deleteTaskNow } from '@/views/card-actions';
 import { mountProjectCard, mountTaskCard, removeMountedTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
@@ -45,26 +46,9 @@ function appendTaskCard(
     onToggle: (current) => requestToggleDone(confirmHost, current, async () => {
       await handlers.onChanged();
     }),
-    onDelete: (current) => confirmDeleteTask(confirmHost, current, handlers.onRemoved),
+    onDelete: (current) => deleteTaskNow(current, handlers.onRemoved, confirmHost),
     onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void handlers.onChanged())
   });
-}
-
-function confirmDeleteTask(
-  host: HTMLElement,
-  task: Task,
-  onRemoved: () => void | Promise<void>
-): void {
-  showConfirmWrite(
-    host,
-    `Delete “${task.title}”`,
-    'This removes the task from the hub.',
-    async () => {
-      await onRemoved();
-      await tasksApi.deleteTask(task.id, { agent: 'Tasks Hub', reason: 'Row delete' });
-    },
-    'Delete'
-  );
 }
 
 function upsertTask(list: Task[], task: Task): Task[] {
@@ -181,7 +165,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
     );
 
     const clareLink = el('p', 'clare-inline');
-    const goClare = el('button', 'btn btn--secondary', 'Negotiate with Clare');
+    const goClare = el('button', 'btn btn--secondary', 'Talk to Clare');
     goClare.type = 'button';
     goClare.addEventListener('click', () => {
       location.hash = '#/clare';

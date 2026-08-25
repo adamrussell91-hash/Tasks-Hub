@@ -96,7 +96,7 @@ describe('Today view mutations', () => {
     });
   });
 
-  it('removes a Today card after delete confirm without a loading flash', async () => {
+  it('removes a Today card after delete without a loading flash', async () => {
     const existing = task({ id: 'task_today', title: 'Due today' });
     vi.mocked(tasksApi.listTasks).mockResolvedValueOnce([existing]).mockResolvedValue([]);
     vi.mocked(tasksApi.deleteTask).mockResolvedValue({ deleted: true });
@@ -106,8 +106,8 @@ describe('Today view mutations', () => {
     await renderDayView(canvas);
     expect(canvas.textContent).toContain('Due today');
 
-    canvas.querySelector<HTMLButtonElement>('[aria-label="Delete task"]')?.click();
-    canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')?.click();
+    canvas.querySelector<HTMLButtonElement>('.card-menu')?.click();
+    document.querySelector<HTMLButtonElement>('[data-card-menu-item="delete"]')?.click();
 
     await vi.waitFor(() => {
       expect(canvas.querySelector('[data-task-id="task_today"]')).toBeNull();

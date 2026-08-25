@@ -364,11 +364,36 @@
   background: var(--danger-surface);
 }
 
+.card-menu {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 2;
+}
+
+.card-menu__dots {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.card-menu__dots span {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.hub-menu__opt--danger {
+  color: var(--danger);
+}
+
 .hub-row {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
+  padding-right: 2.75rem;
   background: var(--hub-glass-fill);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
@@ -376,6 +401,7 @@
   backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
   -webkit-backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
   transition: border-color 0.15s;
+  position: relative;
 }
 
 .hub-row:hover {
@@ -493,8 +519,7 @@
   flex: none;
 }
 
-.proj-card__collapse {
-  position: absolute;
+.proj-card .card-menu {
   top: var(--space-4);
   right: var(--space-4);
 }
@@ -753,7 +778,7 @@
 @media (pointer: coarse) {
   .hub-row .hub-icon-btn,
   .hub-card .hub-icon-btn,
-  .proj-card__collapse {
+  .card-menu {
     width: 2.75rem;
     height: 2.75rem;
   }
@@ -813,7 +838,7 @@
   }
 
   .task-card__head {
-    padding-right: 0;
+    padding-right: 2rem;
   }
 
   .task-card__foot {

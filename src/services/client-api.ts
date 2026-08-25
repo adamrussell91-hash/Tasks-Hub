@@ -103,6 +103,19 @@ export const tasksApi = {
     protocol_id?: import('@/domain/clare-protocols').ClareProtocolId;
   }) => apiPost<import('@/domain/clare').ClareProposal>('/api/clare', { action: 'propose', ...body }),
 
+  briefWithClare: (protocol_id?: import('@/domain/clare-protocols').ClareProtocolId) =>
+    apiPost<import('@/domain/clare-desk').ClareBriefing>('/api/clare', {
+      action: 'brief',
+      protocol_id
+    }),
+
+  processDumpWithClare: (body: {
+    text: string;
+    domain?: string;
+    protocol_id?: import('@/domain/clare-protocols').ClareProtocolId;
+  }) =>
+    apiPost<import('@/domain/clare').ClareDumpResult>('/api/clare', { action: 'dump', ...body }),
+
   acceptClareProposal: (body: {
     proposal: import('@/domain/clare').ClareProposal;
     accepted_minutes: number;
@@ -113,6 +126,19 @@ export const tasksApi = {
       negotiation: import('@/schemas/clare').ClareNegotiationLog;
       calibration: import('@/schemas/clare').ClareCalibration;
     }>('/api/clare', { action: 'accept', ...body }),
+
+  acceptClareBatch: (
+    items: Array<{
+      proposal: import('@/domain/clare').ClareProposal;
+      accepted_minutes: number;
+      framework_id?: string;
+    }>
+  ) =>
+    apiPost<{
+      tasks: Task[];
+      negotiations: import('@/schemas/clare').ClareNegotiationLog[];
+      calibrations: import('@/schemas/clare').ClareCalibration[];
+    }>('/api/clare', { action: 'accept_batch', items }),
 
   recordClareActual: (task_id: string, actual_minutes: number) =>
     apiPost<{ task: Task; calibration: import('@/schemas/clare').ClareCalibration | null }>(
