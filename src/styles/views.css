@@ -1519,14 +1519,21 @@
 
 .chat-form {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chat-form__tools {
+  display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  align-items: flex-end;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .chat-input,
 #chat-input {
-  flex: 1 1 12rem;
+  width: 100%;
   min-height: 2.5rem;
   padding: 0.55rem 0.85rem;
   resize: vertical;
@@ -1597,8 +1604,8 @@
   position: fixed;
   z-index: 25;
   inset: auto var(--space-6) 6rem auto;
-  width: min(24rem, calc(100vw - 3rem));
-  max-height: min(70vh, 40rem);
+  width: min(28rem, calc(100vw - 3rem));
+  max-height: min(78vh, 44rem);
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--hub-glass-fill);
@@ -1608,8 +1615,26 @@
   overflow: hidden;
 }
 
+.chat-view[data-panel-mode='overlay'] .chat-agent-hero__role {
+  display: none;
+}
+
+.chat-view[data-panel-mode='overlay'] .clare-protocols .page-header__eyebrow {
+  display: none;
+}
+
+.chat-view[data-panel-mode='overlay'] .clare-protocols {
+  margin-bottom: var(--space-1);
+}
+
+.chat-view[data-panel-mode='overlay'] .clare-protocols:last-of-type {
+  display: none;
+}
+
 .chat-view[data-panel-mode='overlay'] .chat-messages {
-  max-height: 40vh;
+  flex: 1 1 auto;
+  min-height: 12rem;
+  max-height: none;
 }
 
 .chat-view[data-panel-mode='overlay'] .clare-extras {

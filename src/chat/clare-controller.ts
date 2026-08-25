@@ -182,6 +182,7 @@ export function createClareChatController({
   let frameworks: FrameworkEntry[] = [];
   let started = false;
   let sending = false;
+  let turn = 0;
   let waitTimer: number | null = null;
   let waitIndex = 0;
   let statusBubble: HTMLElement | null = null;
@@ -227,22 +228,27 @@ export function createClareChatController({
   }
 
   async function withWait<T>(work: () => Promise<T>): Promise<T | undefined> {
-    if (sending) return undefined;
+    const mine = ++turn;
     sending = true;
     setChatBusy(root, true);
     waitIndex = 0;
     showWaitLine();
     waitTimer = window.setInterval(showWaitLine, 1800);
     try {
-      return await work();
+      const result = await work();
+      if (mine !== turn) return undefined;
+      return result;
     } catch (err) {
+      if (mine !== turn) return undefined;
       stopWait();
       showChatError(root, err instanceof Error ? err.message : 'Clare could not propose.');
       return undefined;
     } finally {
-      stopWait();
-      sending = false;
-      setChatBusy(root, false);
+      if (mine === turn) {
+        stopWait();
+        sending = false;
+        setChatBusy(root, false);
+      }
     }
   }
 
@@ -310,6 +316,10 @@ export function createClareChatController({
   }
 
   async function newChat(): Promise<void> {
+    turn += 1;
+    stopWait();
+    sending = false;
+    setChatBusy(root, false);
     selectedProtocolId = undefined;
     markActive(root, undefined);
     clearThread();

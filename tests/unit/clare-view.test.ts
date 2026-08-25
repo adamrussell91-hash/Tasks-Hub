@@ -172,6 +172,33 @@ describe('Clare protocol controls', () => {
     expect(tasksApi.acceptClareBatch).toHaveBeenCalledTimes(1);
   });
 
+  it('drops a dump that finishes after New chat', async () => {
+    const pending = deferred<import('@/domain/clare').ClareDumpResult>();
+    vi.mocked(tasksApi.processDumpWithClare).mockReturnValue(pending.promise);
+    const canvas = document.createElement('main');
+    await renderClareView(canvas);
+    const dump = canvas.querySelector<HTMLTextAreaElement>('#chat-input')!;
+    dump.value = proposal.title;
+    canvas.querySelector<HTMLFormElement>('#chat-form')!.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    await vi.waitFor(() => expect(tasksApi.processDumpWithClare).toHaveBeenCalledTimes(1));
+
+    canvas.querySelector<HTMLButtonElement>('#chat-new')!.click();
+    pending.resolve({
+      voice: 'Stale dump that should not land.',
+      proposals: [proposal],
+      questions: [],
+      notes: [],
+      toolkit: null
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(canvas.textContent).not.toContain('Stale dump that should not land.');
+    expect(canvas.querySelector('.record-proposal__confirm')).toBeNull();
+    expect(canvas.textContent).toContain(briefing.closer);
+  });
+
   it('runs a sprint briefing when the dump is empty', async () => {
     vi.mocked(tasksApi.briefWithClare).mockResolvedValue({
       ...briefing,

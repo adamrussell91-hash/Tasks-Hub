@@ -118,7 +118,9 @@ export function buildChatView(onPickProtocol: (id: ClareProtocolId) => void): HT
   const send = el('button', 'btn btn--primary', 'Send');
   send.id = 'chat-send';
   send.type = 'submit';
-  form.append(label, input, domain.el, send);
+  const tools = el('div', 'chat-form__tools');
+  tools.append(domain.el, send);
+  form.append(label, input, tools);
   view.append(form);
 
   return view;
