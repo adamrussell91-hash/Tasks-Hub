@@ -12,7 +12,7 @@ import '../styles/gantt.css';
 import '../styles/lesson-engine.css';
 import 'katex/dist/katex.min.css';
 
-import { fetchSession, logout, renderSignIn } from '@/auth/gate';
+import { fetchSession, logout, messageForSignInFailure, renderSignIn } from '@/auth/gate';
 import {
   isKnownHashView,
   parseCapacityShareToken,
@@ -340,8 +340,9 @@ async function boot(root: HTMLElement): Promise<void> {
       return;
     }
     await bootApp(root);
-  } catch {
+  } catch (err) {
     renderSignIn(root, {
+      initialError: messageForSignInFailure(err),
       onSuccess: () => {
         void bootApp(root);
       }

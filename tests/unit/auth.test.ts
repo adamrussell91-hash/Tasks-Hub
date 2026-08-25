@@ -1,13 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiClientError, apiPost } from '../../src/api/client';
+import { ApiClientError, apiPost, parseApiResponse, readPlatformError } from '../../src/api/client';
 import { resolveApiBaseUrl } from '../../src/api/config';
 import {
   attachPassphraseCapture,
   messageForSignInFailure,
-  normalizePassphrase
+  normalizePassphrase,
+  renderSignIn
 } from '../../src/auth/gate';
-import { parseApiResponse } from '../../src/api/client';
 import {
   createPassphraseHash,
   createSha256PassphraseHash,
@@ -82,7 +82,19 @@ describe('sign-in helpers', () => {
     ).toBe('The sign-in service did not respond. Try again.');
     expect(
       messageForSignInFailure(new ApiClientError({ code: 'network_error', message: 'fail' }))
-    ).toMatch(/Try again/);
+    ).toMatch(/artasks-hub/);
+    expect(
+      messageForSignInFailure(new ApiClientError({ code: 'usage_exceeded', message: 'Usage exceeded' }))
+    ).toMatch(/usage limit/);
+  });
+
+  it('shows a boot-time API failure on the gate without submitting', () => {
+    const host = document.createElement('div');
+    renderSignIn(host, { initialError: 'Sign-in is paused: the Netlify API host is over its usage limit.' });
+    const error = host.querySelector('.sign-in__error');
+    expect(error).toBeInstanceOf(HTMLElement);
+    expect((error as HTMLElement).hidden).toBe(false);
+    expect(error?.textContent).toMatch(/usage limit/);
   });
 
   it('points a real origin block at the API host', () => {
@@ -95,6 +107,25 @@ describe('sign-in helpers', () => {
 describe('API response parse', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('reads Netlify usage_exceeded instead of calling it an unexpected shape', async () => {
+    expect(
+      readPlatformError({
+        error: 'usage_exceeded',
+        message: 'Usage exceeded',
+        request_id: '01TEST'
+      })
+    ).toEqual({ code: 'usage_exceeded', message: 'Usage exceeded' });
+
+    const response = new Response(
+      JSON.stringify({ error: 'usage_exceeded', message: 'Usage exceeded' }),
+      { status: 503, headers: { 'content-type': 'application/json' } }
+    );
+    await expect(parseApiResponse(response)).rejects.toMatchObject({
+      code: 'usage_exceeded',
+      status: 503
+    });
   });
 
   it('rejects empty Netlify 502/503 bodies instead of throwing JSON parse noise', async () => {
@@ -121,6 +152,20 @@ describe('API response parse', () => {
       authenticated: true
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a Netlify usage_exceeded 503', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'usage_exceeded', message: 'Usage exceeded' }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' }
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(apiPost('/api/auth', { passphrase: 'tasks-hub-local' }, { baseUrl: '' })).rejects.toMatchObject({
+      code: 'usage_exceeded'
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
