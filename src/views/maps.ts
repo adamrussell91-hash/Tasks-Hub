@@ -231,16 +231,59 @@ function portDot(x: number, y: number, id: string, color: string): SVGCircleElem
   });
 }
 
-function connectorPath(d: string, color: string, dash: boolean, under = false): SVGPathElement {
+function connectorPath(
+  id: string,
+  d: string,
+  color: string,
+  dash: boolean,
+  under = false
+): SVGPathElement {
   const path = svgEl('path', {
     d,
     fill: 'none',
     stroke: color,
     'stroke-width': '3',
-    class: under ? 'map-connector map-connector--under' : 'map-connector'
+    class: under ? 'map-connector map-connector--under' : 'map-connector',
+    'data-connector-id': id
   });
   if (dash) path.setAttribute('stroke-dasharray', '5 4');
   return path;
+}
+
+function patchConnectorPathY(d: string, dy: number, shiftFrom: boolean, shiftTo: boolean): string {
+  if (!dy || (!shiftFrom && !shiftTo)) return d;
+  const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number);
+  if (!nums || nums.length < 4) return d;
+  const next = [...nums];
+  if (shiftFrom) next[1] = (next[1] ?? 0) + dy;
+  if (shiftTo) next[next.length - 1] = (next[next.length - 1] ?? 0) + dy;
+  let index = 0;
+  return d.replace(/-?\d+(?:\.\d+)?/g, () => String(next[index++] ?? 0));
+}
+
+function connectorRefs(
+  svg: SVGSVGElement,
+  layout: MapCanvasLayout,
+  ownerId: string
+): Array<{ els: NodeListOf<Element>; shiftFrom: boolean; shiftTo: boolean; base: string }> {
+  return layout.connectors
+    .filter((connector) => connector.from.ownerId === ownerId || connector.to.ownerId === ownerId)
+    .map((connector) => ({
+      base: connector.path,
+      shiftFrom: connector.from.ownerId === ownerId,
+      shiftTo: connector.to.ownerId === ownerId,
+      els: svg.querySelectorAll(`[data-connector-id="${connector.id}"]`)
+    }));
+}
+
+function liveShiftConnectors(
+  refs: Array<{ els: NodeListOf<Element>; shiftFrom: boolean; shiftTo: boolean; base: string }>,
+  dy: number
+): void {
+  for (const ref of refs) {
+    const next = patchConnectorPathY(ref.base, dy, ref.shiftFrom, ref.shiftTo);
+    ref.els.forEach((node) => node.setAttribute('d', next));
+  }
 }
 
 function ownerLineId(layout: MapCanvasLayout, ownerId: string, owner: string): string | null {
@@ -249,7 +292,12 @@ function ownerLineId(layout: MapCanvasLayout, ownerId: string, owner: string): s
   return layout.ticks.find((item) => item.id === ownerId)?.lineId ?? null;
 }
 
-const lastLineX = new Map<string, number>();
+const DRAG_THRESHOLD = 4;
+
+type MapHit =
+  | JoinPick
+  | { kind: 'station-resize'; id: string; edge: 'top' | 'bottom' }
+  | null;
 
 function letterFill(color: MapColorToken): string {
   return letterCss(color);
@@ -259,18 +307,12 @@ function discFill(color: MapColorToken): string {
   return discCss(color);
 }
 
-function slideLine(node: SVGElement, prev: number | undefined, x: number): void {
-  if (prev == null || prev === x) return;
-  node.setAttribute('transform', `translate(${prev - x} 0)`);
-  const reset = () => node.setAttribute('transform', 'translate(0 0)');
-  requestAnimationFrame(() => requestAnimationFrame(reset));
-}
-
 function renderMapSvg(
   host: SVGSVGElement,
   layout: MapCanvasLayout,
   selectedId: string | null,
-  showPorts: boolean
+  showPorts: boolean,
+  editMode: boolean
 ): void {
   host.replaceChildren();
   host.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
@@ -313,8 +355,6 @@ function renderMapSvg(
       class: 'map-line-group map-line-group--track',
       'data-line': line.id
     });
-    const prev = lastLineX.get(line.id);
-    slideLine(track, prev, line.x);
     for (const item of line.tracks) {
       for (const cut of item.cuts) {
         track.append(
@@ -361,7 +401,9 @@ function renderMapSvg(
   for (const connector of layout.connectors) {
     if (!connector.under) continue;
     localConnectors.add(connector.id);
-    root.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash, true));
+    root.append(
+      connectorPath(connector.id, connector.path, strokeOf(connector.color), connector.dash, true)
+    );
   }
 
   for (const line of layout.lines) {
@@ -369,9 +411,6 @@ function renderMapSvg(
       class: 'map-line-group',
       'data-line': line.id
     });
-    const prev = lastLineX.get(line.id);
-    slideLine(group, prev, line.x);
-    lastLineX.set(line.id, line.x);
 
     for (const connector of layout.connectors) {
       if (connector.under) continue;
@@ -379,7 +418,9 @@ function renderMapSvg(
       const toLine = ownerLineId(layout, connector.to.ownerId, connector.to.owner);
       if (fromLine !== line.id || toLine !== line.id) continue;
       localConnectors.add(connector.id);
-      group.append(connectorPath(connector.path, strokeOf(connector.color), connector.dash, false));
+      group.append(
+        connectorPath(connector.id, connector.path, strokeOf(connector.color), connector.dash, false)
+      );
     }
 
     for (const station of layout.stations.filter((item) => item.line_id === line.id)) {
@@ -402,6 +443,26 @@ function renderMapSvg(
             class: 'map-station__body'
           })
         );
+        if (editMode) {
+          g.append(
+            svgEl('rect', {
+              x: String(body.x - body.w / 2),
+              y: String(body.y),
+              width: String(body.w),
+              height: '10',
+              class: 'map-station__resize map-station__resize--top',
+              'data-resize': 'top'
+            }),
+            svgEl('rect', {
+              x: String(body.x - body.w / 2),
+              y: String(body.y + body.h - 10),
+              width: String(body.w),
+              height: '10',
+              class: 'map-station__resize map-station__resize--bottom',
+              'data-resize': 'bottom'
+            })
+          );
+        }
         g.append(verticalText(body.x, body.y + body.h / 2, station.label, 'map-station__label', stationColor));
       }
       if (showPorts) {
@@ -462,7 +523,7 @@ function renderMapSvg(
   for (const connector of layout.connectors) {
     if (localConnectors.has(connector.id)) continue;
     root.insertBefore(
-      connectorPath(connector.path, strokeOf(connector.color), connector.dash),
+      connectorPath(connector.id, connector.path, strokeOf(connector.color), connector.dash),
       root.querySelector('.map-line-group')
     );
   }
@@ -482,7 +543,13 @@ function clientToMap(svg: SVGSVGElement, event: PointerEvent): { x: number; y: n
   return { x: loc.x, y: loc.y };
 }
 
-function hitMap(layout: MapCanvasLayout, x: number, y: number, showPorts: boolean): JoinPick | null {
+function hitMap(
+  layout: MapCanvasLayout,
+  x: number,
+  y: number,
+  showPorts: boolean,
+  editMode: boolean
+): MapHit {
   if (showPorts) {
     const port = layout.ports.find((item) => Math.hypot(x - item.x, y - item.y) < 12);
     if (port) {
@@ -499,14 +566,18 @@ function hitMap(layout: MapCanvasLayout, x: number, y: number, showPorts: boolea
     }
   }
   for (const station of layout.stations) {
-    const hit = station.bodies.some(
-      (body) =>
-        x >= body.x - body.w / 2 - 6 &&
-        x <= body.x + body.w / 2 + 6 &&
-        y >= body.y &&
-        y <= body.y + body.h
-    );
-    if (hit) return { kind: 'station', id: station.id };
+    for (const body of station.bodies) {
+      const left = body.x - body.w / 2 - 6;
+      const right = body.x + body.w / 2 + 6;
+      const top = body.y;
+      const bottom = body.y + body.h;
+      if (x < left || x > right || y < top || y > bottom) continue;
+      if (editMode) {
+        if (y <= top + 10) return { kind: 'station-resize', id: station.id, edge: 'top' };
+        if (y >= bottom - 10) return { kind: 'station-resize', id: station.id, edge: 'bottom' };
+      }
+      return { kind: 'station', id: station.id };
+    }
   }
   for (const line of layout.lines) {
     if (line.tracks.some((track) => Math.hypot(x - track.disc.cx, y - track.disc.cy) <= track.disc.r + 6)) {
@@ -559,6 +630,37 @@ function shiftStationDates(station: MapStation, dy: number, year: number): void 
   const next = applyDateSpanToStation(station, year);
   station.y = next.y;
   station.height = next.height;
+}
+
+function resizeStationDates(
+  station: MapStation,
+  dy: number,
+  edge: 'top' | 'bottom',
+  year: number
+): void {
+  const startY = station.starts_on ? dateToY(station.starts_on, year) : station.y;
+  const endY = station.ends_on ? dateToY(station.ends_on, year) : startY + station.height;
+  const minSpan = 14;
+  if (edge === 'top') {
+    station.starts_on = yToDate(Math.min(startY + dy, endY - minSpan), year);
+  } else {
+    station.ends_on = yToDate(Math.max(endY + dy, startY + minSpan), year);
+  }
+  const next = applyDateSpanToStation(station, year);
+  station.y = next.y;
+  station.height = next.height;
+  station.starts_on = next.starts_on;
+  station.ends_on = next.ends_on;
+}
+
+function joinPick(hit: MapHit): JoinPick | null {
+  if (!hit || hit.kind === 'station-resize') return null;
+  return hit;
+}
+
+function hitOwnerId(hit: MapHit): string | null {
+  if (!hit) return null;
+  return hit.id;
 }
 
 function downloadHtml(map: TransitMap): void {
@@ -640,7 +742,6 @@ function trackPicker(selected: YearTrack[]): { root: HTMLElement; value: () => Y
 }
 
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
-  lastLineX.clear();
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading maps…'));
   const [listed, projects] = await Promise.all([
     tasksApi.listMaps().catch(() => [] as TransitMap[]),
@@ -844,7 +945,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       preserveAspectRatio: 'xMinYMin slice',
       'aria-label': `${current.title} · ${year} calendar year`
     });
-    renderMapSvg(svg, layout, selectedId, joining);
+    renderMapSvg(svg, layout, selectedId, joining, mode === 'edit');
     applyCamera(svg, layout);
 
     const zoomBar = el('div', 'map-zoom');
@@ -887,18 +988,20 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
 
     svg.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
+      event.preventDefault();
       const start = clientToMap(svg, event);
-      const hit = hitMap(layout, start.x, start.y, joining);
+      const hit = hitMap(layout, start.x, start.y, joining, mode === 'edit' && !joining);
       if (joining) {
-        if (!hit) return;
+        const joinHit = joinPick(hit);
+        if (!joinHit) return;
         if (!joinFrom) {
-          joinFrom = hit;
-          selectedId = hit.kind === 'line' ? null : hit.id;
-          toast = `Join from ${hit.kind}. Click the thing to connect.`;
+          joinFrom = joinHit;
+          selectedId = joinHit.kind === 'line' ? null : joinHit.id;
+          toast = `Join from ${joinHit.kind}. Click the thing to connect.`;
           paint();
           return;
         }
-        if (applyJoin(current, joinFrom, hit, start.y, year)) {
+        if (applyJoin(current, joinFrom, joinHit, start.y, year)) {
           toast = 'Joined.';
           void persist();
         } else {
@@ -910,8 +1013,14 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         return;
       }
 
-      const canDrag =
-        mode === 'edit' && Boolean(hit) && (hit!.kind === 'event' || hit!.kind === 'station' || hit!.kind === 'line');
+      const dragKind =
+        mode === 'edit' && hit
+          ? hit.kind === 'station-resize'
+            ? 'resize-station'
+            : hit.kind === 'event' || hit.kind === 'station' || hit.kind === 'line'
+              ? `move-${hit.kind}`
+              : null
+          : null;
       let moved = false;
       let lastX = event.clientX;
       let lastY = event.clientY;
@@ -922,48 +1031,108 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       const rect = svg.getBoundingClientRect();
       const unitX = layout.width / zoom / Math.max(1, rect.width);
       const unitY = layout.height / zoom / Math.max(1, rect.height);
-      const dragged = hit && canDrag ? svg.querySelector(`[data-id="${hit.id}"]`) : null;
-      const lineGroups = hit?.kind === 'line' ? [...svg.querySelectorAll(`[data-line="${hit.id}"]`)] : [];
+      const ownerId = hitOwnerId(hit);
+      const dragged =
+        ownerId && dragKind?.startsWith('move-') && hit?.kind !== 'line'
+          ? svg.querySelector(`[data-id="${ownerId}"]`)
+          : null;
+      const lineGroups =
+        hit?.kind === 'line' ? [...svg.querySelectorAll(`[data-line="${hit.id}"]`)] : [];
+      const connectorLinks =
+        ownerId && dragKind && dragKind !== 'move-line' ? connectorRefs(svg, layout, ownerId) : [];
+      const resizeEdge = hit?.kind === 'station-resize' ? hit.edge : null;
+      const resizeStation =
+        resizeEdge && ownerId ? (svg.querySelector(`[data-id="${ownerId}"]`) as SVGGElement | null) : null;
+      const resizeBodies = resizeStation ? [...resizeStation.querySelectorAll('.map-station__body')] : [];
+      const resizeBase = resizeBodies.map((body) => ({
+        y: Number(body.getAttribute('y') ?? 0),
+        h: Number(body.getAttribute('height') ?? 0)
+      }));
+
+      try {
+        stage.setPointerCapture(event.pointerId);
+      } catch {
+        /* ignore */
+      }
 
       const onMove = (move: PointerEvent) => {
+        move.preventDefault();
         lastX = move.clientX;
         lastY = move.clientY;
         const dx = lastX - originX;
         const dy = lastY - originY;
-        if (!moved && Math.hypot(dx, dy) < 8) return;
-        moved = true;
-        if (canDrag && hit?.kind === 'line') {
-          for (const node of lineGroups) node.setAttribute('transform', `translate(${dx * unitX} 0)`);
+        if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        if (!moved) {
+          moved = true;
+          stage.classList.add('is-dragging');
+          if (dragKind === 'move-line') {
+            for (const node of lineGroups) node.classList.add('is-live-drag');
+          }
+          dragged?.classList.add('is-live-drag');
+        }
+        const mapDy = dy * unitY;
+        const mapDx = dx * unitX;
+        if (dragKind === 'move-line') {
+          for (const node of lineGroups) node.setAttribute('transform', `translate(${mapDx} 0)`);
           return;
         }
-        if (canDrag && dragged) {
-          dragged.setAttribute('transform', `translate(0 ${dy * unitY})`);
+        if (dragKind === 'resize-station' && resizeStation && resizeEdge) {
+          for (const [index, body] of resizeBodies.entries()) {
+            const base = resizeBase[index];
+            if (!base) continue;
+            if (resizeEdge === 'top') {
+              body.setAttribute('y', String(base.y + mapDy));
+              body.setAttribute('height', String(Math.max(14, base.h - mapDy)));
+            } else {
+              body.setAttribute('height', String(Math.max(14, base.h + mapDy)));
+            }
+          }
+          liveShiftConnectors(connectorLinks, mapDy);
+          return;
+        }
+        if (dragged) {
+          dragged.setAttribute('transform', `translate(0 ${mapDy})`);
+          liveShiftConnectors(connectorLinks, mapDy);
           return;
         }
         stage.classList.add('is-panning');
-        camX = startCamX - dx * unitX;
-        camY = startCamY - dy * unitY;
+        camX = startCamX - mapDx;
+        camY = startCamY - mapDy;
         applyCamera(svg, layout);
       };
 
       const onUp = () => {
         window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-        stage.classList.remove('is-panning');
+        stage.classList.remove('is-panning', 'is-dragging');
+        for (const node of lineGroups) node.classList.remove('is-live-drag');
+        dragged?.classList.remove('is-live-drag');
+        try {
+          stage.releasePointerCapture(event.pointerId);
+        } catch {
+          /* ignore */
+        }
         const dx = (lastX - originX) * unitX;
         const dy = (lastY - originY) * unitY;
         if (!moved) {
-          selectedId = hit && hit.kind !== 'line' ? hit.id : null;
+          selectedId = hit && hit.kind !== 'line' && hit.kind !== 'station-resize' ? hit.id : null;
           paint();
           return;
         }
-        if (!canDrag || !hit) return;
+        if (!dragKind || !hit) return;
         if (hit.kind === 'line') {
           const lane = layout.lines.length > 1 ? Math.abs(layout.lines[1]!.x - layout.lines[0]!.x) : 280;
           if (Math.abs(dx) >= lane / 2) {
             current.lines = moveLine(current.lines, hit.id, dx > 0 ? 1 : -1);
             void persist();
           }
+          paint();
+          return;
+        }
+        if (hit.kind === 'station-resize') {
+          const station = current.stations.find((item) => item.id === hit.id);
+          if (station) resizeStationDates(station, dy, hit.edge, year);
+          selectedId = hit.id;
+          void persist();
           paint();
           return;
         }
@@ -995,7 +1164,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       };
 
       window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointerup', onUp, { once: true });
     });
 
     canvas.append(stage);
