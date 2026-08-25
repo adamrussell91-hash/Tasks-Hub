@@ -1689,6 +1689,74 @@ select.hub-filter {
   --map-purple-fill: #edd6fa;
 }
 
+html.is-map-fullscreen,
+html.is-map-fullscreen body {
+  overflow: hidden;
+}
+
+html.is-map-fullscreen .hub-rail,
+html.is-map-fullscreen .page-header,
+html.is-map-fullscreen .reminder-strip-host {
+  display: none !important;
+}
+
+html.is-map-fullscreen .hub-layout {
+  display: block;
+  min-height: 100vh;
+}
+
+html.is-map-fullscreen .hub-canvas {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  padding: var(--space-3);
+  margin: 0;
+}
+
+html.is-map-fullscreen .map-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: calc(100vh - var(--space-3) * 2);
+}
+
+html.is-map-fullscreen .map-page .map-key__tracks {
+  display: none;
+}
+
+html.is-map-fullscreen .map-page .map-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  align-items: stretch;
+}
+
+html.is-map-fullscreen .map-page .map-stage {
+  height: 100%;
+  min-height: 0;
+}
+
+html.is-map-fullscreen .map-page .map-index {
+  max-height: none;
+  height: 100%;
+}
+
+html.is-map-fullscreen .map-page .map-preview {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 40;
+  width: min(24rem, calc(100vw - 2rem));
+  max-height: min(70vh, 36rem);
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+}
+
 .map-toolbar {
   display: flex;
   flex-wrap: wrap;

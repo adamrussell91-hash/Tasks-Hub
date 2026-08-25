@@ -32,6 +32,11 @@ export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] 
   return list.map((map) => normalizeLineColors(map));
 }
 
+/** Hide rail + page header so the map can fill the viewport. */
+export function setMapFullscreenChrome(on: boolean): void {
+  document.documentElement.classList.toggle('is-map-fullscreen', on);
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className?: string,
@@ -709,6 +714,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       });
   }
   let mode: Mode = 'view';
+  let fullscreen = false;
   let draft: DraftKind = null;
   let selectedId: string | null = null;
   let zoom = 1;
@@ -726,10 +732,40 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     svg.setAttribute('viewBox', `${camX} ${camY} ${vw} ${vh}`);
   };
 
+  const applyFullscreen = (on: boolean) => {
+    fullscreen = on;
+    setMapFullscreenChrome(on);
+  };
+
+  const leaveFullscreen = () => {
+    if (!fullscreen) return;
+    applyFullscreen(false);
+    paint();
+  };
+
+  const onFullscreenKey = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !fullscreen) return;
+    event.preventDefault();
+    leaveFullscreen();
+  };
+
+  const onFullscreenHash = () => {
+    if (location.hash.startsWith('#/maps')) return;
+    applyFullscreen(false);
+    window.removeEventListener('keydown', onFullscreenKey);
+    window.removeEventListener('hashchange', onFullscreenHash);
+  };
+
+  window.addEventListener('keydown', onFullscreenKey);
+  window.addEventListener('hashchange', onFullscreenHash);
+  setMapFullscreenChrome(false);
+
   const excursions = projects.filter((p) => p.type === 'excursion');
 
   const paint = () => {
-    canvas.classList.add('map-page');
+    canvas.classList.toggle('map-page', true);
+    canvas.classList.toggle('map-page--fullscreen', fullscreen);
+    setMapFullscreenChrome(fullscreen);
     const year = current.year ?? yearNow;
     const terms = schoolTerms(year);
     const layout = layoutMap(current);
@@ -786,7 +822,19 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       paint();
     });
 
-    toolbar.append(select, pills, exportBtn, newBtn);
+    const fullBtn = el(
+      'button',
+      fullscreen ? 'btn btn--primary' : 'btn btn--ghost',
+      fullscreen ? 'Exit full screen' : 'Full screen'
+    );
+    fullBtn.type = 'button';
+    fullBtn.setAttribute('aria-pressed', fullscreen ? 'true' : 'false');
+    fullBtn.addEventListener('click', () => {
+      applyFullscreen(!fullscreen);
+      paint();
+    });
+
+    toolbar.append(select, pills, exportBtn, newBtn, fullBtn);
 
     const termPills = el('div', 'hub-pills map-term-pills');
     termPills.setAttribute('role', 'group');

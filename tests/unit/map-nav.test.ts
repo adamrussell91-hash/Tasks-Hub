@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { setMapFullscreenChrome } from '@/views/maps';
 import { createFilteredPicker, createMapIndex, type MapIndexItem } from '@/views/map-nav';
 import { createVizNodeList } from '@/views/viz-node-list';
+
+describe('map fullscreen chrome', () => {
+  it('toggles the immersive html class', () => {
+    setMapFullscreenChrome(true);
+    expect(document.documentElement.classList.contains('is-map-fullscreen')).toBe(true);
+    setMapFullscreenChrome(false);
+    expect(document.documentElement.classList.contains('is-map-fullscreen')).toBe(false);
+  });
+});
 
 describe('map navigation helpers', () => {
   it('filters map index items by label', () => {
@@ -42,7 +52,7 @@ describe('viz node list', () => {
       label: `Task ${i}`
     }));
     const list = createVizNodeList('Nodes', nodes, () => {}, { collapsed: true });
-    expect(list.querySelector('.viz-alt-panel__body')?.hidden).toBe(true);
+    expect(list.querySelector<HTMLElement>('.viz-alt-panel__body')?.hidden).toBe(true);
   });
 
   it('filters nodes from search input', () => {
