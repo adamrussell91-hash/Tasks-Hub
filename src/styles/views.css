@@ -1772,11 +1772,17 @@ select.hub-filter {
   overflow: hidden;
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .map-stage.is-panning,
-.map-stage.is-panning .map-svg {
+.map-stage.is-panning .map-svg,
+.map-stage.is-dragging,
+.map-stage.is-dragging .map-svg {
   cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .map-stage.is-joining,
@@ -1795,6 +1801,8 @@ select.hub-filter {
   width: 100%;
   height: 100%;
   min-height: 56rem;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .map-zoom {
@@ -1834,6 +1842,31 @@ select.hub-filter {
 
 .map-line-group {
   transition: transform 0.45s ease;
+}
+
+.map-line-group.is-live-drag,
+.map-station.is-live-drag,
+.map-tick.is-live-drag {
+  transition: none;
+}
+
+.map-station__resize {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+
+.map-stage.is-edit .map-station__resize--top {
+  cursor: n-resize;
+}
+
+.map-stage.is-edit .map-station__resize--bottom {
+  cursor: s-resize;
+}
+
+.map-stage.is-edit .map-station.is-live-drag .map-station__resize--top,
+.map-stage.is-edit .map-station.is-live-drag .map-station__resize--bottom {
+  cursor: grabbing;
 }
 
 .map-connector {
