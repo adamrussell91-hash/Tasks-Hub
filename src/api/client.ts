@@ -34,6 +34,24 @@ export function isRetryableApiError(err: unknown): boolean {
   return err instanceof ApiClientError && RETRYABLE_CODES.has(err.code);
 }
 
+/**
+ * Netlify (and similar hosts) return `{ error, message }` when the site is
+ * suspended — not our `{ ok, data | error }` envelope. Read that before we
+ * treat the body as a malformed hub response.
+ */
+export function readPlatformError(body: unknown): ApiErrorBody | null {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+  if ('ok' in body) return null;
+  const error = (body as { error?: unknown }).error;
+  if (typeof error !== 'string' || error.length === 0) return null;
+  const rawMessage = (body as { message?: unknown }).message;
+  const message = typeof rawMessage === 'string' && rawMessage.trim() ? rawMessage.trim() : error;
+  if (error === 'usage_exceeded') {
+    return { code: 'usage_exceeded', message };
+  }
+  return { code: 'platform_unavailable', message };
+}
+
 export async function parseApiResponse<T>(response: Response): Promise<ApiResult<T>> {
   const text = await response.text();
   if (!text.trim()) {
@@ -57,6 +75,11 @@ export async function parseApiResponse<T>(response: Response): Promise<ApiResult
       },
       response.status
     );
+  }
+
+  const platform = readPlatformError(body);
+  if (platform) {
+    throw new ApiClientError(platform, response.status);
   }
 
   if (!isApiResult<T>(body)) {
