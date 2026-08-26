@@ -38,8 +38,11 @@ export default async function handler(request: Request): Promise<Response> {
         const flags = await store.listAgentInbox(inbox);
         return withCors(okResponse(200, { flags, inbox }), request, env);
       }
-      const flags = await store.listStressFlags();
-      return withCors(okResponse(200, { flags }), request, env);
+      const [flags, judgment] = await Promise.all([
+        store.listStressFlags(),
+        store.getIntuitiveScanMeta()
+      ]);
+      return withCors(okResponse(200, { flags, judgment }), request, env);
     }
 
     const body = (await request.json()) as Record<string, unknown>;
@@ -47,6 +50,11 @@ export default async function handler(request: Request): Promise<Response> {
 
     if (action === 'scan') {
       const result = await store.scanAndRaiseStressFlags();
+      return withCors(okResponse(200, result), request, env);
+    }
+
+    if (action === 'intuitive_scan') {
+      const result = await store.runIntuitiveScan();
       return withCors(okResponse(200, result), request, env);
     }
 

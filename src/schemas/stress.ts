@@ -11,6 +11,7 @@ export const StressPatternKindSchema = z.enum([
   'overlapping_excursions',
   'dense_pinch',
   'missed_deadlines',
+  'intuitive',
   'manual'
 ]);
 

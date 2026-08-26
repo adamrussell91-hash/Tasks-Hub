@@ -50,6 +50,13 @@ import { parseBrainDump } from '@/domain/clare-dump';
 import { buildClareBriefing } from '@/domain/clare-desk';
 import { DEFAULT_STALL_WEEKS, findStallCandidates, outcomeProjectStatus } from '@/domain/stall';
 import { agentSlug, detectStressPatterns } from '@/domain/stress';
+import { buildIntuitiveDigest } from '@/domain/intuitive-digest';
+import { parseIntuitiveScanMeta } from '@/domain/intuitive-scan';
+import {
+  defaultIntuitiveJudge,
+  judgmentToPatterns,
+  type IntuitiveJudge
+} from '@/ai/intuitive-judge';
 import { buildCapacitySnapshot, toCoreyPublicView } from '@/domain/capacity';
 import { computeProjectVariance, deriveProjectEndDate } from '@/domain/closure';
 import type { IndexDoc, SeedData, TasksStore } from './types';
@@ -77,6 +84,7 @@ export interface KeyBuilders {
   reviewLogKey: (id: string) => string;
   reviewLogsIndexKey: () => string;
   capacityShareKey: () => string;
+  intuitiveScanMetaKey: () => string;
   stressFlagKey: (id: string) => string;
   stressFlagsIndexKey: () => string;
   agentInboxKey: (agentSlug: string) => string;
@@ -973,6 +981,75 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         raised.push(flag);
       }
       return { raised, skipped, patterns: patterns.length };
+    },
+
+    async getIntuitiveScanMeta() {
+      return parseIntuitiveScanMeta(await kv.getJSON(keys.intuitiveScanMetaKey()));
+    },
+
+    async runIntuitiveScan(options = {}) {
+      const now = options.now ?? new Date();
+      const ran_at = nowIso();
+      const judge: IntuitiveJudge | null =
+        options.judge === undefined ? defaultIntuitiveJudge() : options.judge;
+      if (!judge) {
+        const result = {
+          raised: [],
+          skipped: 0,
+          judged: 0,
+          model: null,
+          ran_at,
+          skipped_ai: true,
+          reason: 'no_api_key'
+        };
+        await kv.setJSON(keys.intuitiveScanMetaKey(), result);
+        return result;
+      }
+
+      const [projects, tasks, existing] = await Promise.all([
+        this.listProjects(),
+        this.listTasks(),
+        this.listStressFlags()
+      ]);
+      const digest = buildIntuitiveDigest(projects, tasks, now);
+      const judgment = await judge(digest);
+      const patterns = judgmentToPatterns(judgment);
+      const known = new Set(existing.map((flag) => flag.fingerprint));
+      const raised = [];
+      let skipped = 0;
+      for (const pattern of patterns) {
+        if (known.has(pattern.fingerprint)) {
+          skipped += 1;
+          continue;
+        }
+        const flag = await this.raiseStressFlag({
+          pattern_description: pattern.pattern_description,
+          pattern_kind: pattern.pattern_kind,
+          source_project_or_task_id: pattern.source_project_or_task_id,
+          fingerprint: pattern.fingerprint
+        });
+        known.add(flag.fingerprint);
+        raised.push(flag);
+      }
+      const result = {
+        raised,
+        skipped,
+        judged: patterns.length,
+        model: judgment.model,
+        ran_at,
+        skipped_ai: false,
+        reason: null
+      };
+      await kv.setJSON(keys.intuitiveScanMetaKey(), {
+        ran_at: result.ran_at,
+        model: result.model,
+        raised: result.raised.length,
+        skipped: result.skipped,
+        judged: result.judged,
+        skipped_ai: result.skipped_ai,
+        reason: result.reason
+      });
+      return result;
     },
 
     async getCapacitySnapshot(now = new Date()) {

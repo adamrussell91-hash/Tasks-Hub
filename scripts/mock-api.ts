@@ -424,12 +424,27 @@ export function createMockApi({ seed }: MockApiOptions) {
             data: { flags: await s.listAgentInbox(inbox), inbox }
           });
         }
-        return json(200, { ok: true, data: { flags: await s.listStressFlags() } });
+        return json(200, {
+          ok: true,
+          data: {
+            flags: await s.listStressFlags(),
+            judgment: await s.getIntuitiveScanMeta()
+          }
+        });
       }
       if (method === 'POST') {
         const b = body as Record<string, unknown>;
         if (b.action === 'scan') {
           return json(200, { ok: true, data: await s.scanAndRaiseStressFlags() });
+        }
+        if (b.action === 'intuitive_scan') {
+          const { localStubJudge } = await import('../src/ai/intuitive-judge');
+          return json(200, {
+            ok: true,
+            data: await s.runIntuitiveScan({
+              judge: process.env.ANTHROPIC_API_KEY?.trim() ? undefined : localStubJudge
+            })
+          });
         }
         if (b.action === 'raise') {
           return json(201, {
