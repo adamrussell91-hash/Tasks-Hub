@@ -42,9 +42,9 @@ import {
   renderDayView,
   renderListView,
   renderSearchView,
-  renderTemplatesView,
-  renderProjectsView
+  renderTemplatesView
 } from '@/views/dashboard';
+import { renderProjectsView } from '@/views/projects';
 import { renderWeekView, renderMonthView } from '@/views/calendar';
 import { renderPageEditor } from '@/views/page-editor';
 import { renderGoalsView } from '@/views/goals';
@@ -139,9 +139,9 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Start from a template — you’ll always confirm before anything’s created.'
   },
   projects: {
-    eyebrow: 'Arcs',
+    eyebrow: 'Work',
     title: 'Projects',
-    supporting: 'Deal with a stalled project, or close out a finished one.'
+    supporting: 'Portfolio health, cadence, and lifecycle — not just a queue of what to kill.'
   },
   excursions: {
     eyebrow: 'Events',

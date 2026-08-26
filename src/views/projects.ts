@@ -1,0 +1,838 @@
+import type { Goal } from '@/schemas/goal';
+import type { Project } from '@/schemas/project';
+import type { Task } from '@/schemas/task';
+import { projectPageHash } from '@/domain/cards';
+import { findStallCandidates } from '@/domain/stall';
+import {
+  LIFECYCLE_LABEL,
+  SUSTAINABLE_RUNNING_LOAD,
+  buildProjectPulseCard,
+  findPortfolioTension,
+  findRetroCandidate,
+  groupPulseCards,
+  lastActivityLabel,
+  matchesProjectQuery,
+  projectActivityHeatmap,
+  projectLifecycleMix,
+  projectRoadmap,
+  runningProjectCount,
+  type ProjectLifecycle,
+  type ProjectPulseCard,
+  type ProjectsGroupBy,
+  type RoadmapZoom
+} from '@/domain/projects-pulse';
+import { tasksApi } from '@/services/client-api';
+import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import { errorMessage, renderLoadError } from '@/views/feedback';
+import {
+  createHubField,
+  createHubFilter,
+  createHubPills,
+  createHubSearch,
+  createHubTextarea,
+  createHubToolbar,
+  el
+} from '@/views/hub-kit';
+
+let projectQuery = '';
+let groupBy: ProjectsGroupBy = 'status';
+let roadmapZoom: RoadmapZoom = 'month';
+let lifecycleFilter: ProjectLifecycle | 'all' = 'all';
+let stalledOpen = false;
+let tensionDismissed = false;
+
+const CLOCK_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+const DRIFT_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h10"/><path d="m10 7 5 5-5 5"/><path d="M20 5v14"/></svg>';
+const LINK_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h9v9"/><path d="M18 4 9 13"/><path d="M13 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/></svg>';
+
+type PulseContext = {
+  projects: Project[];
+  tasks: Task[];
+  goals: Goal[];
+  cards: ProjectPulseCard[];
+  stallIds: Set<string>;
+  now: Date;
+};
+
+function svgIcon(markup: string): HTMLElement {
+  const wrap = el('span', 'pcard__icon');
+  wrap.innerHTML = markup;
+  return wrap;
+}
+
+function renderStatusChart(
+  mix: ReturnType<typeof projectLifecycleMix>,
+  running: number,
+  onSelect: (id: ProjectLifecycle | 'all') => void
+): HTMLElement {
+  const tile = el('section', 'hub-card projects-chart');
+  tile.setAttribute('aria-label', 'Project status mix');
+  tile.append(el('p', 'hub-card__eyebrow', 'Status mix'));
+
+  const total = mix.reduce((sum, slice) => sum + slice.count, 0);
+  const wrap = el('div', 'projects-chart__wrap');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'projects-chart__ring');
+  svg.setAttribute('width', '132');
+  svg.setAttribute('height', '132');
+  svg.setAttribute('viewBox', '0 0 132 132');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute(
+    'aria-label',
+    total
+      ? mix
+          .filter((slice) => slice.count)
+          .map((slice) => `${slice.count} ${slice.label}`)
+          .join(', ')
+      : 'No projects yet'
+  );
+
+  const cx = 66;
+  const cy = 66;
+  const r = 48;
+  const circ = 2 * Math.PI * r;
+  const track = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  track.setAttribute('cx', String(cx));
+  track.setAttribute('cy', String(cy));
+  track.setAttribute('r', String(r));
+  track.setAttribute('fill', 'none');
+  track.setAttribute('stroke', 'var(--shore)');
+  track.setAttribute('stroke-width', '14');
+  svg.append(track);
+
+  let offset = 0;
+  for (const slice of mix) {
+    if (!slice.count || !total) continue;
+    const length = (slice.count / total) * circ;
+    const arc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    arc.setAttribute('cx', String(cx));
+    arc.setAttribute('cy', String(cy));
+    arc.setAttribute('r', String(r));
+    arc.setAttribute('fill', 'none');
+    arc.setAttribute('stroke', slice.color);
+    arc.setAttribute('stroke-width', '14');
+    arc.setAttribute('stroke-linecap', 'butt');
+    arc.setAttribute('stroke-dasharray', `${length} ${circ - length}`);
+    arc.setAttribute('stroke-dashoffset', String(-offset));
+    arc.setAttribute('transform', `rotate(-90 ${cx} ${cy})`);
+    svg.append(arc);
+    offset += length;
+  }
+
+  const count = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  count.setAttribute('x', String(cx));
+  count.setAttribute('y', '62');
+  count.setAttribute('text-anchor', 'middle');
+  count.setAttribute('class', 'projects-chart__total');
+  count.textContent = String(total);
+  const caption = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  caption.setAttribute('x', String(cx));
+  caption.setAttribute('y', '80');
+  caption.setAttribute('text-anchor', 'middle');
+  caption.setAttribute('class', 'projects-chart__caption');
+  caption.textContent = 'projects';
+  svg.append(count, caption);
+
+  const legend = el('div', 'projects-chart__legend');
+  for (const slice of mix) {
+    const btn = el('button', 'projects-chart__slice');
+    btn.type = 'button';
+    btn.dataset.lifecycle = slice.id;
+    const pressed = lifecycleFilter === slice.id;
+    btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+    if (pressed) btn.classList.add('is-active');
+    const swatch = el('span', 'projects-chart__swatch');
+    swatch.style.background = slice.color;
+    btn.append(swatch, el('span', 'projects-chart__name', slice.label), el('span', 'projects-chart__count', String(slice.count)));
+    btn.addEventListener('click', () => {
+      onSelect(lifecycleFilter === slice.id ? 'all' : slice.id);
+    });
+    legend.append(btn);
+  }
+
+  wrap.append(svg, legend);
+  tile.append(wrap);
+
+  const over = Math.max(0, running - SUSTAINABLE_RUNNING_LOAD);
+  const load = el('p', 'projects-chart__load');
+  load.innerHTML =
+    over > 0
+      ? `Sustainable load is <strong>~${SUSTAINABLE_RUNNING_LOAD}</strong>. You’re running <strong>${running}</strong> — ${over} over.`
+      : `Sustainable load is <strong>~${SUSTAINABLE_RUNNING_LOAD}</strong>. You’re running <strong>${running}</strong>.`;
+  tile.append(load);
+  return tile;
+}
+
+function renderHeatmap(ctx: PulseContext): HTMLElement {
+  const model = projectActivityHeatmap(ctx.projects, ctx.tasks, ctx.now);
+  const tile = el('section', 'hub-card');
+  tile.append(el('p', 'hub-card__eyebrow', 'Activity — last 12 weeks'));
+  const rows = el('div', 'heat-rows');
+  for (const row of model.rows) {
+    const line = el('div', 'heat-row');
+    line.append(el('span', 'heat-row__label', row.title));
+    const cells = el('div', 'heat-cells');
+    for (const hit of row.cells) {
+      const cell = el('span', 'heat-cell');
+      cell.dataset.hit = hit ? 'true' : 'false';
+      cells.append(cell);
+    }
+    line.append(cells);
+    rows.append(line);
+  }
+  if (!model.rows.length) rows.append(el('p', 'empty-state empty-state--compact', 'No live projects to plot.'));
+  const axis = el('div', 'heat-axis');
+  for (const tick of model.axis) axis.append(el('span', undefined, tick));
+  tile.append(rows, axis);
+  return tile;
+}
+
+function renderRoadmap(ctx: PulseContext, onZoom: (zoom: RoadmapZoom) => void): HTMLElement {
+  const model = projectRoadmap(ctx.projects, ctx.tasks, roadmapZoom, ctx.now);
+  const tile = el('section', 'hub-card');
+  const head = el('div', 'roadmap-head');
+  head.append(el('p', 'hub-card__eyebrow', 'Roadmap'));
+  head.append(
+    createHubPills({
+      label: 'Roadmap range',
+      items: [
+        { id: 'week', label: 'Week' },
+        { id: 'month', label: 'Month' },
+        { id: 'term', label: 'Term' }
+      ],
+      value: roadmapZoom,
+      onSelect: onZoom
+    })
+  );
+  tile.append(head);
+  const rows = el('div', 'roadmap-rows');
+  for (const row of model.rows) {
+    const line = el('div', 'roadmap-row');
+    line.append(el('span', 'roadmap-row__label', row.label));
+    const track = el('div', 'roadmap-row__track');
+    if (row.ghost) {
+      const ghost = el('div', 'roadmap-row__ghost');
+      ghost.style.left = `${row.ghost.left}%`;
+      ghost.style.width = `${row.ghost.width}%`;
+      track.append(ghost);
+    }
+    if (row.bar) {
+      const bar = el('div', 'roadmap-row__bar');
+      bar.style.left = `${row.bar.left}%`;
+      bar.style.width = `${row.bar.width}%`;
+      bar.style.background = row.bar.color;
+      track.append(bar);
+    }
+    line.append(track);
+    rows.append(line);
+  }
+  if (!model.rows.length) rows.append(el('p', 'empty-state empty-state--compact', 'No live projects on the horizon.'));
+  const axis = el('div', 'roadmap-axis');
+  axis.append(el('span'));
+  const ticks = el('div', 'roadmap-axis__ticks');
+  for (const tick of model.axis) ticks.append(el('span', undefined, tick));
+  axis.append(ticks);
+  tile.append(rows, axis);
+  return tile;
+}
+
+function renderTensionBanner(message: string, onDismiss: () => void): HTMLElement {
+  const banner = el('div', 'pulse-banner');
+  banner.setAttribute('role', 'status');
+  const icon = el('span', 'pulse-banner__icon');
+  icon.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2 20h20z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>';
+  banner.append(icon, el('span', 'pulse-banner__text', message));
+  const dismiss = el('button', 'pulse-banner__dismiss');
+  dismiss.type = 'button';
+  dismiss.setAttribute('aria-label', 'Dismiss');
+  dismiss.innerHTML =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  dismiss.addEventListener('click', onDismiss);
+  banner.append(dismiss);
+  return banner;
+}
+
+function milestoneTint(index: number): string {
+  return ['tint-blue', 'tint-peach', 'tint-gold', 'tint-lilac', 'tint-sage'][index % 5]!;
+}
+
+function energyTint(energy: ProjectPulseCard['energy']): string {
+  return energy === 'deep_focus' ? 'tint-blue' : 'tint-gold';
+}
+
+function renderProjectBoardCard(
+  card: ProjectPulseCard,
+  tasks: Task[],
+  confirmHost: HTMLElement,
+  onReload: () => void
+): HTMLElement {
+  const article = el('article', card.lifecycle === 'stalled' ? 'hub-card pcard pcard--compact' : 'hub-card pcard');
+  article.dataset.projectId = card.project.id;
+  article.dataset.lifecycle = card.lifecycle;
+
+  const top = el('div', 'pcard__top');
+  const title = el('span', 'pcard__title', card.project.title);
+  top.append(title);
+  if (card.lifecycle === 'stalled') {
+    top.append(el('span', 'status-badge tint-peach', 'Stalled'));
+  } else {
+    const energy = el('span', `hub-chip ${energyTint(card.energy)}`, card.energyLabel);
+    top.append(energy);
+  }
+  article.append(top);
+
+  const desc = card.project.arc_summary || card.project.description;
+  if (desc) article.append(el('p', 'pcard__desc', desc));
+
+  if (card.lifecycle === 'stalled') {
+    article.append(el('p', 'pcard__desc', lastActivityLabel(card.project, tasks)));
+    const jump = el('a', 'pcard__jump', 'Review below ↓');
+    jump.href = '#stalled-queue';
+    article.append(jump);
+    return article;
+  }
+
+  const aging = el('div', 'pcard__row');
+  const dots = el('div', 'aging-row');
+  dots.setAttribute('aria-label', 'Task activity last five weeks');
+  for (const fresh of card.aging) {
+    const dot = el('span', 'aging-dot');
+    dot.dataset.fresh = fresh ? 'true' : 'false';
+    dots.append(dot);
+  }
+  aging.append(dots, el('span', 'aging-label', 'task activity'));
+  article.append(aging);
+
+  const impact = el('div', 'impact-row');
+  const quad = el('span', 'quad');
+  for (const key of ['tl', 'tr', 'bl', 'br'] as const) {
+    const cell = el('span');
+    if (card.impactQuad[key]) cell.dataset.on = 'true';
+    quad.append(cell);
+  }
+  impact.append(quad, el('span', 'impact-label', card.impactLabel));
+  article.append(impact);
+
+  const drift = el('div', 'meta-line');
+  drift.append(svgIcon(DRIFT_ICON), el('span', `drift--${card.driftKind}`, card.driftLabel));
+  article.append(drift);
+
+  const linked = el('div', 'meta-line');
+  linked.append(svgIcon(LINK_ICON), el('span', undefined, card.linkedLabel));
+  article.append(linked);
+
+  if (card.project.current_end_date || card.project.baseline_end_date) {
+    const due = el('div', 'meta-line');
+    due.append(
+      svgIcon(CLOCK_ICON),
+      el(
+        'span',
+        undefined,
+        `Target ${formatDisplayDate(card.project.current_end_date ?? card.project.baseline_end_date)}`
+      )
+    );
+    article.append(due);
+  }
+
+  const chips = el('div', 'pcard__row');
+  chips.append(el('span', `status-badge status-badge--${card.lifecycle}`, LIFECYCLE_LABEL[card.lifecycle]));
+  card.project.milestones.slice(0, 3).forEach((milestone, index) => {
+    chips.append(el('span', `hub-chip ${milestoneTint(index)}`, milestone.title));
+  });
+  article.append(chips);
+
+  const actions = el('div', 'pcard__row pcard__actions');
+  const open = el('button', 'btn btn--ghost', 'Open page');
+  open.type = 'button';
+  open.addEventListener('click', () => {
+    location.hash = projectPageHash(card.project.id);
+  });
+  actions.append(open);
+  if (card.readyToClose) {
+    const close = el('button', 'btn btn--primary', 'Close');
+    close.type = 'button';
+    close.addEventListener('click', () => {
+      showCloseConfirm(confirmHost, card.project, card.slipDays, onReload);
+    });
+    actions.append(close);
+  }
+  article.append(actions);
+  return article;
+}
+
+function renderBoard(
+  ctx: PulseContext,
+  confirmHost: HTMLElement,
+  onReload: () => void
+): HTMLElement {
+  const visible = ctx.cards.filter((card) => {
+    if (!matchesProjectQuery(card.project, projectQuery)) return false;
+    if (lifecycleFilter !== 'all' && card.lifecycle !== lifecycleFilter) return false;
+    return true;
+  });
+  const groups = groupPulseCards(visible, groupBy, ctx.goals, ctx.now);
+  const grid = el('div', 'projects-board');
+  grid.style.gridTemplateColumns = groups.length
+    ? `repeat(${groups.length}, minmax(0, 1fr))`
+    : 'minmax(0, 1fr)';
+  if (!groups.length) {
+    grid.append(el('p', 'empty-state', 'No projects match.'));
+    return grid;
+  }
+  for (const group of groups) {
+    const lane = el('div', 'lane');
+    const head = el('div', 'lane__head');
+    head.append(el('span', 'lane__title', group.title), el('span', 'lane__count', String(group.cards.length)));
+    lane.append(head);
+    for (const card of group.cards) {
+      lane.append(renderProjectBoardCard(card, ctx.tasks, confirmHost, onReload));
+    }
+    grid.append(lane);
+  }
+  return grid;
+}
+
+function renderRetro(
+  candidate: ReturnType<typeof findRetroCandidate>,
+  onLogged: () => void
+): HTMLElement | null {
+  if (!candidate) return null;
+  const card = el('section', 'hub-card projects-retro');
+  card.append(el('p', 'hub-card__eyebrow', candidate.eyebrow));
+  card.append(el('h2', 'section-title section-title--tight', candidate.title));
+  const grid = el('div', 'retro-grid');
+  const moved = createHubTextarea({
+    ariaLabel: 'What moved',
+    placeholder: 'Permission forms sent, transport quoted…'
+  });
+  const stalled = createHubTextarea({
+    ariaLabel: 'What stalled',
+    placeholder: 'Still waiting on venue confirmation…'
+  });
+  const why = createHubTextarea({
+    ariaLabel: 'Why',
+    placeholder: 'Venue is slow to reply — chase Monday…'
+  });
+  for (const [label, field] of [
+    ['What moved', moved],
+    ['What stalled', stalled],
+    ['Why', why]
+  ] as const) {
+    const col = el('div');
+    col.append(el('label', 'retro-grid__label', label), field.el);
+    grid.append(col);
+  }
+  const actions = el('div', 'stall-card__actions');
+  const log = el('button', 'btn btn--primary', 'Log retro');
+  log.type = 'button';
+  log.addEventListener('click', async () => {
+    const reason = [
+      moved.input.value.trim() && `Moved: ${moved.input.value.trim()}`,
+      stalled.input.value.trim() && `Stalled: ${stalled.input.value.trim()}`,
+      why.input.value.trim() && `Why: ${why.input.value.trim()}`
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    if (!reason) {
+      card.append(el('p', 'empty-state', 'Add a note in at least one field.'));
+      return;
+    }
+    log.disabled = true;
+    try {
+      const previous = candidate.project.review_summary?.trim();
+      await tasksApi.updateProject(candidate.project.id, {
+        review_summary: previous ? `${previous}\n${reason}` : reason
+      });
+      onLogged();
+    } catch (err) {
+      log.disabled = false;
+      card.append(el('p', 'empty-state', errorMessage(err)));
+    }
+  });
+  actions.append(log);
+  card.append(grid, actions);
+  return card;
+}
+
+function renderStalledQueue(
+  stalled: ProjectPulseCard[],
+  tasks: Task[],
+  mergeTargets: Project[],
+  confirmHost: HTMLElement,
+  onReload: () => void
+): HTMLElement {
+  const section = el('section', 'hub-card');
+  section.id = 'stalled-queue';
+  const head = el('div', 'stalled-head');
+  const left = el('div', 'stalled-head__left');
+  left.append(el('p', 'hub-card__eyebrow', 'Stalled — choose an outcome'));
+  left.append(el('span', 'lane__count', String(stalled.length)));
+  const toggle = el('button', 'hub-icon-btn');
+  toggle.type = 'button';
+  toggle.setAttribute('aria-label', stalledOpen ? 'Collapse stalled queue' : 'Expand stalled queue');
+  toggle.setAttribute('aria-expanded', stalledOpen ? 'true' : 'false');
+  const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  chevron.setAttribute('viewBox', '0 0 24 24');
+  chevron.setAttribute('fill', 'none');
+  chevron.setAttribute('stroke', 'currentColor');
+  chevron.setAttribute('stroke-width', '2');
+  chevron.setAttribute('stroke-linecap', 'round');
+  chevron.setAttribute('stroke-linejoin', 'round');
+  chevron.dataset.open = stalledOpen ? 'true' : 'false';
+  chevron.classList.add('stalled-chevron');
+  chevron.innerHTML = '<path d="m6 9 6 6 6-6"/>';
+  toggle.append(chevron);
+  head.append(left, toggle);
+  section.append(head);
+
+  const body = el('div', stalledOpen ? 'stalled-body' : 'stalled-body is-hidden');
+  if (!stalled.length) {
+    body.append(el('p', 'empty-state', 'Nothing waiting on an outcome.'));
+  } else {
+    for (const card of stalled) {
+      body.append(renderStalledCard(card.project, tasks, mergeTargets, confirmHost, onReload));
+    }
+  }
+  toggle.addEventListener('click', () => {
+    stalledOpen = !stalledOpen;
+    body.classList.toggle('is-hidden', !stalledOpen);
+    chevron.dataset.open = stalledOpen ? 'true' : 'false';
+    toggle.setAttribute('aria-expanded', stalledOpen ? 'true' : 'false');
+    toggle.setAttribute('aria-label', stalledOpen ? 'Collapse stalled queue' : 'Expand stalled queue');
+  });
+  section.append(body);
+  return section;
+}
+
+export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
+  canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
+  let flagWarning = '';
+  try {
+    await tasksApi.flagStalledProjects();
+  } catch (err) {
+    flagWarning = `Could not persist stall flags (${errorMessage(err)}). Showing quiet projects from local detection.`;
+  }
+
+  let projects: Project[];
+  let tasks: Task[];
+  let goals: Goal[] = [];
+  let reviews: Awaited<ReturnType<typeof tasksApi.listReviewLogs>> = [];
+  try {
+    [projects, tasks, goals, reviews] = await Promise.all([
+      tasksApi.listProjects(),
+      tasksApi.listTasks(),
+      tasksApi.listGoals().catch(() => [] as Goal[]),
+      tasksApi.listReviewLogs().catch(() => [])
+    ]);
+  } catch (err) {
+    renderLoadError(canvas, err, () => void renderProjectsView(canvas), 'Could not load projects');
+    return;
+  }
+
+  const restoreSearch =
+    document.activeElement instanceof HTMLInputElement &&
+    document.activeElement.getAttribute('aria-label') === 'Filter projects';
+  const searchPos = restoreSearch
+    ? (document.activeElement as HTMLInputElement).selectionStart
+    : null;
+
+  const now = new Date();
+  const stallIds = new Set(findStallCandidates(projects, tasks, now).map((item) => item.project.id));
+  const cards = projects.map((project) => buildProjectPulseCard(project, tasks, stallIds, now));
+  const ctx: PulseContext = { projects, tasks, goals, cards, stallIds, now };
+  const mix = projectLifecycleMix(projects, tasks, stallIds, now);
+  const running = runningProjectCount(mix);
+  const tension = tensionDismissed ? null : findPortfolioTension(cards, tasks, now);
+  const retro = findRetroCandidate(cards, now);
+  const stalled = cards.filter((card) => card.lifecycle === 'stalled');
+  const mergeTargets = projects.filter((project) => project.status !== 'archived_dead' && project.status !== 'stalled');
+
+  canvas.replaceChildren();
+  if (flagWarning) canvas.append(el('p', 'empty-state', flagWarning));
+
+  const stallConfirmHost = el('div', 'stall-confirm');
+  const closureConfirmHost = el('div', 'closure-confirm');
+  canvas.append(closureConfirmHost, stallConfirmHost);
+
+  const reload = () => void renderProjectsView(canvas);
+
+  if (tension) canvas.append(renderTensionBanner(tension.message, () => {
+    tensionDismissed = true;
+    reload();
+  }));
+
+  const pulse = el('div', 'projects-pulse');
+  pulse.append(
+    renderStatusChart(mix, running, (id) => {
+      lifecycleFilter = id;
+      reload();
+    })
+  );
+  const stack = el('div', 'projects-pulse__stack');
+  stack.append(
+    renderHeatmap(ctx),
+    renderRoadmap(ctx, (zoom) => {
+      roadmapZoom = zoom;
+      reload();
+    })
+  );
+  pulse.append(stack);
+  canvas.append(pulse);
+
+  const toolbar = createHubToolbar();
+  const search = createHubSearch({
+    placeholder: 'Filter projects…',
+    ariaLabel: 'Filter projects',
+    value: projectQuery,
+    onInput: (value) => {
+      projectQuery = value;
+      reload();
+    }
+  });
+  toolbar.append(
+    search.el,
+    createHubPills({
+      label: 'Group by',
+      role: 'tablist',
+      items: [
+        { id: 'status', label: 'Status' },
+        { id: 'energy', label: 'Energy' },
+        { id: 'goal', label: 'Goal area' },
+        { id: 'deadline', label: 'Deadline' }
+      ],
+      value: groupBy,
+      onSelect: (id) => {
+        groupBy = id;
+        reload();
+      }
+    })
+  );
+  canvas.append(toolbar);
+  canvas.append(renderBoard(ctx, closureConfirmHost, reload));
+
+  const retroCard = renderRetro(retro, reload);
+  if (retroCard) canvas.append(retroCard);
+
+  canvas.append(renderStalledQueue(stalled, tasks, mergeTargets, stallConfirmHost, reload));
+
+  if (reviews.length) {
+    canvas.append(el('h2', 'section-title', 'Review log'));
+    const logStack = el('div', 'task-stack');
+    for (const review of [...reviews].reverse().slice(0, 8)) {
+      const proj = projects.find((project) => project.id === review.project_id);
+      const slip =
+        review.slip_days === null || review.slip_days === undefined
+          ? ''
+          : review.slip_days === 0
+            ? ' · on baseline'
+            : review.slip_days > 0
+              ? ` · +${review.slip_days}d vs baseline`
+              : ` · ${review.slip_days}d vs baseline`;
+      const row = el('article', 'task-row');
+      row.append(
+        el('h3', 'task-row__title', `${review.outcome} · ${proj?.title ?? review.project_id}`),
+        el('p', 'task-row__desc', `${review.reason}${slip}`)
+      );
+      logStack.append(row);
+    }
+    canvas.append(logStack);
+  }
+
+  if (restoreSearch) {
+    const field = canvas.querySelector<HTMLInputElement>('[aria-label="Filter projects"]');
+    if (field) {
+      field.focus();
+      if (searchPos != null) field.setSelectionRange(searchPos, searchPos);
+    }
+  }
+}
+
+function showCloseConfirm(
+  host: HTMLElement,
+  project: Project,
+  slipDays: number | null,
+  onDone: () => void
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm closure');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'closure-confirm__title', `Close ${project.title}`));
+  const reason = createHubField({
+    ariaLabel: 'Retrospective',
+    placeholder: 'Short retrospective (required)'
+  });
+  const slipText =
+    slipDays === null
+      ? 'No baseline comparison.'
+      : slipDays === 0
+        ? 'Landed on baseline.'
+        : slipDays > 0
+          ? `${slipDays} days past baseline.`
+          : `${Math.abs(slipDays)} days ahead of baseline.`;
+  card.append(el('p', 'page-header__supporting', `${slipText} Do not apply until Confirm.`), reason.el);
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    const text = reason.input.value.trim();
+    if (!text) {
+      host.append(el('p', 'empty-state', 'Add a retrospective first.'));
+      return;
+    }
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await tasksApi.closeProject(project.id, text);
+      host.replaceChildren(el('p', 'canvas-status', 'Project closed.'));
+      onDone();
+    } catch (err) {
+      host.replaceChildren(el('p', 'empty-state', err instanceof Error ? err.message : 'Close failed'));
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function renderStalledCard(
+  project: Project,
+  tasks: Task[],
+  mergeTargets: Project[],
+  confirmHost: HTMLElement,
+  onDone: () => void
+): HTMLElement {
+  const card = el('article', 'stall-card');
+  const openCount = tasks.filter(
+    (task) => task.parent_project_id === project.id && task.status !== 'done' && task.status !== 'dead'
+  ).length;
+  card.append(
+    el('p', 'page-header__eyebrow', 'Stalled'),
+    el('h3', 'pcard__title', project.title),
+    el('p', 'pcard__desc', project.arc_summary || project.description)
+  );
+  const meta = el('div', 'pcard__row');
+  meta.append(
+    el('span', 'hub-chip', project.type),
+    el('span', 'hub-chip tint-lilac', `${openCount} open tasks`),
+    el(
+      'span',
+      'hub-chip tint-peach',
+      project.stall_flagged_at ? `flagged ${formatDisplayDate(project.stall_flagged_at)}` : 'flagged'
+    )
+  );
+  card.append(meta);
+
+  const reason = createHubField({
+    ariaLabel: `Reason for ${project.title}`,
+    placeholder: 'Short reason (required)'
+  });
+  const merge = createHubFilter({
+    key: 'Merge into',
+    label: 'Frankenstein into',
+    defaultValue: '',
+    options: [
+      { value: '', label: 'Merge into… (for Frankenstein)' },
+      ...mergeTargets
+        .filter((item) => item.id !== project.id)
+        .map((target) => ({ value: target.id, label: target.title }))
+    ],
+    value: ''
+  });
+
+  const actions = el('div', 'stall-card__actions');
+  const outcomes: Array<{ id: 'revived' | 'frankensteined' | 'buried'; label: string }> = [
+    { id: 'revived', label: 'Revive' },
+    { id: 'frankensteined', label: 'Frankenstein' },
+    { id: 'buried', label: 'Bury' }
+  ];
+  for (const outcome of outcomes) {
+    const btn = el(
+      'button',
+      outcome.id === 'buried' ? 'btn btn--decisive' : 'btn btn--secondary',
+      outcome.label
+    );
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      const text = reason.input.value.trim();
+      if (!text) {
+        confirmHost.replaceChildren(el('p', 'empty-state', 'Add a short reason first.'));
+        return;
+      }
+      if (outcome.id === 'frankensteined' && !merge.getValue()) {
+        confirmHost.replaceChildren(el('p', 'empty-state', 'Pick a merge target for Frankenstein.'));
+        return;
+      }
+      showStallConfirm(confirmHost, project, outcome.id, text, merge.getValue() || null, onDone);
+    });
+    actions.append(btn);
+  }
+  card.append(reason.el, merge.el, actions);
+  return card;
+}
+
+function showStallConfirm(
+  host: HTMLElement,
+  project: Project,
+  outcome: 'revived' | 'frankensteined' | 'buried',
+  reason: string,
+  mergeInto: string | null,
+  onDone: () => void
+): void {
+  host.replaceChildren();
+  const card = el('section', 'confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm stall outcome');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h2', 'stall-confirm__title', `${outcome} · ${project.title}`));
+  card.append(
+    el(
+      'p',
+      'page-header__supporting',
+      `${reason}${mergeInto ? ` · merge → ${mergeInto}` : ''}. Do not apply until Confirm.`
+    )
+  );
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => host.replaceChildren());
+  confirm.addEventListener('click', async () => {
+    confirm.disabled = true;
+    discard.disabled = true;
+    try {
+      await tasksApi.resolveStalledProject({
+        project_id: project.id,
+        outcome,
+        reason,
+        merge_into_project_id: mergeInto
+      });
+      host.replaceChildren(el('p', 'canvas-status', 'Outcome recorded.'));
+      onDone();
+    } catch (err) {
+      host.replaceChildren(el('p', 'empty-state', err instanceof Error ? err.message : 'Resolve failed'));
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  host.append(card);
+}
+
+export function resetProjectsViewStateForTests(): void {
+  projectQuery = '';
+  groupBy = 'status';
+  roadmapZoom = 'month';
+  lifecycleFilter = 'all';
+  stalledOpen = false;
+  tensionDismissed = false;
+}
