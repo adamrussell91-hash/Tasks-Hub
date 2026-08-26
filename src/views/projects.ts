@@ -23,6 +23,8 @@ import {
 } from '@/domain/projects-pulse';
 import { tasksApi } from '@/services/client-api';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import { deleteProjectNow } from '@/views/card-actions';
+import { renderCardMenu, type CardMenuItem } from '@/views/card-menu';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 import {
   createHubField,
@@ -264,6 +266,45 @@ function energyTint(energy: ProjectPulseCard['energy']): string {
   return energy === 'deep_focus' ? 'tint-blue' : 'tint-gold';
 }
 
+function projectBoardMenuItems(
+  card: ProjectPulseCard,
+  confirmHost: HTMLElement,
+  onReload: () => void
+): CardMenuItem[] {
+  const items: CardMenuItem[] = [
+    {
+      id: 'page',
+      label: 'Full page',
+      onSelect: () => {
+        location.hash = projectPageHash(card.project.id);
+      }
+    }
+  ];
+  if (card.readyToClose) {
+    items.push({
+      id: 'close',
+      label: 'Close project',
+      onSelect: () => showCloseConfirm(confirmHost, card.project, card.slipDays, onReload)
+    });
+  }
+  items.push({
+    id: 'delete',
+    label: 'Delete',
+    danger: true,
+    onSelect: () => deleteProjectNow(card.project, onReload, confirmHost)
+  });
+  return items;
+}
+
+function attachProjectBoardMenu(
+  article: HTMLElement,
+  card: ProjectPulseCard,
+  confirmHost: HTMLElement,
+  onReload: () => void
+): void {
+  article.append(renderCardMenu(`${card.project.title} card menu`, projectBoardMenuItems(card, confirmHost, onReload)));
+}
+
 function renderProjectBoardCard(
   card: ProjectPulseCard,
   tasks: Task[],
@@ -293,6 +334,7 @@ function renderProjectBoardCard(
     const jump = el('a', 'pcard__jump', 'Review below ↓');
     jump.href = '#stalled-queue';
     article.append(jump);
+    attachProjectBoardMenu(article, card, confirmHost, onReload);
     return article;
   }
 
@@ -361,6 +403,7 @@ function renderProjectBoardCard(
     actions.append(close);
   }
   article.append(actions);
+  attachProjectBoardMenu(article, card, confirmHost, onReload);
   return article;
 }
 

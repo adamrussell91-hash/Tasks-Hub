@@ -328,6 +328,11 @@
   transition: box-shadow 0.15s ease;
 }
 
+.hierarchy-card--project {
+  position: relative;
+  padding-right: 2.75rem;
+}
+
 .hierarchy-card--open {
   box-shadow: var(--hub-elev-card), 0 0 0 1px color-mix(in srgb, var(--marine) 35%, transparent);
 }
@@ -3939,6 +3944,12 @@ body.is-universe-fullscreen .page-header {
 
 .pcard {
   gap: var(--space-2);
+  padding-right: 2.75rem;
+}
+
+.pcard .card-menu {
+  top: var(--space-4);
+  right: var(--space-4);
 }
 
 .pcard--compact {

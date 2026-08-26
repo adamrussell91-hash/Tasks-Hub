@@ -3,8 +3,11 @@ import type { Goal } from '@/schemas/goal';
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
+import { deleteProjectNow } from '@/views/card-actions';
+import { renderCardMenu } from '@/views/card-menu';
 import { errorMessage } from '@/views/feedback';
 import { renderTaskEditor } from '@/views/task-editor';
+import { projectPageHash } from '@/domain/cards';
 import { formatTagsInput, parseTagsInput } from '@/domain/hierarchy';
 import { createHubFilter, createHubSearch, createHubToolbar, el } from '@/views/hub-kit';
 
@@ -80,6 +83,24 @@ function renderProjectCard(
   }
   detail.append(taskList);
   card.append(detail);
+
+  card.append(
+    renderCardMenu(`${project.title} card menu`, [
+      {
+        id: 'page',
+        label: 'Full page',
+        onSelect: () => {
+          location.hash = projectPageHash(project.id);
+        }
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        danger: true,
+        onSelect: () => deleteProjectNow(project, onReload, editorHost)
+      }
+    ])
+  );
 
   card.addEventListener('click', (event) => {
     if ((event.target as HTMLElement).closest('button')) return;
