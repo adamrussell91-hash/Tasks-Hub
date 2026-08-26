@@ -13,6 +13,8 @@ import type { ClareBriefing } from '@/domain/clare-desk';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
 import type { StallOutcome } from '@/domain/stall';
 import type { StressFlag } from '@/schemas/stress';
+import type { IntuitiveScanMeta } from '@/domain/intuitive-scan';
+import type { IntuitiveJudge } from '@/ai/intuitive-judge';
 import type { CapacityShare } from '@/schemas/capacity';
 import type { CapacitySnapshot, CapacityLevel } from '@/domain/capacity';
 import type { ProjectVariance } from '@/domain/closure';
@@ -136,6 +138,16 @@ export interface TasksStore {
     raised: StressFlag[];
     skipped: number;
     patterns: number;
+  }>;
+  getIntuitiveScanMeta(): Promise<IntuitiveScanMeta | null>;
+  runIntuitiveScan(options?: { now?: Date; judge?: IntuitiveJudge | null }): Promise<{
+    raised: StressFlag[];
+    skipped: number;
+    judged: number;
+    model: string | null;
+    ran_at: string;
+    skipped_ai: boolean;
+    reason: string | null;
   }>;
 
   getCapacitySnapshot(now?: Date): Promise<CapacitySnapshot>;

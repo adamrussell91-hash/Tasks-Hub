@@ -159,7 +159,7 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   stress: {
     eyebrow: 'Network',
     title: 'Network',
-    supporting: 'Pressure flags routed to Hammond, Penelope, and Vera.'
+    supporting: 'Rule patterns plus Clare’s judgment — flags only, nothing rewritten.'
   },
   corey: {
     eyebrow: 'Share',

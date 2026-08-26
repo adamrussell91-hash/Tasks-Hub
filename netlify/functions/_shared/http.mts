@@ -84,7 +84,7 @@ export function corsHeadersForOrigin(origin: string | null, env: FunctionEnv): R
   return {
     'access-control-allow-origin': origin as string,
     'access-control-allow-credentials': 'true',
-    'access-control-allow-headers': 'content-type',
+    'access-control-allow-headers': 'content-type, authorization, x-tasks-hub-secret',
     'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     vary: 'origin'
   };

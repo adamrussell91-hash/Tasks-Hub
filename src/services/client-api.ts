@@ -170,9 +170,19 @@ export const tasksApi = {
     }>('/api/stall', { action: 'resolve', ...input }),
 
   listStressFlags: () =>
-    apiGet<{ flags: import('@/schemas/stress').StressFlag[] }>('/api/stress-flags').then(
-      (r) => r.flags
-    ),
+    apiGet<{
+      flags: import('@/schemas/stress').StressFlag[];
+      judgment?: import('@/domain/intuitive-scan').IntuitiveScanMeta | null;
+    }>('/api/stress-flags').then((r) => r.flags),
+
+  loadStressFlags: () =>
+    apiGet<{
+      flags: import('@/schemas/stress').StressFlag[];
+      judgment: import('@/domain/intuitive-scan').IntuitiveScanMeta | null;
+    }>('/api/stress-flags').then((r) => ({
+      flags: r.flags,
+      judgment: r.judgment ?? null
+    })),
 
   listAgentInbox: (inbox: string) =>
     apiGet<{ flags: import('@/schemas/stress').StressFlag[]; inbox: string }>(
@@ -185,6 +195,17 @@ export const tasksApi = {
       skipped: number;
       patterns: number;
     }>('/api/stress-flags', { action: 'scan' }),
+
+  scanIntuitiveFlags: () =>
+    apiPost<{
+      raised: import('@/schemas/stress').StressFlag[];
+      skipped: number;
+      judged: number;
+      model: string | null;
+      ran_at: string;
+      skipped_ai: boolean;
+      reason: string | null;
+    }>('/api/stress-flags', { action: 'intuitive_scan' }),
 
   raiseStressFlag: (body: {
     pattern_description: string;

@@ -56,6 +56,8 @@ There is no Notion import, URL, sync, or fallback. Do not add one. The old Notio
 
 **Write-on-create** into Blobs (`stress_flags/:id` + agent inbox). Hammond / Penelope / Vera consumers poll or fetch later — no sync fan-out until Life Hub exposes an authenticated inbox.
 
+Rule detectors (overlap, dense pinch, missed deadlines) stay deterministic. A Haiku judgment pass (`pattern_kind: intuitive`) reads a compact digest six times a local day (06:00, 08:00, 10:00, 13:00, 15:00, 18:00 Australia/Sydney) and raises flags only — it never rewrites due dates or priority.
+
 ## Reminders
 
 **In-app first** (due-soon / pinch strips on Day and Week). Push / email deferred until a hub-wide notification channel exists.

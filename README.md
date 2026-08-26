@@ -66,7 +66,7 @@ If every `/api/*` call (and even `https://tasks-api.adam-russell.com/`) returns 
 | 7 Clare desk (dump, sprints, negotiation) | integrated |
 | 8 Pinch / shrink / due-soon | integrated |
 | 9 Stalled revive / Frankenstein / bury | integrated |
-| 10 StressFlag routing | integrated |
+| 10 StressFlag routing | integrated (rule scan + Haiku judgment flags) |
 | 11–12 Corey capacity + closure loop | integrated |
 | Stretch Orbit / Branch / Constellation | integrated |
 
