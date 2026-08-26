@@ -135,6 +135,8 @@ describe('MindWorks 2026 seed', () => {
     expect(map.lines.find((l) => l.letter === 'E')?.color).toBe('green');
     expect(map.lines.find((l) => l.letter === 'R')?.color).toBe('purple');
     expect(map.stations.every((s) => s.starts_on && s.ends_on)).toBe(true);
+    expect(map.stations.every((s) => s.planning === 'planned')).toBe(true);
+    expect(map.ticks.every((t) => t.planning === 'planned')).toBe(true);
     expect(map.stations.find((s) => s.id === 'st_ydp')?.tracks).toEqual(['junior']);
     expect(map.stations.find((s) => s.id === 'st_studio')?.tracks).toEqual(['junior', 'rozelle', 'senior']);
   });
@@ -160,7 +162,8 @@ describe('year layout', () => {
         out_stroke: 'solid',
         starts_on: '2026-10-12',
         ends_on: '2026-12-17',
-        link: null
+        link: null,
+        planning: 'planned'
       },
       year
     );
@@ -198,7 +201,8 @@ describe('year layout', () => {
           connects_to: null,
           starts_on: '2026-11-15',
           ends_on: null,
-          link: null
+          link: null,
+          planning: 'planned'
         }
       ]
     });
@@ -324,7 +328,8 @@ describe('year layout', () => {
           connects_to: null,
           starts_on: '2026-03-12',
           ends_on: null,
-          link: null
+          link: null,
+          planning: 'planned'
         }
       ]
     });

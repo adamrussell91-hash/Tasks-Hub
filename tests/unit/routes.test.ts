@@ -4,7 +4,8 @@ import {
   isKnownHashView,
   knownHubViews,
   parseEntityPage,
-  parseHashRoute
+  parseHashRoute,
+  parseMapItemPage
 } from '@/shell/shell';
 
 describe('hash routes', () => {
@@ -42,6 +43,25 @@ describe('hash routes', () => {
     location.hash = '#/definitely-missing';
     expect(isKnownHashView()).toBe(false);
     expect(parseHashRoute()).toBe('board');
+  });
+
+  it('recognises map card page hashes without adding them to the rail', () => {
+    location.hash = '#/maps/map_mindworks_2026/station/st_advocacy';
+    expect(parseMapItemPage()).toEqual({
+      mapId: 'map_mindworks_2026',
+      kind: 'station',
+      id: 'st_advocacy'
+    });
+    expect(isKnownHashView()).toBe(true);
+    expect(hashViewId()).toBe('maps');
+    expect(parseHashRoute()).toBe('maps');
+
+    location.hash = '#/maps/map_mindworks_2026/event/tk_muna';
+    expect(parseMapItemPage()).toEqual({
+      mapId: 'map_mindworks_2026',
+      kind: 'event',
+      id: 'tk_muna'
+    });
   });
 
   it('recognises task and project page hashes without adding them to the rail', () => {

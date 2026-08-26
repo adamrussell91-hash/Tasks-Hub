@@ -2702,7 +2702,7 @@ html.is-map-fullscreen .map-page .map-preview {
 
 .map-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem);
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
   gap: var(--space-4);
   align-items: start;
 }

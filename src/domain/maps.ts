@@ -1,6 +1,7 @@
 import type { MapStation, Point, TickAttach, TransitMap } from '@/schemas/map';
-import { layoutMap, MAP_LEFT, wrapEventLines } from '@/domain/maps-layout';
+import { layoutMap, MAP_LEFT, normalizeLineColors, wrapEventLines } from '@/domain/maps-layout';
 import { swatch } from '@/domain/maps-colors';
+import { mindWorks2026Map } from '@/domain/maps-seed';
 
 export function isOrthogonalPath(points: Point[]): boolean {
   if (points.length < 2) return false;
@@ -216,4 +217,9 @@ export { lineX } from '@/domain/maps-layout';
 
 export function stationAt(stations: MapStation[], id: string): MapStation | undefined {
   return stations.find((s) => s.id === id);
+}
+
+export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] {
+  const list = maps && maps.length > 0 ? maps : [mindWorks2026Map()];
+  return list.map((map) => normalizeLineColors(map));
 }
