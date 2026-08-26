@@ -1,3 +1,4 @@
+import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
 import { errorMessage } from '@/views/feedback';
@@ -21,6 +22,20 @@ export function deleteTaskNow(
 ): void {
   void tasksApi
     .deleteTask(task.id, { agent: 'Tasks Hub', reason: 'Card delete' })
+    .then(() => reload())
+    .catch((err: unknown) => {
+      errorHost.replaceChildren(el('p', 'empty-state', errorMessage(err)));
+    });
+}
+
+/** One-click card delete — no proposed-write banner. */
+export function deleteProjectNow(
+  project: Project,
+  reload: () => void | Promise<void>,
+  errorHost: HTMLElement
+): void {
+  void tasksApi
+    .deleteProject(project.id, { agent: 'Tasks Hub', reason: 'Card delete' })
     .then(() => reload())
     .catch((err: unknown) => {
       errorHost.replaceChildren(el('p', 'empty-state', errorMessage(err)));

@@ -81,6 +81,7 @@ export type ProjectCardHandlers = {
   onAddTask?: (project: Project) => void;
   onOpenPage?: (project: Project) => void;
   onClose?: (project: Project) => void;
+  onDelete?: (project: Project) => void;
   /** Compact-row click. Defaults to expanding the card in place. */
   onActivate?: (project: Project) => void;
   onExpand?: (project: Project) => void;
@@ -140,6 +141,14 @@ function projectMenuItems(project: Project, handlers: ProjectCardHandlers): Card
   }
   if (handlers.onClose) {
     items.push({ id: 'close', label: 'Close project', onSelect: () => handlers.onClose?.(project) });
+  }
+  if (handlers.onDelete) {
+    items.push({
+      id: 'delete',
+      label: 'Delete',
+      danger: true,
+      onSelect: () => handlers.onDelete?.(project)
+    });
   }
   return items;
 }
@@ -310,6 +319,15 @@ export function renderProjectExpandedCard(
   return wrap;
 }
 
+export function removeMountedProjectCard(host: HTMLElement, projectId: string): boolean {
+  const card =
+    host.querySelector<HTMLElement>(`[data-project-id="${projectId}"]`)?.closest<HTMLElement>('.hub-card-slot') ??
+    host.querySelector<HTMLElement>(`[data-project-id="${projectId}"]`);
+  if (!card) return false;
+  card.remove();
+  return true;
+}
+
 export function removeMountedTaskCard(host: HTMLElement, taskId: string): boolean {
   const card =
     host.querySelector<HTMLElement>(`[data-id="${taskId}"]`) ??
@@ -400,6 +418,7 @@ export function mountProjectCard(
   handlers: ProjectCardHandlers = {}
 ): HTMLElement {
   const slot = el('div', 'hub-card-slot');
+  slot.dataset.projectId = project.id;
   slot.style.viewTransitionName = cardTransitionName(project.id);
   const guard = { current: false };
   let expanded = false;

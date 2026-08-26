@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
+import { closeCardMenu } from '@/views/card-menu';
 import { renderProjectsView, resetProjectsViewStateForTests } from '@/views/projects';
 
 vi.mock('@/services/client-api', () => ({
@@ -12,6 +13,7 @@ vi.mock('@/services/client-api', () => ({
     listGoals: vi.fn(),
     listReviewLogs: vi.fn(),
     closeProject: vi.fn(),
+    deleteProject: vi.fn(),
     resolveStalledProject: vi.fn(),
     updateProject: vi.fn()
   }
@@ -147,6 +149,7 @@ describe('projects view rebuild', () => {
   });
 
   afterEach(() => {
+    closeCardMenu();
     document.body.replaceChildren();
   });
 
@@ -180,6 +183,42 @@ describe('projects view rebuild', () => {
     expect(open?.textContent).toBe('Open page');
     open?.click();
     expect(location.hash).toBe('#/project/proj_go');
+  });
+
+  it('puts the same three-dot menu and delete on every project card', async () => {
+    vi.mocked(tasksApi.deleteProject).mockResolvedValue({ deleted: true });
+    const canvas = document.createElement('main');
+    document.body.append(canvas);
+    await renderProjectsView(canvas);
+
+    const cards = [...canvas.querySelectorAll<HTMLElement>('.pcard')];
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      expect(card.querySelector('.card-menu')).not.toBeNull();
+    }
+
+    const mind = canvas.querySelector<HTMLElement>('[data-project-id="proj_plan"]');
+    expect(mind).not.toBeNull();
+    mind?.querySelector<HTMLButtonElement>('.card-menu')?.click();
+    const menu = document.querySelector<HTMLElement>('.card-menu__panel');
+    expect(menu).not.toBeNull();
+    expect([...menu!.querySelectorAll('.hub-menu__opt')].map((item) => item.textContent)).toEqual([
+      'Full page',
+      'Delete'
+    ]);
+    expect(menu?.querySelector('[data-card-menu-item="delete"]')?.classList.contains('hub-menu__opt--danger')).toBe(
+      true
+    );
+
+    menu?.querySelector<HTMLButtonElement>('[data-card-menu-item="delete"]')?.click();
+    expect(canvas.querySelector('.confirm-card')).toBeNull();
+    expect(canvas.textContent).not.toContain('Proposed write');
+    await vi.waitFor(() =>
+      expect(tasksApi.deleteProject).toHaveBeenCalledWith('proj_plan', {
+        agent: 'Tasks Hub',
+        reason: 'Card delete'
+      })
+    );
   });
 
   it('filters the board when a chart slice is selected', async () => {

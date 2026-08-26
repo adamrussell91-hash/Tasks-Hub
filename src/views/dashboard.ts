@@ -13,8 +13,8 @@ import { renderPressureStrips } from '@/views/pinch-strip';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
-import { deleteTaskNow } from '@/views/card-actions';
-import { mountProjectCard, mountTaskCard, removeMountedTaskCard } from '@/views/hub-cards';
+import { deleteProjectNow, deleteTaskNow } from '@/views/card-actions';
+import { mountProjectCard, mountTaskCard, removeMountedProjectCard, removeMountedTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 import {
@@ -502,14 +502,25 @@ function paintSearch(host: HTMLElement, tasks: Task[], projects: Project[]): voi
     host.append(el('p', 'empty-state', 'No matches.'));
     return;
   }
+  const confirmHost = host.parentElement?.querySelector('.task-confirm');
   for (const project of projects) {
     mountProjectCard(host, project, tasks, {
       onOpenPage: (current) => {
         location.hash = projectPageHash(current.id);
-      }
+      },
+      onDelete:
+        confirmHost instanceof HTMLElement
+          ? (current) =>
+              deleteProjectNow(
+                current,
+                () => {
+                  removeMountedProjectCard(host, current.id);
+                },
+                confirmHost
+              )
+          : undefined
     });
   }
-  const confirmHost = host.parentElement?.querySelector('.task-confirm');
   for (const task of tasks) {
     if (confirmHost instanceof HTMLElement) {
       appendTaskCard(

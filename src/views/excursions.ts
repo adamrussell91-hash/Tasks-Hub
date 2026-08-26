@@ -6,6 +6,7 @@ import { projectPageHash } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, toDateKey } from '@/domain/queries';
 import { hashQuery } from '@/shell/shell';
+import { deleteProjectNow } from '@/views/card-actions';
 import { requestToggleDone } from '@/views/dashboard';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountProjectCard } from '@/views/hub-cards';
@@ -189,7 +190,8 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
           confirmHost.replaceChildren(renderQuickAdd(() => void reload(), project.id));
         },
         onOpenPage: openProjectPage,
-        onActivate: openProjectPage
+        onActivate: openProjectPage,
+        onDelete: (current) => deleteProjectNow(current, reload, confirmHost)
       });
     }
   }

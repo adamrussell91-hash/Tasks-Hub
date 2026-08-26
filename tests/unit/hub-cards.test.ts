@@ -186,6 +186,25 @@ describe('hub cards', () => {
     expect(menuLabels(openMenu(slot))).toEqual(['Collapse', 'Full page']);
   });
 
+  it('puts delete in the project card menu — not as a button', () => {
+    const host = document.createElement('div');
+    const onDelete = vi.fn();
+    const slot = mountProjectCard(host, project, [], { onDelete });
+
+    expect([...slot.querySelectorAll('button')].some((btn) => btn.textContent === 'Delete')).toBe(false);
+
+    const menu = openMenu(slot);
+    expect(menuLabels(menu)).toEqual(['Expand', 'Full page', 'Delete']);
+    expect(menu.querySelector('[data-card-menu-item="delete"]')?.classList.contains('hub-menu__opt--danger')).toBe(
+      true
+    );
+
+    menu.querySelector<HTMLButtonElement>('[data-card-menu-item="delete"]')?.click();
+    expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'proj_mw' }));
+    expect(host.querySelector('.confirm-card')).toBeNull();
+    expect(document.body.textContent).not.toContain('Proposed write');
+  });
+
   it('opens via onActivate instead of expanding when that handler is set', () => {
     const host = document.createElement('div');
     const onActivate = vi.fn();

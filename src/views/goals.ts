@@ -3,8 +3,11 @@ import type { Goal } from '@/schemas/goal';
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
+import { deleteProjectNow } from '@/views/card-actions';
+import { renderCardMenu } from '@/views/card-menu';
 import { errorMessage } from '@/views/feedback';
 import { renderTaskEditor } from '@/views/task-editor';
+import { projectPageHash } from '@/domain/cards';
 import { formatTagsInput, parseTagsInput } from '@/domain/hierarchy';
 import { createHubFilter, createHubSearch, createHubToolbar, el } from '@/views/hub-kit';
 
@@ -49,6 +52,25 @@ function renderProjectCard(
   const openCount = projectTasks.filter((t) => t.status !== 'done' && t.status !== 'dead').length;
 
   const title = el('h3', 'hierarchy-card__title', project.title);
+  const head = el('div', 'hierarchy-card__head');
+  head.append(title);
+  head.append(
+    renderCardMenu(`${project.title} card menu`, [
+      {
+        id: 'page',
+        label: 'Full page',
+        onSelect: () => {
+          location.hash = projectPageHash(project.id);
+        }
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        danger: true,
+        onSelect: () => deleteProjectNow(project, onReload, editorHost)
+      }
+    ])
+  );
   const meta = el(
     'p',
     'hierarchy-meta',
@@ -56,7 +78,7 @@ function renderProjectCard(
       project.milestones.length === 1 ? '' : 's'
     }`
   );
-  card.append(title, meta);
+  card.append(head, meta);
   if (project.tags.length) card.append(tagRow(project.tags));
 
   const detail = el('div', 'hierarchy-card__detail');
