@@ -106,6 +106,32 @@
   gap: var(--space-2);
 }
 
+.property-sections {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.property-section .task-stack {
+  margin-top: var(--space-3);
+}
+
+.property-row__fields {
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.property-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.property-row .task-row__actions {
+  margin-top: 0;
+}
+
 .task-row__priority {
   font-size: var(--text-2xs);
   text-transform: uppercase;

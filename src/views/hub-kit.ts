@@ -4,9 +4,24 @@ import {
   type HubFilterControl,
   type HubFilterOption
 } from '../../design-kit/js/hub-filter-menu.js';
+import { getTaskPropertiesSync, taskPropertyIds } from '@/services/task-properties';
+import type { TaskPropertyListKey } from '@/schemas/task-properties';
 
 export { createHubFilter };
 export type { HubFilterControl, HubFilterOption };
+
+/** @deprecated Use taskDomains() — values come from Tools → Properties. */
+export function taskDomains(): string[] {
+  return taskPropertyIds('domains');
+}
+
+/** @deprecated Use taskPriorities() — values come from Tools → Properties. */
+export function taskPriorities(): string[] {
+  return taskPropertyIds('priorities');
+}
+
+export const TASK_DOMAINS = taskDomains();
+export const TASK_PRIORITIES = taskPriorities();
 
 /** Kit filter button for lesson-engine / page editors (not a native select). */
 export function createEditorFilter(options: {
@@ -34,8 +49,10 @@ export function createEditorFilter(options: {
   return filter;
 }
 
-export const TASK_DOMAINS: TaskDomain[] = ['teaching', 'life', 'wedding', 'health', 'other'];
-export const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
+function classifierOptions(key: TaskPropertyListKey): HubFilterOption[] {
+  const config = getTaskPropertiesSync();
+  return config[key].map((entry) => ({ value: entry.id, label: entry.label }));
+}
 
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -57,17 +74,34 @@ export function optionList(
 }
 
 export function domainFilterOptions(includeAll = true): HubFilterOption[] {
-  return optionList(
-    TASK_DOMAINS,
-    includeAll ? { value: 'all', label: 'All domains' } : undefined
-  );
+  const options = classifierOptions('domains');
+  return includeAll ? [{ value: 'all', label: 'All domains' }, ...options] : options;
 }
 
 export function priorityFilterOptions(includeAll = true): HubFilterOption[] {
-  return optionList(
-    ['urgent', 'high', 'medium', 'low'],
-    includeAll ? { value: 'all', label: 'All priorities' } : undefined
-  );
+  const options = classifierOptions('priorities');
+  return includeAll ? [{ value: 'all', label: 'All priorities' }, ...options] : options;
+}
+
+export function statusFilterOptions(includeAll = false): HubFilterOption[] {
+  const options = classifierOptions('statuses');
+  return includeAll ? [{ value: 'all', label: 'All statuses' }, ...options] : options;
+}
+
+export function kindFilterOptions(): HubFilterOption[] {
+  return classifierOptions('kinds');
+}
+
+export function bucketFilterOptions(): HubFilterOption[] {
+  return classifierOptions('buckets');
+}
+
+export function sourceFilterOptions(): HubFilterOption[] {
+  return classifierOptions('sources');
+}
+
+export function tagVocabularyOptions(): HubFilterOption[] {
+  return classifierOptions('tags');
 }
 
 export type HubSearchOptions = {

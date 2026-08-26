@@ -1,4 +1,11 @@
 import { TaskSchema, type Task, type TaskDomain } from '@/schemas/task';
+import {
+  TaskPropertyConfigSchema,
+  validateTaskClassifierPatch,
+  validateTaskPropertyConfig,
+  type TaskPropertyConfig
+} from '@/schemas/task-properties';
+import { DEFAULT_TASK_PROPERTY_CONFIG } from '@/domain/task-properties-defaults';
 import { ProjectSchema } from '@/schemas/project';
 import {
   FrameworkEntrySchema,
@@ -77,6 +84,7 @@ export interface KeyBuilders {
   clareCalibrationsIndexKey: () => string;
   clareNegotiationLogKey: (id: string) => string;
   metaSeededKey: () => string;
+  taskPropertiesKey: () => string;
   mapKey: (id: string) => string;
   mapsIndexKey: () => string;
   programKey: (id: string) => string;
@@ -158,6 +166,25 @@ async function listByIndex<T>(
   return items;
 }
 
+async function readTaskProperties(
+  kv: KvAdapter,
+  keys: KeyBuilders
+): Promise<TaskPropertyConfig> {
+  const raw = await kv.getJSON<TaskPropertyConfig>(keys.taskPropertiesKey());
+  if (raw) return validateTaskPropertyConfig(TaskPropertyConfigSchema.parse(raw));
+  const defaults = DEFAULT_TASK_PROPERTY_CONFIG;
+  await kv.setJSON(keys.taskPropertiesKey(), defaults);
+  return defaults;
+}
+
+function classifierDefault(
+  options: { id: string }[],
+  preferredId: string,
+  fallbackIndex = 0
+): string {
+  return options.find((entry) => entry.id === preferredId)?.id ?? options[fallbackIndex]?.id ?? '';
+}
+
 export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
   return {
     async listTasks() {
@@ -168,14 +195,16 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       return raw ? TaskSchema.parse(raw) : null;
     },
     async createTask(input) {
+      const props = await readTaskProperties(kv, keys);
+      validateTaskClassifierPatch(input, props);
       const stamp = nowIso();
       const task = TaskSchema.parse({
         schema_version: 1,
         id: newId('task'),
         title: input.title,
         description: input.description ?? '',
-        kind: input.kind ?? 'task',
-        bucket: input.bucket ?? 'active',
+        kind: input.kind ?? classifierDefault(props.kinds, 'task'),
+        bucket: input.bucket ?? classifierDefault(props.buckets, 'active'),
         step_order: input.step_order ?? 0,
         domain: input.domain,
         framework_used: input.framework_used ?? null,
@@ -185,8 +214,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         created_at: stamp,
         updated_at: stamp,
         completed_at: null,
-        status: input.status ?? 'open',
-        priority: input.priority ?? 'medium',
+        status: input.status ?? classifierDefault(props.statuses, 'open'),
+        priority: input.priority ?? classifierDefault(props.priorities, 'medium'),
         parent_project_id: input.parent_project_id ?? null,
         parent_task_id: input.parent_task_id ?? null,
         depends_on: input.depends_on ?? [],
@@ -197,7 +226,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         remind_at: input.remind_at ?? null,
         remind_dismissed_at: input.remind_dismissed_at ?? null,
         attachments: input.attachments ?? [],
-        source: input.source ?? 'manual',
+        source: input.source ?? classifierDefault(props.sources, 'manual'),
         blocked_since: null,
         page_blocks: input.page_blocks ?? []
       });
@@ -215,6 +244,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
     async updateTask(id, patch) {
       const existing = await this.getTask(id);
       if (!existing) throw new Error(`Task not found: ${id}`);
+      const props = await readTaskProperties(kv, keys);
+      validateTaskClassifierPatch(patch, props);
       let next = TaskSchema.parse({
         ...existing,
         ...patch,
@@ -1172,6 +1203,16 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       await kv.delete(keys.programKey(id));
       const ids = (await readIndex(kv, keys.programsIndexKey())).filter((x) => x !== id);
       await writeIndex(kv, keys.programsIndexKey(), ids);
+    },
+
+    async getTaskProperties() {
+      return readTaskProperties(kv, keys);
+    },
+
+    async updateTaskProperties(config) {
+      const parsed = validateTaskPropertyConfig(TaskPropertyConfigSchema.parse(config));
+      await kv.setJSON(keys.taskPropertiesKey(), parsed);
+      return parsed;
     }
   };
 }
@@ -1187,6 +1228,8 @@ export async function seedIfEmpty(
 ): Promise<void> {
   const marker = await kv.getJSON<{ at: string }>(keys.metaSeededKey());
   if (marker && !options.force) return;
+
+  await kv.setJSON(keys.taskPropertiesKey(), DEFAULT_TASK_PROPERTY_CONFIG);
 
   for (const item of seed.frameworks) {
     await kv.setJSON(keys.frameworkKey(item.id), FrameworkEntrySchema.parse(item));

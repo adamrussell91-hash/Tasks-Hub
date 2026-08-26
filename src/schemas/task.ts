@@ -3,17 +3,14 @@ import { PageBlockSchema } from './page-block';
 
 export const schemaVersion = z.literal(1);
 
-export const TaskDomainSchema = z.enum(['teaching', 'life', 'wedding', 'health', 'other']);
-export const TaskKindSchema = z.enum(['task', 'step']);
-export const TaskBucketSchema = z.enum(['active', 'someday']);
+/** Classifier ids are configured at runtime — see Tools → Properties. */
+export const TaskDomainSchema = z.string().min(1);
+export const TaskKindSchema = z.string().min(1);
+export const TaskBucketSchema = z.string().min(1);
 
-export const TaskStatusSchema = z.enum(['open', 'in_progress', 'done', 'deferred', 'dead']);
-export const TaskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
-export const TaskSourceSchema = z.enum([
-  'manual',
-  'auto_generated_from_excursion',
-  'suggested_by_agent'
-]);
+export const TaskStatusSchema = z.string().min(1);
+export const TaskPrioritySchema = z.string().min(1);
+export const TaskSourceSchema = z.string().min(1);
 
 export const DependencyTypeSchema = z.enum(['FS', 'SS', 'FF']);
 

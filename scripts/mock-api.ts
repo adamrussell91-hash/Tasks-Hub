@@ -8,6 +8,7 @@ import { TransitMapCreateSchema, TransitMapUpdateSchema } from '../src/schemas/m
 import { ProgramCreateSchema, ProgramUpdateSchema } from '../src/schemas/program';
 import { AreaCreateSchema, AreaUpdateSchema } from '../src/schemas/area';
 import { GoalCreateSchema, GoalUpdateSchema } from '../src/schemas/goal';
+import { TaskPropertyConfigSchema } from '../src/schemas/task-properties';
 
 export function createMemoryKv(): KvAdapter & { map: Map<string, unknown> } {
   const map = new Map<string, unknown>();
@@ -490,6 +491,16 @@ export function createMockApi({ seed }: MockApiOptions) {
             })
           });
         }
+      }
+    }
+
+    if (path === '/api/task-properties') {
+      if (method === 'GET') {
+        return json(200, { ok: true, data: await s.getTaskProperties() });
+      }
+      if (method === 'PUT') {
+        const parsed = TaskPropertyConfigSchema.parse(body);
+        return json(200, { ok: true, data: await s.updateTaskProperties(parsed) });
       }
     }
 

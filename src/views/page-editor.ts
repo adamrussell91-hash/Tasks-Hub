@@ -16,6 +16,7 @@ import {
   createHubTextarea,
   domainFilterOptions,
   priorityFilterOptions,
+  statusFilterOptions,
   type HubFilterOption
 } from '@/views/hub-kit';
 
@@ -30,7 +31,6 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-const TASK_STATUSES: TaskStatus[] = ['open', 'in_progress', 'done', 'deferred', 'dead'];
 const PROJECT_STATUSES: ProjectStatus[] = ['active', 'stalled', 'revived', 'archived_dead'];
 
 export type EntityPageRef = { kind: 'task' | 'project'; id: string };
@@ -179,7 +179,7 @@ function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): vo
   const status = pageFilter(
     'page-card__status',
     'Status',
-    TASK_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
+    statusFilterOptions(false),
     task.status,
     (value) => persist({ status: value as TaskStatus })
   );

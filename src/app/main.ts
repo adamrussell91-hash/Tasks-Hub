@@ -51,7 +51,9 @@ import { renderPageEditor } from '@/views/page-editor';
 import { renderMapItemPage } from '@/views/map-page';
 import { renderGoalsView } from '@/views/goals';
 import { renderSomedayView } from '@/views/someday';
+import { renderPropertiesView } from '@/views/properties';
 import { renderReminderStrip } from '@/views/reminder-strip';
+import { loadTaskProperties } from '@/services/task-properties';
 import { tasksApi } from '@/services/client-api';
 import { mapsOrSeed } from '@/domain/maps';
 
@@ -165,6 +167,11 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     eyebrow: 'Share',
     title: 'Corey',
     supporting: 'Read-only availability — no task titles on the public link.'
+  },
+  properties: {
+    eyebrow: 'Tools',
+    title: 'Properties',
+    supporting: 'Edit task classifiers — domains, urgency labels, statuses, tags, and more.'
   }
 };
 
@@ -229,6 +236,8 @@ async function renderActiveView(view: HubViewId, canvas: HTMLElement): Promise<v
       return renderStressView(canvas);
     case 'corey':
       return renderCoreyView(canvas);
+    case 'properties':
+      return renderPropertiesView(canvas);
   }
 }
 
@@ -254,6 +263,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
   });
   const clare = installClareSession(root);
   void clare.start();
+  await loadTaskProperties();
 
   async function paint() {
     window.scrollTo(0, 0);
