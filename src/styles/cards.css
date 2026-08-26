@@ -113,6 +113,65 @@
   color: var(--muted);
 }
 
+/* Domain chip is a kit filter — keep the pastel area chip, hide the "Domain" key. */
+.hub-filter.hub-chip--domain {
+  min-height: 0;
+  gap: 0.15rem;
+  padding: 0.2rem 0.55rem;
+  border: 0;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+}
+
+.hub-filter.hub-chip--domain .hub-filter__key {
+  display: none;
+}
+
+.hub-filter.hub-chip--domain .hub-filter__chev {
+  width: 0.5rem;
+  height: 0.5rem;
+  opacity: 0.65;
+}
+
+.hub-filter.hub-chip--domain:hover,
+.hub-filter.hub-chip--domain[aria-expanded='true'],
+.hub-filter.hub-chip--domain.is-set {
+  border: 0;
+  font-weight: var(--weight-medium);
+}
+
+.hub-filter.hub-chip--domain[data-area='health'],
+.hub-filter.hub-chip--domain.is-set[data-area='health'] {
+  background: var(--pastel-lilac);
+  color: var(--pastel-lilac-ink);
+}
+
+.hub-filter.hub-chip--domain[data-area='teaching'],
+.hub-filter.hub-chip--domain.is-set[data-area='teaching'] {
+  background: var(--pastel-blue);
+  color: var(--pastel-blue-ink);
+}
+
+.hub-filter.hub-chip--domain[data-area='wedding'],
+.hub-filter.hub-chip--domain.is-set[data-area='wedding'] {
+  background: var(--pastel-lilac);
+  color: var(--pastel-lilac-ink);
+}
+
+.hub-filter.hub-chip--domain[data-area='life'],
+.hub-filter.hub-chip--domain.is-set[data-area='life'] {
+  background: var(--pastel-gold);
+  color: var(--pastel-gold-ink);
+}
+
+.hub-filter.hub-chip--domain[data-area='other'],
+.hub-filter.hub-chip--domain.is-set[data-area='other'] {
+  background: var(--shore);
+  color: var(--muted);
+}
+
 .date-badge {
   display: inline-flex;
   align-items: center;

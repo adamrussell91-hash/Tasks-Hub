@@ -1,4 +1,4 @@
-import type { Task } from '@/schemas/task';
+import type { Task, TaskDomain } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import {
   dueChipKind,
@@ -12,8 +12,10 @@ import {
   taskPageHash
 } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import { setTaskDomainNow } from '@/views/card-actions';
 import { cardTransitionName, runContainerTransform } from '@/views/container-transform';
 import { closeCardMenu, renderCardMenu, type CardMenuItem } from '@/views/card-menu';
+import { TASK_DOMAINS, createHubFilter } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -54,10 +56,39 @@ function chevron(up = false): SVGSVGElement {
   return node;
 }
 
-function domainChip(domain: string): HTMLElement {
-  const chip = el('span', 'hub-chip', domain[0]!.toUpperCase() + domain.slice(1));
-  chip.dataset.area = domain;
-  return chip;
+function domainLabel(domain: string): string {
+  return domain[0]!.toUpperCase() + domain.slice(1);
+}
+
+function domainChip(task: Task, handlers: TaskCardHandlers = {}): HTMLElement {
+  const filter = createHubFilter({
+    key: 'Domain',
+    label: 'Domain',
+    defaultValue: task.domain,
+    options: TASK_DOMAINS.map((value) => ({ value, label: domainLabel(value) })),
+    value: task.domain,
+    onChange: (value) => {
+      const domain = value as TaskDomain;
+      filter.el.dataset.area = domain;
+      setTaskDomainNow(task, domain, (updated) => {
+        Object.assign(task, updated);
+        filter.el.dataset.area = updated.domain;
+        filter.el.removeAttribute('aria-invalid');
+        filter.el.title = 'Change domain';
+        handlers.onDomain?.(updated);
+      }, (message) => {
+        filter.setValue(task.domain);
+        filter.el.dataset.area = task.domain;
+        filter.el.setAttribute('aria-invalid', 'true');
+        filter.el.title = message;
+        handlers.onError?.(message);
+      });
+    }
+  });
+  filter.el.classList.add('hub-chip', 'hub-chip--domain');
+  filter.el.dataset.area = task.domain;
+  filter.el.title = 'Change domain';
+  return filter.el;
 }
 
 function dateBadge(due: string | null, prefix = ''): HTMLElement | null {
@@ -74,6 +105,8 @@ export type TaskCardHandlers = {
   onOpenPage?: (task: Task) => void;
   onExpand?: (task: Task) => void;
   onCollapse?: (task: Task) => void;
+  onDomain?: (task: Task) => void;
+  onError?: (message: string) => void;
 };
 
 export type ProjectCardHandlers = {
@@ -154,7 +187,7 @@ export function renderTaskMicroCard(task: Task, handlers: TaskCardHandlers = {})
   row.dataset.cardKind = 'task';
   const title = el('p', 'hub-row__title card-title', task.title);
   const chips = el('div', 'hub-chips');
-  chips.append(domainChip(task.domain));
+  chips.append(domainChip(task, handlers));
   const priority = el('span', 'priority-chip', task.priority);
   priority.dataset.priority = task.priority;
   chips.append(priority);
@@ -178,7 +211,7 @@ export function renderTaskExpandedCard(task: Task, handlers: TaskCardHandlers = 
   const title = el('h2', 'hub-card__title card-title', task.title);
   const tags = el('div', 'task-card__tags-row');
   const chips = el('div', 'hub-chips');
-  chips.append(domainChip(task.domain));
+  chips.append(domainChip(task, handlers));
   const priority = el('span', 'priority-chip', task.priority);
   priority.dataset.priority = task.priority;
   chips.append(priority);
@@ -291,7 +324,7 @@ export function renderProjectExpandedCard(
     const body = el('div', 'task-body');
     body.append(el('span', 'task-name', child.title));
     const childTags = el('div', 'task-tags');
-    childTags.append(domainChip(child.domain));
+    childTags.append(domainChip(child));
     const kind = dueChipKind(child.due_date);
     const dueLabel = dueChipLabel(child.due_date);
     if (kind && dueLabel) {
@@ -341,6 +374,10 @@ export function mountTaskCard(
   function cardHandlers(): TaskCardHandlers {
     return {
       ...handlers,
+      onDomain: (updated) => {
+        slot.dataset.domain = updated.domain;
+        handlers.onDomain?.(updated);
+      },
       onExpand: expanded
         ? undefined
         : () => {

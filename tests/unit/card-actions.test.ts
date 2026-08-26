@@ -1,11 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
-import { deleteTaskNow } from '@/views/card-actions';
+import { deleteTaskNow, setTaskDomainNow } from '@/views/card-actions';
 
 vi.mock('@/services/client-api', () => ({
   tasksApi: {
-    deleteTask: vi.fn()
+    deleteTask: vi.fn(),
+    updateTask: vi.fn()
   }
 }));
 
@@ -63,5 +64,41 @@ describe('deleteTaskNow', () => {
     deleteTaskNow(sample(), vi.fn(), host);
     await vi.waitFor(() => expect(host.textContent).toContain('No.'));
     expect(host.querySelector('.confirm-card')).toBeNull();
+  });
+});
+
+describe('setTaskDomainNow', () => {
+  afterEach(() => {
+    vi.mocked(tasksApi.updateTask).mockReset();
+  });
+
+  it('patches domain immediately and never paints a proposed-write card', async () => {
+    const current = sample();
+    const updated = { ...current, domain: 'life' as const };
+    vi.mocked(tasksApi.updateTask).mockResolvedValue(updated as never);
+    const onUpdated = vi.fn();
+    const onError = vi.fn();
+    setTaskDomainNow(current, 'life', onUpdated, onError);
+    await vi.waitFor(() => {
+      expect(tasksApi.updateTask).toHaveBeenCalledWith('task_gone', { domain: 'life' });
+    });
+    expect(onUpdated).toHaveBeenCalledWith(updated);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('skips the write when the domain is unchanged', () => {
+    const onUpdated = vi.fn();
+    setTaskDomainNow(sample(), 'teaching', onUpdated);
+    expect(tasksApi.updateTask).not.toHaveBeenCalled();
+    expect(onUpdated).not.toHaveBeenCalled();
+  });
+
+  it('forwards API errors without a confirm banner', async () => {
+    vi.mocked(tasksApi.updateTask).mockRejectedValue(new Error('No.'));
+    const onUpdated = vi.fn();
+    const onError = vi.fn();
+    setTaskDomainNow(sample(), 'health', onUpdated, onError);
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith('No.'));
+    expect(onUpdated).not.toHaveBeenCalled();
   });
 });

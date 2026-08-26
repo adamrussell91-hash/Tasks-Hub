@@ -56,7 +56,9 @@ function appendTaskCard(
       await handlers.onChanged();
     }),
     onDelete: (current) => deleteTaskNow(current, handlers.onRemoved, confirmHost),
-    onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void handlers.onChanged())
+    onEdit: (current) => void renderTaskEditor(confirmHost, current, projects, () => void handlers.onChanged()),
+    onDomain: () => void handlers.onChanged(),
+    onError: (message) => confirmHost.replaceChildren(el('p', 'empty-state', message))
   });
 }
 

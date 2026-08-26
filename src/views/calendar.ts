@@ -435,13 +435,24 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     }
     calendar.append(body);
     calendar.append(
-      renderAgenda(items, selectedDateKey!, mode, showPreview, (created) => {
-        const index = tasks.findIndex((entry) => entry.id === created.id);
-        if (index >= 0) tasks[index] = created;
-        else tasks.push(created);
-        if (created.due_date) selectedDateKey = created.due_date;
-        paint();
-      })
+      renderAgenda(
+        items,
+        selectedDateKey!,
+        mode,
+        showPreview,
+        (created) => {
+          const index = tasks.findIndex((entry) => entry.id === created.id);
+          if (index >= 0) tasks[index] = created;
+          else tasks.push(created);
+          if (created.due_date) selectedDateKey = created.due_date;
+          paint();
+        },
+        (updated) => {
+          const index = tasks.findIndex((entry) => entry.id === updated.id);
+          if (index >= 0) tasks[index] = updated;
+          paint();
+        }
+      )
     );
     canvas.append(calendar);
     canvas.append(preview);
@@ -653,7 +664,8 @@ function renderAgenda(
   dateKey: string,
   mode: CalendarMode,
   onOpen: (item: CalendarItem) => void,
-  onCreated: (task: Task) => void
+  onCreated: (task: Task) => void,
+  onTaskChanged?: (task: Task) => void
 ): HTMLElement {
   const dayItems = itemsForDay(items, dateKey);
   const agenda = el('section', 'hub-calendar__detail');
@@ -692,7 +704,8 @@ function renderAgenda(
   for (const item of dayItems) {
     if (item.task) {
       mountTaskCard(stack, item.task, {
-        onEdit: () => onOpen(item)
+        onEdit: () => onOpen(item),
+        onDomain: (updated) => onTaskChanged?.(updated)
       });
       continue;
     }

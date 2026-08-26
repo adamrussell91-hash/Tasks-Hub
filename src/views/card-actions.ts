@@ -1,4 +1,4 @@
-import type { Task } from '@/schemas/task';
+import type { Task, TaskDomain } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
 import { errorMessage } from '@/views/feedback';
 
@@ -11,6 +11,19 @@ function el<K extends keyof HTMLElementTagNameMap>(
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+/** Immediate domain write from a card chip — no proposed-write banner. */
+export function setTaskDomainNow(
+  task: Task,
+  domain: TaskDomain,
+  onUpdated: (task: Task) => void,
+  onError?: (message: string) => void
+): void {
+  if (domain === task.domain) return;
+  void tasksApi.updateTask(task.id, { domain }).then(onUpdated, (err: unknown) => {
+    onError?.(errorMessage(err));
+  });
 }
 
 /** One-click card delete — no proposed-write banner. */

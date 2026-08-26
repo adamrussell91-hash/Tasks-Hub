@@ -1,8 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { closeCardMenu } from '@/views/card-menu';
 import { mountProjectCard, mountTaskCard, renderTaskMicroCard } from '@/views/hub-cards';
+import { tasksApi } from '@/services/client-api';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
+
+vi.mock('@/services/client-api', () => ({
+  tasksApi: {
+    updateTask: vi.fn()
+  }
+}));
 
 function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
   return {
@@ -88,6 +95,8 @@ function menuLabels(menu: HTMLElement): string[] {
 
 afterEach(() => {
   closeCardMenu();
+  document.querySelectorAll('.hub-menu').forEach((node) => node.remove());
+  vi.mocked(tasksApi.updateTask).mockReset();
 });
 
 describe('hub cards', () => {
@@ -96,7 +105,8 @@ describe('hub cards', () => {
     const host = document.createElement('div');
     const slot = mountTaskCard(host, task({ id: 'task_lesson', title: 'Finish lesson pack' }), {});
     expect(slot.querySelector('.hub-row__title')?.textContent).toBe('Finish lesson pack');
-    expect(slot.querySelector('.hub-chip')?.textContent).toBe('Teaching');
+    expect(slot.querySelector('.hub-chip--domain')?.tagName).toBe('BUTTON');
+    expect(slot.querySelector('.hub-chip--domain [data-hub-value]')?.textContent).toBe('Teaching');
     expect(slot.querySelector('.priority-chip')?.textContent).toBe('high');
     expect(slot.dataset.state).toBe('compact');
     expect(slot.querySelector('.card-menu')).not.toBeNull();
@@ -193,5 +203,42 @@ describe('hub cards', () => {
     slot.querySelector('.proj-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(onActivate).toHaveBeenCalledWith(expect.objectContaining({ id: 'proj_mw' }));
     expect(slot.dataset.state).toBe('compact');
+  });
+
+  it('saves a new domain from the chip menu', async () => {
+    const current = task({ id: 'task_domain', title: 'Move to life' });
+    const updated = { ...current, domain: 'life' as const };
+    vi.mocked(tasksApi.updateTask).mockResolvedValue(updated);
+    const onDomain = vi.fn();
+    const host = document.createElement('div');
+    const slot = mountTaskCard(host, current, { onDomain });
+
+    const chip = slot.querySelector<HTMLButtonElement>('.hub-chip--domain');
+    expect(chip).not.toBeNull();
+    expect(chip!.dataset.area).toBe('teaching');
+    chip!.click();
+    document.querySelector<HTMLButtonElement>('[data-hub-option="life"]')!.click();
+
+    await vi.waitFor(() => {
+      expect(tasksApi.updateTask).toHaveBeenCalledWith('task_domain', { domain: 'life' });
+    });
+    expect(onDomain).toHaveBeenCalledWith(expect.objectContaining({ id: 'task_domain', domain: 'life' }));
+    expect(slot.dataset.domain).toBe('life');
+    expect(chip!.dataset.area).toBe('life');
+    expect(chip!.querySelector('[data-hub-value]')?.textContent).toBe('Life');
+  });
+
+  it('restores the chip when the domain write fails', async () => {
+    vi.mocked(tasksApi.updateTask).mockRejectedValue(new Error('No.'));
+    const onError = vi.fn();
+    const host = document.createElement('div');
+    const slot = mountTaskCard(host, task({ id: 'task_fail', title: 'Keep teaching' }), { onError });
+    const chip = slot.querySelector<HTMLButtonElement>('.hub-chip--domain')!;
+    chip.click();
+    document.querySelector<HTMLButtonElement>('[data-hub-option="wedding"]')!.click();
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith('No.'));
+    expect(chip.dataset.area).toBe('teaching');
+    expect(chip.getAttribute('aria-invalid')).toBe('true');
+    expect(chip.querySelector('[data-hub-value]')?.textContent).toBe('Teaching');
   });
 });

@@ -34,6 +34,8 @@ function appendBoardCard(
     task,
     {
       onEdit: (current) => void renderTaskEditor(editorHost, current, projects, onReload),
+      onDomain: (updated) => onReload(updated),
+      onError: (message) => editorHost.replaceChildren(el('p', 'empty-state', message)),
       onDelete
     },
     true
