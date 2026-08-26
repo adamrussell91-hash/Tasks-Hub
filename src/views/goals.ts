@@ -52,6 +52,25 @@ function renderProjectCard(
   const openCount = projectTasks.filter((t) => t.status !== 'done' && t.status !== 'dead').length;
 
   const title = el('h3', 'hierarchy-card__title', project.title);
+  const head = el('div', 'hierarchy-card__head');
+  head.append(title);
+  head.append(
+    renderCardMenu(`${project.title} card menu`, [
+      {
+        id: 'page',
+        label: 'Full page',
+        onSelect: () => {
+          location.hash = projectPageHash(project.id);
+        }
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        danger: true,
+        onSelect: () => deleteProjectNow(project, onReload, editorHost)
+      }
+    ])
+  );
   const meta = el(
     'p',
     'hierarchy-meta',
@@ -59,7 +78,7 @@ function renderProjectCard(
       project.milestones.length === 1 ? '' : 's'
     }`
   );
-  card.append(title, meta);
+  card.append(head, meta);
   if (project.tags.length) card.append(tagRow(project.tags));
 
   const detail = el('div', 'hierarchy-card__detail');
@@ -83,24 +102,6 @@ function renderProjectCard(
   }
   detail.append(taskList);
   card.append(detail);
-
-  card.append(
-    renderCardMenu(`${project.title} card menu`, [
-      {
-        id: 'page',
-        label: 'Full page',
-        onSelect: () => {
-          location.hash = projectPageHash(project.id);
-        }
-      },
-      {
-        id: 'delete',
-        label: 'Delete',
-        danger: true,
-        onSelect: () => deleteProjectNow(project, onReload, editorHost)
-      }
-    ])
-  );
 
   card.addEventListener('click', (event) => {
     if ((event.target as HTMLElement).closest('button')) return;

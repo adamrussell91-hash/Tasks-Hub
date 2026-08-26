@@ -297,12 +297,12 @@ function projectBoardMenuItems(
 }
 
 function attachProjectBoardMenu(
-  article: HTMLElement,
+  host: HTMLElement,
   card: ProjectPulseCard,
   confirmHost: HTMLElement,
   onReload: () => void
 ): void {
-  article.append(renderCardMenu(`${card.project.title} card menu`, projectBoardMenuItems(card, confirmHost, onReload)));
+  host.append(renderCardMenu(`${card.project.title} card menu`, projectBoardMenuItems(card, confirmHost, onReload)));
 }
 
 function renderProjectBoardCard(
@@ -334,7 +334,7 @@ function renderProjectBoardCard(
     const jump = el('a', 'pcard__jump', 'Review below ↓');
     jump.href = '#stalled-queue';
     article.append(jump);
-    attachProjectBoardMenu(article, card, confirmHost, onReload);
+    attachProjectBoardMenu(top, card, confirmHost, onReload);
     return article;
   }
 
@@ -403,7 +403,7 @@ function renderProjectBoardCard(
     actions.append(close);
   }
   article.append(actions);
-  attachProjectBoardMenu(article, card, confirmHost, onReload);
+  attachProjectBoardMenu(top, card, confirmHost, onReload);
   return article;
 }
 
