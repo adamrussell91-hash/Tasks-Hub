@@ -62,6 +62,7 @@ export function installClareSession(root: HTMLElement): ClareSession {
   });
 
   function park(): void {
+    document.querySelector('.hub-layout')?.removeAttribute('data-hub-view');
     if (!view.closest('.hub-canvas')) return;
     home.append(view);
     view.hidden = true;
@@ -79,6 +80,7 @@ export function installClareSession(root: HTMLElement): ClareSession {
   function sync(viewId: string): void {
     currentView = viewId;
     fab.hidden = viewId === 'clare';
+    document.querySelector('.hub-layout')?.setAttribute('data-hub-view', viewId);
     if (viewId === 'clare') {
       setChatUnread(root, false);
     }

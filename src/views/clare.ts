@@ -1,5 +1,5 @@
 import { buildChatView } from '@/chat/build-chat-view';
-import { createClareChatController, setSkipReasoning, skipReasoning } from '@/chat/clare-controller';
+import { createClareChatController } from '@/chat/clare-controller';
 import { getClareSession } from '@/chat/clare-session';
 import { CLARE_ADHD_PROTOCOLS, CLARE_PROTOCOLS, CLARE_WAIT_LINES } from '@/domain/clare-protocols';
 import { renderLoadError } from '@/views/feedback';
@@ -18,18 +18,6 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function paintSkipPref(host: HTMLElement): void {
-  const prefs = el('div', 'clare-prefs');
-  const skipLabel = el('label', 'clare-prefs__skip');
-  const skip = document.createElement('input');
-  skip.type = 'checkbox';
-  skip.checked = skipReasoning();
-  skip.addEventListener('change', () => setSkipReasoning(skip.checked));
-  skipLabel.append(skip, document.createTextNode(' Just show the framework — skip reasoning'));
-  prefs.append(skipLabel);
-  host.append(prefs);
-}
-
 async function mountStandalone(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading chat…'));
   try {
@@ -42,9 +30,7 @@ async function mountStandalone(canvas: HTMLElement): Promise<void> {
   let controller: ReturnType<typeof createClareChatController> | null = null;
   const view = buildChatView();
   view.hidden = false;
-  canvas.replaceChildren();
-  paintSkipPref(canvas);
-  canvas.append(view);
+  canvas.replaceChildren(view);
   controller = createClareChatController({ root: view, isVisible: () => true });
   await controller.start();
 }
@@ -54,7 +40,6 @@ export async function renderClareView(canvas: HTMLElement): Promise<void> {
   const session = getClareSession();
   if (session) {
     canvas.replaceChildren();
-    paintSkipPref(canvas);
     session.showPage(canvas);
     await session.start();
     await session.appendExtras(canvas);

@@ -89,10 +89,15 @@ export function buildChatView(): HTMLElement {
   view.style.setProperty('--agent-accent', 'var(--wave)');
 
   const heading = el('div', 'section-heading chat-view__toolbar');
-  const neu = el('button', 'chat-new-button', 'New chat');
+  const skip = el('label', 'clare-prefs__skip');
+  const skipInput = document.createElement('input');
+  skipInput.type = 'checkbox';
+  skipInput.id = 'chat-skip-reasoning';
+  skip.append(skipInput, document.createTextNode(' Skip reasoning'));
+  const neu = el('button', 'btn btn--ghost chat-new-button', 'New chat');
   neu.type = 'button';
   neu.id = 'chat-new';
-  heading.append(neu);
+  heading.append(skip, neu);
   view.append(heading);
 
   const picker = el('div', 'agent-picker');
@@ -100,11 +105,13 @@ export function buildChatView(): HTMLElement {
   picker.setAttribute('aria-label', 'Choose who to talk to');
   view.append(picker);
 
+  const trays = el('div', 'chat-protocols');
   const protocols = el('section');
   protocols.id = 'chat-protocols';
   const stuck = el('section');
   stuck.id = 'chat-stuck-protocols';
-  view.append(protocols, stuck);
+  trays.append(protocols, stuck);
+  view.append(trays);
 
   const error = el('p', 'chat-error');
   error.id = 'chat-error';

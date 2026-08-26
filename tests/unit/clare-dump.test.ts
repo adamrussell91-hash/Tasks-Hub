@@ -61,6 +61,16 @@ describe('brain dump parsing', () => {
     ]);
   });
 
+  it('strips I-need-to padding from dump titles', () => {
+    const items = parseBrainDump(
+      'tomorrow I need to prep for my lead mentoring meeting with Siran',
+      { now: new Date(2026, 7, 25), preferredDomain: 'teaching' }
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]!.title).toBe('Prep for my lead mentoring meeting with Siran');
+    expect(items[0]!.due_date).toBe('2026-08-26');
+  });
+
   it('does not propose notes or existing titles', () => {
     const items = parseBrainDump('Finish lesson pack for Year 12\nremember: bring the USB', {
       now: new Date(2026, 7, 25),

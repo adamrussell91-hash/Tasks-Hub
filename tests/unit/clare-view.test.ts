@@ -104,6 +104,8 @@ describe('Clare protocol controls', () => {
     expect(canvas.querySelector('select.hub-filter')).toBeNull();
     expect(canvas.querySelector('#chat-form .hub-filter')?.tagName).toBe('BUTTON');
     expect(canvas.querySelector('#chat-input')?.tagName).toBe('TEXTAREA');
+    expect(canvas.querySelector('#chat-skip-reasoning')).not.toBeNull();
+    expect(canvas.querySelector('.clare-prefs')).toBeNull();
     const pills = [...canvas.querySelectorAll<HTMLButtonElement>('[aria-label="Clare protocols"] [data-protocol-id]')];
     expect(pills).toHaveLength(5);
     for (const pill of pills) {
@@ -173,6 +175,9 @@ describe('Clare protocol controls', () => {
     );
     await vi.waitFor(() => expect(tasksApi.processDumpWithClare).toHaveBeenCalledTimes(1));
     await vi.waitFor(() => expect(canvas.querySelector('.record-proposal__confirm')).not.toBeNull());
+
+    expect(canvas.querySelector('.record-proposal .page-header__title')?.textContent).toBe(proposal.title);
+    expect(canvas.querySelector('.record-proposal__fields')).not.toBeNull();
 
     const confirm = canvas.querySelector<HTMLButtonElement>('.record-proposal__confirm')!;
     confirm.click();
@@ -250,6 +255,7 @@ describe('Clare protocol controls', () => {
     expect(canvas.textContent).toMatch(/Hammond can/);
     expect(canvas.querySelector<HTMLTextAreaElement>('#chat-input')?.placeholder).toMatch(/running/i);
     expect(canvas.querySelector<HTMLElement>('#chat-domain')?.hidden).toBe(true);
+    expect(canvas.querySelector<HTMLElement>('.clare-prefs__skip')?.hidden).toBe(true);
 
     canvas.querySelector<HTMLButtonElement>('[data-protocol-id="whats-running"]')!.click();
     await vi.waitFor(() => expect(tasksApi.listAgentInbox).toHaveBeenCalledWith('General Hammond'));
