@@ -30,10 +30,12 @@ function judgmentStatusText(meta: IntuitiveScanMeta | null): string {
     return `Last look ${when} — no API key, so judgment was skipped.`;
   }
   if (meta.raised > 0) {
-    return `Last look ${when} — ${meta.raised} new judgment flag(s).`;
+    const noun = meta.raised === 1 ? 'new judgment flag' : 'new judgment flags';
+    return `Last look ${when} — ${meta.raised} ${noun}.`;
   }
   if (meta.judged > 0) {
-    return `Last look ${when} — ${meta.judged} compound pattern(s), already routed.`;
+    const noun = meta.judged === 1 ? 'compound pattern' : 'compound patterns';
+    return `Last look ${when} — ${meta.judged} ${noun}, already routed.`;
   }
   return `Last look ${when} — nothing compound to raise.`;
 }
