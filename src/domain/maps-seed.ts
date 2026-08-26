@@ -39,6 +39,7 @@ function station(
     starts_on,
     ends_on,
     link: null,
+    planning: 'planned' as const,
     ...extras
   };
 }
@@ -59,6 +60,7 @@ function tick(
     starts_on,
     ends_on: null,
     link: null,
+    planning: 'planned' as const,
     ...extras
   };
 }

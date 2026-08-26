@@ -3,6 +3,7 @@ import { schemaVersion } from './task';
 
 export const LineStrokeSchema = z.enum(['solid', 'dotted']);
 export const YearTrackSchema = z.enum(['junior', 'rozelle', 'senior']);
+export const MapPlanningSchema = z.enum(['planned', 'active']);
 export const MapColorTokenSchema = z.enum([
   'blue',
   'yellow',
@@ -63,7 +64,8 @@ export const StationSchema = z.object({
   out_stroke: LineStrokeSchema.default('solid'),
   starts_on: z.string().nullable().default(null),
   ends_on: z.string().nullable().default(null),
-  link: MapLinkSchema
+  link: MapLinkSchema,
+  planning: MapPlanningSchema.default('planned')
 });
 
 export const TickAttachSchema = z.discriminatedUnion('kind', [
@@ -94,7 +96,8 @@ export const TickSchema = z.object({
   connects_to: z.string().nullable().default(null),
   starts_on: z.string().nullable().default(null),
   ends_on: z.string().nullable().default(null),
-  link: MapLinkSchema
+  link: MapLinkSchema,
+  planning: MapPlanningSchema.default('planned')
 });
 
 export const TransitMapSchema = z.object({
@@ -127,6 +130,7 @@ export const TransitMapUpdateSchema = TransitMapCreateSchema.partial();
 
 export type LineStroke = z.infer<typeof LineStrokeSchema>;
 export type YearTrack = z.infer<typeof YearTrackSchema>;
+export type MapPlanning = z.infer<typeof MapPlanningSchema>;
 export type MapColorToken = z.infer<typeof MapColorTokenSchema>;
 export type Point = z.infer<typeof PointSchema>;
 export type MapLine = z.infer<typeof LineSchema>;

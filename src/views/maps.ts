@@ -1,9 +1,17 @@
 import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap, YearTrack } from '@/schemas/map';
 import type { Project } from '@/schemas/project';
 import { projectPageHash } from '@/domain/cards';
+import {
+  activateMapItem,
+  deleteMapItemProject,
+  mapItemPageHash,
+  planningOf,
+  planMapItem
+} from '@/domain/maps-planning';
 import { tasksApi } from '@/services/client-api';
-import { exportMapHtml, pickCurrentYearMap } from '@/domain/maps';
-import { createFilteredPicker, createMapIndex, type MapIndexItem, type PickerGroup } from '@/views/map-nav';
+import { exportMapHtml, mapsOrSeed, pickCurrentYearMap } from '@/domain/maps';
+import { createFilteredPicker, type MapIndexItem, type PickerGroup } from '@/views/map-nav';
+import { mountMapCardIndex, type MapCardModel } from '@/views/map-cards';
 import {
   applyDateSpanToStation,
   applyDateToTickAttach,
@@ -24,8 +32,6 @@ import {
   type MapCanvasLayout
 } from '@/domain/maps-layout';
 import { discCss, fillCss, letterCss, strokeCss } from '@/domain/maps-colors';
-import { mindWorks2026Map } from '@/domain/maps-seed';
-import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import {
   createHubField,
   createHubFilter,
@@ -33,10 +39,7 @@ import {
   createHubToolbar
 } from '@/views/hub-kit';
 
-export function mapsOrSeed(maps: TransitMap[] | null | undefined): TransitMap[] {
-  const list = maps && maps.length > 0 ? maps : [mindWorks2026Map()];
-  return list.map((map) => normalizeLineColors(map));
-}
+export { mapsOrSeed };
 
 /** Hide rail + page header so the map can fill the viewport. */
 export function setMapFullscreenChrome(on: boolean): void {
@@ -59,7 +62,6 @@ function newId(prefix: string): string {
 }
 
 type Mode = 'view' | 'edit';
-type DraftKind = 'line' | 'station' | 'event' | null;
 
 function strokeOf(color: MapColorToken): string {
   return strokeCss(color);
@@ -114,32 +116,6 @@ function targetPickerGroups(map: TransitMap, skipId?: string | null): PickerGrou
         .map((item) => ({ value: `event:${item.id}`, label: item.label }))
     }
   ];
-}
-
-function projectLinkGroups(projects: Project[], excursions: Project[]): PickerGroup[] {
-  return [
-    {
-      label: 'Projects',
-      options: projects
-        .filter((project) => project.type !== 'excursion')
-        .map((project) => ({
-          value: `project:${project.id}`,
-          label: project.title
-        }))
-    },
-    {
-      label: 'Excursions',
-      options: excursions.map((project) => ({
-        value: `excursion:${project.id}`,
-        label: project.title
-      }))
-    }
-  ];
-}
-
-function projectLinkValue(link: MapStation['link'] | MapTick['link']): string {
-  if (!link) return '';
-  return `${link.type === 'excursion' ? 'excursion' : 'project'}:${link.id}`;
 }
 
 function buildMapIndexItems(
@@ -729,31 +705,6 @@ function downloadHtml(map: TransitMap): void {
   URL.revokeObjectURL(url);
 }
 
-function showConfirm(host: HTMLElement, summary: string, onConfirm: () => Promise<void>): void {
-  host.replaceChildren();
-  const card = el('section', 'confirm-card');
-  card.setAttribute('aria-label', 'Confirm delete');
-  card.append(
-    el('p', 'page-header__eyebrow', 'Proposed write'),
-    el('h2', 'page-header__title', 'Delete'),
-    el('p', 'page-header__supporting', `${summary} Do not apply until Confirm.`)
-  );
-  const actions = el('div', 'confirm-card__actions');
-  const cancel = el('button', 'btn btn--ghost', 'Cancel');
-  cancel.type = 'button';
-  const confirm = el('button', 'btn btn--primary', 'Confirm');
-  confirm.type = 'button';
-  cancel.addEventListener('click', () => host.replaceChildren());
-  confirm.addEventListener('click', async () => {
-    await onConfirm();
-    host.replaceChildren();
-  });
-  actions.append(cancel, confirm);
-  card.append(actions);
-  host.append(card);
-  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-}
-
 function field(label: string, control: HTMLElement): HTMLElement {
   const wrap = el('label', 'map-field');
   wrap.append(el('span', 'map-field__label', label), control);
@@ -816,7 +767,6 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   }
   let mode: Mode = 'view';
   let fullscreen = false;
-  let draft: DraftKind = null;
   let selectedId: string | null = null;
   let zoom = 1;
   let camX = 0;
@@ -861,8 +811,6 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   window.addEventListener('hashchange', onFullscreenHash);
   setMapFullscreenChrome(false);
 
-  const excursions = projects.filter((p) => p.type === 'excursion');
-
   const paint = () => {
     canvas.classList.toggle('map-page', true);
     canvas.classList.toggle('map-page--fullscreen', fullscreen);
@@ -897,9 +845,8 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       ],
       value: mode,
       onSelect: (id) => {
-        mode = id;
+        mode = id as Mode;
         if (id === 'view') {
-          draft = null;
           joining = false;
           joinFrom = null;
         }
@@ -950,65 +897,27 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     toolbar.append(termPills);
 
     if (mode === 'edit') {
-      const addLine = el('button', draft === 'line' ? 'btn btn--primary' : 'btn btn--ghost', '+ Line');
-      const addStation = el(
-        'button',
-        draft === 'station' ? 'btn btn--primary' : 'btn btn--ghost',
-        '+ Station'
-      );
-      const addEvent = el('button', draft === 'event' ? 'btn btn--primary' : 'btn btn--ghost', '+ Event');
+      const addLine = el('button', 'btn btn--ghost', '+ Line');
+      const addStation = el('button', 'btn btn--ghost', '+ Program');
+      const addEvent = el('button', 'btn btn--ghost', '+ Competition');
       addLine.type = 'button';
       addStation.type = 'button';
       addEvent.type = 'button';
-      addLine.addEventListener('click', () => {
-        draft = draft === 'line' ? null : 'line';
-        paint();
-      });
-      addStation.addEventListener('click', () => {
-        draft = draft === 'station' ? null : 'station';
-        paint();
-      });
-      addEvent.addEventListener('click', () => {
-        draft = draft === 'event' ? null : 'event';
-        joining = false;
-        joinFrom = null;
-        paint();
-      });
+      addLine.addEventListener('click', () => addLineNow());
+      addStation.addEventListener('click', () => addStationNow());
+      addEvent.addEventListener('click', () => addEventNow());
       const joinBtn = el('button', joining ? 'btn btn--primary' : 'btn btn--ghost', 'Join');
       joinBtn.type = 'button';
       joinBtn.setAttribute('aria-pressed', joining ? 'true' : 'false');
       joinBtn.addEventListener('click', () => {
         joining = !joining;
         joinFrom = null;
-        draft = null;
         toast = joining ? 'Click two things to join them. Ports show only in this mode.' : '';
         paint();
       });
       toolbar.append(addLine, addStation, addEvent, joinBtn);
     }
     canvas.append(toolbar);
-
-    const confirmHost = el('div', 'map-confirm');
-    canvas.append(confirmHost);
-    if (mode === 'edit' && draft) {
-      renderDraftForm(
-        confirmHost,
-        current,
-        year,
-        terms,
-        draft,
-        (next) => {
-          current = next;
-          draft = null;
-          void persist();
-          paint();
-        },
-        () => {
-          draft = null;
-          paint();
-        }
-      );
-    }
 
     const key = el('div', 'map-key');
     key.setAttribute('aria-label', 'Map key');
@@ -1084,12 +993,36 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     stage.append(svg, zoomBar);
 
     const indexItems = buildMapIndexItems(current, layout);
-    const index = createMapIndex(indexItems, selectedId, (item) => {
-      selectedId = item.id;
-      camY = focusCameraOnY(layout, item.y, zoom);
-      paint();
-    });
+    const cardModels = buildCardModels(current, projects);
+    const index = mountMapCardIndex(
+      cardModels,
+      selectedId,
+      (model) => ({
+        onOpenPage: () => {
+          location.hash = mapItemPageHash(current.id, model.kind, model.id);
+        },
+        onDelete: () => void deleteItemNow(model.id),
+        onTogglePlanning: () => void togglePlanningNow(model.id),
+        onExpand: () => {
+          selectedId = model.id;
+          const jump = indexItems.find((item) => item.id === model.id);
+          if (jump) {
+            camY = focusCameraOnY(layout, jump.y, zoom);
+            applyCamera(svg, layout);
+          }
+        },
+        onCollapse: () => {
+          if (selectedId === model.id) selectedId = null;
+        }
+      }),
+      (model) => (mode === 'edit' ? buildItemEditor(model.id, year, terms) : null)
+    );
     body.append(stage, index);
+    if (selectedId) {
+      index
+        .querySelector<HTMLElement>(`.map-card-slot[data-map-item-id="${selectedId}"]`)
+        ?.scrollIntoView({ block: 'nearest' });
+    }
 
     svg.addEventListener(
       'wheel',
@@ -1282,164 +1215,244 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     });
 
     canvas.append(body);
+    if (toast) canvas.append(el('p', 'canvas-status', toast));
+  };
 
-    const preview = el('aside', 'graph-preview map-preview');
-    const selectedStation = current.stations.find((s) => s.id === selectedId);
-    const selectedTick = current.ticks.find((t) => t.id === selectedId);
-    if (selectedStation || selectedTick) {
-      preview.hidden = false;
-      const kind = selectedStation ? 'Station' : 'Event';
-      const item = selectedStation ?? selectedTick!;
-      const line = selectedStation
-        ? findLine(current, selectedStation.line_id)
-        : lineForTick(current, selectedTick);
-      preview.append(el('p', 'graph-preview__eyebrow', kind), el('h3', 'graph-preview__title', item.label));
-      const dates = [item.starts_on, item.ends_on]
-        .filter(Boolean)
-        .map((d) => formatDisplayDate(d!))
-        .join(' → ');
-      preview.append(
-        el(
-          'p',
-          'graph-preview__meta',
-          [
-            line ? `${line.letter} ${line.name}` : null,
-            selectedStation ? selectedStation.tracks.map((track) => YEAR_TRACK_LABELS[track]).join(', ') : null,
-            dates || null
-          ]
-            .filter(Boolean)
-            .join(' · ')
+  function buildCardModels(map: TransitMap, projectList: Project[]): MapCardModel[] {
+    const models: MapCardModel[] = [];
+    for (const station of map.stations) {
+      const line = findLine(map, station.line_id) ?? null;
+      const linked = station.link ? projectList.find((project) => project.id === station.link!.id) : null;
+      models.push({
+        id: station.id,
+        kind: 'station',
+        label: station.label,
+        planning: planningOf(station),
+        starts_on: station.starts_on,
+        ends_on: station.ends_on,
+        tracks: station.tracks,
+        updated_at: map.updated_at,
+        line,
+        lines: map.lines,
+        linkedTitle: linked?.title ?? null
+      });
+    }
+    for (const tick of map.ticks) {
+      const line = lineForTick(map, tick) ?? null;
+      const linked = tick.link ? projectList.find((project) => project.id === tick.link!.id) : null;
+      models.push({
+        id: tick.id,
+        kind: 'event',
+        label: tick.label,
+        planning: planningOf(tick),
+        starts_on: tick.starts_on,
+        ends_on: tick.ends_on,
+        tracks: [],
+        updated_at: map.updated_at,
+        line,
+        lines: map.lines,
+        linkedTitle: linked?.title ?? null
+      });
+    }
+    return models;
+  }
+
+  function buildItemEditor(id: string, year: number, terms: ReturnType<typeof schoolTerms>): HTMLElement | null {
+    const selectedStation = current.stations.find((item) => item.id === id);
+    const selectedTick = current.ticks.find((item) => item.id === id);
+    const item = selectedStation ?? selectedTick;
+    if (!item) return null;
+    const form = el('div', 'map-card__editor');
+    const name = textInput(item.label, 'Name');
+    name.input.addEventListener('change', () => {
+      item.label = name.input.value.trim() || item.label;
+      void persist();
+    });
+    const start = dateInput(item.starts_on ?? terms.t1, selectedStation ? 'Starts' : 'Date');
+    const end = dateInput(item.ends_on ?? item.starts_on ?? terms.e, 'Ends');
+    const applyDates = () => {
+      item.starts_on = start.input.value || null;
+      item.ends_on = selectedStation ? end.input.value || null : end.input.value || start.input.value || null;
+      if (selectedStation) {
+        const next = applyDateSpanToStation(selectedStation, year);
+        selectedStation.starts_on = next.starts_on;
+        selectedStation.ends_on = next.ends_on;
+        selectedStation.y = next.y;
+        selectedStation.height = next.height;
+      } else if (selectedTick) {
+        const next = applyDateToTickAttach(selectedTick, year);
+        selectedTick.attach = next.attach;
+      }
+      void persist().then(() => paint());
+    };
+    start.input.addEventListener('change', applyDates);
+    end.input.addEventListener('change', applyDates);
+    const tracks = selectedStation ? trackPicker(selectedStation.tracks) : null;
+    tracks?.root.addEventListener('change', () => {
+      selectedStation!.tracks = tracks.value();
+      void persist().then(() => paint());
+    });
+    const attachPicker = selectedTick
+      ? createFilteredPicker(targetPickerGroups(current, selectedTick.id), attachSelectValue(selectedTick), {
+          ariaLabel: 'Attach to',
+          placeholder: 'Search lines, stations…'
+        })
+      : null;
+    const alsoPicker = selectedTick
+      ? createFilteredPicker(
+          targetPickerGroups(current, selectedTick.id),
+          connectSelectValue(current, selectedTick.connects_to),
+          {
+            ariaLabel: 'Also connect to',
+            blankLabel: 'No extra connection',
+            placeholder: 'Search connections…'
+          }
         )
+      : null;
+    const applyAttach = () => {
+      if (!selectedTick || !attachPicker || !alsoPicker) return;
+      selectedTick.attach = parseAttachValue(
+        attachPicker.getValue(),
+        current.lines[0]?.id ?? '',
+        selectedTick.attach.kind === 'line' ? selectedTick.attach.y : 200
       );
-      const linked = item.link ? projects.find((p) => p.id === item.link!.id) : null;
+      selectedTick.connects_to = parseConnectValue(alsoPicker.getValue(), current);
+      const next = applyDateToTickAttach(selectedTick, year);
+      selectedTick.attach = next.attach;
+      void persist().then(() => paint());
+    };
+    attachPicker?.root.addEventListener('click', applyAttach);
+    alsoPicker?.root.addEventListener('click', applyAttach);
+    form.append(name.el);
+    form.append(selectedStation ? field('Starts', start.el) : field('Date', start.el));
+    if (selectedStation) {
+      form.append(field('Ends', end.el));
+      if (tracks) form.append(field('Year lines', tracks.root));
+    }
+    if (selectedTick && attachPicker && alsoPicker) {
+      form.append(field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root));
+    }
+    if (planningOf(item) === 'active' && item.link) {
+      const linked = projects.find((project) => project.id === item.link!.id);
       if (linked) {
-        const actions = el('div', 'map-preview__actions');
         const open = el('button', 'btn btn--secondary', `Open ${linked.title}`);
         open.type = 'button';
         open.addEventListener('click', () => {
           location.hash = projectPageHash(linked.id);
         });
-        const gantt = el('button', 'btn btn--ghost', 'Gantt');
-        gantt.type = 'button';
-        gantt.addEventListener('click', () => {
-          location.hash = `#/gantt?project=${encodeURIComponent(linked.id)}`;
-        });
-        const branch = el('button', 'btn btn--ghost', 'Branch');
-        branch.type = 'button';
-        branch.addEventListener('click', () => {
-          location.hash = `#/branch?project=${encodeURIComponent(linked.id)}`;
-        });
-        actions.append(open, gantt, branch);
-        preview.append(actions);
+        form.append(open);
       }
-
-      if (selectedTick?.connects_to) {
-        const connected =
-          current.ticks.find(
-            (tick) =>
-              tick.label === selectedTick.connects_to ||
-              tick.id === selectedTick.connects_to ||
-              tick.label.toLowerCase().includes(selectedTick.connects_to!.toLowerCase())
-          ) ?? null;
-        if (connected) {
-          const jump = el('button', 'btn btn--ghost', `Connected → ${connected.label}`);
-          jump.type = 'button';
-          jump.addEventListener('click', () => {
-            selectedId = connected.id;
-            const laid = layout.ticks.find((entry) => entry.id === connected.id);
-            if (laid) camY = focusCameraOnY(layout, laid.cy, zoom);
-            paint();
-          });
-          preview.append(jump);
-        } else {
-          preview.append(
-            el('p', 'graph-preview__meta', `Connects to ${selectedTick.connects_to}`)
-          );
-        }
-      }
-
-      if (mode === 'edit') {
-        const form = el('div', 'map-drawer');
-        const name = textInput(item.label, 'Name');
-        const start = dateInput(item.starts_on ?? terms.t1, 'Starts');
-        const end = dateInput(item.ends_on ?? item.starts_on ?? terms.e, 'Ends');
-        const linkPicker = createFilteredPicker(
-          projectLinkGroups(projects, excursions),
-          projectLinkValue(item.link),
-          { ariaLabel: 'Project link', blankLabel: 'No project link', placeholder: 'Search projects…' }
-        );
-        const attachPicker = selectedTick
-          ? createFilteredPicker(targetPickerGroups(current, selectedTick.id), attachSelectValue(selectedTick), {
-              ariaLabel: 'Attach to',
-              placeholder: 'Search lines, stations…'
-            })
-          : null;
-        const alsoPicker = selectedTick
-          ? createFilteredPicker(targetPickerGroups(current, selectedTick.id), connectSelectValue(current, selectedTick.connects_to), {
-              ariaLabel: 'Also connect to',
-              blankLabel: 'No extra connection',
-              placeholder: 'Search connections…'
-            })
-          : null;
-        const tracks = selectedStation ? trackPicker(selectedStation.tracks) : null;
-        const save = el('button', 'btn btn--primary', 'Save');
-        save.type = 'button';
-        save.addEventListener('click', async () => {
-          item.label = name.input.value.trim() || item.label;
-          item.starts_on = start.input.value || null;
-          item.ends_on = selectedStation ? end.input.value || null : end.input.value || start.input.value || null;
-          const [type, id] = linkPicker.getValue().split(':');
-          item.link = id ? { type: type === 'excursion' ? 'excursion' : 'project', id } : null;
-          if (selectedStation) {
-            selectedStation.tracks = tracks?.value() ?? selectedStation.tracks;
-            const next = applyDateSpanToStation(selectedStation, year);
-            selectedStation.starts_on = next.starts_on;
-            selectedStation.ends_on = next.ends_on;
-            selectedStation.y = next.y;
-            selectedStation.height = next.height;
-          } else if (selectedTick && attachPicker && alsoPicker) {
-            selectedTick.attach = parseAttachValue(
-              attachPicker.getValue(),
-              current.lines[0]?.id ?? '',
-              selectedTick.attach.kind === 'line' ? selectedTick.attach.y : 200
-            );
-            selectedTick.connects_to = parseConnectValue(alsoPicker.getValue(), current);
-            const next = applyDateToTickAttach(selectedTick, year);
-            selectedTick.attach = next.attach;
-          }
-          await persist();
-          paint();
-        });
-        const del = el('button', 'btn btn--ghost', 'Delete');
-        del.type = 'button';
-        del.addEventListener('click', () => {
-          showConfirm(confirmHost, `Remove “${item.label}”.`, async () => {
-            current.stations = current.stations.filter((s) => s.id !== item.id);
-            current.ticks = current.ticks.filter((t) => t.id !== item.id);
-            selectedId = null;
-            await persist();
-            paint();
-          });
-        });
-        form.append(name.el);
-        form.append(selectedStation ? field('Starts', start.el) : field('Date', start.el));
-        if (selectedStation) {
-          form.append(field('Ends', end.el));
-          if (tracks) form.append(field('Year lines', tracks.root));
-        }
-        form.append(field('Project link', linkPicker.root));
-        if (selectedTick && attachPicker && alsoPicker) {
-          form.append(field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root));
-        }
-        form.append(save, del);
-        preview.append(form);
-      }
-    } else {
-      preview.hidden = true;
     }
-    canvas.append(preview);
-    if (toast) canvas.append(el('p', 'canvas-status', toast));
-  };
+    return form;
+  }
+
+  function addLineNow(): void {
+    const x = nextLineX(current.lines);
+    const letter = nextLineLetter(current.lines);
+    current.lines.push({
+      id: newId('line'),
+      name: `${letter} Line`,
+      letter,
+      color: LINE_COLORS[current.lines.length % LINE_COLORS.length] ?? 'blue',
+      points: yearLinePoints(x)
+    });
+    void persist().then(() => paint());
+  }
+
+  function addStationNow(): void {
+    const year = current.year ?? yearNow;
+    const terms = schoolTerms(year);
+    if (!current.lines.length) {
+      toast = 'Add a line first.';
+      paint();
+      return;
+    }
+    const draft: MapStation = {
+      id: newId('st'),
+      line_id: current.lines[0]!.id,
+      label: 'New program',
+      y: 80,
+      height: 110,
+      tracks: ['junior'],
+      in_stroke: 'solid',
+      out_stroke: 'solid',
+      starts_on: terms.t1,
+      ends_on: terms.e,
+      link: null,
+      planning: 'planned'
+    };
+    current.stations.push(applyDateSpanToStation(draft, year));
+    selectedId = draft.id;
+    mode = 'edit';
+    void persist().then(() => paint());
+  }
+
+  function addEventNow(): void {
+    const year = current.year ?? yearNow;
+    const terms = schoolTerms(year);
+    if (!current.lines.length) {
+      toast = 'Add a line first.';
+      paint();
+      return;
+    }
+    const draft: MapTick = {
+      id: newId('tk'),
+      label: 'New competition',
+      attach: { kind: 'line', line_id: current.lines[0]!.id, y: 200 },
+      stroke: 'solid',
+      connects_to: null,
+      starts_on: terms.t1,
+      ends_on: null,
+      link: null,
+      planning: 'planned'
+    };
+    current.ticks.push(applyDateToTickAttach(draft, year));
+    selectedId = draft.id;
+    mode = 'edit';
+    joining = false;
+    joinFrom = null;
+    void persist().then(() => paint());
+  }
+
+  async function deleteItemNow(id: string): Promise<void> {
+    const item =
+      current.stations.find((entry) => entry.id === id) ?? current.ticks.find((entry) => entry.id === id);
+    if (!item) return;
+    try {
+      await deleteMapItemProject(item, projects);
+      current.stations = current.stations.filter((entry) => entry.id !== id);
+      current.ticks = current.ticks.filter((entry) => entry.id !== id);
+      selectedId = selectedId === id ? null : selectedId;
+      await persist();
+      paint();
+    } catch {
+      toast = 'Could not delete that card.';
+      paint();
+    }
+  }
+
+  async function togglePlanningNow(id: string): Promise<void> {
+    const station = current.stations.find((entry) => entry.id === id);
+    const tick = current.ticks.find((entry) => entry.id === id);
+    const item = station ?? tick;
+    if (!item) return;
+    const kind = station ? 'station' : 'event';
+    const line = station ? findLine(current, station.line_id) : lineForTick(current, tick);
+    try {
+      if (planningOf(item) === 'planned') {
+        const project = await activateMapItem(item, kind, line?.name, projects);
+        if (project && !projects.some((entry) => entry.id === project.id)) projects.push(project);
+      } else {
+        await planMapItem(item, projects);
+      }
+      selectedId = id;
+      await persist();
+      paint();
+    } catch {
+      toast = 'Could not update planning.';
+      paint();
+    }
+  }
 
   async function persist(): Promise<void> {
     try {
@@ -1461,139 +1474,4 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   }
 
   paint();
-}
-
-function renderDraftForm(
-  host: HTMLElement,
-  map: TransitMap,
-  year: number,
-  terms: ReturnType<typeof schoolTerms>,
-  kind: Exclude<DraftKind, null>,
-  onApply: (map: TransitMap) => void,
-  onCancel: () => void
-): void {
-  host.replaceChildren();
-  const card = el('section', 'confirm-card');
-  card.setAttribute('role', 'region');
-  card.setAttribute('aria-label', 'Add to map');
-  const titles = { line: 'Add line', station: 'Add station', event: 'Add event' };
-  const copy = {
-    line: 'A new vertical line for the calendar year, from T1 through E.',
-    station: 'A program on one strand. Pick Junior, Rozelle, and/or Senior. Start and end dates place it on the year.',
-    event: 'A competition. Attach it to a line, a station, or another competition’s border.'
-  };
-  card.append(
-    el('p', 'page-header__eyebrow', 'Proposed write'),
-    el('h2', 'page-header__title', titles[kind]),
-    el('p', 'page-header__supporting', `${copy[kind]} Do not apply until Confirm.`)
-  );
-
-  const name = textInput('', 'Name');
-  name.input.placeholder = kind === 'line' ? 'Justice' : kind === 'station' ? 'Young Diplomats Program' : 'Rotary MUNA';
-  const letter = textInput(nextLineLetter(map.lines), 'Letter');
-  letter.input.maxLength = 4;
-  const color = createHubFilter({
-    key: 'Colour',
-    label: 'Colour',
-    defaultValue: LINE_COLORS[0] ?? 'blue',
-    options: LINE_COLORS.map((token) => ({ value: token, label: token.replace('-', ' ') })),
-    value: LINE_COLORS[0] ?? 'blue'
-  });
-  const line = createHubFilter({
-    key: 'Line',
-    label: 'Line',
-    defaultValue: map.lines[0]?.id ?? '',
-    options: map.lines.map((item) => ({ value: item.id, label: `${item.letter} · ${item.name}` })),
-    value: map.lines[0]?.id ?? ''
-  });
-  const start = dateInput(terms.t1, kind === 'event' ? 'Date' : 'Starts');
-  const end = dateInput(terms.e, 'Ends');
-  const tracks = trackPicker(['junior']);
-  const attachPicker = createFilteredPicker(
-    targetPickerGroups(map),
-    map.lines[0] ? `line:${map.lines[0].id}` : '',
-    { ariaLabel: 'Attach to', placeholder: 'Search lines, stations…' }
-  );
-  const alsoPicker = createFilteredPicker(targetPickerGroups(map), '', {
-    ariaLabel: 'Also connect to',
-    blankLabel: 'No extra connection',
-    placeholder: 'Search connections…'
-  });
-
-  if (kind === 'line') card.append(field('Name', name.el), field('Letter', letter.el), field('Colour', color.el));
-  else if (kind === 'station') {
-    card.append(
-      field('Name', name.el),
-      field('Line', line.el),
-      field('Year lines', tracks.root),
-      field('Starts', start.el),
-      field('Ends', end.el)
-    );
-  } else {
-    card.append(field('Name', name.el), field('Attach to', attachPicker.root), field('Also connect to', alsoPicker.root), field('Date', start.el));
-  }
-
-  const actions = el('div', 'confirm-card__actions');
-  const discard = el('button', 'btn btn--ghost', 'Discard');
-  const confirm = el('button', 'btn btn--primary', 'Confirm');
-  discard.type = 'button';
-  confirm.type = 'button';
-  discard.addEventListener('click', () => onCancel());
-  confirm.addEventListener('click', () => {
-    const title = name.input.value.trim();
-    if (!title) {
-      host.append(el('p', 'empty-state', 'Add a name.'));
-      return;
-    }
-    if (kind === 'line') {
-      const x = nextLineX(map.lines);
-      map.lines.push({
-        id: newId('line'),
-        name: title,
-        letter: (letter.input.value.trim() || nextLineLetter(map.lines)).slice(0, 4).toUpperCase(),
-        color: (color.getValue() as MapColorToken) || 'blue',
-        points: yearLinePoints(x)
-      });
-    } else if (kind === 'station') {
-      if (!map.lines.length) {
-        host.append(el('p', 'empty-state', 'Add a line first.'));
-        return;
-      }
-      const draftStation: MapStation = {
-        id: newId('st'),
-        line_id: line.getValue() || map.lines[0]!.id,
-        label: title,
-        y: 80,
-        height: 110,
-        tracks: tracks.value(),
-        in_stroke: 'solid',
-        out_stroke: 'solid',
-        starts_on: start.input.value || terms.t1,
-        ends_on: end.input.value || terms.e,
-        link: null
-      };
-      map.stations.push(applyDateSpanToStation(draftStation, year));
-    } else {
-      if (!map.lines.length) {
-        host.append(el('p', 'empty-state', 'Add a line first.'));
-        return;
-      }
-      const draftTick: MapTick = {
-        id: newId('tk'),
-        label: title,
-        attach: parseAttachValue(attachPicker.getValue(), map.lines[0]!.id, 200),
-        stroke: 'solid',
-        connects_to: parseConnectValue(alsoPicker.getValue(), map),
-        starts_on: start.input.value || terms.t1,
-        ends_on: null,
-        link: null
-      };
-      map.ticks.push(applyDateToTickAttach(draftTick, year));
-    }
-    onApply(map);
-  });
-  actions.append(discard, confirm);
-  card.append(actions);
-  host.append(card);
-  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }

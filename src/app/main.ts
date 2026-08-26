@@ -18,6 +18,7 @@ import {
   parseCapacityShareToken,
   parseEntityPage,
   parseHashRoute,
+  parseMapItemPage,
   renderHubShell,
   renderPageHeader,
   renderPrimaryNav,
@@ -47,10 +48,12 @@ import {
 import { renderProjectsView } from '@/views/projects';
 import { renderWeekView, renderMonthView } from '@/views/calendar';
 import { renderPageEditor } from '@/views/page-editor';
+import { renderMapItemPage } from '@/views/map-page';
 import { renderGoalsView } from '@/views/goals';
 import { renderSomedayView } from '@/views/someday';
 import { renderReminderStrip } from '@/views/reminder-strip';
 import { tasksApi } from '@/services/client-api';
+import { mapsOrSeed } from '@/domain/maps';
 
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
@@ -263,6 +266,27 @@ async function bootApp(root: HTMLElement): Promise<void> {
     const share = parseCapacityShareToken();
     if (share) {
       await bootPublicCapacity(root, share);
+      return;
+    }
+    const mapItem = parseMapItemPage();
+    if (mapItem) {
+      const listed = await tasksApi.listMaps().catch(() => []);
+      const map = mapsOrSeed(listed).find((entry) => entry.id === mapItem.mapId);
+      const named =
+        mapItem.kind === 'station'
+          ? map?.stations.find((entry) => entry.id === mapItem.id)
+          : map?.ticks.find((entry) => entry.id === mapItem.id);
+      renderPrimaryNav(shell.railNav, 'maps');
+      renderPageHeader(shell, {
+        eyebrow: mapItem.kind === 'station' ? 'Program' : 'Competition',
+        title: named?.label ?? 'Page',
+        supporting: 'A planning card — it stays off the board until you make it active.'
+      });
+      try {
+        await renderMapItemPage(shell.canvas, mapItem);
+      } catch (err) {
+        renderLoadError(shell.canvas, err, () => void paint(), 'Could not open card');
+      }
       return;
     }
     const entity = parseEntityPage();
