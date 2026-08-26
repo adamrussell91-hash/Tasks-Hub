@@ -70,8 +70,8 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   },
   clare: {
     eyebrow: 'Desk',
-    title: 'Clare DeMind',
-    supporting: 'Same chat window as Life Hub. Dump the chaos. She sorts it, then you confirm.'
+    title: 'Clare',
+    supporting: 'Dump the chaos. She sorts it, then you confirm.'
   },
   graph: {
     eyebrow: 'Structure',

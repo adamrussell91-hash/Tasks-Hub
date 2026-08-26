@@ -59,10 +59,15 @@ export function buildChatView(onPickProtocol: (id: ClareProtocolId) => void): HT
   view.style.setProperty('--agent-accent', 'var(--wave)');
 
   const heading = el('div', 'section-heading chat-view__toolbar');
-  const neu = el('button', 'chat-new-button', 'New chat');
+  const skip = el('label', 'clare-prefs__skip');
+  const skipInput = document.createElement('input');
+  skipInput.type = 'checkbox';
+  skipInput.id = 'chat-skip-reasoning';
+  skip.append(skipInput, document.createTextNode(' Skip reasoning'));
+  const neu = el('button', 'btn btn--ghost chat-new-button', 'New chat');
   neu.type = 'button';
   neu.id = 'chat-new';
-  heading.append(neu);
+  heading.append(skip, neu);
   view.append(heading);
 
   const hero = el('div', 'chat-agent-hero');
@@ -81,8 +86,10 @@ export function buildChatView(onPickProtocol: (id: ClareProtocolId) => void): HT
   hero.append(toggle);
   view.append(hero);
 
-  view.append(protocolTray('Clare can', 'Clare protocols', CLARE_PROTOCOLS, onPickProtocol));
-  view.append(protocolTray('When stuck', 'Clare ADHD tools', CLARE_ADHD_PROTOCOLS, onPickProtocol));
+  const protocols = el('div', 'chat-protocols');
+  protocols.append(protocolTray('Clare can', 'Clare protocols', CLARE_PROTOCOLS, onPickProtocol));
+  protocols.append(protocolTray('When stuck', 'Clare ADHD tools', CLARE_ADHD_PROTOCOLS, onPickProtocol));
+  view.append(protocols);
 
   const error = el('p', 'chat-error');
   error.id = 'chat-error';

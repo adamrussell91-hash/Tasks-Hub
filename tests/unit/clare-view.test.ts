@@ -92,6 +92,8 @@ describe('Clare protocol controls', () => {
     expect(canvas.querySelector('select.hub-filter')).toBeNull();
     expect(canvas.querySelector('#chat-form .hub-filter')?.tagName).toBe('BUTTON');
     expect(canvas.querySelector('#chat-input')?.tagName).toBe('TEXTAREA');
+    expect(canvas.querySelector('#chat-skip-reasoning')).not.toBeNull();
+    expect(canvas.querySelector('.clare-prefs')).toBeNull();
     const pills = [...canvas.querySelectorAll<HTMLButtonElement>('[aria-label="Clare protocols"] [data-protocol-id]')];
     expect(pills).toHaveLength(5);
     for (const pill of pills) {
@@ -162,6 +164,10 @@ describe('Clare protocol controls', () => {
     await vi.waitFor(() => expect(tasksApi.processDumpWithClare).toHaveBeenCalledTimes(1));
     await vi.waitFor(() => expect(canvas.querySelector('.record-proposal__confirm')).not.toBeNull());
 
+    expect(canvas.querySelector('#chat-agent-hero')?.classList.contains('is-collapsed')).toBe(true);
+    expect(canvas.querySelector('.record-proposal .page-header__title')?.textContent).toBe(proposal.title);
+    expect(canvas.querySelector('.record-proposal__fields')).not.toBeNull();
+
     const confirm = canvas.querySelector<HTMLButtonElement>('.record-proposal__confirm')!;
     confirm.click();
     await vi.waitFor(() => expect(confirm.textContent).toBe('Saving…'));
@@ -197,6 +203,29 @@ describe('Clare protocol controls', () => {
     expect(canvas.textContent).not.toContain('Stale dump that should not land.');
     expect(canvas.querySelector('.record-proposal__confirm')).toBeNull();
     expect(canvas.textContent).toContain(briefing.closer);
+  });
+
+  it('collapses the hero after a dump and expands it on tap', async () => {
+    vi.mocked(tasksApi.processDumpWithClare).mockResolvedValue({
+      voice: 'Right — one thing, and it actually has a shape. Here is my take.',
+      proposals: [proposal],
+      questions: [],
+      notes: [],
+      toolkit: null
+    });
+    const canvas = document.createElement('main');
+    await renderClareView(canvas);
+    const hero = canvas.querySelector('#chat-agent-hero')!;
+    expect(hero.classList.contains('is-collapsed')).toBe(false);
+    const dump = canvas.querySelector<HTMLTextAreaElement>('#chat-input')!;
+    dump.value = proposal.title;
+    canvas.querySelector<HTMLFormElement>('#chat-form')!.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    await vi.waitFor(() => expect(hero.classList.contains('is-collapsed')).toBe(true));
+    canvas.querySelector<HTMLButtonElement>('.chat-agent-hero__toggle')!.click();
+    expect(hero.classList.contains('is-collapsed')).toBe(false);
+    expect(canvas.querySelector('.chat-agent-hero__toggle')?.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('runs a sprint briefing when the dump is empty', async () => {

@@ -67,8 +67,8 @@ function appendProposalCard(
   card.setAttribute('role', 'region');
   card.setAttribute('aria-label', 'Confirm change');
   card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
-  card.append(el('h3', 'clare-bubble__title', proposal.title));
-  const meta = el('div', 'task-row__meta');
+  card.append(el('h3', 'page-header__title', proposal.title));
+  const meta = el('div', 'hub-chips');
   meta.append(
     el('span', 'chip', proposal.framework_name),
     el('span', 'chip chip--muted', proposal.domain),
@@ -82,14 +82,13 @@ function appendProposalCard(
   }
   card.append(meta);
   if (!skipReasoning()) {
-    card.append(el('p', 'clare-bubble__reasoning', proposal.reasoning));
-  } else {
-    card.append(el('p', 'clare-bubble__reasoning', `Framework: ${proposal.framework_name}`));
+    card.append(el('p', 'page-header__supporting', proposal.reasoning));
   }
   if (proposal.calibration_note) {
     card.append(el('p', 'clare-bubble__note', proposal.calibration_note));
   }
 
+  const fields = el('div', 'record-proposal__fields');
   const estimateRow = el('div', 'clare-estimate');
   estimateRow.append(el('span', 'chip chip--muted', `Clare: ${proposal.proposed_minutes}m`));
   const minutes = createHubField({
@@ -99,9 +98,7 @@ function appendProposalCard(
     step: '5',
     value: String(proposal.suggested_accepted_minutes)
   });
-  estimateRow.append(el('span', undefined, 'Your estimate'), minutes.el, el('span', undefined, 'min'));
-  card.append(estimateRow);
-
+  estimateRow.append(el('span', 'clare-estimate__label', 'Your estimate'), minutes.el, el('span', 'clare-estimate__unit', 'min'));
   const framework = createHubFilter({
     key: 'Framework',
     label: `Framework for ${proposal.title}`,
@@ -109,7 +106,8 @@ function appendProposalCard(
     defaultValue: proposal.framework_id,
     options: frameworks.map((fw) => ({ value: fw.id, label: fw.name }))
   });
-  card.append(framework.el);
+  fields.append(estimateRow, framework.el);
+  card.append(fields);
 
   const actions = el('div', 'confirm-card__actions');
   const discard = el('button', 'btn btn--ghost record-proposal__discard', 'Discard');
@@ -339,6 +337,11 @@ export function createClareChatController({
     root.querySelector('#chat-new')?.addEventListener('click', () => {
       void newChat();
     });
+    const skip = root.querySelector<HTMLInputElement>('#chat-skip-reasoning');
+    if (skip) {
+      skip.checked = skipReasoning();
+      skip.addEventListener('change', () => setSkipReasoning(skip.checked));
+    }
     const heroToggle = root.querySelector<HTMLButtonElement>('.chat-agent-hero__toggle');
     heroToggle?.addEventListener('click', () => {
       const hero = root.querySelector('#chat-agent-hero');
