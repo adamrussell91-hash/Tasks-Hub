@@ -19,7 +19,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 async function mountStandalone(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading Clare…'));
+  canvas.replaceChildren(el('p', 'canvas-status', 'Loading chat…'));
   try {
     await tasksApi.listTemplates();
   } catch (err) {
@@ -28,7 +28,7 @@ async function mountStandalone(canvas: HTMLElement): Promise<void> {
   }
 
   let controller: ReturnType<typeof createClareChatController> | null = null;
-  const view = buildChatView((id) => controller?.pickProtocol(id));
+  const view = buildChatView();
   view.hidden = false;
   canvas.replaceChildren(view);
   controller = createClareChatController({ root: view, isVisible: () => true });

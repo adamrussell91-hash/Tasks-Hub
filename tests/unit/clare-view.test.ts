@@ -13,7 +13,8 @@ vi.mock('@/services/client-api', () => ({
     processDumpWithClare: vi.fn(),
     proposeWithClare: vi.fn(),
     acceptClareProposal: vi.fn(),
-    acceptClareBatch: vi.fn()
+    acceptClareBatch: vi.fn(),
+    listAgentInbox: vi.fn()
   }
 }));
 
@@ -81,12 +82,23 @@ describe('Clare protocol controls', () => {
     });
     vi.mocked(tasksApi.listClareCalibrations).mockResolvedValue([]);
     vi.mocked(tasksApi.briefWithClare).mockResolvedValue(briefing);
+    vi.mocked(tasksApi.listAgentInbox).mockResolvedValue([]);
   });
 
   it('renders five one-sentence hover cards on real protocol controls', async () => {
     const canvas = document.createElement('main');
     await renderClareView(canvas);
 
+    const faces = [...canvas.querySelectorAll<HTMLImageElement>('#agent-picker img')];
+    expect(faces).toHaveLength(4);
+    expect(faces.map((img) => img.getAttribute('src'))).toEqual([
+      '/assets/agents/clare.png',
+      '/assets/agents/hammond.jpg',
+      '/assets/agents/penelope.jpg',
+      '/assets/agents/vera.jpg'
+    ]);
+    expect(canvas.querySelector('.chat-agent-hero')).toBeNull();
+    expect(canvas.textContent).not.toMatch(/same chat window as life hub/i);
     expect(canvas.textContent).toMatch(/clare can/i);
     expect(canvas.textContent).toContain(briefing.closer);
     expect(canvas.querySelector('select.hub-filter')).toBeNull();
@@ -164,7 +176,6 @@ describe('Clare protocol controls', () => {
     await vi.waitFor(() => expect(tasksApi.processDumpWithClare).toHaveBeenCalledTimes(1));
     await vi.waitFor(() => expect(canvas.querySelector('.record-proposal__confirm')).not.toBeNull());
 
-    expect(canvas.querySelector('#chat-agent-hero')?.classList.contains('is-collapsed')).toBe(true);
     expect(canvas.querySelector('.record-proposal .page-header__title')?.textContent).toBe(proposal.title);
     expect(canvas.querySelector('.record-proposal__fields')).not.toBeNull();
 
@@ -205,29 +216,6 @@ describe('Clare protocol controls', () => {
     expect(canvas.textContent).toContain(briefing.closer);
   });
 
-  it('collapses the hero after a dump and expands it on tap', async () => {
-    vi.mocked(tasksApi.processDumpWithClare).mockResolvedValue({
-      voice: 'Right — one thing, and it actually has a shape. Here is my take.',
-      proposals: [proposal],
-      questions: [],
-      notes: [],
-      toolkit: null
-    });
-    const canvas = document.createElement('main');
-    await renderClareView(canvas);
-    const hero = canvas.querySelector('#chat-agent-hero')!;
-    expect(hero.classList.contains('is-collapsed')).toBe(false);
-    const dump = canvas.querySelector<HTMLTextAreaElement>('#chat-input')!;
-    dump.value = proposal.title;
-    canvas.querySelector<HTMLFormElement>('#chat-form')!.dispatchEvent(
-      new Event('submit', { bubbles: true, cancelable: true })
-    );
-    await vi.waitFor(() => expect(hero.classList.contains('is-collapsed')).toBe(true));
-    canvas.querySelector<HTMLButtonElement>('.chat-agent-hero__toggle')!.click();
-    expect(hero.classList.contains('is-collapsed')).toBe(false);
-    expect(canvas.querySelector('.chat-agent-hero__toggle')?.getAttribute('aria-expanded')).toBe('true');
-  });
-
   it('runs a sprint briefing when the dump is empty', async () => {
     vi.mocked(tasksApi.briefWithClare).mockResolvedValue({
       ...briefing,
@@ -240,5 +228,39 @@ describe('Clare protocol controls', () => {
     vi.mocked(tasksApi.briefWithClare).mockClear();
     canvas.querySelector<HTMLButtonElement>('[data-protocol-id="weekly-reset"]')!.click();
     await vi.waitFor(() => expect(tasksApi.briefWithClare).toHaveBeenCalledWith('weekly-reset'));
+  });
+
+  it('switches the picker to Hammond and briefs from his inbox', async () => {
+    vi.mocked(tasksApi.listAgentInbox).mockResolvedValue([
+      {
+        schema_version: 1,
+        id: 'sf_1',
+        source_project_or_task_id: null,
+        pattern_description: 'Ethics and Da Vinci overlap in the same fortnight.',
+        pattern_kind: 'overlapping_excursions',
+        raised_by: 'Clare DeMind',
+        routed_to: ['General Hammond', 'Penelope Rose Quillian', 'Dr Vera Lenz'],
+        recurrence_note: 'October does this.',
+        fingerprint: 'fp',
+        created_at: '2026-08-26T00:00:00.000Z'
+      }
+    ]);
+    const canvas = document.createElement('main');
+    await renderClareView(canvas);
+
+    canvas.querySelector<HTMLButtonElement>('[data-agent-slug="hammond"]')!.click();
+    expect(canvas.querySelector<HTMLElement>('#chat-view')?.style.getPropertyValue('--agent-accent')).toBe(
+      '#2D2D2D'
+    );
+    expect(canvas.textContent).toMatch(/Hammond can/);
+    expect(canvas.querySelector<HTMLTextAreaElement>('#chat-input')?.placeholder).toMatch(/running/i);
+    expect(canvas.querySelector<HTMLElement>('#chat-domain')?.hidden).toBe(true);
+    expect(canvas.querySelector<HTMLElement>('.clare-prefs__skip')?.hidden).toBe(true);
+
+    canvas.querySelector<HTMLButtonElement>('[data-protocol-id="whats-running"]')!.click();
+    await vi.waitFor(() => expect(tasksApi.listAgentInbox).toHaveBeenCalledWith('General Hammond'));
+    await vi.waitFor(() => expect(canvas.textContent).toContain('Ethics and Da Vinci overlap'));
+    const avatars = [...canvas.querySelectorAll<HTMLImageElement>('.chat-message--assistant .chat-message__avatar')];
+    expect(avatars.at(-1)?.getAttribute('src')).toBe('/assets/agents/hammond.jpg');
   });
 });

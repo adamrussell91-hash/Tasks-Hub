@@ -1,3 +1,5 @@
+import { applyAgentAvatarToBubble } from '@/chat/render-agent-picker';
+
 export type ChatRole = 'user' | 'assistant' | 'status';
 
 const UNREAD_SELECTOR = '.floating-chat-button, [data-clare-nav]';
@@ -33,6 +35,9 @@ export function appendMessage(
   const item = document.createElement('li');
   item.className = `chat-message chat-message--${role}`;
   if (role !== 'user') item.dataset.agent = agent;
+  if (role === 'assistant') {
+    applyAgentAvatarToBubble(item, agent);
+  }
   const body = document.createElement('div');
   body.className = 'chat-message__body';
   if (role === 'assistant') {

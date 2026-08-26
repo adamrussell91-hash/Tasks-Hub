@@ -50,7 +50,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { id: 'goals', label: 'Goals', href: '#/goals' },
       { id: 'someday', label: 'Someday', href: '#/someday' },
-      { id: 'clare', label: 'Clare', href: '#/clare' },
+      { id: 'clare', label: 'Chat', href: '#/clare' },
       { id: 'templates', label: 'Templates', href: '#/templates' }
     ]
   },
@@ -302,10 +302,27 @@ export function parseEntityPage(hash = location.hash): { kind: 'task' | 'project
   return null;
 }
 
+/** Full map card: `#/maps/:mapId/station/:id` or `#/maps/:mapId/event/:id`. */
+export function parseMapItemPage(
+  hash = location.hash
+): { mapId: string; kind: 'station' | 'event'; id: string } | null {
+  const path = hash.replace(/^#\/?/, '').split('?')[0] ?? '';
+  const parts = path.split('/');
+  if (parts[0] === 'maps' && parts[1] && (parts[2] === 'station' || parts[2] === 'event') && parts[3]) {
+    return {
+      mapId: decodeURIComponent(parts[1]),
+      kind: parts[2],
+      id: decodeURIComponent(parts[3])
+    };
+  }
+  return null;
+}
+
 export function isKnownHashView(hash = location.hash): boolean {
   const id = hashViewId(hash);
   if (id === 'capacity') return true;
   if (parseEntityPage(hash)) return true;
+  if (parseMapItemPage(hash)) return true;
   return KNOWN_VIEWS.includes(id as HubViewId);
 }
 

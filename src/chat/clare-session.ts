@@ -2,7 +2,6 @@ import { buildChatHome, buildChatView, buildFloatingChatButton } from '@/chat/bu
 import { createChatPanelController, type ChatPanelController } from '@/chat/chat-panel';
 import { createClareChatController, type ClareChatController } from '@/chat/clare-controller';
 import { setChatUnread } from '@/chat/render-chat';
-import type { ClareProtocolId } from '@/domain/clare-protocols';
 import type { FrameworkEntry } from '@/schemas/templates';
 import { tasksApi } from '@/services/client-api';
 
@@ -32,9 +31,8 @@ export function installClareSession(root: HTMLElement): ClareSession {
   session = null;
 
   let currentView = 'board';
-  let pickProtocol: (id: ClareProtocolId) => void = () => {};
   const home = buildChatHome();
-  const view = buildChatView((id) => pickProtocol(id));
+  const view = buildChatView();
   home.append(view);
   const fab = buildFloatingChatButton();
   const overlaySlot = document.createElement('div');
@@ -48,8 +46,6 @@ export function installClareSession(root: HTMLElement): ClareSession {
     isVisible: () => currentView === 'clare' || panel.isOpen(),
     onUnreadChange: (unread) => setChatUnread(root, unread)
   });
-  pickProtocol = (id) => controller.pickProtocol(id);
-
   fab.addEventListener('click', () => {
     setChatUnread(root, false);
     toggleOverlay(overlaySlot);

@@ -1,10 +1,5 @@
 import { preferredDomains } from '@/domain/queries';
-import {
-  CLARE_ADHD_PROTOCOLS,
-  CLARE_PROTOCOLS,
-  type ClareProtocol,
-  type ClareProtocolId
-} from '@/domain/clare-protocols';
+import type { ChatProtocol } from '@/chat/agents';
 import { createHubFilter, TASK_DOMAINS } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -18,12 +13,15 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-export function protocolButton(protocol: ClareProtocol, onPick: (id: ClareProtocolId) => void): HTMLButtonElement {
+export function protocolButton(
+  protocol: ChatProtocol,
+  onPick: (id: string) => void
+): HTMLButtonElement {
   const button = el('button', 'hub-pills__btn');
   button.type = 'button';
   button.dataset.protocolId = protocol.id;
   button.setAttribute('aria-pressed', 'false');
-  const tipId = `clare-protocol-tip-${protocol.id}`;
+  const tipId = `chat-protocol-tip-${protocol.id}`;
   button.setAttribute('aria-describedby', tipId);
   const tip = el('span', 'agent-protocol-pills__tip', protocol.explain);
   tip.id = tipId;
@@ -34,28 +32,60 @@ export function protocolButton(protocol: ClareProtocol, onPick: (id: ClareProtoc
 }
 
 function protocolTray(
+  host: HTMLElement,
   title: string,
   label: string,
-  protocols: readonly ClareProtocol[],
-  onPick: (id: ClareProtocolId) => void
-): HTMLElement {
-  const section = el('section', 'clare-protocols agent-protocol-pills');
-  section.append(el('p', 'page-header__eyebrow', title));
+  protocols: readonly ChatProtocol[],
+  onPick: (id: string) => void
+): void {
+  host.replaceChildren();
+  host.className = 'clare-protocols agent-protocol-pills';
+  host.hidden = protocols.length === 0;
+  if (!protocols.length) return;
+  host.append(el('p', 'page-header__eyebrow', title));
   const tray = el('div', 'hub-pills');
   tray.setAttribute('role', 'group');
   tray.setAttribute('aria-label', label);
   for (const protocol of protocols) {
     tray.append(protocolButton(protocol, onPick));
   }
-  section.append(tray);
-  return section;
+  host.append(tray);
 }
 
-export function buildChatView(onPickProtocol: (id: ClareProtocolId) => void): HTMLElement {
+export function paintProtocolTrays(
+  root: ParentNode,
+  {
+    canEyebrow,
+    canLabel,
+    protocols,
+    stuckEyebrow,
+    stuckLabel,
+    stuckProtocols,
+    onPick
+  }: {
+    canEyebrow: string;
+    canLabel: string;
+    protocols: readonly ChatProtocol[];
+    stuckEyebrow?: string;
+    stuckLabel?: string;
+    stuckProtocols?: readonly ChatProtocol[];
+    onPick: (id: string) => void;
+  }
+): void {
+  const can = root.querySelector<HTMLElement>('#chat-protocols');
+  const stuck = root.querySelector<HTMLElement>('#chat-stuck-protocols');
+  if (can) protocolTray(can, canEyebrow, canLabel, protocols, onPick);
+  if (stuck) {
+    protocolTray(stuck, stuckEyebrow ?? 'When stuck', stuckLabel ?? 'Stuck tools', stuckProtocols ?? [], onPick);
+  }
+}
+
+export function buildChatView(): HTMLElement {
   const view = el('section', 'chat-view');
   view.id = 'chat-view';
-  view.setAttribute('aria-label', 'Chat with Clare');
+  view.setAttribute('aria-label', 'Chat');
   view.hidden = true;
+  view.dataset.agent = 'clare';
   view.style.setProperty('--agent-accent', 'var(--wave)');
 
   const heading = el('div', 'section-heading chat-view__toolbar');
@@ -70,26 +100,18 @@ export function buildChatView(onPickProtocol: (id: ClareProtocolId) => void): HT
   heading.append(skip, neu);
   view.append(heading);
 
-  const hero = el('div', 'chat-agent-hero');
-  hero.id = 'chat-agent-hero';
-  hero.setAttribute('aria-live', 'polite');
-  const toggle = el('button', 'chat-agent-hero__toggle');
-  toggle.type = 'button';
-  toggle.setAttribute('aria-expanded', 'true');
-  toggle.append(el('span', 'chat-agent-hero__mark', 'CD'));
-  const copy = el('span', 'chat-agent-hero__copy');
-  copy.append(
-    el('span', 'chat-agent-hero__name', 'Clare DeMind'),
-    el('span', 'chat-agent-hero__role', 'Dump the chaos. She sorts it, then you confirm.')
-  );
-  toggle.append(copy);
-  hero.append(toggle);
-  view.append(hero);
+  const picker = el('div', 'agent-picker');
+  picker.id = 'agent-picker';
+  picker.setAttribute('aria-label', 'Choose who to talk to');
+  view.append(picker);
 
-  const protocols = el('div', 'chat-protocols');
-  protocols.append(protocolTray('Clare can', 'Clare protocols', CLARE_PROTOCOLS, onPickProtocol));
-  protocols.append(protocolTray('When stuck', 'Clare ADHD tools', CLARE_ADHD_PROTOCOLS, onPickProtocol));
-  view.append(protocols);
+  const trays = el('div', 'chat-protocols');
+  const protocols = el('section');
+  protocols.id = 'chat-protocols';
+  const stuck = el('section');
+  stuck.id = 'chat-stuck-protocols';
+  trays.append(protocols, stuck);
+  view.append(trays);
 
   const error = el('p', 'chat-error');
   error.id = 'chat-error';
@@ -143,6 +165,6 @@ export function buildFloatingChatButton(): HTMLButtonElement {
   const button = el('button', 'floating-chat-button', '💬');
   button.type = 'button';
   button.id = 'clare-chat-button';
-  button.setAttribute('aria-label', 'Chat with Clare');
+  button.setAttribute('aria-label', 'Open chat');
   return button;
 }

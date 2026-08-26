@@ -1,14 +1,17 @@
 import type { FrameworkEntry } from '@/schemas/templates';
 import type { ClareDumpResult, ClareProposal } from '@/domain/clare';
 import { briefingToMarkdown, toolkitToMarkdown, type ClareBriefing } from '@/domain/clare-desk';
-import {
-  CLARE_WAIT_LINES,
-  isBriefingProtocol,
-  type ClareProtocolId
-} from '@/domain/clare-protocols';
+import { isBriefingProtocol, type ClareProtocolId } from '@/domain/clare-protocols';
+import { networkBriefing } from '@/domain/network-desk';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { createHubField, createHubFilter } from '@/views/hub-kit';
 import { tasksApi } from '@/services/client-api';
+import { agentBySlug, DEFAULT_AGENT_SLUG, type ChatAgentSlug } from '@/chat/agents';
+import { paintProtocolTrays } from '@/chat/build-chat-view';
+import {
+  applyAgentAccent,
+  renderAgentPicker
+} from '@/chat/render-agent-picker';
 import {
   appendMessage,
   appendSavedCard,
@@ -39,7 +42,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function markActive(root: ParentNode, id: ClareProtocolId | undefined): void {
+function markActive(root: ParentNode, id: string | undefined): void {
   for (const peer of root.querySelectorAll<HTMLButtonElement>('[data-protocol-id]')) {
     const active = peer.dataset.protocolId === id;
     peer.classList.toggle('is-active', active);
@@ -47,12 +50,14 @@ function markActive(root: ParentNode, id: ClareProtocolId | undefined): void {
   }
 }
 
-function collapseHero(root: ParentNode, collapsed: boolean): void {
-  const hero = root.querySelector<HTMLElement>('#chat-agent-hero');
-  const toggle = root.querySelector<HTMLButtonElement>('.chat-agent-hero__toggle');
-  if (!hero || !toggle) return;
-  hero.classList.toggle('is-collapsed', collapsed);
-  toggle.setAttribute('aria-expanded', String(!collapsed));
+function syncComposer(root: ParentNode, slug: ChatAgentSlug): void {
+  const agent = agentBySlug(slug);
+  const input = root.querySelector<HTMLTextAreaElement>('#chat-input');
+  if (input) input.placeholder = agent.placeholder;
+  const domain = root.querySelector<HTMLElement>('#chat-domain');
+  if (domain) domain.hidden = slug !== 'clare';
+  const skip = root.querySelector<HTMLElement>('.clare-prefs__skip');
+  if (skip) skip.hidden = slug !== 'clare';
 }
 
 function appendProposalCard(
@@ -142,18 +147,19 @@ function appendProposalCard(
 }
 
 function paintDump(root: ParentNode, result: ClareDumpResult, frameworks: FrameworkEntry[], onSaved: () => void): void {
-  appendMessage(root, { role: 'assistant', text: result.voice });
+  appendMessage(root, { role: 'assistant', text: result.voice, agent: 'clare' });
   if (result.toolkit) {
-    appendMessage(root, { role: 'assistant', text: toolkitToMarkdown(result.toolkit) });
+    appendMessage(root, { role: 'assistant', text: toolkitToMarkdown(result.toolkit), agent: 'clare' });
   }
   if (result.questions.length) {
     appendMessage(root, {
       role: 'assistant',
+      agent: 'clare',
       text: result.questions.map((question) => `- ${question}`).join('\n')
     });
   }
   if (result.notes.length) {
-    appendMessage(root, { role: 'assistant', text: `Parked: ${result.notes.join(' · ')}` });
+    appendMessage(root, { role: 'assistant', text: `Parked: ${result.notes.join(' · ')}`, agent: 'clare' });
   }
   for (const proposal of result.proposals) {
     appendProposalCard(root, proposal, frameworks, onSaved);
@@ -162,7 +168,8 @@ function paintDump(root: ParentNode, result: ClareDumpResult, frameworks: Framew
 
 export type ClareChatController = {
   start: () => Promise<void>;
-  pickProtocol: (id: ClareProtocolId) => void;
+  pickProtocol: (id: string) => void;
+  selectAgent: (slug: ChatAgentSlug) => void;
   newChat: () => Promise<void>;
   send: (text?: string) => Promise<void>;
 };
@@ -176,7 +183,8 @@ export function createClareChatController({
   isVisible?: () => boolean;
   onUnreadChange?: (unread: boolean) => void;
 }): ClareChatController {
-  let selectedProtocolId: ClareProtocolId | undefined;
+  let selectedProtocolId: string | undefined;
+  let selectedSlug: ChatAgentSlug = DEFAULT_AGENT_SLUG;
   let frameworks: FrameworkEntry[] = [];
   let started = false;
   let sending = false;
@@ -188,11 +196,31 @@ export function createClareChatController({
   const input = () => root.querySelector<HTMLTextAreaElement>('#chat-input');
   const domainValue = () =>
     root.querySelector<HTMLElement>('#chat-domain')?.dataset.hubValue || 'teaching';
+  const currentAgent = () => agentBySlug(selectedSlug);
+
+  function paintRoster(): void {
+    const agent = currentAgent();
+    applyAgentAccent(root, selectedSlug);
+    syncComposer(root, selectedSlug);
+    renderAgentPicker(root, {
+      selectedSlug,
+      onSelect: selectAgent
+    });
+    paintProtocolTrays(root, {
+      canEyebrow: agent.canEyebrow,
+      canLabel: `${agent.firstName} protocols`,
+      protocols: agent.protocols,
+      stuckEyebrow: agent.stuckEyebrow,
+      stuckLabel: `${agent.firstName} ADHD tools`,
+      stuckProtocols: agent.stuckProtocols,
+      onPick: pickProtocol
+    });
+    markActive(root, selectedProtocolId);
+  }
 
   function clearThread(): void {
     root.querySelector('#chat-messages')?.replaceChildren();
     showChatError(root, '');
-    collapseHero(root, false);
   }
 
   function markUnreadIfHidden(): void {
@@ -214,7 +242,8 @@ export function createClareChatController({
   }
 
   function showWaitLine(): void {
-    const line = CLARE_WAIT_LINES[waitIndex % CLARE_WAIT_LINES.length];
+    const lines = currentAgent().waitLines;
+    const line = lines[waitIndex % lines.length];
     waitIndex += 1;
     if (statusBubble) {
       const body = statusBubble.querySelector('.chat-message__body');
@@ -239,7 +268,7 @@ export function createClareChatController({
     } catch (err) {
       if (mine !== turn) return undefined;
       stopWait();
-      showChatError(root, err instanceof Error ? err.message : 'Clare could not propose.');
+      showChatError(root, err instanceof Error ? err.message : `${currentAgent().firstName} could not reply.`);
       return undefined;
     } finally {
       if (mine === turn) {
@@ -258,7 +287,20 @@ export function createClareChatController({
   }
 
   function appendBriefing(briefing: ClareBriefing): void {
-    appendMessage(root, { role: 'assistant', text: briefingToMarkdown(briefing) });
+    appendMessage(root, { role: 'assistant', text: briefingToMarkdown(briefing), agent: 'clare' });
+  }
+
+  async function loadNetworkBriefing(text?: string, protocolId?: string): Promise<void> {
+    const agent = currentAgent();
+    if (!agent.inboxName) return;
+    const flags = await withWait(() => tasksApi.listAgentInbox(agent.inboxName!));
+    if (flags === undefined) return;
+    appendMessage(root, {
+      role: 'assistant',
+      agent: agent.slug,
+      text: networkBriefing(agent, flags, { userText: text, protocolId })
+    });
+    markUnreadIfHidden();
   }
 
   async function submitDump(text: string): Promise<void> {
@@ -266,7 +308,7 @@ export function createClareChatController({
       tasksApi.processDumpWithClare({
         text,
         domain: domainValue(),
-        protocol_id: selectedProtocolId
+        protocol_id: selectedProtocolId as ClareProtocolId | undefined
       })
     );
     if (!result) return;
@@ -281,36 +323,57 @@ export function createClareChatController({
     const field = input();
     const text = (raw ?? field?.value ?? '').trim();
     if (!text) {
-      if (selectedProtocolId && isBriefingProtocol(selectedProtocolId)) {
-        await loadBriefing(selectedProtocolId);
+      if (selectedSlug !== 'clare') {
+        await loadNetworkBriefing(undefined, selectedProtocolId);
+        return;
+      }
+      if (selectedProtocolId && isBriefingProtocol(selectedProtocolId as ClareProtocolId)) {
+        await loadBriefing(selectedProtocolId as ClareProtocolId);
         return;
       }
       await loadBriefing('morning-sweep');
       return;
     }
     appendMessage(root, { role: 'user', text });
-    collapseHero(root, true);
     if (field) field.value = '';
+    if (selectedSlug !== 'clare') {
+      await loadNetworkBriefing(text, selectedProtocolId);
+      return;
+    }
     await submitDump(text);
   }
 
-  function pickProtocol(id: ClareProtocolId): void {
+  function pickProtocol(id: string): void {
     selectedProtocolId = id;
     markActive(root, id);
     const text = input()?.value.trim() ?? '';
+    if (selectedSlug !== 'clare') {
+      void loadNetworkBriefing(text || undefined, id);
+      return;
+    }
     if (text) {
       void send(text);
       return;
     }
-    if (isBriefingProtocol(id)) {
-      void loadBriefing(id);
+    if (isBriefingProtocol(id as ClareProtocolId)) {
+      void loadBriefing(id as ClareProtocolId);
       return;
     }
     input()?.focus();
     appendMessage(root, {
       role: 'assistant',
+      agent: 'clare',
       text: 'Dump the thing first — I cannot shrink a blank page.'
     });
+  }
+
+  function selectAgent(slug: ChatAgentSlug): void {
+    if (slug === selectedSlug) return;
+    selectedSlug = slug;
+    selectedProtocolId = undefined;
+    paintRoster();
+    const empty = !root.querySelector('#chat-messages')?.childElementCount;
+    if (empty) void newChat();
   }
 
   async function newChat(): Promise<void> {
@@ -321,6 +384,11 @@ export function createClareChatController({
     selectedProtocolId = undefined;
     markActive(root, undefined);
     clearThread();
+    paintRoster();
+    if (selectedSlug !== 'clare') {
+      await loadNetworkBriefing();
+      return;
+    }
     await loadBriefing('morning-sweep');
   }
 
@@ -342,21 +410,17 @@ export function createClareChatController({
       skip.checked = skipReasoning();
       skip.addEventListener('change', () => setSkipReasoning(skip.checked));
     }
-    const heroToggle = root.querySelector<HTMLButtonElement>('.chat-agent-hero__toggle');
-    heroToggle?.addEventListener('click', () => {
-      const hero = root.querySelector('#chat-agent-hero');
-      collapseHero(root, !hero?.classList.contains('is-collapsed'));
-    });
   }
 
   async function start(): Promise<void> {
     if (started) return;
     started = true;
     bindChrome();
+    paintRoster();
     const templates = await tasksApi.listTemplates();
     frameworks = templates.frameworks as FrameworkEntry[];
     await newChat();
   }
 
-  return { start, pickProtocol, newChat, send };
+  return { start, pickProtocol, selectAgent, newChat, send };
 }
