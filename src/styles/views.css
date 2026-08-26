@@ -1367,6 +1367,13 @@
   margin: 0 0 var(--space-3);
 }
 
+/* Parked overlay lives in #chat-view-home as a sibling of .hub-layout.
+   display:flex on .chat-view beats the hidden attribute, so without this
+   the morning sweep sits under the Board and scroll-anchors the canvas away. */
+#chat-view-home {
+  display: none;
+}
+
 .hub-layout[data-hub-view='clare'] {
   height: 100dvh;
 }
@@ -1420,11 +1427,15 @@
   display: none;
 }
 
-.chat-view {
+.chat-view:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   min-height: 0;
+}
+
+.chat-view[hidden] {
+  display: none;
 }
 
 .chat-view__toolbar {
