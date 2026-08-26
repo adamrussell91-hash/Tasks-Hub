@@ -117,5 +117,8 @@ export function appendSavedCard(card: HTMLElement, text = 'Saved.'): void {
   const saved = document.createElement('p');
   saved.className = 'record-proposal__saved';
   saved.textContent = text;
+  card.className = 'record-proposal record-proposal--saved';
+  card.removeAttribute('role');
+  card.removeAttribute('aria-label');
   card.replaceChildren(saved);
 }

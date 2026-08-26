@@ -1416,6 +1416,10 @@
   margin-top: var(--space-2);
 }
 
+.hub-layout[data-hub-view='clare'] .reminder-strip-host {
+  display: none;
+}
+
 .chat-view {
   display: flex;
   flex-direction: column;
@@ -1646,6 +1650,15 @@
 .record-proposal__saved {
   margin: 0;
   color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.record-proposal--saved {
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .floating-chat-button {
