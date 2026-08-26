@@ -76,6 +76,31 @@
   color: var(--muted);
 }
 
+.status-badge--completed {
+  background: var(--success-surface);
+  color: var(--success);
+}
+
+.status-badge--on_the_go {
+  background: var(--pastel-blue);
+  color: var(--pastel-blue-ink);
+}
+
+.status-badge--planning {
+  background: var(--pastel-gold);
+  color: var(--pastel-gold-ink);
+}
+
+.status-badge--not_started {
+  background: color-mix(in srgb, var(--shallow) 22%, var(--paper));
+  color: var(--orca);
+}
+
+.status-badge--needs_attention {
+  background: var(--pastel-peach);
+  color: var(--pastel-peach-ink);
+}
+
 .hub-card__title {
   margin: 0;
   font-size: var(--text-md);
