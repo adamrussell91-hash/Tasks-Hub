@@ -162,16 +162,17 @@ function renderStatusChart(
   const load = el('p', 'projects-chart__load');
   load.innerHTML =
     over > 0
-      ? `Sustainable load is <strong>~${SUSTAINABLE_RUNNING_LOAD}</strong>. You’re running <strong>${running}</strong> — ${over} over.`
-      : `Sustainable load is <strong>~${SUSTAINABLE_RUNNING_LOAD}</strong>. You’re running <strong>${running}</strong>.`;
+      ? `<strong>${running}</strong> running · ${over} over ~${SUSTAINABLE_RUNNING_LOAD}`
+      : `<strong>${running}</strong> running · ~${SUSTAINABLE_RUNNING_LOAD} sustainable`;
   tile.append(load);
   return tile;
 }
 
 function renderHeatmap(ctx: PulseContext): HTMLElement {
   const model = projectActivityHeatmap(ctx.projects, ctx.tasks, ctx.now);
-  const tile = el('section', 'hub-card');
+  const tile = el('section', 'hub-card projects-heatmap');
   tile.append(el('p', 'hub-card__eyebrow', 'Activity — last 12 weeks'));
+  tile.append(el('p', 'heat-lede', 'A filled cell is a week with any task activity. Not a count.'));
   const rows = el('div', 'heat-rows');
   for (const row of model.rows) {
     const line = el('div', 'heat-row');
@@ -194,12 +195,12 @@ function renderHeatmap(ctx: PulseContext): HTMLElement {
 
 function renderRoadmap(ctx: PulseContext, onZoom: (zoom: RoadmapZoom) => void): HTMLElement {
   const model = projectRoadmap(ctx.projects, ctx.tasks, roadmapZoom, ctx.now);
-  const tile = el('section', 'hub-card');
+  const tile = el('section', 'hub-card projects-roadmap');
   const head = el('div', 'roadmap-head');
-  head.append(el('p', 'hub-card__eyebrow', 'Roadmap'));
+  head.append(el('p', 'hub-card__eyebrow', 'Timeline'));
   head.append(
     createHubPills({
-      label: 'Roadmap range',
+      label: 'Timeline range',
       items: [
         { id: 'week', label: 'Week' },
         { id: 'month', label: 'Month' },
@@ -210,6 +211,13 @@ function renderRoadmap(ctx: PulseContext, onZoom: (zoom: RoadmapZoom) => void): 
     })
   );
   tile.append(head);
+  tile.append(
+    el(
+      'p',
+      'roadmap-lede',
+      'Each bar is calendar time — when the project runs, from start to target. The dashed outline is the original plan. Not a task count.'
+    )
+  );
   const rows = el('div', 'roadmap-rows');
   for (const row of model.rows) {
     const line = el('div', 'roadmap-row');
@@ -233,7 +241,7 @@ function renderRoadmap(ctx: PulseContext, onZoom: (zoom: RoadmapZoom) => void): 
   }
   if (!model.rows.length) rows.append(el('p', 'empty-state empty-state--compact', 'No live projects on the horizon.'));
   const axis = el('div', 'roadmap-axis');
-  axis.append(el('span'));
+  axis.append(el('span', 'roadmap-axis__kind', 'Time'));
   const ticks = el('div', 'roadmap-axis__ticks');
   for (const tick of model.axis) ticks.append(el('span', undefined, tick));
   axis.append(ticks);
@@ -551,6 +559,14 @@ function renderStalledQueue(
   return section;
 }
 
+type ProjectsPageData = {
+  projects: Project[];
+  tasks: Task[];
+  goals: Goal[];
+  reviews: Awaited<ReturnType<typeof tasksApi.listReviewLogs>>;
+  flagWarning: string;
+};
+
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
   let flagWarning = '';
@@ -576,6 +592,10 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     return;
   }
 
+  paintProjects(canvas, { projects, tasks, goals, reviews, flagWarning });
+}
+
+function paintProjects(canvas: HTMLElement, data: ProjectsPageData): void {
   const restoreSearch =
     document.activeElement instanceof HTMLInputElement &&
     document.activeElement.getAttribute('aria-label') === 'Filter projects';
@@ -583,6 +603,7 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     ? (document.activeElement as HTMLInputElement).selectionStart
     : null;
 
+  const { projects, tasks, goals, reviews, flagWarning } = data;
   const now = new Date();
   const stallIds = new Set(findStallCandidates(projects, tasks, now).map((item) => item.project.id));
   const cards = projects.map((project) => buildProjectPulseCard(project, tasks, stallIds, now));
@@ -594,6 +615,9 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   const stalled = cards.filter((card) => card.lifecycle === 'stalled');
   const mergeTargets = projects.filter((project) => project.status !== 'archived_dead' && project.status !== 'stalled');
 
+  const refetch = () => void renderProjectsView(canvas);
+  const paint = () => paintProjects(canvas, data);
+
   canvas.replaceChildren();
   if (flagWarning) canvas.append(el('p', 'empty-state', flagWarning));
 
@@ -601,30 +625,14 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   const closureConfirmHost = el('div', 'closure-confirm');
   canvas.append(closureConfirmHost, stallConfirmHost);
 
-  const reload = () => void renderProjectsView(canvas);
-
-  if (tension) canvas.append(renderTensionBanner(tension.message, () => {
-    tensionDismissed = true;
-    reload();
-  }));
-
-  const pulse = el('div', 'projects-pulse');
-  pulse.append(
-    renderStatusChart(mix, running, (id) => {
-      lifecycleFilter = id;
-      reload();
-    })
-  );
-  const stack = el('div', 'projects-pulse__stack');
-  stack.append(
-    renderHeatmap(ctx),
-    renderRoadmap(ctx, (zoom) => {
-      roadmapZoom = zoom;
-      reload();
-    })
-  );
-  pulse.append(stack);
-  canvas.append(pulse);
+  if (tension) {
+    canvas.append(
+      renderTensionBanner(tension.message, () => {
+        tensionDismissed = true;
+        paint();
+      })
+    );
+  }
 
   const toolbar = createHubToolbar();
   const search = createHubSearch({
@@ -633,7 +641,7 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     value: projectQuery,
     onInput: (value) => {
       projectQuery = value;
-      reload();
+      paint();
     }
   });
   toolbar.append(
@@ -650,17 +658,33 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
       value: groupBy,
       onSelect: (id) => {
         groupBy = id;
-        reload();
+        paint();
       }
     })
   );
   canvas.append(toolbar);
-  canvas.append(renderBoard(ctx, closureConfirmHost, reload));
+  canvas.append(renderBoard(ctx, closureConfirmHost, refetch));
 
-  const retroCard = renderRetro(retro, reload);
+  const pulse = el('div', 'projects-pulse');
+  pulse.append(
+    renderStatusChart(mix, running, (id) => {
+      lifecycleFilter = id;
+      paint();
+    })
+  );
+  const mountRoadmap = (): HTMLElement =>
+    renderRoadmap(ctx, (zoom) => {
+      roadmapZoom = zoom;
+      const next = mountRoadmap();
+      canvas.querySelector('.projects-roadmap')?.replaceWith(next);
+    });
+  pulse.append(mountRoadmap());
+  canvas.append(pulse);
+
+  const retroCard = renderRetro(retro, refetch);
   if (retroCard) canvas.append(retroCard);
 
-  canvas.append(renderStalledQueue(stalled, tasks, mergeTargets, stallConfirmHost, reload));
+  canvas.append(renderStalledQueue(stalled, tasks, mergeTargets, stallConfirmHost, refetch));
 
   if (reviews.length) {
     canvas.append(el('h2', 'section-title', 'Review log'));
@@ -684,6 +708,8 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     }
     canvas.append(logStack);
   }
+
+  canvas.append(renderHeatmap(ctx));
 
   if (restoreSearch) {
     const field = canvas.querySelector<HTMLInputElement>('[aria-label="Filter projects"]');

@@ -3726,26 +3726,33 @@ body.is-universe-fullscreen .page-header {
 
 .projects-pulse {
   display: grid;
-  grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+  grid-template-columns: 16rem minmax(0, 1fr);
   gap: var(--space-4);
-  margin-bottom: var(--space-6);
-  align-items: stretch;
+  margin: var(--space-6) 0;
+  align-items: start;
 }
 
-.projects-pulse__stack {
-  display: grid;
-  gap: var(--space-4);
+.projects-chart {
+  width: 16rem;
+  max-width: 100%;
+  aspect-ratio: 1;
+  padding: var(--space-4);
+  gap: var(--space-2);
+  box-sizing: border-box;
 }
 
 .projects-chart__wrap {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
-  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-height: 0;
 }
 
 .projects-chart__ring {
   flex: none;
+  width: 7rem;
+  height: 7rem;
 }
 
 .projects-chart__total {
@@ -3763,8 +3770,9 @@ body.is-universe-fullscreen .page-header {
 
 .projects-chart__legend {
   display: grid;
-  gap: var(--space-1);
-  flex: 1 1 10rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  width: 100%;
   min-width: 0;
 }
 
@@ -3809,10 +3817,11 @@ body.is-universe-fullscreen .page-header {
 }
 
 .projects-chart__load {
-  margin: var(--space-3) 0 0;
-  font-size: var(--text-xs);
+  margin: 0;
+  font-size: var(--text-2xs);
   color: var(--muted);
   line-height: var(--leading-snug);
+  text-align: center;
 }
 
 .projects-chart__load strong {
@@ -3912,6 +3921,14 @@ body.is-universe-fullscreen .page-header {
   gap: var(--space-3);
 }
 
+.roadmap-lede,
+.heat-lede {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: var(--leading-snug);
+}
+
 .roadmap-rows {
   display: grid;
   gap: 7px;
@@ -3963,6 +3980,14 @@ body.is-universe-fullscreen .page-header {
   padding-top: var(--space-1);
 }
 
+.roadmap-axis__kind {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .roadmap-axis__ticks {
   display: flex;
 }
@@ -3977,8 +4002,12 @@ body.is-universe-fullscreen .page-header {
 .projects-board {
   display: grid;
   gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  margin-bottom: 0;
   align-items: start;
+}
+
+.projects-heatmap {
+  margin-top: var(--space-6);
 }
 
 .lane {

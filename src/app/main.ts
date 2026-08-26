@@ -144,7 +144,7 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   projects: {
     eyebrow: 'Work',
     title: 'Projects',
-    supporting: 'Portfolio health, cadence, and lifecycle — not just a queue of what to kill.'
+    supporting: ''
   },
   excursions: {
     eyebrow: 'Events',
