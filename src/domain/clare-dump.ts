@@ -85,10 +85,17 @@ function stripListPrefix(line: string): string {
 }
 
 function titleCaseAction(line: string): string {
-  const cleaned = stripDuePhrases(stripListPrefix(line));
+  const cleaned = stripIntentionPhrases(stripDuePhrases(stripListPrefix(line)));
   if (!cleaned) return '';
   const first = cleaned.charAt(0).toUpperCase();
   return `${first}${cleaned.slice(1)}`.replace(/\s+/g, ' ').replace(/[.]+$/, '');
+}
+
+function stripIntentionPhrases(line: string): string {
+  return line
+    .replace(/^(?:i\s+)?(?:need|have|want|ought|should|gotta|got)\s+to\s+/i, '')
+    .replace(/^i(?:'m| am)\s+(?:going to|gonna)\s+/i, '')
+    .trim();
 }
 
 function stripDuePhrases(line: string): string {

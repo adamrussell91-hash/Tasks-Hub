@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   appendMessage,
+  appendSavedCard,
   renderInlineMarkdown,
   setChatUnread,
   setConfirmBusy,
@@ -63,6 +64,18 @@ describe('render-chat', () => {
     setConfirmBusy(button, false);
     expect(button.disabled).toBe(false);
     expect(button.textContent).toBe('Confirm');
+  });
+
+  it('replaces a proposal card with a compact Saved. line', () => {
+    const card = document.createElement('li');
+    card.className = 'record-proposal confirm-card';
+    card.setAttribute('role', 'region');
+    card.innerHTML = '<h3>Prep</h3><button class="record-proposal__confirm">Confirm</button>';
+    appendSavedCard(card);
+    expect(card.className).toBe('record-proposal record-proposal--saved');
+    expect(card.getAttribute('role')).toBeNull();
+    expect(card.textContent).toBe('Saved.');
+    expect(card.querySelector('.record-proposal__confirm')).toBeNull();
   });
 
   it('marks the floating button unread', () => {

@@ -56,16 +56,8 @@ function syncComposer(root: ParentNode, slug: ChatAgentSlug): void {
   if (input) input.placeholder = agent.placeholder;
   const domain = root.querySelector<HTMLElement>('#chat-domain');
   if (domain) domain.hidden = slug !== 'clare';
-  const prefs = document.querySelector<HTMLElement>('.clare-prefs');
-  if (prefs) prefs.hidden = slug !== 'clare';
-}
-
-function collapseHero(root: ParentNode, collapsed: boolean): void {
-  const hero = root.querySelector<HTMLElement>('#chat-agent-hero');
-  const toggle = root.querySelector<HTMLButtonElement>('.chat-agent-hero__toggle');
-  if (!hero || !toggle) return;
-  hero.classList.toggle('is-collapsed', collapsed);
-  toggle.setAttribute('aria-expanded', String(!collapsed));
+  const skip = root.querySelector<HTMLElement>('.clare-prefs__skip');
+  if (skip) skip.hidden = slug !== 'clare';
 }
 
 function appendProposalCard(
@@ -80,8 +72,8 @@ function appendProposalCard(
   card.setAttribute('role', 'region');
   card.setAttribute('aria-label', 'Confirm change');
   card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
-  card.append(el('h3', 'clare-bubble__title', proposal.title));
-  const meta = el('div', 'task-row__meta');
+  card.append(el('h3', 'page-header__title', proposal.title));
+  const meta = el('div', 'hub-chips');
   meta.append(
     el('span', 'chip', proposal.framework_name),
     el('span', 'chip chip--muted', proposal.domain),
@@ -95,14 +87,13 @@ function appendProposalCard(
   }
   card.append(meta);
   if (!skipReasoning()) {
-    card.append(el('p', 'clare-bubble__reasoning', proposal.reasoning));
-  } else {
-    card.append(el('p', 'clare-bubble__reasoning', `Framework: ${proposal.framework_name}`));
+    card.append(el('p', 'page-header__supporting', proposal.reasoning));
   }
   if (proposal.calibration_note) {
     card.append(el('p', 'clare-bubble__note', proposal.calibration_note));
   }
 
+  const fields = el('div', 'record-proposal__fields');
   const estimateRow = el('div', 'clare-estimate');
   estimateRow.append(el('span', 'chip chip--muted', `Clare: ${proposal.proposed_minutes}m`));
   const minutes = createHubField({
@@ -112,9 +103,7 @@ function appendProposalCard(
     step: '5',
     value: String(proposal.suggested_accepted_minutes)
   });
-  estimateRow.append(el('span', undefined, 'Your estimate'), minutes.el, el('span', undefined, 'min'));
-  card.append(estimateRow);
-
+  estimateRow.append(el('span', 'clare-estimate__label', 'Your estimate'), minutes.el, el('span', 'clare-estimate__unit', 'min'));
   const framework = createHubFilter({
     key: 'Framework',
     label: `Framework for ${proposal.title}`,
@@ -122,7 +111,8 @@ function appendProposalCard(
     defaultValue: proposal.framework_id,
     options: frameworks.map((fw) => ({ value: fw.id, label: fw.name }))
   });
-  card.append(framework.el);
+  fields.append(estimateRow, framework.el);
+  card.append(fields);
 
   const actions = el('div', 'confirm-card__actions');
   const discard = el('button', 'btn btn--ghost record-proposal__discard', 'Discard');
@@ -231,7 +221,6 @@ export function createClareChatController({
   function clearThread(): void {
     root.querySelector('#chat-messages')?.replaceChildren();
     showChatError(root, '');
-    collapseHero(root, false);
   }
 
   function markUnreadIfHidden(): void {
@@ -346,7 +335,6 @@ export function createClareChatController({
       return;
     }
     appendMessage(root, { role: 'user', text });
-    collapseHero(root, true);
     if (field) field.value = '';
     if (selectedSlug !== 'clare') {
       await loadNetworkBriefing(text, selectedProtocolId);
@@ -417,6 +405,11 @@ export function createClareChatController({
     root.querySelector('#chat-new')?.addEventListener('click', () => {
       void newChat();
     });
+    const skip = root.querySelector<HTMLInputElement>('#chat-skip-reasoning');
+    if (skip) {
+      skip.checked = skipReasoning();
+      skip.addEventListener('change', () => setSkipReasoning(skip.checked));
+    }
   }
 
   async function start(): Promise<void> {
