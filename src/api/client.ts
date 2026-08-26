@@ -195,3 +195,11 @@ export function apiPatch<T>(
 export function apiDelete<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<T> {
   return apiRequest<T>('DELETE', path, { ...options, body });
 }
+
+export function apiPut<T>(
+  path: string,
+  body?: unknown,
+  options?: ApiRequestOptions
+): Promise<T> {
+  return apiRequest<T>('PUT', path, { ...options, body });
+}

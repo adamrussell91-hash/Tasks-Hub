@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from '@/api/client';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/api/client';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import {
@@ -275,5 +275,9 @@ export const tasksApi = {
   createGoal: (body: unknown) => apiPost<import('@/schemas/goal').Goal>('/api/goals', body),
   updateGoal: (id: string, body: unknown) =>
     apiPatch<import('@/schemas/goal').Goal>(`/api/goals?id=${encodeURIComponent(id)}`, body),
-  deleteGoal: (id: string) => apiDelete<{ deleted: boolean }>(`/api/goals?id=${encodeURIComponent(id)}`)
+  deleteGoal: (id: string) => apiDelete<{ deleted: boolean }>(`/api/goals?id=${encodeURIComponent(id)}`),
+
+  getTaskProperties: () => apiGet<import('@/schemas/task-properties').TaskPropertyConfig>('/api/task-properties'),
+  updateTaskProperties: (body: import('@/schemas/task-properties').TaskPropertyConfig) =>
+    apiPut<import('@/schemas/task-properties').TaskPropertyConfig>('/api/task-properties', body)
 };

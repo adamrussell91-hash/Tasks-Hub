@@ -20,6 +20,7 @@ import type { TransitMap } from '@/schemas/map';
 import type { Program } from '@/schemas/program';
 import type { Area } from '@/schemas/area';
 import type { Goal } from '@/schemas/goal';
+import type { TaskPropertyConfig } from '@/schemas/task-properties';
 
 export interface SeedData {
   tasks: Task[];
@@ -170,4 +171,7 @@ export interface TasksStore {
   createProgram(input: Partial<Program> & { name: string }): Promise<Program>;
   updateProgram(id: string, patch: Partial<Program>): Promise<Program>;
   deleteProgram(id: string): Promise<void>;
+
+  getTaskProperties(): Promise<TaskPropertyConfig>;
+  updateTaskProperties(config: TaskPropertyConfig): Promise<TaskPropertyConfig>;
 }

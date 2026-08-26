@@ -91,6 +91,10 @@ export function metaSeededKey(): string {
   return 'meta/seeded';
 }
 
+export function taskPropertiesKey(): string {
+  return 'meta/task_properties';
+}
+
 export function mapKey(id: string): string {
   return `maps/${id}`;
 }

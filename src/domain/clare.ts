@@ -48,13 +48,17 @@ export type ClareProposal = {
   question?: string | null;
 };
 
-const BASE_BY_DOMAIN: Record<TaskDomain, number> = {
+const BASE_BY_DOMAIN: Record<string, number> = {
   teaching: 60,
   life: 30,
   wedding: 45,
   health: 30,
   other: 40
 };
+
+function baseMinutesForDomain(domain: TaskDomain): number {
+  return BASE_BY_DOMAIN[domain] ?? 40;
+}
 
 const MAX_DELTAS = 20;
 
@@ -113,7 +117,7 @@ export function selectFramework(
 }
 
 export function baseEstimateMinutes(input: ClareProposalInput): number {
-  let minutes = BASE_BY_DOMAIN[input.domain];
+  let minutes = baseMinutesForDomain(input.domain);
   const text = `${input.title} ${input.description ?? ''}`.toLowerCase();
   if (includesAny(text, ['marking', 'batch'])) minutes += 30;
   if (includesAny(text, ['lesson', 'pack', 'unit'])) minutes += 25;
@@ -211,7 +215,7 @@ export function emptyCalibration(domain: TaskDomain, nowIso: string): ClareCalib
     actual_sample_count: 0,
     sum_actual: 0,
     recent_deltas: [],
-    calibrated_default_minutes: BASE_BY_DOMAIN[domain],
+    calibrated_default_minutes: baseMinutesForDomain(domain),
     updated_at: nowIso
   };
 }

@@ -1,16 +1,20 @@
 import type { Project } from '@/schemas/project';
 import type { Task, TaskDomain } from '@/schemas/task';
+import { DEFAULT_DOMAIN_COLORS, DEFAULT_TASK_PROPERTY_CONFIG } from '@/domain/task-properties-defaults';
+import { getTaskPropertiesSync } from '@/services/task-properties';
 
-/** Closed domain list — these are always planets when they appear. */
-export const DOMAIN_VOCABULARY: readonly TaskDomain[] = [
-  'teaching',
-  'life',
-  'wedding',
-  'health',
-  'other'
-];
+/** Default domain ids — tests and cold start before Properties loads. */
+export const DOMAIN_VOCABULARY: readonly TaskDomain[] = DEFAULT_TASK_PROPERTY_CONFIG.domains.map(
+  (entry) => entry.id
+);
 
-const DOMAIN_SET = new Set<string>(DOMAIN_VOCABULARY);
+function activeDomainIds(): readonly string[] {
+  return getTaskPropertiesSync().domains.map((entry) => entry.id);
+}
+
+function activeDomainSet(): Set<string> {
+  return new Set(activeDomainIds());
+}
 
 export const MIN_TAG_PAGES = 1;
 export const ORBIT_GAP = 2.4;
@@ -75,14 +79,16 @@ export type SolarModel = {
 
 export type TopicPaint = { fill: string; ink: string };
 
-/** Token hex from design-kit/css/tokens.css — canvas needs resolved colours. */
-const DOMAIN_PAINT: Record<TaskDomain, TopicPaint> = {
-  teaching: { fill: '#376fb7', ink: '#17375e' },
-  life: { fill: '#2f7a4f', ink: '#3c5949' },
-  wedding: { fill: '#a85a0c', ink: '#7a5038' },
-  health: { fill: '#f68620', ink: '#6c581f' },
-  other: { fill: '#244f7c', ink: '#13233a' }
-};
+function inkForFill(fill: string, domainId: string): string {
+  return DEFAULT_DOMAIN_COLORS[domainId]?.ink ?? fill;
+}
+
+function domainPaintFor(id: string): TopicPaint | null {
+  const domain = getTaskPropertiesSync().domains.find((entry) => entry.id === id);
+  if (!domain) return null;
+  const fill = domain.color ?? DEFAULT_DOMAIN_COLORS[id]?.fill ?? '#244f7c';
+  return { fill, ink: inkForFill(fill, id) };
+}
 
 const EXTRA_PAINT: TopicPaint[] = [
   { fill: '#376fb7', ink: '#17375e' },
@@ -102,7 +108,8 @@ export function hashUnit(id: string): number {
 }
 
 export function paintForTag(tag: string): TopicPaint {
-  if (DOMAIN_SET.has(tag)) return DOMAIN_PAINT[tag as TaskDomain];
+  const domainPaint = domainPaintFor(tag);
+  if (domainPaint) return domainPaint;
   return EXTRA_PAINT[Math.floor(hashUnit(`paint:${tag}`) * EXTRA_PAINT.length)]!;
 }
 
@@ -240,8 +247,9 @@ export function attachMinors(
   ranked: RankedTag[],
   weights: Map<string, number>
 ): { majors: RankedTag[]; minors: RankedTag[]; ownerOf: Map<string, string> } {
-  const majors = ranked.filter((item) => DOMAIN_SET.has(item.tag));
-  const minors = ranked.filter((item) => !DOMAIN_SET.has(item.tag));
+  const domainSet = activeDomainSet();
+  const majors = ranked.filter((item) => domainSet.has(item.tag));
+  const minors = ranked.filter((item) => !domainSet.has(item.tag));
   const ownerOf = new Map<string, string>();
   for (const minor of minors) {
     let bestOwner = majors[0]?.tag ?? minor.tag;

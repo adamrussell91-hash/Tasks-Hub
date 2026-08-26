@@ -1,6 +1,6 @@
 import { preferredDomains } from '@/domain/queries';
 import type { ChatProtocol } from '@/chat/agents';
-import { createHubFilter, TASK_DOMAINS } from '@/views/hub-kit';
+import { createHubFilter, domainFilterOptions } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -141,7 +141,7 @@ export function buildChatView(): HTMLElement {
     label: 'Default domain',
     value: preferred,
     defaultValue: preferred,
-    options: TASK_DOMAINS.map((value) => ({ value, label: value }))
+    options: domainFilterOptions(false)
   });
   domain.el.id = 'chat-domain';
   const send = el('button', 'btn btn--primary', 'Send');

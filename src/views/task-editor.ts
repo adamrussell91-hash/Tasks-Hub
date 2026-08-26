@@ -16,7 +16,7 @@ import {
   type RemindPreset
 } from '@/domain/reminders';
 import {
-  TASK_DOMAINS,
+  taskDomains,
   createHubField,
   createHubFilter,
   createHubSearch,
@@ -441,9 +441,9 @@ export function renderQuickAdd(
   const domain = createHubFilter({
     key: 'Domain',
     label: 'Domain',
-    defaultValue: TASK_DOMAINS[0],
+    defaultValue: taskDomains()[0] ?? 'teaching',
     options: domainFilterOptions(false),
-    value: TASK_DOMAINS[0]
+    value: taskDomains()[0] ?? 'teaching'
   });
   const submit = el('button', 'btn btn--primary', 'Add');
   submit.type = 'submit';
