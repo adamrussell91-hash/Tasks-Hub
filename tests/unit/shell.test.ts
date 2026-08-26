@@ -81,6 +81,8 @@ describe('hub shell chrome', () => {
     expect(links.some((link) => link.textContent === 'Orbit')).toBe(false);
     expect(links.some((link) => link.textContent === 'Board')).toBe(true);
     expect(links.some((link) => link.textContent === 'Programs')).toBe(true);
+    expect(links.some((link) => link.textContent === 'Chat')).toBe(true);
+    expect(links.some((link) => link.textContent === 'Clare')).toBe(false);
 
     const signatures = links.map((link) =>
       [...link.querySelectorAll('path')].map((path) => path.getAttribute('d') ?? '').join('|')

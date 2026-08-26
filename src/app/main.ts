@@ -69,9 +69,9 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
     supporting: 'Ideas parked over the rainbow until you promote them.'
   },
   clare: {
-    eyebrow: 'Desk',
-    title: 'Clare DeMind',
-    supporting: 'Same chat window as Life Hub. Dump the chaos. She sorts it, then you confirm.'
+    eyebrow: 'Talk to your agents',
+    title: 'Chat',
+    supporting: 'Clare, Hammond, Penelope, and Vera — pick a face, then talk.'
   },
   graph: {
     eyebrow: 'Structure',
