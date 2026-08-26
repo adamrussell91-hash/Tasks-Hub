@@ -71,6 +71,5 @@ export default async function handler(request: Request): Promise<Response> {
 }
 
 export const config = {
-  schedule: '0 * * * *',
-  path: '/api/intuitive-scan'
+  schedule: '0 * * * *'
 };
