@@ -1,89 +1,104 @@
 import type { Project } from '@/schemas/project';
+import type { Program } from '@/schemas/program';
 import type { ExcursionTemplate } from '@/schemas/templates';
 import { tasksApi } from '@/services/client-api';
-import { buildExcursionPlan, formatLeadTimes } from '@/domain/excursion';
+import {
+  buildExcursionPlan,
+  formatExcursionPreview,
+  resolveExcursionTemplate,
+  suggestExcursionTemplate,
+  withSchoolExcursionTemplate
+} from '@/domain/excursion';
 import { projectPageHash } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, toDateKey } from '@/domain/queries';
 import { hashQuery } from '@/shell/shell';
+import { deleteProjectWithTasks } from '@/views/card-actions';
 import { requestToggleDone } from '@/views/dashboard';
+import { showConfirmWrite } from '@/views/feedback';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountProjectCard } from '@/views/hub-cards';
-import { createHubField, createHubFilter, createHubSearch, el } from '@/views/hub-kit';
+import {
+  createHubField,
+  createHubFilter,
+  createHubSearch,
+  el,
+  labeledField
+} from '@/views/hub-kit';
 
 function defaultEventDate(): string {
   return toDateKey(addDays(new Date(), 45));
-}
-
-function showConfirm(
-  host: HTMLElement,
-  title: string,
-  summary: string,
-  onConfirm: () => Promise<void>
-): void {
-  host.replaceChildren();
-  const card = el('section', 'confirm-card');
-  card.setAttribute('role', 'region');
-  card.setAttribute('aria-label', 'Confirm change');
-  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
-  card.append(el('h2', 'page-header__title', title));
-  card.append(el('p', 'page-header__supporting', `${summary} Do not apply until Confirm.`));
-  const actions = el('div', 'confirm-card__actions');
-  const cancel = el('button', 'btn btn--ghost', 'Discard');
-  cancel.type = 'button';
-  const ok = el('button', 'btn btn--primary', 'Confirm');
-  ok.type = 'button';
-  cancel.addEventListener('click', () => host.replaceChildren());
-  ok.addEventListener('click', async () => {
-    ok.disabled = true;
-    cancel.disabled = true;
-    try {
-      await onConfirm();
-    } catch (err) {
-      host.replaceChildren(
-        el('p', 'empty-state', err instanceof Error ? err.message : 'Create failed')
-      );
-    } finally {
-      ok.disabled = false;
-      cancel.disabled = false;
-    }
-  });
-  actions.append(cancel, ok);
-  card.append(actions);
-  host.append(card);
-  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function openProjectPage(project: Project): void {
   location.hash = projectPageHash(project.id);
 }
 
-/** Dedicated excursions module — create from template, then open as a project. */
-export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursions…'));
-  const [projects, tasks, templatesPayload] = await Promise.all([
-    tasksApi.listProjects(),
-    tasksApi.listTasks(),
-    tasksApi.listTemplates()
-  ]);
-  const templates = templatesPayload.excursion_templates as ExcursionTemplate[];
-  const templatesById = new Map(templates.map((t) => [t.id, t]));
-  const excursions = projects.filter((p) => p.type === 'excursion');
+function filterPrograms(programs: Program[], query: string): Program[] {
+  const needle = query.trim().toLowerCase();
+  if (needle.length < 2) return [];
+  return programs.filter((item) => item.name.toLowerCase().includes(needle)).slice(0, 8);
+}
 
-  canvas.replaceChildren();
-
-  const form = el('form', 'excursion-form');
-  form.append(el('h2', 'section-title', 'New excursion'));
-
+function mountCreateCard(
+  host: HTMLElement,
+  templates: ExcursionTemplate[],
+  programs: Program[],
+  confirmHost: HTMLElement
+): void {
+  const templatesById = new Map(templates.map((item) => [item.id, item]));
   const prefillId = hashQuery().get('template');
+  const prefillTpl = resolveExcursionTemplate(prefillId, templates);
 
-  const prefillTpl = templates.find((t) => t.id === prefillId);
+  const card = el('form', 'hub-card excursion-create');
+  const head = el('header', 'task-card__head');
+  head.append(el('span', 'hub-card__eyebrow', 'New'), el('span', 'hub-chip', 'Excursion'));
+  card.append(head, el('h2', 'hub-card__title', 'Create excursion'));
+
+  const fields = el('div', 'excursion-create__fields');
+
+  const hits = el('div', 'excursion-create__hits');
+  hits.hidden = true;
+  hits.setAttribute('role', 'listbox');
+  hits.setAttribute('aria-label', 'Matching programs');
+
+  const program = createHubSearch({
+    type: 'search',
+    placeholder: 'Search the programs catalogue…',
+    ariaLabel: 'Program',
+    onInput: (value) => {
+      hits.replaceChildren();
+      const matches = filterPrograms(programs, value);
+      if (!matches.length) {
+        hits.hidden = true;
+        return;
+      }
+      hits.hidden = false;
+      for (const item of matches) {
+        const opt = el('button', 'hub-menu__opt', item.name) as HTMLButtonElement;
+        opt.type = 'button';
+        opt.setAttribute('role', 'option');
+        opt.addEventListener('click', () => {
+          title.input.value = item.name;
+          const suggested = suggestExcursionTemplate(item.name, templates);
+          templateSelect.setValue(suggested.id);
+          hits.hidden = true;
+          program.input.value = item.name;
+          refreshPreview();
+        });
+        hits.append(opt);
+      }
+    }
+  });
+  const programField = labeledField('Program', program.el);
+  programField.append(hits);
+
   const templateSelect = createHubFilter({
-    key: 'Template',
-    label: 'Excursion template',
-    defaultValue: prefillId ?? templates[0]?.id ?? '',
-    options: templates.map((t) => ({ value: t.id, label: t.name })),
-    value: prefillId ?? templates[0]?.id ?? '',
+    key: 'Admin',
+    label: 'Admin profile',
+    defaultValue: prefillTpl.id,
+    options: templates.map((item) => ({ value: item.id, label: item.name })),
+    value: prefillTpl.id,
     onChange: () => refreshPreview()
   });
 
@@ -92,7 +107,7 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
     placeholder: 'Excursion title',
     ariaLabel: 'Title',
     required: true,
-    value: prefillTpl?.name ?? '',
+    value: prefillId ? prefillTpl.name : '',
     onInput: () => refreshPreview()
   });
 
@@ -106,13 +121,16 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
 
   const group = createHubField({
     ariaLabel: 'Student group',
-    placeholder: 'Student group (e.g. Year 10 Ethics team)'
+    placeholder: 'Year 10 Ethics team'
   });
 
   const preview = el('p', 'excursion-preview');
   const refreshPreview = () => {
-    const tpl = templatesById.get(templateSelect.getValue());
-    if (!tpl || !eventDate.input.value) {
+    const tpl = templatesById.get(templateSelect.getValue()) ?? resolveExcursionTemplate(
+      templateSelect.getValue(),
+      templates
+    );
+    if (!eventDate.input.value) {
       preview.textContent = '';
       return;
     }
@@ -122,25 +140,45 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
         event_date: eventDate.input.value,
         student_group_reference: group.input.value
       });
-      preview.textContent = `Will schedule ${plan.admin_tasks.length} tasks · ${formatLeadTimes(tpl)} · permission ${formatDisplayDate(plan.key_dates.permission_note_due)} · risk ${formatDisplayDate(plan.key_dates.risk_assessment_due)} · event ${formatDisplayDate(plan.event_date)}`;
+      preview.textContent = formatExcursionPreview(plan.admin_tasks.length, plan.event_date);
     } catch {
       preview.textContent = '';
     }
   };
   refreshPreview();
 
+  const row = el('div', 'excursion-create__row');
+  row.append(
+    labeledField('Event date', eventDate.el),
+    labeledField('Student group', group.el)
+  );
+
+  fields.append(
+    programField,
+    labeledField('Title', title.el),
+    row,
+    labeledField('Admin profile', templateSelect.el),
+    preview
+  );
+
+  const actions = el('div', 'excursion-create__actions');
+  const cancel = el('button', 'btn btn--ghost', 'Cancel');
+  cancel.type = 'button';
+  cancel.addEventListener('click', () => {
+    confirmHost.replaceChildren();
+    host.replaceChildren();
+  });
   const submit = el('button', 'btn btn--primary', 'Review & create');
   submit.type = 'submit';
+  actions.append(cancel, submit);
+  card.append(fields, actions);
 
-  form.append(templateSelect.el, title.el, eventDate.el, group.el, preview, submit);
-
-  const confirmHost = el('div', 'excursion-confirm');
-  const listHost = el('div', 'task-stack');
-
-  form.addEventListener('submit', (event) => {
+  card.addEventListener('submit', (event) => {
     event.preventDefault();
-    const tpl = templatesById.get(templateSelect.getValue());
-    if (!tpl) return;
+    const tpl = templatesById.get(templateSelect.getValue()) ?? resolveExcursionTemplate(
+      templateSelect.getValue(),
+      templates
+    );
     const name = title.input.value.trim();
     if (!name || !eventDate.input.value) return;
     const plan = buildExcursionPlan(tpl, {
@@ -148,7 +186,7 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
       event_date: eventDate.input.value,
       student_group_reference: group.input.value
     });
-    showConfirm(
+    showConfirmWrite(
       confirmHost,
       `Create “${name}”`,
       `${tpl.name} on ${formatDisplayDate(plan.event_date)}. This will add ${plan.admin_tasks.length} dated admin tasks and draft the permission note + staff email.`,
@@ -159,29 +197,53 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
           event_date: eventDate.input.value,
           student_group_reference: group.input.value.trim() || null
         });
-        confirmHost.replaceChildren(
-          el('p', 'canvas-status', `Created ${result.project.title} with ${result.tasks.length} tasks.`)
-        );
-        title.input.value = '';
         openProjectPage(result.project);
       }
     );
   });
 
-  canvas.append(form, confirmHost);
+  card.addEventListener('focusout', (event) => {
+    const next = event.relatedTarget;
+    if (!(next instanceof Node) || !programField.contains(next)) hits.hidden = true;
+  });
 
-  canvas.append(
-    el('h2', 'section-title', 'Active excursions'),
-    el('p', 'view-lede', 'Excursions are projects. Click a card to open its page.')
-  );
+  host.replaceChildren(card);
+  title.input.focus();
+}
+
+/** Dedicated excursions module — create from a program, then open as a page. */
+export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
+  canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursions…'));
+  const [projects, tasks, templatesPayload, programs] = await Promise.all([
+    tasksApi.listProjects(),
+    tasksApi.listTasks(),
+    tasksApi.listTemplates(),
+    tasksApi.listPrograms().catch(() => [] as Program[])
+  ]);
+  const templates = withSchoolExcursionTemplate(templatesPayload.excursion_templates as ExcursionTemplate[]);
+  const excursions = projects.filter((item) => item.type === 'excursion');
+  const startOpen = Boolean(hashQuery().get('template'));
+
+  canvas.replaceChildren();
+
+  const toolbar = el('div', 'excursion-toolbar');
+  const createHost = el('div', 'excursion-create-host');
+  const confirmHost = el('div', 'excursion-confirm');
+  const listHost = el('div', 'task-stack');
+
+  const openCreate = () => mountCreateCard(createHost, templates, programs, confirmHost);
+  const add = el('button', 'btn btn--primary', 'New excursion');
+  add.type = 'button';
+  add.addEventListener('click', openCreate);
+  toolbar.append(add);
+
+  const reload = async () => {
+    await renderExcursionsView(canvas);
+  };
+
   if (!excursions.length) {
-    listHost.append(
-      el('p', 'empty-state', 'No excursions yet. Ethics Olympiad and Da Vinci Decathlon templates are ready above.')
-    );
+    listHost.append(el('p', 'empty-state', 'No excursions yet. New excursion picks from the programs catalogue.'));
   } else {
-    const reload = async () => {
-      await renderExcursionsView(canvas);
-    };
     for (const project of excursions) {
       mountProjectCard(listHost, project, tasks, {
         onToggleChild: (task) => requestToggleDone(confirmHost, task, reload),
@@ -189,9 +251,24 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
           confirmHost.replaceChildren(renderQuickAdd(() => void reload(), project.id));
         },
         onOpenPage: openProjectPage,
-        onActivate: openProjectPage
+        onActivate: openProjectPage,
+        onDelete: () => {
+          const childCount = tasks.filter((task) => task.parent_project_id === project.id).length;
+          showConfirmWrite(
+            confirmHost,
+            `Delete “${project.title}”?`,
+            `This removes the excursion and its ${childCount} task${childCount === 1 ? '' : 's'}.`,
+            async () => {
+              await deleteProjectWithTasks(project, tasks);
+              await reload();
+            },
+            'Delete'
+          );
+        }
       });
     }
   }
-  canvas.append(listHost);
+
+  canvas.append(toolbar, createHost, confirmHost, listHost);
+  if (startOpen) openCreate();
 }

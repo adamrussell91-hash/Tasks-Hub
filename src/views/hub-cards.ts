@@ -81,6 +81,7 @@ export type ProjectCardHandlers = {
   onAddTask?: (project: Project) => void;
   onOpenPage?: (project: Project) => void;
   onClose?: (project: Project) => void;
+  onDelete?: (project: Project) => void;
   /** Compact-row click. Defaults to expanding the card in place. */
   onActivate?: (project: Project) => void;
   onExpand?: (project: Project) => void;
@@ -140,6 +141,14 @@ function projectMenuItems(project: Project, handlers: ProjectCardHandlers): Card
   }
   if (handlers.onClose) {
     items.push({ id: 'close', label: 'Close project', onSelect: () => handlers.onClose?.(project) });
+  }
+  if (handlers.onDelete) {
+    items.push({
+      id: 'delete',
+      label: 'Delete',
+      danger: true,
+      onSelect: () => handlers.onDelete?.(project)
+    });
   }
   return items;
 }

@@ -1,4 +1,5 @@
 import type { Task } from '@/schemas/task';
+import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { errorMessage } from '@/views/feedback';
 
@@ -25,4 +26,15 @@ export function deleteTaskNow(
     .catch((err: unknown) => {
       errorHost.replaceChildren(el('p', 'empty-state', errorMessage(err)));
     });
+}
+
+/** Delete a project and every task that belongs to it. */
+export async function deleteProjectWithTasks(
+  project: Project,
+  tasks: Task[],
+  meta = { agent: 'Tasks Hub', reason: 'Card delete' }
+): Promise<void> {
+  const children = tasks.filter((task) => task.parent_project_id === project.id);
+  await Promise.all(children.map((task) => tasksApi.deleteTask(task.id, meta)));
+  await tasksApi.deleteProject(project.id, meta);
 }

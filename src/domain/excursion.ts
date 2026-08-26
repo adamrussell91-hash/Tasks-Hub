@@ -4,6 +4,60 @@ import type { Project } from '@/schemas/project';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, parseDue, startOfDay, toDateKey } from '@/domain/queries';
 
+export const SCHOOL_EXCURSION_TEMPLATE_ID = 'ext_school_excursion';
+
+/** Fallback admin profile for any program that is not a specialised template. */
+export const SCHOOL_EXCURSION_TEMPLATE: ExcursionTemplate = {
+  schema_version: 1,
+  id: SCHOOL_EXCURSION_TEMPLATE_ID,
+  name: 'School excursion',
+  default_lead_times: {
+    permission_note_days: 21,
+    staff_email_days: 21,
+    risk_assessment_days: 42,
+    payment_days: 28
+  },
+  checklist_items: [
+    'Permission note drafted and sent',
+    'Staff absence email sent',
+    'Risk assessment lodged',
+    'Payment confirmed',
+    'Student list finalised',
+    'Travel / venue logistics'
+  ]
+};
+
+export function withSchoolExcursionTemplate(templates: ExcursionTemplate[]): ExcursionTemplate[] {
+  if (templates.some((item) => item.id === SCHOOL_EXCURSION_TEMPLATE_ID)) return templates;
+  return [...templates, SCHOOL_EXCURSION_TEMPLATE];
+}
+
+export function resolveExcursionTemplate(
+  id: string | null | undefined,
+  templates: ExcursionTemplate[]
+): ExcursionTemplate {
+  if (id) {
+    const found = templates.find((item) => item.id === id);
+    if (found) return found;
+    if (id === SCHOOL_EXCURSION_TEMPLATE_ID) return SCHOOL_EXCURSION_TEMPLATE;
+  }
+  return templates.find((item) => item.id === SCHOOL_EXCURSION_TEMPLATE_ID) ?? SCHOOL_EXCURSION_TEMPLATE;
+}
+
+/** Pick a specialised admin profile when the title matches; otherwise the generic one. */
+export function suggestExcursionTemplate(name: string, templates: ExcursionTemplate[]): ExcursionTemplate {
+  const lower = name.trim().toLowerCase();
+  if (lower) {
+    const match = templates.find((item) => {
+      if (item.id === SCHOOL_EXCURSION_TEMPLATE_ID) return false;
+      const label = item.name.toLowerCase();
+      return lower.includes(label) || label.includes(lower);
+    });
+    if (match) return match;
+  }
+  return resolveExcursionTemplate(SCHOOL_EXCURSION_TEMPLATE_ID, templates);
+}
+
 export type AdminTaskKind =
   | 'permission_note'
   | 'staff_email'
@@ -235,4 +289,9 @@ export function formatLeadTimes(template: ExcursionTemplate): string {
   ];
   if (l.payment_days !== undefined) parts.push(`payment −${l.payment_days}d`);
   return parts.join(' · ');
+}
+
+/** Short create-form preview — task count and event day, not every lead time. */
+export function formatExcursionPreview(taskCount: number, eventDate: string): string {
+  return `${taskCount} admin tasks · event ${formatDisplayDate(eventDate)}`;
 }

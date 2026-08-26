@@ -1,7 +1,7 @@
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
 import type { ExcursionTemplate } from '@/schemas/templates';
-import { projectProgress, statusBadgeClass, statusLabel, taskPageHash } from '@/domain/cards';
+import { projectProgress, taskPageHash } from '@/domain/cards';
 import {
   collectExcursionStops,
   layoutExcursionTimeline,
@@ -12,7 +12,6 @@ import { formatLeadTimes } from '@/domain/excursion';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { requestToggleDone } from '@/views/dashboard';
 import { renderTaskMicroCard } from '@/views/hub-cards';
-import { renderQuickAdd } from '@/views/task-editor';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -25,7 +24,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function renderProgress(project: Project, tasks: Task[]): HTMLElement {
+export function renderExcursionProgress(project: Project, tasks: Task[]): HTMLElement {
   const progress = projectProgress(project, tasks);
   const host = el('section', 'excursion-progress');
   host.setAttribute('aria-label', 'Excursion progress');
@@ -125,9 +124,9 @@ function renderStop(
   return row;
 }
 
-function renderDrafts(project: Project, template?: ExcursionTemplate): HTMLElement {
-  const extras = el('section', 'excursion-detail');
-  extras.append(el('h2', 'section-title', 'Drafted documents'));
+export function renderExcursionDrafts(project: Project, template?: ExcursionTemplate): HTMLElement {
+  const extras = el('details', 'excursion-detail');
+  extras.append(el('summary', 'section-title', 'Drafted documents'));
   if (template) {
     extras.append(el('p', 'view-lede', `${template.name} · lead times ${formatLeadTimes(template)}`));
   }
@@ -151,40 +150,12 @@ function renderDrafts(project: Project, template?: ExcursionTemplate): HTMLEleme
   return extras;
 }
 
-/** Full-page excursion: kit progress tracker, then a dated MindWorks-style rail of task cards. */
-export function paintExcursionPage(
-  canvas: HTMLElement,
+export function renderExcursionTimeline(
   project: Project,
   tasks: Task[],
-  template: ExcursionTemplate | undefined,
-  onReload: () => Promise<void>
-): void {
-  const page = el('div', 'excursion-page');
-  const nav = el('div', 'page-editor__nav');
-  const back = el('button', 'btn btn--ghost', 'Back to Excursions');
-  back.type = 'button';
-  back.addEventListener('click', () => {
-    location.hash = '#/excursions';
-  });
-  nav.append(back);
-
-  const head = el('header', 'excursion-page__head');
-  head.append(
-    el('span', 'hub-card__eyebrow', 'Excursion'),
-    el('span', statusBadgeClass(project.status), statusLabel(project.status))
-  );
-  const title = el('h1', 'hub-card__title', project.title);
-  const tags = el('div', 'hub-chips');
-  tags.append(el('span', 'hub-chip', 'excursion'));
-  if (project.student_group_reference) tags.append(el('span', 'hub-chip', project.student_group_reference));
-  const lede = el('p', 'hub-card__meta', project.arc_summary || project.description || '');
-  const intro = el('div', 'excursion-page__intro');
-  intro.append(head, title, tags);
-  if (lede.textContent) intro.append(lede);
-
-  const confirmHost = el('div', 'excursion-confirm');
-  const reload = () => onReload();
-
+  confirmHost: HTMLElement,
+  reload: () => Promise<void>
+): HTMLElement {
   const layout = layoutExcursionTimeline(collectExcursionStops(project, tasks));
   const scroller = el('div', 'excursion-timeline');
   scroller.setAttribute('tabindex', '0');
@@ -201,15 +172,5 @@ export function paintExcursionPage(
   }
   inner.append(line, list);
   scroller.append(inner);
-
-  page.append(
-    nav,
-    intro,
-    renderProgress(project, tasks),
-    renderQuickAdd(() => void reload(), project.id),
-    confirmHost,
-    scroller,
-    renderDrafts(project, template)
-  );
-  canvas.replaceChildren(page);
+  return scroller;
 }

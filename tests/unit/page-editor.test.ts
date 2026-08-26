@@ -203,7 +203,10 @@ describe('page editor', () => {
     await renderPageEditor(canvas, { kind: 'project', id: excursion.id });
 
     expect(canvas.querySelector('.hub-card__eyebrow')?.textContent).toBe('Excursion');
-    expect(canvas.textContent).toContain('Year 10 Ethics');
+    expect(canvas.querySelector('.page-card__back')?.textContent).toBe('← Excursions');
+    expect(canvas.querySelector<HTMLInputElement>('[aria-label="Student group"]')?.value).toBe(
+      'Year 10 Ethics'
+    );
     expect(canvas.querySelector('.excursion-progress .hub-track')).not.toBeNull();
     expect(canvas.querySelector('.excursion-timeline')).not.toBeNull();
     expect(canvas.querySelectorAll('.excursion-timeline__stop').length).toBeGreaterThan(1);
@@ -211,13 +214,17 @@ describe('page editor', () => {
       'Draft permission note'
     );
     expect(canvas.textContent).toContain('Event');
+    expect(canvas.querySelector('.excursion-detail summary')?.textContent).toBe('Drafted documents');
     expect(canvas.textContent).toContain('Permission note for Year 10 Ethics');
-    expect(canvas.textContent).toContain('Back to Excursions');
 
-    const back = [...canvas.querySelectorAll('button')].find((btn) =>
-      btn.textContent?.includes('Back to Excursions')
+    expect(canvas.querySelector('.page-editor__add-btn')).not.toBeNull();
+    canvas.querySelector<HTMLButtonElement>('.page-editor__add-btn')!.click();
+    const labels = [...canvas.querySelectorAll('.page-editor__insert-label')].map((node) => node.textContent);
+    expect(labels).toEqual(['Basic', 'Media', 'Teaching', 'Learning', 'Visualisation', 'Layout']);
+    expect(canvas.querySelector('[data-block-type="heading"]')).not.toBeNull();
+
+    expect(canvas.querySelector<HTMLAnchorElement>('.page-card__back')?.getAttribute('href')).toBe(
+      '#/excursions'
     );
-    back?.click();
-    expect(location.hash).toBe('#/excursions');
   });
 });

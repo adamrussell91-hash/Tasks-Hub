@@ -25,7 +25,11 @@ import {
 import { carryReminderForward } from '@/domain/reminders';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { catalogPrograms } from '@/domain/programs-seed';
-import { buildExcursionPlan } from '@/domain/excursion';
+import {
+  buildExcursionPlan,
+  SCHOOL_EXCURSION_TEMPLATE,
+  SCHOOL_EXCURSION_TEMPLATE_ID
+} from '@/domain/excursion';
 import { addDays, backlogTasks, toDateKey } from '@/domain/queries';
 import {
   affectedIdsForBlockedSince,
@@ -548,8 +552,13 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
     },
     async createExcursionFromTemplate(input) {
       const raw = await kv.getJSON(keys.excursionTemplateKey(input.excursion_template_id));
-      if (!raw) throw new Error(`Excursion template not found: ${input.excursion_template_id}`);
-      const template = ExcursionTemplateSchema.parse(raw);
+      const template = raw
+        ? ExcursionTemplateSchema.parse(raw)
+        : input.excursion_template_id === SCHOOL_EXCURSION_TEMPLATE_ID
+          ? SCHOOL_EXCURSION_TEMPLATE
+          : (() => {
+              throw new Error(`Excursion template not found: ${input.excursion_template_id}`);
+            })();
       const plan = buildExcursionPlan(template, {
         title: input.title,
         event_date: input.event_date,

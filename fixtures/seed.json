@@ -59,6 +59,25 @@
         "Travel / venue logistics",
         "Payment confirmed"
       ]
+    },
+    {
+      "schema_version": 1,
+      "id": "ext_school_excursion",
+      "name": "School excursion",
+      "default_lead_times": {
+        "permission_note_days": 21,
+        "staff_email_days": 21,
+        "risk_assessment_days": 42,
+        "payment_days": 28
+      },
+      "checklist_items": [
+        "Permission note drafted and sent",
+        "Staff absence email sent",
+        "Risk assessment lodged",
+        "Payment confirmed",
+        "Student list finalised",
+        "Travel / venue logistics"
+      ]
     }
   ],
   "task_templates": [

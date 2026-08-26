@@ -146,7 +146,7 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   excursions: {
     eyebrow: 'Events',
     title: 'Excursions',
-    supporting: 'Spin up admin tasks from Ethics Olympiad / Da Vinci templates.'
+    supporting: 'Create from any program. Admin tasks schedule themselves.'
   },
   programs: {
     eyebrow: 'Catalogue',

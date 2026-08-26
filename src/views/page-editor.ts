@@ -9,7 +9,11 @@ import type { ExcursionTemplate } from '@/schemas/templates';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountBlockInsert } from '@/views/block-insert';
-import { paintExcursionPage } from '@/views/excursion-timeline';
+import {
+  renderExcursionDrafts,
+  renderExcursionProgress,
+  renderExcursionTimeline
+} from '@/views/excursion-timeline';
 import {
   createHubField,
   createHubFilter,
@@ -353,5 +357,122 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
   }
 
   page.append(card, errorHost, layout);
+  canvas.replaceChildren(page);
+}
+
+function paintExcursionPage(
+  canvas: HTMLElement,
+  project: Project,
+  tasks: Task[],
+  template: ExcursionTemplate | undefined,
+  onReload: () => Promise<void>
+): void {
+  let current = project;
+  let saveTimer: number | undefined;
+  const errorHost = el('p', 'empty-state');
+  errorHost.hidden = true;
+  const updated = el('span', 'hub-card__meta', formatRelativeUpdated(project.updated_at));
+
+  const persist = (patch: Partial<Project>) => {
+    current = { ...current, ...patch };
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => {
+      void tasksApi
+        .updateProject(current.id, {
+          title: current.title,
+          description: current.description,
+          arc_summary: current.arc_summary,
+          status: current.status,
+          current_end_date: current.current_end_date,
+          student_group_reference: current.student_group_reference,
+          page_blocks: current.page_blocks
+        })
+        .then(
+          (next) => {
+            current = { ...current, ...next };
+            updated.textContent = formatRelativeUpdated(next.updated_at);
+            errorHost.hidden = true;
+            errorHost.textContent = '';
+          },
+          (err) => {
+            errorHost.hidden = false;
+            errorHost.textContent = errorMessage(err);
+          }
+        );
+    }, 400);
+  };
+
+  const page = el('div', 'page-editor');
+  const card = el('article', 'hub-card page-card');
+  const head = el('header', 'task-card__head');
+  head.append(el('span', 'hub-card__eyebrow', 'Excursion'), backLink('#/excursions', '← Excursions'));
+
+  const title = titleInput(project.title, 'Excursion title');
+  title.addEventListener('input', () => {
+    const next = title.value.trim();
+    if (!next) return;
+    persist({ title: next });
+  });
+  title.addEventListener('blur', () => {
+    if (!title.value.trim()) title.value = current.title;
+  });
+
+  const fields = el('div', 'page-card__fields hub-toolbar');
+  const status = pageFilter(
+    'page-card__status',
+    'Status',
+    PROJECT_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
+    project.status,
+    (value) => persist({ status: value as ProjectStatus })
+  );
+  const due = createHubField({
+    type: 'date',
+    ariaLabel: 'Event date',
+    value: project.current_end_date ?? '',
+    className: 'page-card__due',
+    onChange: (value) => persist({ current_end_date: value || null })
+  });
+  const group = createHubField({
+    ariaLabel: 'Student group',
+    value: project.student_group_reference ?? '',
+    placeholder: 'Student group',
+    className: 'page-card__group',
+    onChange: (value) => persist({ student_group_reference: value.trim() || null })
+  });
+  fields.append(status.el, due.el, group.el);
+
+  const notes = createHubTextarea({
+    ariaLabel: 'Summary',
+    className: 'page-card__notes',
+    value: project.arc_summary || project.description
+  });
+  notes.input.addEventListener('input', () =>
+    persist({ arc_summary: notes.input.value, description: notes.input.value })
+  );
+
+  const foot = el('footer', 'task-card__foot');
+  foot.append(updated);
+  card.append(head, title, fields, notes.el, renderExcursionProgress(project, tasks), foot);
+  card.append(renderQuickAdd(() => void onReload(), project.id));
+
+  const confirmHost = el('div', 'excursion-confirm');
+  const canvasHost = el('div', 'block-canvas');
+  const layout = el('div', 'page-editor__layout');
+  try {
+    mountEngine(layout, canvasHost, pageBlocksOf(current), (blocks) => persist({ page_blocks: blocks }));
+  } catch (err) {
+    layout.replaceChildren(
+      el('p', 'empty-state', `Could not open the lesson canvas: ${errorMessage(err)}`)
+    );
+  }
+
+  page.append(
+    card,
+    errorHost,
+    confirmHost,
+    renderExcursionTimeline(project, tasks, confirmHost, onReload),
+    renderExcursionDrafts(project, template),
+    layout
+  );
   canvas.replaceChildren(page);
 }

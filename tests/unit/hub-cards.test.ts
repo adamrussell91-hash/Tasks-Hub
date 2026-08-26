@@ -186,6 +186,16 @@ describe('hub cards', () => {
     expect(menuLabels(openMenu(slot))).toEqual(['Collapse', 'Full page']);
   });
 
+  it('puts delete on a project card menu when onDelete is set', () => {
+    const host = document.createElement('div');
+    const onDelete = vi.fn();
+    const slot = mountProjectCard(host, { ...project, type: 'excursion' }, [], { onDelete });
+    const menu = openMenu(slot);
+    expect(menuLabels(menu)).toEqual(['Expand', 'Full page', 'Delete']);
+    menu.querySelector<HTMLButtonElement>('[data-card-menu-item="delete"]')?.click();
+    expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'proj_mw' }));
+  });
+
   it('opens via onActivate instead of expanding when that handler is set', () => {
     const host = document.createElement('div');
     const onActivate = vi.fn();
