@@ -90,8 +90,8 @@ describe('Clare protocol controls', () => {
     expect(canvas.textContent).toMatch(/clare can/i);
     expect(canvas.textContent).toContain(briefing.closer);
     expect(canvas.querySelector('select.hub-filter')).toBeNull();
-    expect(canvas.querySelector('.clare-form .hub-filter')?.tagName).toBe('BUTTON');
-    expect(canvas.querySelector('[aria-label="Brain dump"]')?.tagName).toBe('TEXTAREA');
+    expect(canvas.querySelector('#chat-form .hub-filter')?.tagName).toBe('BUTTON');
+    expect(canvas.querySelector('#chat-input')?.tagName).toBe('TEXTAREA');
     const pills = [...canvas.querySelectorAll<HTMLButtonElement>('[aria-label="Clare protocols"] [data-protocol-id]')];
     expect(pills).toHaveLength(5);
     for (const pill of pills) {
@@ -109,7 +109,7 @@ describe('Clare protocol controls', () => {
     vi.mocked(tasksApi.processDumpWithClare).mockReturnValue(pending.promise);
     const canvas = document.createElement('main');
     await renderClareView(canvas);
-    const dump = canvas.querySelector<HTMLTextAreaElement>('[aria-label="Brain dump"]')!;
+    const dump = canvas.querySelector<HTMLTextAreaElement>('#chat-input')!;
     dump.value = proposal.title;
 
     canvas.querySelector<HTMLButtonElement>('[data-protocol-id="shrink-first-step"]')!.click();
@@ -117,12 +117,12 @@ describe('Clare protocol controls', () => {
     expect(tasksApi.processDumpWithClare).toHaveBeenCalledWith(
       expect.objectContaining({ protocol_id: 'shrink-first-step', text: proposal.title })
     );
-    const first = canvas.querySelector('.canvas-status')?.textContent;
+    const first = canvas.querySelector('.chat-message--status')?.textContent;
     expect(first).toBeTruthy();
     expect(first).not.toMatch(/thinking|working/i);
 
     await vi.advanceTimersByTimeAsync(1800);
-    const second = canvas.querySelector('.canvas-status')?.textContent;
+    const second = canvas.querySelector('.chat-message--status')?.textContent;
     expect(second).toBeTruthy();
     expect(second).not.toBe(first);
 
@@ -140,6 +140,63 @@ describe('Clare protocol controls', () => {
     expect(canvas.textContent).toContain(proposal.title);
     expect(canvas.textContent).not.toContain('Here’s what that protocol means');
     vi.useRealTimers();
+  });
+
+  it('shows Saving… on Confirm then Saved. after the write', async () => {
+    vi.mocked(tasksApi.processDumpWithClare).mockResolvedValue({
+      voice: 'Right — one thing, and it actually has a shape. Here is my take.',
+      proposals: [proposal],
+      questions: [],
+      notes: [],
+      toolkit: null
+    });
+    const pending = deferred<unknown>();
+    vi.mocked(tasksApi.acceptClareBatch).mockReturnValue(pending.promise as Promise<never>);
+    const canvas = document.createElement('main');
+    await renderClareView(canvas);
+    const dump = canvas.querySelector<HTMLTextAreaElement>('#chat-input')!;
+    dump.value = proposal.title;
+    canvas.querySelector<HTMLFormElement>('#chat-form')!.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    await vi.waitFor(() => expect(tasksApi.processDumpWithClare).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(canvas.querySelector('.record-proposal__confirm')).not.toBeNull());
+
+    const confirm = canvas.querySelector<HTMLButtonElement>('.record-proposal__confirm')!;
+    confirm.click();
+    await vi.waitFor(() => expect(confirm.textContent).toBe('Saving…'));
+    expect(confirm.disabled).toBe(true);
+
+    pending.resolve({ tasks: [] });
+    await vi.waitFor(() => expect(canvas.textContent).toMatch(/saved\./i));
+    expect(tasksApi.acceptClareBatch).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops a dump that finishes after New chat', async () => {
+    const pending = deferred<import('@/domain/clare').ClareDumpResult>();
+    vi.mocked(tasksApi.processDumpWithClare).mockReturnValue(pending.promise);
+    const canvas = document.createElement('main');
+    await renderClareView(canvas);
+    const dump = canvas.querySelector<HTMLTextAreaElement>('#chat-input')!;
+    dump.value = proposal.title;
+    canvas.querySelector<HTMLFormElement>('#chat-form')!.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    await vi.waitFor(() => expect(tasksApi.processDumpWithClare).toHaveBeenCalledTimes(1));
+
+    canvas.querySelector<HTMLButtonElement>('#chat-new')!.click();
+    pending.resolve({
+      voice: 'Stale dump that should not land.',
+      proposals: [proposal],
+      questions: [],
+      notes: [],
+      toolkit: null
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(canvas.textContent).not.toContain('Stale dump that should not land.');
+    expect(canvas.querySelector('.record-proposal__confirm')).toBeNull();
+    expect(canvas.textContent).toContain(briefing.closer);
   });
 
   it('runs a sprint briefing when the dump is empty', async () => {

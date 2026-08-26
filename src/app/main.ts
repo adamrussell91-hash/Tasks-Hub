@@ -33,6 +33,7 @@ import { renderUniverseView } from '@/views/universe';
 import { renderBranchView } from '@/views/branch';
 import { renderConstellationView } from '@/views/constellation';
 import { renderClareView } from '@/views/clare';
+import { installClareSession } from '@/chat/clare-session';
 import { renderExcursionsView } from '@/views/excursions';
 import { renderProgramsView } from '@/views/programs';
 import { renderStressView } from '@/views/stress';
@@ -70,7 +71,7 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   clare: {
     eyebrow: 'Desk',
     title: 'Clare DeMind',
-    supporting: 'Dump the chaos. She sorts it, then you confirm.'
+    supporting: 'Same chat window as Life Hub. Dump the chaos. She sorts it, then you confirm.'
   },
   graph: {
     eyebrow: 'Structure',
@@ -248,6 +249,8 @@ async function bootApp(root: HTMLElement): Promise<void> {
     },
     onRefresh: () => void paint()
   });
+  const clare = installClareSession(root);
+  void clare.start();
 
   async function paint() {
     window.scrollTo(0, 0);
@@ -255,6 +258,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
     const canvasWrap = shell.canvas.closest('.hub-canvas');
     if (canvasWrap instanceof HTMLElement) canvasWrap.scrollTop = 0;
     shell.canvas.scrollTop = 0;
+    clare.park();
 
     const share = parseCapacityShareToken();
     if (share) {
@@ -305,6 +309,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
     const view = parseHashRoute();
     renderPrimaryNav(shell.railNav, view);
     renderPageHeader(shell, HEADERS[view]);
+    clare.sync(view);
     try {
       await renderReminderStrip(shell.reminderHost, () => void paint());
       await renderActiveView(view, shell.canvas);

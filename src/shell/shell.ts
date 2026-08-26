@@ -233,6 +233,7 @@ export function renderPrimaryNav(railNav: HTMLElement, active: HubViewId): void 
       link.className = 'hub-rail__link';
       link.href = item.href;
       if (item.id === highlight) link.setAttribute('aria-current', 'page');
+      if (item.id === 'clare') link.dataset.clareNav = 'true';
       link.append(railIconFor(item.id), document.createTextNode(item.label));
       nav.append(link);
     }

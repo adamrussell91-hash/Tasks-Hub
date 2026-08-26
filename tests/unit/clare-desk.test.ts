@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { SeedData } from '@/services/types';
 import {
+  briefingToMarkdown,
   buildMorningSweep,
   buildTomorrowSetup,
   buildWeeklyReset,
@@ -43,5 +44,16 @@ describe('clare desk briefings', () => {
   it('weekly reset names overdue decisions', () => {
     const briefing = buildWeeklyReset(seed.tasks, now);
     expect(briefing.sections.some((s) => /decide|week/i.test(s.heading))).toBe(true);
+  });
+
+  it('flattens a briefing into markdown for a chat bubble', () => {
+    const briefing = buildMorningSweep(seed.tasks, now);
+    const markdown = briefingToMarkdown(briefing);
+    expect(markdown).toContain(briefing.lead);
+    expect(markdown).toContain(briefing.closer);
+    if (briefing.sections[0]) {
+      expect(markdown).toContain(`**${briefing.sections[0].heading}**`);
+      expect(markdown).toMatch(/^- /m);
+    }
   });
 });
