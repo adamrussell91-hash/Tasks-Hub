@@ -9,7 +9,7 @@ import {
   statusBadgeClass,
   taskPageHash
 } from '@/domain/cards';
-import type { Task } from '@/schemas/task';
+import { TaskSchema, type Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 
 function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
@@ -119,5 +119,13 @@ describe('card domain helpers', () => {
     expect(createBlock('callout', 'block_c').content).toMatchObject({ style: 'information' });
     expect(createBlock('flashcards', 'block_f').block_type).toBe('flashcards');
     expect(createBlock('equation', 'block_eq').block_type).toBe('equation');
+  });
+
+  it('reads retired wedding domains as life', () => {
+    const parsed = TaskSchema.parse({
+      ...task({ id: 'task_old_wedding', title: 'Florist' }),
+      domain: 'wedding'
+    });
+    expect(parsed.domain).toBe('life');
   });
 });

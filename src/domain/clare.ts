@@ -51,7 +51,6 @@ export type ClareProposal = {
 const BASE_BY_DOMAIN: Record<TaskDomain, number> = {
   teaching: 60,
   life: 30,
-  wedding: 45,
   health: 30,
   other: 40
 };
@@ -99,7 +98,7 @@ export function selectFramework(
     id = 'fw_timeboxing';
   } else if (input.priority === 'urgent' || input.priority === 'high') {
     id = 'fw_eat_the_frog';
-  } else if (input.domain === 'wedding' || input.domain === 'life') {
+  } else if (input.domain === 'life') {
     id = 'fw_eisenhower';
   }
 

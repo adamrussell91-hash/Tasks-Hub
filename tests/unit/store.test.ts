@@ -194,7 +194,8 @@ describe('queries', () => {
     const monday = new Date('2026-08-17T12:00:00');
     expect(preferredDomains(monday)).toContain('teaching');
     const saturday = new Date('2026-08-15T12:00:00');
-    expect(preferredDomains(saturday)).toContain('wedding');
+    expect(preferredDomains(saturday)).toContain('life');
+    expect(preferredDomains(saturday)).not.toContain('wedding');
   });
 
   it('sorts by priority', () => {

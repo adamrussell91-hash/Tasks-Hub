@@ -140,7 +140,7 @@ describe('calendar domain', () => {
           id: 'done',
           title: 'Done florist',
           due_date: '2026-08-17',
-          domain: 'wedding',
+          domain: 'life',
           status: 'done'
         })
       ],
@@ -157,7 +157,7 @@ describe('calendar domain', () => {
     ).toEqual(['task:open']);
     expect(
       filterCalendarItems(items, {
-        domain: 'wedding',
+        domain: 'life',
         projectId: 'all',
         query: '',
         includeDone: true,

@@ -149,8 +149,6 @@ export function domainFill(domain: string | null): string {
   switch (domain) {
     case 'teaching':
       return 'var(--pastel-blue)';
-    case 'wedding':
-      return 'var(--pastel-peach)';
     case 'life':
       return 'var(--pastel-sage)';
     case 'health':

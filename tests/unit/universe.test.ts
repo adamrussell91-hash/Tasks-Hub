@@ -188,14 +188,14 @@ describe('buildSolarModel structure', () => {
   });
 
   it('treats every domain that appears as a major planet', () => {
-    const tags = V.slice(0, 5);
+    const tags = [...V];
     const entries = Array.from({ length: 40 }, (_, i) => {
       const major = tags[i % tags.length]!;
       const extra = tags[(i + 1) % tags.length]!;
       return page(`p${i}`, `Task ${i}`, [major, extra]);
     });
     const model = buildSolarModel(entries);
-    expect(model.planets).toHaveLength(5);
+    expect(model.planets).toHaveLength(V.length);
     expect(model.planets.every((planet) => planet.parent === model.sun.idx)).toBe(true);
     expect(model.sun.label).toBe('Adam');
   });

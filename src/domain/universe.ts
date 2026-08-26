@@ -5,7 +5,6 @@ import type { Task, TaskDomain } from '@/schemas/task';
 export const DOMAIN_VOCABULARY: readonly TaskDomain[] = [
   'teaching',
   'life',
-  'wedding',
   'health',
   'other'
 ];
@@ -79,7 +78,6 @@ export type TopicPaint = { fill: string; ink: string };
 const DOMAIN_PAINT: Record<TaskDomain, TopicPaint> = {
   teaching: { fill: '#376fb7', ink: '#17375e' },
   life: { fill: '#2f7a4f', ink: '#3c5949' },
-  wedding: { fill: '#a85a0c', ink: '#7a5038' },
   health: { fill: '#f68620', ink: '#6c581f' },
   other: { fill: '#244f7c', ink: '#13233a' }
 };

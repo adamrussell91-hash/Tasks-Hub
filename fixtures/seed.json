@@ -318,7 +318,7 @@
       "id": "task_demo_wedding_vendor",
       "title": "Reply to florist quote",
       "description": "Confirm availability for November.",
-      "domain": "wedding",
+      "domain": "life",
       "framework_used": null,
       "estimated_duration": 20,
       "actual_duration": null,
@@ -331,9 +331,7 @@
       "parent_project_id": null,
       "parent_task_id": null,
       "depends_on": [],
-      "tags": [
-        "wedding"
-      ],
+      "tags": [],
       "recurrence_rule": null,
       "attachments": [],
       "source": "manual"

@@ -14,9 +14,9 @@ export function isSchoolDay(date: Date = new Date()): boolean {
   return day >= 1 && day <= 5;
 }
 
-/** Adaptive default domains: teaching on school days, life/wedding/health on weekends. */
+/** Adaptive default domains: teaching on school days, life/health on weekends. */
 export function preferredDomains(date: Date = new Date()): TaskDomain[] {
-  return isSchoolDay(date) ? ['teaching', 'other'] : ['life', 'wedding', 'health', 'other'];
+  return isSchoolDay(date) ? ['teaching', 'other'] : ['life', 'health', 'other'];
 }
 
 export function startOfDay(date: Date): Date {

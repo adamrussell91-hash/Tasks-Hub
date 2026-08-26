@@ -43,7 +43,6 @@ const TEACHING = [
   'olympiad',
   'mindworks'
 ];
-const WEDDING = ['florist', 'venue', 'wedding', 'suit', 'photographer', 'caterer', 'rsvp'];
 const HEALTH = [
   'gp',
   'doctor',
@@ -56,7 +55,23 @@ const HEALTH = [
   'medical',
   'appointment'
 ];
-const LIFE = ['grocer', 'rent', 'bills', 'fragrance', 'laundry', 'home', 'car', 'council'];
+const LIFE = [
+  'grocer',
+  'rent',
+  'bills',
+  'fragrance',
+  'laundry',
+  'home',
+  'car',
+  'council',
+  'florist',
+  'venue',
+  'wedding',
+  'suit',
+  'photographer',
+  'caterer',
+  'rsvp'
+];
 const COMMS = [
   'email',
   'call',
@@ -104,7 +119,6 @@ function stripDuePhrases(line: string): string {
 
 function inferDomain(text: string, preferred: TaskDomain): TaskDomain {
   if (includesAny(text, TEACHING)) return 'teaching';
-  if (includesAny(text, WEDDING)) return 'wedding';
   if (includesAny(text, HEALTH)) return 'health';
   if (includesAny(text, LIFE)) return 'life';
   return preferred;

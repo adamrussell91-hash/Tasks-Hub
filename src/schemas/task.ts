@@ -3,7 +3,15 @@ import { PageBlockSchema } from './page-block';
 
 export const schemaVersion = z.literal(1);
 
-export const TaskDomainSchema = z.enum(['teaching', 'life', 'wedding', 'health', 'other']);
+/** Wedding is retired — stored rows fold into life. */
+export function migrateTaskDomain(value: unknown): unknown {
+  return value === 'wedding' ? 'life' : value;
+}
+
+export const TaskDomainSchema = z.preprocess(
+  migrateTaskDomain,
+  z.enum(['teaching', 'life', 'health', 'other'])
+);
 export const TaskKindSchema = z.enum(['task', 'step']);
 export const TaskBucketSchema = z.enum(['active', 'someday']);
 

@@ -34,7 +34,7 @@ export function createEditorFilter(options: {
   return filter;
 }
 
-export const TASK_DOMAINS: TaskDomain[] = ['teaching', 'life', 'wedding', 'health', 'other'];
+export const TASK_DOMAINS: TaskDomain[] = ['teaching', 'life', 'health', 'other'];
 export const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
 export function el<K extends keyof HTMLElementTagNameMap>(

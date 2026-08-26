@@ -56,7 +56,7 @@ describe('clare framework selection', () => {
 
   it('picks Eisenhower when deciding priorities', () => {
     const pick = selectFramework(
-      { title: 'Decide which wedding vendor to prioritise', domain: 'wedding' },
+      { title: 'Decide which vendor to prioritise', domain: 'life' },
       seed.frameworks
     );
     expect(pick.framework.id).toBe('fw_eisenhower');

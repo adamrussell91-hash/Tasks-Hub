@@ -65,8 +65,6 @@ function eventTint(item: CalendarItem): EventTint {
       return 'blue';
     case 'life':
       return 'gold';
-    case 'wedding':
-      return 'peach';
     case 'health':
       return 'lilac';
     default:

@@ -1,4 +1,4 @@
-import type { Task, TaskDomain } from '@/schemas/task';
+import type { Task } from '@/schemas/task';
 import type { Project, Milestone } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { hashQuery } from '@/shell/shell';
@@ -29,11 +29,9 @@ import {
 } from '@/domain/gantt';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { toDateKey } from '@/domain/queries';
-import { createHubField, createHubFilter, createHubToolbar } from '@/views/hub-kit';
+import { TASK_DOMAINS, createHubField, createHubFilter, createHubToolbar } from '@/views/hub-kit';
 import { renderTaskEditor } from '@/views/task-editor';
 import { errorMessage, renderLoadError } from '@/views/feedback';
-
-const DOMAINS: TaskDomain[] = ['teaching', 'life', 'wedding', 'health', 'other'];
 
 const STATUS_DOT: Record<string, string> = {
   open: 'var(--shallow)',
@@ -479,9 +477,9 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     const domain = createHubFilter({
       key: 'Domain',
       label: 'Domain',
-      defaultValue: DOMAINS[0] ?? 'teaching',
-      options: DOMAINS.map((value) => ({ value, label: value })),
-      value: DOMAINS[0] ?? 'teaching'
+      defaultValue: TASK_DOMAINS[0] ?? 'teaching',
+      options: TASK_DOMAINS.map((value) => ({ value, label: value })),
+      value: TASK_DOMAINS[0] ?? 'teaching'
     });
 
     const hint = el(

@@ -50,7 +50,7 @@ describe('brain dump parsing', () => {
     const note = items.find((i) => /dex/i.test(i.title))!;
     expect(note.kind).toBe('note');
     const florist = items.find((i) => /florist/i.test(i.title))!;
-    expect(florist.domain).toBe('wedding');
+    expect(florist.domain).toBe('life');
     expect(florist.question).toMatch(/due date|living its best life/i);
     const result = assembleDumpResult(items, frameworks, () => null);
     expect(result.voice).toMatch(/1 looks like a note/);

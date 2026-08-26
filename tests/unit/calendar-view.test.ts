@@ -86,7 +86,7 @@ const tasks: Task[] = [
     id: 'task_florist',
     title: 'Reply to florist',
     due_date: '2026-08-18',
-    domain: 'wedding',
+    domain: 'life',
     parent_project_id: null
   }),
   task({

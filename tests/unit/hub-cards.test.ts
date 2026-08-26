@@ -235,7 +235,7 @@ describe('hub cards', () => {
     const slot = mountTaskCard(host, task({ id: 'task_fail', title: 'Keep teaching' }), { onError });
     const chip = slot.querySelector<HTMLButtonElement>('.hub-chip--domain')!;
     chip.click();
-    document.querySelector<HTMLButtonElement>('[data-hub-option="wedding"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-hub-option="health"]')!.click();
     await vi.waitFor(() => expect(onError).toHaveBeenCalledWith('No.'));
     expect(chip.dataset.area).toBe('teaching');
     expect(chip.getAttribute('aria-invalid')).toBe('true');

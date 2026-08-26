@@ -99,6 +99,12 @@ describe('hub-kit controls', () => {
 
   it('shares domain and priority option lists', () => {
     expect(domainFilterOptions()[0]).toEqual({ value: 'all', label: 'All domains' });
+    expect(domainFilterOptions(false).map((item) => item.value)).toEqual([
+      'teaching',
+      'life',
+      'health',
+      'other'
+    ]);
     expect(priorityFilterOptions(false).map((item) => item.value)).toEqual([
       'urgent',
       'high',
