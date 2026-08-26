@@ -50,7 +50,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { id: 'goals', label: 'Goals', href: '#/goals' },
       { id: 'someday', label: 'Someday', href: '#/someday' },
-      { id: 'clare', label: 'Clare', href: '#/clare' },
+      { id: 'clare', label: 'Chat', href: '#/clare' },
       { id: 'templates', label: 'Templates', href: '#/templates' }
     ]
   },
