@@ -108,6 +108,24 @@ describe('hub cards', () => {
     expect([...slot.querySelectorAll('button')].some((btn) => btn.textContent === 'Open page')).toBe(false);
   });
 
+  it('shows move pills on compact board cards when a move handler is wired', () => {
+    const list = document.createElement('ul');
+    const onMoveToColumn = vi.fn();
+    const slot = mountTaskCard(
+      list,
+      task({ id: 'task_move', title: 'Move me', status: 'open' }),
+      { onMoveToColumn, boardColumn: 'todo' },
+      true
+    );
+    const pills = slot.querySelectorAll('.board-move-pills--micro .hub-pills__btn');
+    expect(pills).toHaveLength(3);
+    slot.querySelector<HTMLButtonElement>('.board-move-pills--micro .hub-pills__btn:nth-child(2)')?.click();
+    expect(onMoveToColumn).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'task_move' }),
+      'doing'
+    );
+  });
+
   it('shows move pills on expanded board cards when a move handler is wired', () => {
     reduceMotion();
     const list = document.createElement('ul');
