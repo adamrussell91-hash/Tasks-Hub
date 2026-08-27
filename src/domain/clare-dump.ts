@@ -85,16 +85,35 @@ function stripListPrefix(line: string): string {
 }
 
 function titleCaseAction(line: string): string {
-  const cleaned = stripIntentionPhrases(stripDuePhrases(stripListPrefix(line)));
+  const cleaned = polishTaskTitle(stripIntentionPhrases(stripDuePhrases(stripListPrefix(line))));
   if (!cleaned) return '';
   const first = cleaned.charAt(0).toUpperCase();
-  return `${first}${cleaned.slice(1)}`.replace(/\s+/g, ' ').replace(/[.]+$/, '');
+  return `${first}${cleaned.slice(1)}`.replace(/\s+/g, ' ').replace(/[.!?]+$/, '');
 }
 
 function stripIntentionPhrases(line: string): string {
   return line
-    .replace(/^(?:i\s+)?(?:need|have|want|ought|should|gotta|got)\s+to\s+/i, '')
-    .replace(/^i(?:'m| am)\s+(?:going to|gonna)\s+/i, '')
+    .replace(
+      /^(?:i(?:'ve|'ve|\s+have)\s+)?(?:really\s+|just\s+|actually\s+|probably\s+)?(?:need|have|want|ought|should|gotta|got)\s+to\s+/i,
+      ''
+    )
+    .replace(/^(?:i\s+)?(?:really\s+|just\s+|actually\s+|probably\s+)?(?:need|have|want|ought|should|gotta|got)\s+to\s+/i, '')
+    .replace(/^i(?:'m| am)\s+(?:really\s+|just\s+)?(?:going to|gonna|meant to|supposed to)\s+/i, '')
+    .replace(/^i\s+(?:must|should|need|have)\s+/i, '')
+    .replace(/^(?:really\s+|just\s+|actually\s+)?(?:need|have|want|ought|should|gotta|got)\s+to\s+/i, '')
+    .trim();
+}
+
+/** Turn rambling dump lines into short action titles. */
+function polishTaskTitle(line: string): string {
+  return line
+    .replace(/^(?:really|just|actually|also|maybe|probably)\s+/i, '')
+    .replace(
+      /\b(?:sort out|work on|deal with|look at|finish|complete|prep(?:are)? for|write|email|call|book|schedule|organis[ez]e|plan|review|update|fix|handle|tackle|figure out|get)\s+(?:my|the|this|that)\s+/i,
+      (match) => match.replace(/\s+(?:my|the|this|that)\s+/i, ' ')
+    )
+    .replace(/\b(?:my|the)\s+(?=(?:appraisal|goal|report|meeting|lesson|unit|assessment|marking|email|call)\b)/i, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 

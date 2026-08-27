@@ -1454,6 +1454,12 @@
   gap: var(--space-2);
 }
 
+.clare-estimate__label,
+.clare-estimate__unit {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
 .clare-estimate .hub-search {
   width: 6rem;
 }
@@ -1502,7 +1508,7 @@
   font-size: var(--text-xl);
 }
 
-.hub-layout[data-hub-view='clare'] .page-header__supporting {
+.hub-layout[data-hub-view='clare'] .page-header > .page-header__supporting {
   display: none;
 }
 
@@ -1739,9 +1745,11 @@
   margin-bottom: 0;
 }
 
-.record-proposal .page-header__supporting {
-  margin-top: 0;
+.record-proposal__reasoning {
+  margin: 0;
   font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .record-proposal__fields {
@@ -1859,6 +1867,32 @@
   .floating-chat-button {
     right: var(--space-4);
     bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .record-proposal {
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .record-proposal .hub-chips {
+    row-gap: var(--space-2);
+  }
+
+  .record-proposal .clare-bubble__note {
+    margin-top: var(--space-1);
+  }
+
+  .record-proposal__fields {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .record-proposal__fields .hub-filter {
+    width: 100%;
+  }
+
+  .confirm-card__actions {
+    flex-wrap: wrap;
   }
 }
 
