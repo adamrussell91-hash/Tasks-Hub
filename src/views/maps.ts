@@ -23,6 +23,7 @@ import {
   nextLineLetter,
   nextLineX,
   normalizeLineColors,
+  orthogonalPath,
   schoolTerms,
   wrapEventLines,
   YEAR_TRACKS,
@@ -282,39 +283,42 @@ function connectorPath(
   return path;
 }
 
-function patchConnectorPathY(d: string, dy: number, shiftFrom: boolean, shiftTo: boolean): string {
-  if (!dy || (!shiftFrom && !shiftTo)) return d;
-  const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number);
-  if (!nums || nums.length < 4) return d;
-  const next = [...nums];
-  if (shiftFrom) next[1] = (next[1] ?? 0) + dy;
-  if (shiftTo) next[next.length - 1] = (next[next.length - 1] ?? 0) + dy;
-  let index = 0;
-  return d.replace(/-?\d+(?:\.\d+)?/g, () => String(next[index++] ?? 0));
-}
+type ConnectorLiveRef = {
+  el: Element;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  shiftFrom: boolean;
+  shiftTo: boolean;
+};
 
 function connectorRefs(
   svg: SVGSVGElement,
   layout: MapCanvasLayout,
   ownerId: string
-): Array<{ els: NodeListOf<Element>; shiftFrom: boolean; shiftTo: boolean; base: string }> {
-  return layout.connectors
-    .filter((connector) => connector.from.ownerId === ownerId || connector.to.ownerId === ownerId)
-    .map((connector) => ({
-      base: connector.path,
-      shiftFrom: connector.from.ownerId === ownerId,
-      shiftTo: connector.to.ownerId === ownerId,
-      els: svg.querySelectorAll(`[data-connector-id="${connector.id}"]`)
-    }));
+): ConnectorLiveRef[] {
+  const refs: ConnectorLiveRef[] = [];
+  for (const connector of layout.connectors) {
+    const shiftFrom = connector.from.ownerId === ownerId;
+    const shiftTo = connector.to.ownerId === ownerId;
+    if (!shiftFrom && !shiftTo) continue;
+    svg.querySelectorAll(`[data-connector-id="${connector.id}"]`).forEach((el) => {
+      refs.push({
+        el,
+        from: { x: connector.from.x, y: connector.from.y },
+        to: { x: connector.to.x, y: connector.to.y },
+        shiftFrom,
+        shiftTo
+      });
+    });
+  }
+  return refs;
 }
 
-function liveShiftConnectors(
-  refs: Array<{ els: NodeListOf<Element>; shiftFrom: boolean; shiftTo: boolean; base: string }>,
-  dy: number
-): void {
+function liveShiftConnectors(refs: ConnectorLiveRef[], dx: number, dy: number): void {
   for (const ref of refs) {
-    const next = patchConnectorPathY(ref.base, dy, ref.shiftFrom, ref.shiftTo);
-    ref.els.forEach((node) => node.setAttribute('d', next));
+    const from = ref.shiftFrom ? { x: ref.from.x + dx, y: ref.from.y + dy } : ref.from;
+    const to = ref.shiftTo ? { x: ref.to.x + dx, y: ref.to.y + dy } : ref.to;
+    ref.el.setAttribute('d', orthogonalPath(from, to));
   }
 }
 
@@ -772,8 +776,16 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   let camX = 0;
   let camY = 0;
   let joining = false;
-  let joinFrom: JoinPick | null = null;
   let toast = '';
+
+  const activeTouches = new Map<number, { x: number; y: number }>();
+  let pinchStartDist = 0;
+  let pinchStartZoom = 1;
+
+  function touchDistance(): number {
+    const pts = [...activeTouches.values()];
+    return pts.length < 2 ? 0 : Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y);
+  }
 
   const applyCamera = (svg: SVGSVGElement, layout: MapCanvasLayout) => {
     const vw = layout.width / zoom;
@@ -848,7 +860,6 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         mode = id as Mode;
         if (id === 'view') {
           joining = false;
-          joinFrom = null;
         }
         paint();
       }
@@ -911,8 +922,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       joinBtn.setAttribute('aria-pressed', joining ? 'true' : 'false');
       joinBtn.addEventListener('click', () => {
         joining = !joining;
-        joinFrom = null;
-        toast = joining ? 'Click two things to join them. Ports show only in this mode.' : '';
+        toast = joining ? 'Drag from one element to another to join. Ports show only in this mode.' : '';
         paint();
       });
       toolbar.append(addLine, addStation, addEvent, joinBtn);
@@ -972,17 +982,24 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     inn.type = 'button';
     out.setAttribute('aria-label', 'Zoom out');
     inn.setAttribute('aria-label', 'Zoom in');
-    const setZoom = (next: number) => {
+    const setZoomAt = (next: number, anchor?: { x: number; y: number }) => {
       const old = zoom;
-      zoom = Math.min(2.2, Math.max(0.5, next));
-      const cx = camX + layout.width / old / 2;
-      const cy = camY + layout.height / old / 2;
-      camX = cx - layout.width / zoom / 2;
-      camY = cy - layout.height / zoom / 2;
+      const nextZoom = Math.min(2.2, Math.max(0.5, next));
+      if (nextZoom === old) return;
+      const vw0 = layout.width / old;
+      const vh0 = layout.height / old;
+      const focus = anchor ?? { x: camX + vw0 / 2, y: camY + vh0 / 2 };
+      const fx = (focus.x - camX) / vw0;
+      const fy = (focus.y - camY) / vh0;
+      zoom = nextZoom;
+      const vw1 = layout.width / zoom;
+      const vh1 = layout.height / zoom;
+      camX = focus.x - fx * vw1;
+      camY = focus.y - fy * vh1;
       applyCamera(svg, layout);
     };
-    out.addEventListener('click', () => setZoom(zoom - 0.15));
-    inn.addEventListener('click', () => setZoom(zoom + 0.15));
+    out.addEventListener('click', () => setZoomAt(zoom - 0.15));
+    inn.addEventListener('click', () => setZoomAt(zoom + 0.15));
     reset.addEventListener('click', () => {
       zoom = 1;
       camX = 0;
@@ -1028,35 +1045,73 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       'wheel',
       (event) => {
         event.preventDefault();
-        setZoom(zoom + (event.deltaY > 0 ? -0.08 : 0.08));
+        const anchor = clientToMap(svg, event as unknown as PointerEvent);
+        if (event.ctrlKey) setZoomAt(zoom * (1 - event.deltaY * 0.01), anchor);
+        else setZoomAt(zoom + (event.deltaY > 0 ? -0.08 : 0.08), anchor);
       },
       { passive: false }
     );
 
+    svg.style.touchAction = 'none';
+
+    function touchMidpointMap(): { x: number; y: number } {
+      const pts = [...activeTouches.values()];
+      return clientToMap(svg, {
+        clientX: (pts[0]!.x + pts[1]!.x) / 2,
+        clientY: (pts[0]!.y + pts[1]!.y) / 2
+      } as PointerEvent);
+    }
+
+    function startConnectorDrag(originPick: JoinPick, originPort: { x: number; y: number }): void {
+      const preview = svgEl('path', {
+        d: orthogonalPath(originPort, originPort),
+        class: 'map-connector-preview',
+        fill: 'none',
+        stroke: 'var(--ink)',
+        'stroke-width': '2',
+        'stroke-dasharray': '4 4'
+      });
+      svg.querySelector('.map-root')?.append(preview);
+      let snapTarget: JoinPick | null = null;
+      let lastPoint = originPort;
+
+      const onMove = (move: PointerEvent) => {
+        const point = clientToMap(svg, move);
+        lastPoint = point;
+        preview.setAttribute('d', orthogonalPath(originPort, point));
+        const candidate = joinPick(hitMap(layout, point.x, point.y, true, mode === 'edit'));
+        const valid = candidate && !(candidate.kind === originPick.kind && candidate.id === originPick.id);
+        snapTarget = valid ? candidate : null;
+        svg.querySelectorAll('.is-snap-target').forEach((n) => n.classList.remove('is-snap-target'));
+        if (snapTarget) svg.querySelector(`[data-id="${snapTarget.id}"]`)?.classList.add('is-snap-target');
+      };
+
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        preview.remove();
+        svg.querySelectorAll('.is-snap-target').forEach((n) => n.classList.remove('is-snap-target'));
+        if (snapTarget && applyJoin(current, originPick, snapTarget, lastPoint.y, year)) {
+          toast = 'Joined.';
+          void persist();
+        }
+        paint();
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp, { once: true });
+    }
+
     svg.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
+      if (event.pointerType === 'touch' && activeTouches.size >= 1) return;
       event.preventDefault();
       const start = clientToMap(svg, event);
       const hit = hitMap(layout, start.x, start.y, joining, mode === 'edit' && !joining);
       if (joining) {
         const joinHit = joinPick(hit);
         if (!joinHit) return;
-        if (!joinFrom) {
-          joinFrom = joinHit;
-          selectedId = joinHit.kind === 'line' ? null : joinHit.id;
-          toast = `Join from ${joinHit.kind}. Click the thing to connect.`;
-          paint();
-          return;
-        }
-        if (applyJoin(current, joinFrom, joinHit, start.y, year)) {
-          toast = 'Joined.';
-          void persist();
-        } else {
-          toast = 'Could not join those two.';
-        }
-        joining = false;
-        joinFrom = null;
-        paint();
+        selectedId = joinHit.kind === 'line' ? null : joinHit.id;
+        startConnectorDrag(joinHit, start);
         return;
       }
 
@@ -1076,8 +1131,9 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       const startCamX = camX;
       const startCamY = camY;
       const rect = svg.getBoundingClientRect();
-      const unitX = layout.width / zoom / Math.max(1, rect.width);
-      const unitY = layout.height / zoom / Math.max(1, rect.height);
+      const ctm = svg.getScreenCTM();
+      const unitX = ctm ? 1 / ctm.a : layout.width / zoom / Math.max(1, rect.width);
+      const unitY = ctm ? 1 / ctm.d : layout.height / zoom / Math.max(1, rect.height);
       const ownerId = hitOwnerId(hit);
       const dragged =
         ownerId && dragKind?.startsWith('move-') && hit?.kind !== 'line'
@@ -1134,12 +1190,12 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
               body.setAttribute('height', String(Math.max(14, base.h + mapDy)));
             }
           }
-          liveShiftConnectors(connectorLinks, mapDy);
+          liveShiftConnectors(connectorLinks, 0, mapDy);
           return;
         }
         if (dragged) {
           dragged.setAttribute('transform', `translate(0 ${mapDy})`);
-          liveShiftConnectors(connectorLinks, mapDy);
+          liveShiftConnectors(connectorLinks, 0, mapDy);
           return;
         }
         stage.classList.add('is-panning');
@@ -1213,6 +1269,29 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp, { once: true });
     });
+
+    svg.addEventListener('pointerdown', (event) => {
+      if (event.pointerType !== 'touch') return;
+      activeTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (activeTouches.size === 2) {
+        pinchStartDist = touchDistance();
+        pinchStartZoom = zoom;
+      }
+    });
+    svg.addEventListener('pointermove', (event) => {
+      if (!activeTouches.has(event.pointerId)) return;
+      activeTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (activeTouches.size === 2 && pinchStartDist > 0) {
+        event.preventDefault();
+        setZoomAt(pinchStartZoom * (touchDistance() / pinchStartDist), touchMidpointMap());
+      }
+    });
+    for (const type of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
+      svg.addEventListener(type, (event) => {
+        activeTouches.delete(event.pointerId);
+        if (activeTouches.size < 2) pinchStartDist = 0;
+      });
+    }
 
     canvas.append(body);
     if (toast) canvas.append(el('p', 'canvas-status', toast));
@@ -1410,7 +1489,6 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     selectedId = draft.id;
     mode = 'edit';
     joining = false;
-    joinFrom = null;
     void persist().then(() => paint());
   }
 

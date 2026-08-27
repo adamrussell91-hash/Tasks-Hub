@@ -2839,6 +2839,17 @@ html.is-map-fullscreen .map-page .map-preview {
   stroke: var(--wave);
 }
 
+.map-station.is-snap-target .map-station__body,
+.map-tick.is-snap-target .map-tick__mark,
+.map-line-group.is-snap-target .map-line-group--track {
+  stroke: var(--wave);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--wave) 55%, transparent));
+}
+
+.map-connector-preview {
+  pointer-events: none;
+}
+
 .map-preview {
   margin-top: var(--space-4);
 }
