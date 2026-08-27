@@ -1,3 +1,5 @@
+import { attachVisualViewportInset, detachVisualViewportInset } from '@/chat/visual-viewport';
+
 export type ChatPanelController = {
   open: (slot: HTMLElement, accentColour?: string) => void;
   close: () => void;
@@ -18,10 +20,12 @@ export function createChatPanelController({
     panel.hidden = false;
     panel.dataset.panelMode = 'overlay';
     if (accentColour) panel.style.setProperty('--agent-accent', accentColour);
+    attachVisualViewportInset();
     openSlot = slot;
   }
 
   function close(): void {
+    detachVisualViewportInset();
     if (!openSlot) {
       if (panel.dataset.panelMode === 'overlay') {
         homeSlot.append(panel);

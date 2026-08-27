@@ -97,7 +97,11 @@ export function buildChatView(): HTMLElement {
   const neu = el('button', 'btn btn--ghost chat-new-button', 'New chat');
   neu.type = 'button';
   neu.id = 'chat-new';
-  heading.append(skip, neu);
+  const close = el('button', 'btn btn--ghost chat-close-button', 'Close');
+  close.type = 'button';
+  close.id = 'chat-close';
+  close.setAttribute('aria-label', 'Close chat');
+  heading.append(skip, neu, close);
   view.append(heading);
 
   const picker = el('div', 'agent-picker');
