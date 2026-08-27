@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Task } from '@/schemas/task';
 import { columnForTask, statusForColumn } from '@/domain/board';
-import { DRAG_THRESHOLD, dragThresholdFor, initBoard } from '@/views/sprint-board';
+import { DRAG_THRESHOLD, boardPointerDragEnabled, dragThresholdFor, initBoard } from '@/views/sprint-board';
 
 const baseTask = (partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   schema_version: 1,
@@ -115,6 +115,24 @@ describe('sprint-board engine', () => {
   it('gives fingers a wider lift than a mouse so a tap can expand', () => {
     expect(dragThresholdFor({ pointerType: 'mouse' })).toBe(DRAG_THRESHOLD);
     expect(dragThresholdFor({ pointerType: 'touch' })).toBeGreaterThan(DRAG_THRESHOLD);
+  });
+
+  it('disables pointer drag for touch and pen', () => {
+    expect(boardPointerDragEnabled({ pointerType: 'mouse' })).toBe(true);
+    expect(boardPointerDragEnabled({ pointerType: 'touch' })).toBe(false);
+    expect(boardPointerDragEnabled({ pointerType: 'pen' })).toBe(false);
+  });
+
+  it('does not start a touch drag on pointerdown', () => {
+    const { root, todoCard } = mountMiniBoard();
+    initBoard(root);
+    todoCard.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, clientX: 20, clientY: 20, button: 0, pointerType: 'touch' })
+    );
+    document.dispatchEvent(
+      new PointerEvent('pointermove', { bubbles: true, clientX: 80, clientY: 80, pointerType: 'touch' })
+    );
+    expect(todoCard.classList.contains('dragging')).toBe(false);
   });
 
   afterEach(() => {

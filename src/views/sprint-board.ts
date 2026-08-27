@@ -8,6 +8,12 @@ export function dragThresholdFor(event: Pick<PointerEvent, 'pointerType'>): numb
     : DRAG_THRESHOLD;
 }
 
+/** Touch uses move pills and column tabs — pointer drag fights scrolling and taps. */
+export function boardPointerDragEnabled(event: Pick<PointerEvent, 'pointerType'>): boolean {
+  if (event.pointerType === 'touch' || event.pointerType === 'pen') return false;
+  return true;
+}
+
 export type BoardMoveDetail = {
   id: string;
   column: string;
@@ -291,6 +297,7 @@ export function initBoard(root: HTMLElement, options: InitBoardOptions = {}): ()
 
   function onPointerDown(event: PointerEvent): void {
     if (event.button !== undefined && event.button !== 0) return;
+    if (!boardPointerDragEnabled(event)) return;
     if (isInteractive(event.target)) return;
     const card = (event.target as Element | null)?.closest<HTMLElement>('.card');
     if (!card || !board.contains(card) || card.classList.contains('kbd-lifted')) return;

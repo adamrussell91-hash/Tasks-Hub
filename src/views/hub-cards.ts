@@ -98,6 +98,14 @@ function isInteractive(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest('button, a, input, textarea, select, label'));
 }
 
+function boardCardInteractive(target: EventTarget | null): boolean {
+  return (
+    isInteractive(target) ||
+    (target instanceof Element &&
+      Boolean(target.closest('.board-move-pills, .card-menu, .card-menu__panel')))
+  );
+}
+
 function openTaskPage(task: Task, handlers: TaskCardHandlers): void {
   if (handlers.onOpenPage) handlers.onOpenPage(task);
   else location.hash = taskPageHash(task.id);
@@ -200,6 +208,11 @@ export function renderTaskMicroCard(task: Task, handlers: TaskCardHandlers = {})
   if (due) meta.append(due);
   meta.append(el('span', 'hub-row__updated', formatRelativeUpdated(task.updated_at)));
   foot.append(meta);
+  const movePills = renderBoardMovePills(task, handlers);
+  if (movePills) {
+    movePills.classList.add('board-move-pills--micro');
+    foot.append(movePills);
+  }
   row.append(title, chips, foot);
   attachCardMenu(row, `${task.title} card menu`, taskMenuItems(task, handlers));
   return row;
@@ -382,7 +395,7 @@ export function mountTaskCard(
     slot.dataset.status = task.status;
     slot.tabIndex = 0;
     slot.setAttribute('role', 'button');
-    slot.setAttribute('aria-roledescription', 'Draggable task card');
+    slot.setAttribute('aria-roledescription', 'Task card');
   }
   slot.style.viewTransitionName = cardTransitionName(task.id);
   const guard = { current: false };
@@ -410,25 +423,28 @@ export function mountTaskCard(
       expanded ? renderTaskExpandedCard(task, cardHandlers()) : renderTaskMicroCard(task, cardHandlers())
     );
     slot.dataset.state = expanded ? 'expanded' : 'compact';
+    if (asListItem) {
+      slot.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      slot.setAttribute('aria-label', `${task.title} task card`);
+    }
     const trigger = slot.querySelector<HTMLElement>(expanded ? '.hub-card' : '.hub-row');
     if (!asListItem && trigger && !expanded) {
       trigger.setAttribute('role', 'button');
       trigger.tabIndex = 0;
       trigger.setAttribute('aria-expanded', 'false');
       trigger.setAttribute('aria-label', `Expand ${task.title} task card`);
-    }
-    trigger?.addEventListener('click', (event) => {
-      if (isInteractive(event.target)) return;
-      toggle();
-    });
-    trigger?.addEventListener('keydown', (event) => {
-      if (asListItem) return;
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        if (isInteractive(event.target)) return;
+      trigger.addEventListener('click', (event) => {
+        if (boardCardInteractive(event.target)) return;
         toggle();
-      }
-    });
+      });
+      trigger.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (boardCardInteractive(event.target)) return;
+          toggle();
+        }
+      });
+    }
   }
 
   function toggle(): void {
@@ -436,6 +452,13 @@ export function mountTaskCard(
       expanded = !expanded;
       paint();
     }, guard);
+  }
+
+  if (asListItem) {
+    slot.addEventListener('click', (event) => {
+      if (boardCardInteractive(event.target)) return;
+      toggle();
+    });
   }
 
   host.append(slot);

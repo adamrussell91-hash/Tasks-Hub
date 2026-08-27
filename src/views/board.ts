@@ -27,6 +27,7 @@ let boardProjectFilter: string | 'all' = 'all';
 let boardDomainFilter: TaskDomain | 'all' = 'all';
 let teardownBoard: (() => void) | null = null;
 let teardownColumnNav: (() => void) | null = null;
+let showBoardColumn: ((colId: BoardColumnId) => void) | null = null;
 
 function boardLedeSuffix(): string {
   const coarse =
@@ -122,6 +123,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   teardownBoard = null;
   teardownColumnNav?.();
   teardownColumnNav = null;
+  showBoardColumn = null;
   if (!canvas.querySelector('.board')) {
     canvas.replaceChildren(el('p', 'canvas-status', 'Loading dashboard…'));
   }
@@ -250,6 +252,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     const hint = list.querySelector('.empty-hint');
     if (hint) list.insertBefore(card, hint);
     syncChrome();
+    showBoardColumn?.(column);
   }
 
   function dropBoardTask(task: Task): void {
@@ -323,7 +326,9 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   canvas.append(boardSection);
   syncChrome();
 
-  teardownColumnNav = initBoardColumnNav(board, columnNav);
+  const columnNavHandle = initBoardColumnNav(board, columnNav);
+  showBoardColumn = columnNavHandle.showColumn;
+  teardownColumnNav = columnNavHandle.teardown;
   teardownBoard = initBoard(board, {
     onCardMoved: (detail) => persistMove(detail, byId, confirmHost, () => void renderBoardView(canvas))
   });
