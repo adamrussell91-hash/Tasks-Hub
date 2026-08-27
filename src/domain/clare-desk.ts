@@ -12,7 +12,16 @@ import {
 import { detectPinchPoints } from '@/domain/pinch';
 import { isBoardTask } from '@/domain/hierarchy';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
-import type { DumpItem } from '@/domain/clare-dump';
+import type { DumpItem, DumpKind } from '@/domain/clare-dump';
+import type { TaskPriority } from '@/schemas/task';
+
+/** Common shape shared by parser DumpItems and LLM-judged rows — the toolkits only need this much. */
+type SortableDumpLike = {
+  title: string;
+  kind: DumpKind;
+  due_date: string | null;
+  priority: TaskPriority;
+};
 
 export type ClareBriefingFlag = {
   kind: 'high-stakes' | 'pinch' | 'overdue' | 'stale';
@@ -338,7 +347,7 @@ function firstVerbCue(title: string): string {
   return `Put both hands on the thing that starts “${title}”. One object. No extra tabs.`;
 }
 
-export function buildShatterToolkit(item: DumpItem): ClareToolkitResult {
+export function buildShatterToolkit(item: Pick<DumpItem, 'title'>): ClareToolkitResult {
   const steps = [
     `Sit down with the materials for “${item.title}” in reach.`,
     'Write the next physical action in one line.',
@@ -352,7 +361,7 @@ export function buildShatterToolkit(item: DumpItem): ClareToolkitResult {
   };
 }
 
-export function buildTimeMapToolkit(item: DumpItem, proposedMinutes: number): ClareToolkitResult {
+export function buildTimeMapToolkit(item: Pick<DumpItem, 'title'>, proposedMinutes: number): ClareToolkitResult {
   const hidden = [
     'Find the files, login, or pile you always forget exists',
     'The first messy five minutes of actually looking at it',
@@ -366,14 +375,14 @@ export function buildTimeMapToolkit(item: DumpItem, proposedMinutes: number): Cl
   };
 }
 
-export function sortOpenLoops(items: DumpItem[]): {
-  now: DumpItem[];
-  later: DumpItem[];
-  trash: DumpItem[];
+export function sortOpenLoops<T extends SortableDumpLike>(items: T[]): {
+  now: T[];
+  later: T[];
+  trash: T[];
 } {
-  const now: DumpItem[] = [];
-  const later: DumpItem[] = [];
-  const trash: DumpItem[] = [];
+  const now: T[] = [];
+  const later: T[] = [];
+  const trash: T[] = [];
   for (const item of items) {
     if (item.kind === 'note' && !item.due_date && item.priority === 'low') {
       trash.push(item);
@@ -392,7 +401,7 @@ export function sortOpenLoops(items: DumpItem[]): {
   return { now, later, trash };
 }
 
-export function buildOpenLoopsToolkit(items: DumpItem[]): ClareToolkitResult {
+export function buildOpenLoopsToolkit<T extends SortableDumpLike>(items: T[]): ClareToolkitResult {
   const { now, later, trash } = sortOpenLoops(items);
   const lines = [
     `Now: ${now.length ? now.map((i) => i.title).join('; ') : 'nothing that actually needs you'}`,

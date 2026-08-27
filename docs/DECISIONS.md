@@ -18,6 +18,7 @@ Answers to Open Questions in `docs/specs/task-project-manager-hub-spec.md`.
 - Session cookies stay hub-local (`tasks_hub_session`).
 - Planned secret: `TASKS_HUB_SHARED_SECRET` for machine callers (Teaching/Life/Clare tools) once those call sites exist.
 - StressFlag routing writes Blobs records and optionally POSTs to Life Hub when that API exists.
+- **Life Hub context (implemented):** Tasks Hub reads `life-hub-data`'s `central-node.md` directly via the GitHub Contents API — same pattern Life Hub itself uses for its own data, not a new shared-secret handshake. `LIFE_HUB_DATA_TOKEN` is a fine-grained PAT scoped only to that repo, read-only. `src/domain/life-context.ts` extracts only Today's Status (minus its Health line), This Week, This Month, and Cross-Agent lines routed to/from Clare — the Constraints & Priorities and health-trajectory sections never leave the parser, by construction, not by prompt instruction. Feature is fully optional: absent the token, Clare runs exactly as before.
 
 ## Hosting
 

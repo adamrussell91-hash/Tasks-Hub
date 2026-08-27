@@ -40,6 +40,7 @@ import {
 } from '@/domain/blocked-since';
 import {
   assembleDumpResult,
+  assembleJudgedDumpResult,
   buildProposal,
   emptyCalibration,
   recordActualSample,
@@ -52,6 +53,12 @@ import {
   defaultClareProposalJudge,
   type ClareProposalJudge
 } from '@/ai/clare-proposal-judge';
+import { defaultLifeContextProvider } from '@/ai/life-hub-client';
+import { lifeContextToPromptBlock } from '@/domain/life-context';
+import {
+  defaultClareBriefingJudge,
+  type ClareBriefingJudge
+} from '@/ai/clare-briefing-judge';
 import { buildClareBriefing } from '@/domain/clare-desk';
 import { DEFAULT_STALL_WEEKS, findStallCandidates, outcomeProjectStatus } from '@/domain/stall';
 import { agentSlug, detectStressPatterns } from '@/domain/stress';
@@ -692,15 +699,17 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           protocolId: input.protocol_id
         });
         const judgment = await judge(digest);
-        const result = assembleDumpResult(
-          items,
-          frameworks,
-          () => (calibration.sample_count > 0 ? calibration : null),
-          input.protocol_id,
-          judgment
-        );
-        if (result.proposals[0]) {
-          return result.proposals[0];
+        if (judgment.ok) {
+          const result = assembleJudgedDumpResult(
+            judgment.items,
+            frameworks,
+            () => (calibration.sample_count > 0 ? calibration : null),
+            input.protocol_id,
+            judgment.voice
+          );
+          if (result.proposals[0]) {
+            return result.proposals[0];
+          }
         }
       }
       return buildProposal(
@@ -714,7 +723,34 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
     },
     async briefWithClare(input = {}) {
       const tasks = await this.listTasks();
-      return buildClareBriefing(tasks, input.protocol_id, input.now ?? new Date());
+      const facts = buildClareBriefing(tasks, input.protocol_id, input.now ?? new Date());
+      const judge: ClareBriefingJudge | null =
+        input.judge === undefined ? defaultClareBriefingJudge() : input.judge;
+      if (!judge) return facts;
+
+      const lifeContext =
+        input.lifeContext === undefined
+          ? await (defaultLifeContextProvider()?.() ?? Promise.resolve(null))
+          : input.lifeContext;
+
+      try {
+        const written = await judge({
+          protocol_id: facts.protocol_id,
+          facts,
+          life_context: lifeContextToPromptBlock(lifeContext)
+        });
+        if (!written.ok) return facts;
+        return {
+          ...facts,
+          lead: written.lead ?? facts.lead,
+          closer: written.closer ?? facts.closer,
+          flags: written.flags
+            ? facts.flags.map((flag, i) => ({ ...flag, text: written.flags![i] ?? flag.text }))
+            : facts.flags
+        };
+      } catch {
+        return facts;
+      }
     },
     async processDumpWithClare(input) {
       const now = input.now ?? new Date();
@@ -737,7 +773,12 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       };
       const judge: ClareProposalJudge | null =
         input.judge === undefined ? defaultClareProposalJudge() : input.judge;
+
       if (judge) {
+        const lifeContext =
+          input.lifeContext === undefined
+            ? await (defaultLifeContextProvider()?.() ?? Promise.resolve(null))
+            : input.lifeContext;
         const digest = buildClareDumpDigest({
           text: input.text,
           items,
@@ -747,16 +788,24 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           calibrations,
           preferredDomain: input.domain ?? 'teaching',
           protocolId: input.protocol_id,
-          now
+          now,
+          lifeContext
         });
-        const judgment = await judge(digest);
-        return assembleDumpResult(
-          items,
-          frameworks,
-          calibrationFor,
-          input.protocol_id,
-          judgment
-        );
+        try {
+          const judgment = await judge(digest);
+          if (judgment.ok) {
+            return assembleJudgedDumpResult(
+              judgment.items,
+              frameworks,
+              calibrationFor,
+              input.protocol_id,
+              judgment.voice
+            );
+          }
+        } catch {
+          // Model call failed outright — fall through to the offline parser below
+          // rather than silently dropping the dump.
+        }
       }
       return assembleDumpResult(items, frameworks, calibrationFor, input.protocol_id);
     },
