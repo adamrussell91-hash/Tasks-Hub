@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
+import { projectLifecycleMix } from '@/domain/projects-pulse';
 import { upcomingExcursionDates } from '@/domain/dashboard-overview';
 import { renderDashboardOverview } from '@/views/dashboard-overview';
+import { renderProjectStatusRing } from '@/views/project-status-ring';
 
 function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
   return {
@@ -108,8 +110,44 @@ describe('upcomingExcursionDates', () => {
   });
 });
 
+describe('renderProjectStatusRing', () => {
+  it('renders a compact ring with legend counts', () => {
+    const mix = projectLifecycleMix(
+      [
+        project({ id: 'p1', title: 'Live', status: 'active' }),
+        project({ id: 'p2', title: 'Planning', status: 'active', milestones: [] })
+      ],
+      [],
+      new Set(),
+      new Date('2026-08-27T12:00:00.000Z')
+    );
+    const ring = renderProjectStatusRing(mix, { size: 92, compact: true, href: '#/projects' });
+    expect(ring.querySelector('.project-status-ring__svg')).not.toBeNull();
+    expect(ring.querySelector('a[href="#/projects"]')).not.toBeNull();
+    expect(ring.querySelector('.project-status-ring__legend-row')).not.toBeNull();
+  });
+});
+
 describe('renderDashboardOverview', () => {
-  it('renders today, projects, and excursions tiles', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      media: '(max-width: 720px)',
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    } as unknown as MediaQueryList);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('renders today, projects ring, and excursions tiles', () => {
     const now = new Date('2026-08-27T12:00:00.000Z');
     const host = document.createElement('div');
     renderDashboardOverview(host, {
@@ -130,8 +168,40 @@ describe('renderDashboardOverview', () => {
 
     expect(host.querySelector('.dashboard-overview__lede')?.textContent).toContain('Focus:');
     expect(host.querySelector('[aria-label="Today"]')?.textContent).toContain('Mark essays');
+    expect(host.querySelector('[aria-label="Projects"] .project-status-ring')).not.toBeNull();
     expect(host.querySelector('[aria-label="Projects"]')?.textContent).toContain('MindWorks');
     expect(host.querySelector('[aria-label="Excursions"]')?.textContent).toContain('Permission note');
     expect(host.querySelector('.dashboard-overview__pressure')).not.toBeNull();
+  });
+
+  it('collapses and expands the overview panel on mobile', () => {
+    vi.mocked(window.matchMedia).mockReturnValue({
+      matches: true,
+      media: '(max-width: 720px)',
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    } as unknown as MediaQueryList);
+
+    const host = document.createElement('div');
+    renderDashboardOverview(host, {
+      now: new Date('2026-08-27T12:00:00.000Z'),
+      tasks: [task({ id: 't1', title: 'Mark essays' })],
+      projects: [project({ id: 'p1', title: 'MindWorks' })]
+    });
+
+    const panel = host.querySelector<HTMLElement>('.dashboard-overview__panel');
+    const peek = host.querySelector<HTMLElement>('.dashboard-overview__peek');
+    expect(host.dataset.open).toBe('false');
+    expect(panel?.hidden).toBe(true);
+    expect(peek?.hidden).toBe(false);
+
+    host.querySelector<HTMLButtonElement>('.dashboard-overview__toggle')?.click();
+    expect(host.dataset.open).toBe('true');
+    expect(panel?.hidden).toBe(false);
+    expect(sessionStorage.getItem('tasks-hub:dashboard-overview-open')).toBe('true');
   });
 });

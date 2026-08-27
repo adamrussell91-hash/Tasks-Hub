@@ -3789,8 +3789,51 @@ body.is-universe-fullscreen .page-header {
   margin-bottom: var(--space-6);
 }
 
-.dashboard-overview__lede {
+.dashboard-overview__shell {
+  display: grid;
+  gap: var(--space-2);
   margin-bottom: var(--space-4);
+}
+
+.dashboard-overview__toggle {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--shore);
+  border-radius: var(--radius-md);
+  background: var(--glass-1);
+  color: var(--depth);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.dashboard-overview__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dashboard-overview__toggle-icon {
+  transition: transform 0.18s ease;
+}
+
+.dashboard-overview[data-open='true'] .dashboard-overview__toggle-icon {
+  transform: rotate(180deg);
+}
+
+.dashboard-overview__peek {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.dashboard-overview__lede {
+  margin: 0;
 }
 
 .dashboard-overview__banner {
@@ -3828,6 +3871,18 @@ body.is-universe-fullscreen .page-header {
   padding: var(--space-1) var(--space-2);
 }
 
+.dashboard-overview__portfolio {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.dashboard-overview__portfolio .dashboard-overview__stat {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
 .dashboard-overview__stat {
   margin: 0;
   font-size: var(--text-sm);
@@ -3840,12 +3895,6 @@ body.is-universe-fullscreen .page-header {
   font-size: var(--text-sm);
   color: var(--pastel-peach-ink);
   line-height: 1.45;
-}
-
-.dashboard-overview__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }
 
 .dashboard-overview__list {
@@ -3903,9 +3952,109 @@ body.is-universe-fullscreen .page-header {
   margin: 0;
 }
 
+.project-status-ring {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+}
+
+.project-status-ring__figure {
+  display: block;
+  flex: none;
+  line-height: 0;
+}
+
+.project-status-ring__figure--link {
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+
+.project-status-ring__figure--link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.project-status-ring__svg {
+  display: block;
+}
+
+.project-status-ring__total {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  fill: var(--depth);
+  font-family: var(--font-ui);
+}
+
+.project-status-ring--compact .project-status-ring__total {
+  font-size: var(--text-md);
+}
+
+.project-status-ring__caption {
+  font-size: var(--text-2xs);
+  fill: var(--muted);
+  font-family: var(--font-ui);
+}
+
+.project-status-ring__legend {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.project-status-ring__legend-row {
+  display: grid;
+  grid-template-columns: 0.55rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-2xs);
+  color: var(--muted);
+}
+
+.project-status-ring__swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.project-status-ring__legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-status-ring__legend-count {
+  font-weight: var(--weight-medium);
+  color: var(--depth);
+}
+
 @media (max-width: 960px) {
   .dashboard-overview__grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-overview__toggle {
+    display: inline-flex;
+  }
+
+  .dashboard-overview__shell .dashboard-overview__lede {
+    display: none;
+  }
+
+  .dashboard-overview[data-open='true'] .dashboard-overview__shell .dashboard-overview__lede {
+    display: block;
+  }
+
+  .dashboard-overview__peek {
+    display: block;
+  }
+}
+
+@media (min-width: 721px) {
+  .dashboard-overview__peek {
+    display: none;
   }
 }
 

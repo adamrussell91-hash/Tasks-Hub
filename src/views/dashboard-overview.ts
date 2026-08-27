@@ -19,6 +19,7 @@ import {
 } from '@/domain/projects-pulse';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderPressureStrips } from '@/views/pinch-strip';
+import { renderProjectStatusRing } from '@/views/project-status-ring';
 import { el } from '@/views/hub-kit';
 
 export type DashboardOverviewOptions = {
@@ -28,7 +29,27 @@ export type DashboardOverviewOptions = {
   onChanged?: () => void;
 };
 
+const OVERVIEW_OPEN_KEY = 'tasks-hub:dashboard-overview-open';
+const MOBILE_OVERVIEW_QUERY = '(max-width: 720px)';
+
 let tensionDismissed = false;
+
+function isMobileOverview(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia(MOBILE_OVERVIEW_QUERY).matches;
+}
+
+function readOverviewOpen(): boolean {
+  if (typeof window === 'undefined') return true;
+  if (!isMobileOverview()) return true;
+  const stored = sessionStorage.getItem(OVERVIEW_OPEN_KEY);
+  if (stored !== null) return stored === 'true';
+  return false;
+}
+
+function writeOverviewOpen(open: boolean): void {
+  if (!isMobileOverview()) return;
+  sessionStorage.setItem(OVERVIEW_OPEN_KEY, open ? 'true' : 'false');
+}
 
 function viewLink(href: string, label: string): HTMLAnchorElement {
   const link = document.createElement('a');
@@ -130,21 +151,18 @@ function renderProjectsCard(projects: Project[], tasks: Task[], now: Date): HTML
   head.append(viewLink('#/projects', 'Open Projects'));
   card.append(head);
 
-  const load = el('p', 'dashboard-overview__stat');
   const over = Math.max(0, running - SUSTAINABLE_RUNNING_LOAD);
+  const load = el('p', 'dashboard-overview__stat');
   load.textContent = over
     ? `${running} running — ${over} over the ~${SUSTAINABLE_RUNNING_LOAD} sustainable load.`
     : `${running} running · sustainable load ~${SUSTAINABLE_RUNNING_LOAD}.`;
-  card.append(load);
 
-  const activeMix = mix.filter((slice) => slice.count > 0 && slice.id !== 'completed');
-  if (activeMix.length) {
-    const chips = el('div', 'dashboard-overview__chips');
-    for (const slice of activeMix) {
-      chips.append(el('span', 'chip chip--muted', `${slice.count} ${slice.label.toLowerCase()}`));
-    }
-    card.append(chips);
-  }
+  const portfolio = el('div', 'dashboard-overview__portfolio');
+  portfolio.append(
+    renderProjectStatusRing(mix, { size: 92, compact: true, href: '#/projects' }),
+    load
+  );
+  card.append(portfolio);
 
   if (!cards.length) {
     card.append(el('p', 'empty-state empty-state--compact', 'No live projects yet.'));
@@ -219,20 +237,80 @@ function renderExcursionsCard(projects: Project[], now: Date): HTMLElement {
   return card;
 }
 
+function overviewPeek(options: DashboardOverviewOptions, now: Date): string {
+  const { tasks, projects } = options;
+  const overdue = overdueTasks(tasks, now).length;
+  const today = adaptiveTodayTasks(tasks, now).length;
+  const stallIds = new Set(findStallCandidates(projects, tasks, now).map((c) => c.project.id));
+  const running = runningProjectCount(projectLifecycleMix(projects, tasks, stallIds, now));
+  const excursions = projects.filter((p) => p.type === 'excursion' && p.status !== 'archived_dead').length;
+  const parts = [
+    overdue ? `${overdue} overdue` : null,
+    today ? `${today} due today` : null,
+    running ? `${running} running` : null,
+    excursions ? `${excursions} excursion${excursions === 1 ? '' : 's'}` : null
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : 'All clear for now';
+}
+
+function setOverviewOpen(root: HTMLElement, open: boolean): void {
+  root.dataset.open = open ? 'true' : 'false';
+  const toggle = root.querySelector<HTMLButtonElement>('.dashboard-overview__toggle');
+  const panel = root.querySelector<HTMLElement>('.dashboard-overview__panel');
+  const peek = root.querySelector<HTMLElement>('.dashboard-overview__peek');
+  toggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (panel) panel.hidden = !open;
+  if (peek) peek.hidden = open;
+}
+
 /** Overview band for the home dashboard — today, projects, excursions, pressure. */
 export function renderDashboardOverview(host: HTMLElement, options: DashboardOverviewOptions): void {
   const now = options.now ?? new Date();
   const { tasks, projects, onChanged } = options;
   host.replaceChildren();
+  host.className = 'dashboard-overview';
+
+  const open = readOverviewOpen();
+  host.dataset.open = open ? 'true' : 'false';
 
   const prefs = preferredDomains(now);
-  host.append(
+  const shell = el('div', 'dashboard-overview__shell');
+  const toggle = el('button', 'dashboard-overview__toggle');
+  toggle.type = 'button';
+  toggle.setAttribute('aria-controls', 'dashboard-overview-panel');
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.append(
+    el('span', 'dashboard-overview__toggle-label', 'Overview'),
+    el('span', 'dashboard-overview__toggle-icon', '▾')
+  );
+  toggle.addEventListener('click', () => {
+    if (!isMobileOverview()) return;
+    const next = host.dataset.open !== 'true';
+    writeOverviewOpen(next);
+    setOverviewOpen(host, next);
+  });
+
+  const mq = window.matchMedia(MOBILE_OVERVIEW_QUERY);
+  const syncViewport = (): void => setOverviewOpen(host, readOverviewOpen());
+  mq.addEventListener('change', syncViewport);
+
+  const peek = el('p', 'dashboard-overview__peek', overviewPeek(options, now));
+  peek.hidden = open;
+
+  shell.append(
+    toggle,
     el(
       'p',
       'view-lede dashboard-overview__lede',
       `Focus: ${prefs.join(', ')} · ${formatDisplayDate(now)}`
-    )
+    ),
+    peek
   );
+  host.append(shell);
+
+  const panel = el('div', 'dashboard-overview__panel');
+  panel.id = 'dashboard-overview-panel';
+  panel.hidden = !open;
 
   const stallIds = new Set(findStallCandidates(projects, tasks, now).map((c) => c.project.id));
   const pulseCards = projects
@@ -240,7 +318,7 @@ export function renderDashboardOverview(host: HTMLElement, options: DashboardOve
     .map((p) => buildProjectPulseCard(p, tasks, stallIds, now));
   const tension = tensionDismissed ? null : findPortfolioTension(pulseCards, tasks, now);
   if (tension) {
-    host.append(
+    panel.append(
       renderTensionBanner(tension.message, () => {
         tensionDismissed = true;
         renderDashboardOverview(host, options);
@@ -254,9 +332,11 @@ export function renderDashboardOverview(host: HTMLElement, options: DashboardOve
     renderProjectsCard(projects, tasks, now),
     renderExcursionsCard(projects, now)
   );
-  host.append(grid);
+  panel.append(grid);
 
   const pressure = el('div', 'dashboard-overview__pressure');
   renderPressureStrips(pressure, tasks, now, () => onChanged?.());
-  host.append(pressure);
+  panel.append(pressure);
+
+  host.append(panel);
 }
