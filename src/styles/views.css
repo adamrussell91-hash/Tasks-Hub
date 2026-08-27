@@ -3845,6 +3845,281 @@ body.is-universe-fullscreen .page-header {
   }
 }
 
+/* Home dashboard overview — tiles above the Kanban board */
+
+.dashboard-overview {
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-overview__shell {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-overview__toggle {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--shore);
+  border-radius: var(--radius-md);
+  background: var(--glass-1);
+  color: var(--depth);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.dashboard-overview__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dashboard-overview__toggle-icon {
+  transition: transform 0.18s ease;
+}
+
+.dashboard-overview[data-open='true'] .dashboard-overview__toggle-icon {
+  transform: rotate(180deg);
+}
+
+.dashboard-overview__peek {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.dashboard-overview__lede {
+  margin: 0;
+}
+
+.dashboard-overview__banner {
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-overview__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 100%;
+}
+
+.dashboard-overview__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.dashboard-overview__head .hub-card__eyebrow {
+  margin: 0;
+}
+
+.dashboard-overview__link {
+  flex: none;
+  font-size: var(--text-2xs);
+  padding: var(--space-1) var(--space-2);
+}
+
+.dashboard-overview__portfolio {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.dashboard-overview__portfolio .dashboard-overview__stat {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.dashboard-overview__stat {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.dashboard-overview__alert {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--pastel-peach-ink);
+  line-height: 1.45;
+}
+
+.dashboard-overview__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.dashboard-overview__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--glass-1);
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+.dashboard-overview__item:hover,
+.dashboard-overview__item:focus-visible {
+  background: var(--glass-2);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dashboard-overview__item-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--depth);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-overview__chip {
+  flex: none;
+}
+
+.dashboard-overview__pressure {
+  margin-top: var(--space-2);
+}
+
+.dashboard-board {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.dashboard-board .section-title {
+  margin: 0;
+}
+
+.project-status-ring {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+}
+
+.project-status-ring__figure {
+  display: block;
+  flex: none;
+  line-height: 0;
+}
+
+.project-status-ring__figure--link {
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+
+.project-status-ring__figure--link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.project-status-ring__svg {
+  display: block;
+}
+
+.project-status-ring__total {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  fill: var(--depth);
+  font-family: var(--font-ui);
+}
+
+.project-status-ring--compact .project-status-ring__total {
+  font-size: var(--text-md);
+}
+
+.project-status-ring__caption {
+  font-size: var(--text-2xs);
+  fill: var(--muted);
+  font-family: var(--font-ui);
+}
+
+.project-status-ring__legend {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.project-status-ring__legend-row {
+  display: grid;
+  grid-template-columns: 0.55rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-2xs);
+  color: var(--muted);
+}
+
+.project-status-ring__swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.project-status-ring__legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-status-ring__legend-count {
+  font-weight: var(--weight-medium);
+  color: var(--depth);
+}
+
+@media (max-width: 960px) {
+  .dashboard-overview__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-overview__toggle {
+    display: inline-flex;
+  }
+
+  .dashboard-overview__shell .dashboard-overview__lede {
+    display: none;
+  }
+
+  .dashboard-overview[data-open='true'] .dashboard-overview__shell .dashboard-overview__lede {
+    display: block;
+  }
+
+  .dashboard-overview__peek {
+    display: block;
+  }
+}
+
+@media (min-width: 721px) {
+  .dashboard-overview__peek {
+    display: none;
+  }
+}
+
 /* Projects portfolio — pulse, status mix, lanes */
 
 .projects-pulse {

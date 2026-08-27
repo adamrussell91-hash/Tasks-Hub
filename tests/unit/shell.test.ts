@@ -27,8 +27,8 @@ describe('hub shell chrome', () => {
 
     renderPageHeader(refs, {
       eyebrow: 'Home',
-      title: 'Board',
-      supporting: 'Everything on your plate, grouped by status.'
+      title: 'Dashboard',
+      supporting: 'Today, projects, excursions — then your board grouped by status.'
     });
 
     const labels = [...refs.pageHeader.querySelectorAll('.hub-utilities .hub-icon-btn')].map(
@@ -56,7 +56,7 @@ describe('hub shell chrome', () => {
 
     renderPageHeader(refs, {
       eyebrow: 'Home',
-      title: 'Board',
+      title: 'Dashboard',
       actions: extra
     });
 
@@ -79,7 +79,7 @@ describe('hub shell chrome', () => {
 
     const links = [...refs.railNav.querySelectorAll('.hub-rail__link')];
     expect(links.some((link) => link.textContent === 'Orbit')).toBe(false);
-    expect(links.some((link) => link.textContent === 'Board')).toBe(true);
+    expect(links.some((link) => link.textContent === 'Dashboard')).toBe(true);
     expect(links.some((link) => link.textContent === 'Programs')).toBe(true);
     expect(links.some((link) => link.textContent === 'Chat')).toBe(true);
     expect(links.some((link) => link.textContent === 'Clare')).toBe(false);

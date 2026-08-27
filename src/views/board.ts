@@ -20,6 +20,7 @@ import {
 } from '@/views/board-column-nav';
 import { deleteTaskNow } from '@/views/card-actions';
 import { mountTaskCard, type TaskCardHandlers } from '@/views/hub-cards';
+import { renderDashboardOverview } from '@/views/dashboard-overview';
 
 /** Session-scoped project / domain filters for Kanban. */
 let boardProjectFilter: string | 'all' = 'all';
@@ -122,7 +123,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   teardownColumnNav?.();
   teardownColumnNav = null;
   if (!canvas.querySelector('.board')) {
-    canvas.replaceChildren(el('p', 'canvas-status', 'Loading board…'));
+    canvas.replaceChildren(el('p', 'canvas-status', 'Loading dashboard…'));
   }
   let tasks: Awaited<ReturnType<typeof tasksApi.listTasks>>;
   let projects: Awaited<ReturnType<typeof tasksApi.listProjects>>;
@@ -130,7 +131,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
   } catch (err) {
     canvas.replaceChildren(
-      el('p', 'empty-state', err instanceof Error ? err.message : 'Could not load board')
+      el('p', 'empty-state', err instanceof Error ? err.message : 'Could not load dashboard')
     );
     const retry = el('button', 'btn btn--secondary', 'Retry');
     retry.type = 'button';
@@ -149,8 +150,19 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   }
 
   canvas.replaceChildren();
+
+  const overviewHost = el('div', 'dashboard-overview');
+  renderDashboardOverview(overviewHost, {
+    tasks,
+    projects,
+    onChanged: () => void renderBoardView(canvas)
+  });
+  canvas.append(overviewHost);
+
+  const boardSection = el('section', 'dashboard-board');
+  boardSection.append(el('h2', 'section-title', 'Board'));
   const lede = el('p', 'view-lede');
-  canvas.append(lede);
+  boardSection.append(lede);
 
   const filterRow = createHubToolbar('board-filter');
   const scope = createHubFilter({
@@ -179,7 +191,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     }
   });
   filterRow.append(scope.el, domain.el);
-  canvas.append(filterRow);
+  boardSection.append(filterRow);
 
   const confirmHost = el('div', 'board-confirm');
 
@@ -201,7 +213,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   function syncChrome(): void {
     lede.textContent = `${openTasks(scoped()).length} open in scope · ${boardLedeSuffix()}.`;
     updateBoardCounts(board);
-    const nav = canvas.querySelector<HTMLElement>('.board-col-nav');
+    const nav = boardSection.querySelector<HTMLElement>('.board-col-nav');
     if (nav) syncBoardColumnNavCounts(nav, board);
   }
 
@@ -253,12 +265,12 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     deleteTaskNow(task, () => undefined, confirmHost);
   }
 
-  canvas.append(
+  boardSection.append(
     renderQuickAdd((created) => {
       upsertTask(created);
     }, boardProjectFilter === 'all' ? null : boardProjectFilter)
   );
-  canvas.append(confirmHost);
+  boardSection.append(confirmHost);
 
   for (const col of BOARD_COLUMNS) {
     const section = el('section', 'column board-col');
@@ -307,7 +319,8 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   updateBoardCounts(board);
   const columnNav = renderBoardColumnNav(board);
   syncBoardColumnNavCounts(columnNav, board);
-  canvas.append(columnNav, board);
+  boardSection.append(columnNav, board);
+  canvas.append(boardSection);
   syncChrome();
 
   teardownColumnNav = initBoardColumnNav(board, columnNav);

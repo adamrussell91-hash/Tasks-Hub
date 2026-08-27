@@ -60,8 +60,8 @@ import { mapsOrSeed } from '@/domain/maps';
 const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
   board: {
     eyebrow: 'Home',
-    title: 'Board',
-    supporting: 'Everything on your plate, grouped by status.'
+    title: 'Dashboard',
+    supporting: 'Today, projects, excursions — then your board grouped by status.'
   },
   goals: {
     eyebrow: 'Plan',
@@ -183,7 +183,7 @@ function renderNotFound(canvas: HTMLElement, hash: string): void {
   const home = document.createElement('button');
   home.type = 'button';
   home.className = 'btn btn--primary';
-  home.textContent = 'Back to Board';
+  home.textContent = 'Back to Dashboard';
   home.addEventListener('click', () => {
     location.hash = '#/board';
   });
