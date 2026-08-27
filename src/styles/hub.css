@@ -47,6 +47,8 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     min-height: 100dvh;
+    max-width: 100%;
+    overflow-x: clip;
   }
 
   .hub-rail {
@@ -55,6 +57,9 @@
     position: sticky;
     top: 0;
     z-index: 30;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     padding-top: env(safe-area-inset-top, 0px);
   }
 
@@ -68,6 +73,8 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     gap: var(--space-1);
+    max-width: 100%;
+    min-width: 0;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
   }
@@ -80,17 +87,17 @@
   }
 
   .hub-canvas {
-    padding: var(--space-4);
-    padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
     min-width: 0;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
+    padding: var(--space-4);
+    padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
   }
 
   .hub-canvas__body {
     min-width: 0;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   .page-header {
@@ -98,13 +105,16 @@
     align-items: flex-start;
     gap: var(--space-3);
     margin-bottom: var(--space-4);
-  }
-
-  .page-header__title {
-    font-size: var(--text-xl);
+    min-width: 0;
+    max-width: 100%;
   }
 
   .page-header__supporting {
     font-size: var(--text-base);
+    overflow-wrap: anywhere;
+  }
+
+  .page-header__title {
+    font-size: var(--text-xl);
   }
 }
