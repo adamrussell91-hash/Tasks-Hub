@@ -76,6 +76,76 @@ function includesAny(hay: string, needles: string[]): boolean {
   return needles.some((n) => hay.includes(n));
 }
 
+/**
+ * Verbs that mark the start of a new imperative clause. Used to split
+ * comma-spliced brain dumps ("mark X, check Y, give Z") into separate
+ * items without breaking genuine comma lists inside one task ("buy milk,
+ * eggs, bread").
+ */
+const CLAUSE_VERBS = [
+  'sort out',
+  'work on',
+  'deal with',
+  'look at',
+  'follow up',
+  'figure out',
+  'set up',
+  'print out',
+  'drop off',
+  'pick up',
+  'mark',
+  'check',
+  'give',
+  'send',
+  'call',
+  'email',
+  'book',
+  'sort',
+  'review',
+  'submit',
+  'chase',
+  'confirm',
+  'buy',
+  'pay',
+  'print',
+  'laminate',
+  'return',
+  'collect',
+  'deliver',
+  'order',
+  'follow',
+  'meet',
+  'sign',
+  'upload',
+  'download',
+  'share',
+  'finish',
+  'complete',
+  'prep',
+  'prepare',
+  'write',
+  'plan',
+  'organise',
+  'organize',
+  'schedule',
+  'update',
+  'fix',
+  'handle',
+  'tackle',
+  'reply',
+  'draft',
+  'clean',
+  'tidy',
+  'pack',
+  'file'
+];
+
+const CLAUSE_SPLIT = new RegExp(`,\\s+(?=(?:${CLAUSE_VERBS.join('|')})\\b)`, 'i');
+
+function splitClauses(line: string): string[] {
+  return line.split(CLAUSE_SPLIT);
+}
+
 function stripListPrefix(line: string): string {
   return line
     .replace(/^[-*•]\s+/, '')
@@ -240,6 +310,7 @@ export function splitDumpLines(text: string): string[] {
   if (!raw) return [];
   const chunks = raw
     .split(/\n+|(?:^|\s)(?:[-*•]|\d+[.)])\s+|;\s+|\s+and then\s+|,\s+(?:also|then|plus)\s+/i)
+    .flatMap((line) => splitClauses(line))
     .map((line) => stripListPrefix(line))
     .filter(Boolean);
   const unique: string[] = [];

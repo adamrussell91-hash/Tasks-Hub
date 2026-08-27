@@ -80,6 +80,22 @@ describe('brain dump parsing', () => {
     expect(items[0]!.title).toBe('Sort out appraisal goal');
   });
 
+  it('splits a comma-spliced dump into separate tasks instead of one giant title', () => {
+    const items = parseBrainDump(
+      'I have to sort out my appraisal goal, mark the last mod b paper, check my common module year 12 marks, give the craft materials to that tournament of minds team',
+      { now: new Date(2026, 7, 27), preferredDomain: 'teaching' }
+    );
+    expect(items).toHaveLength(4);
+    expect(items.map((i) => i.title)).toEqual([
+      'Sort out appraisal goal',
+      'Mark the last mod b paper',
+      'Check my common module year 12 marks',
+      'Give the craft materials to that tournament of minds team'
+    ]);
+    const result = assembleDumpResult(items, frameworks, () => null);
+    expect(result.proposals).toHaveLength(4);
+  });
+
   it('does not propose notes or existing titles', () => {
     const items = parseBrainDump('Finish lesson pack for Year 12\nremember: bring the USB', {
       now: new Date(2026, 7, 25),
