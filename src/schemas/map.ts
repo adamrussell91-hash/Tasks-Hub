@@ -3,6 +3,10 @@ import { schemaVersion } from './task';
 
 export const LineStrokeSchema = z.enum(['solid', 'dotted']);
 export const YearTrackSchema = z.enum(['junior', 'rozelle', 'senior']);
+export const ExtraYearTrackSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1)
+});
 export const MapPlanningSchema = z.enum(['planned', 'active']);
 export const MapColorTokenSchema = z.enum([
   'blue',
@@ -42,7 +46,11 @@ export const LineSchema = z.object({
   points: z
     .array(PointSchema)
     .min(2)
-    .refine(isOrthogonal, { message: 'Line points must be orthogonal' })
+    .refine(isOrthogonal, { message: 'Line points must be orthogonal' }),
+  /** Standard year lines on this strand (Junior / Rozelle / Senior). Defaults to all three. */
+  year_tracks: z.array(YearTrackSchema).min(1).optional(),
+  /** Extra year lines beyond the standard three, e.g. Middle or Prep. */
+  extra_tracks: z.array(ExtraYearTrackSchema).optional()
 });
 
 export const MapLinkSchema = z
@@ -59,7 +67,7 @@ export const StationSchema = z.object({
   label: z.string().min(1),
   y: z.number(),
   height: z.number().positive().default(88),
-  tracks: z.array(YearTrackSchema).min(1).default(['junior', 'rozelle', 'senior']),
+  tracks: z.array(z.string().min(1)).min(1).default(['junior', 'rozelle', 'senior']),
   in_stroke: LineStrokeSchema.default('solid'),
   out_stroke: LineStrokeSchema.default('solid'),
   starts_on: z.string().nullable().default(null),
@@ -73,7 +81,7 @@ export const TickAttachSchema = z.discriminatedUnion('kind', [
     kind: z.literal('line'),
     line_id: z.string().min(1),
     y: z.number(),
-    track: YearTrackSchema.optional()
+    track: z.string().min(1).optional()
   }),
   z.object({
     kind: z.literal('station'),
@@ -130,6 +138,7 @@ export const TransitMapUpdateSchema = TransitMapCreateSchema.partial();
 
 export type LineStroke = z.infer<typeof LineStrokeSchema>;
 export type YearTrack = z.infer<typeof YearTrackSchema>;
+export type ExtraYearTrack = z.infer<typeof ExtraYearTrackSchema>;
 export type MapPlanning = z.infer<typeof MapPlanningSchema>;
 export type MapColorToken = z.infer<typeof MapColorTokenSchema>;
 export type Point = z.infer<typeof PointSchema>;

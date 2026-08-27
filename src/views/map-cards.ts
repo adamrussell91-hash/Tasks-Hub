@@ -48,7 +48,7 @@ export type MapCardModel = {
   planning: MapPlanning;
   starts_on: string | null;
   ends_on: string | null;
-  tracks: YearTrack[];
+  tracks: string[];
   updated_at: string;
   line: MapLineMark | null;
   lines: MapLineMark[];
@@ -158,7 +158,10 @@ export function renderMapExpandedCard(
   const chips = el('div', 'hub-chips');
   if (model.line) chips.append(el('span', 'hub-chip', `${model.line.letter} · ${model.line.name}`));
   if (model.kind === 'station') {
-    for (const track of model.tracks) chips.append(el('span', 'hub-chip', YEAR_TRACK_LABELS[track]));
+    for (const track of model.tracks) {
+      const label = (YEAR_TRACK_LABELS as Record<string, string>)[track] ?? track;
+      chips.append(el('span', 'hub-chip', label));
+    }
   }
   if (model.linkedTitle) chips.append(el('span', 'hub-chip', model.linkedTitle));
   tags.append(chips);

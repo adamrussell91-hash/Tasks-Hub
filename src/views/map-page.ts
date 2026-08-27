@@ -1,4 +1,4 @@
-import type { MapStation, MapTick, TransitMap, YearTrack } from '@/schemas/map';
+import type { MapStation, MapTick, TransitMap } from '@/schemas/map';
 import type { Project } from '@/schemas/project';
 import { projectPageHash } from '@/domain/cards';
 import {
@@ -10,7 +10,7 @@ import {
   planMapItem,
   type MapItemKind
 } from '@/domain/maps-planning';
-import { applyDateSpanToStation, applyDateToTickAttach, YEAR_TRACKS, YEAR_TRACK_LABELS } from '@/domain/maps-layout';
+import { applyDateSpanToStation, applyDateToTickAttach, lineTrackDefs, type TrackDef } from '@/domain/maps-layout';
 import { formatRelativeUpdated } from '@/domain/cards';
 import { mapsOrSeed } from '@/domain/maps';
 import { renderLineRail, type MapCardModel } from '@/views/map-cards';
@@ -46,25 +46,25 @@ function titleInput(value: string, label: string): HTMLInputElement {
   return input;
 }
 
-function trackPicker(selected: YearTrack[]): { root: HTMLElement; value: () => YearTrack[] } {
+function trackPicker(selected: string[], available: TrackDef[]): { root: HTMLElement; value: () => string[] } {
   const root = el('div', 'map-tracks');
   root.setAttribute('role', 'group');
   root.setAttribute('aria-label', 'Year lines');
-  const boxes = YEAR_TRACKS.map((track) => {
+  const boxes = available.map((track) => {
     const label = el('label', 'map-tracks__item');
     const box = document.createElement('input');
     box.type = 'checkbox';
-    box.value = track;
-    box.checked = selected.includes(track);
-    label.append(box, document.createTextNode(YEAR_TRACK_LABELS[track]));
+    box.value = track.id;
+    box.checked = selected.includes(track.id);
+    label.append(box, document.createTextNode(track.label));
     root.append(label);
     return box;
   });
   return {
     root,
     value: () => {
-      const picked = boxes.filter((box) => box.checked).map((box) => box.value as YearTrack);
-      return picked.length ? picked : ['junior'];
+      const picked = boxes.filter((box) => box.checked).map((box) => box.value);
+      return picked.length ? picked : [available[0]?.id ?? 'junior'];
     }
   };
 }
@@ -225,7 +225,8 @@ export async function renderMapItemPage(canvas: HTMLElement, ref: MapItemPageRef
           }
         });
         fields.append(line.el);
-        const tracks = trackPicker(station.tracks);
+        const stationLine = current.lines.find((entry) => entry.id === station.line_id) ?? current.lines[0]!;
+        const tracks = trackPicker(station.tracks, lineTrackDefs(stationLine));
         tracks.root.addEventListener('change', () => {
           station.tracks = tracks.value();
           persist(true);
