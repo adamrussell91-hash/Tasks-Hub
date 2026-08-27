@@ -2033,8 +2033,13 @@
   }
 
   .chat-view[data-panel-mode='overlay'] .agent-picker__avatar {
-    width: 3rem;
-    height: 3rem;
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .chat-view[data-panel-mode='overlay'][data-chrome='engaged']:not([data-chrome-expanded='true'])
+    .agent-picker__avatar:not(.is-active) {
+    display: none;
   }
 
   .chat-view[data-panel-mode='overlay'] .chat-protocols {
@@ -2056,17 +2061,33 @@
     min-height: 0;
   }
 
+  /* Input full-width; Domain + Send on a row underneath — not beside the textarea. */
   .chat-view[data-panel-mode='overlay'] .chat-form {
     flex: 0 0 auto;
+    flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
+    gap: var(--space-2);
   }
 
   .chat-view[data-panel-mode='overlay'] .chat-input,
   .chat-view[data-panel-mode='overlay'] #chat-input {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
+    width: 100%;
     min-width: 0;
     resize: none;
+  }
+
+  .chat-view[data-panel-mode='overlay'] .chat-form__tools {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
+  .chat-view[data-panel-mode='overlay'] .chat-form__tools .hub-filter {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   body:has(.chat-view[data-panel-mode='overlay']:not([hidden])) .floating-chat-button {
