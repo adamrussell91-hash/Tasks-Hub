@@ -17,4 +17,9 @@ describe('mobile overlay chat form', () => {
       /\.chat-view\[data-panel-mode='overlay'\]\s+\.chat-input[\s\S]{0,80}width:\s*100%/
     );
   });
+
+  it('uses compact texting-sized bubbles on mobile', () => {
+    expect(viewsCss).toMatch(/max-width:\s*min\(82%,\s*17\.5rem\)/);
+    expect(viewsCss).toMatch(/\.chat-message__avatar\s*\{[^}]*width:\s*1\.6rem/);
+  });
 });
