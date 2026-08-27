@@ -40,14 +40,12 @@ function isMobileOverview(): boolean {
 
 function readOverviewOpen(): boolean {
   if (typeof window === 'undefined') return true;
-  if (!isMobileOverview()) return true;
   const stored = sessionStorage.getItem(OVERVIEW_OPEN_KEY);
   if (stored !== null) return stored === 'true';
-  return false;
+  return true;
 }
 
 function writeOverviewOpen(open: boolean): void {
-  if (!isMobileOverview()) return;
   sessionStorage.setItem(OVERVIEW_OPEN_KEY, open ? 'true' : 'false');
 }
 
@@ -284,7 +282,6 @@ export function renderDashboardOverview(host: HTMLElement, options: DashboardOve
     el('span', 'dashboard-overview__toggle-icon', '▾')
   );
   toggle.addEventListener('click', () => {
-    if (!isMobileOverview()) return;
     const next = host.dataset.open !== 'true';
     writeOverviewOpen(next);
     setOverviewOpen(host, next);
