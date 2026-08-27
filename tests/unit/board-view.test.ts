@@ -97,7 +97,7 @@ describe('board view mutations', () => {
     expect(canvas.querySelector('.canvas-status')).toBeNull();
     expect(canvas.querySelector('.board')).not.toBeNull();
     expect(vi.mocked(tasksApi.listTasks)).toHaveBeenCalledTimes(1);
-    expect(canvas.querySelector('.view-lede')?.textContent).toMatch(/^2 open in scope/);
+    expect(canvas.querySelector('.dashboard-board .view-lede')?.textContent).toMatch(/^2 open in scope/);
   });
 
   it('removes a deleted card without remounting the board', async () => {
@@ -118,6 +118,6 @@ describe('board view mutations', () => {
     expect(canvas.querySelector('.canvas-status')).toBeNull();
     expect(canvas.querySelector('.board')).not.toBeNull();
     expect(vi.mocked(tasksApi.listTasks)).toHaveBeenCalledTimes(1);
-    expect(canvas.querySelector('.view-lede')?.textContent).toMatch(/^0 open in scope/);
+    expect(canvas.querySelector('.dashboard-board .view-lede')?.textContent).toMatch(/^0 open in scope/);
   });
 });

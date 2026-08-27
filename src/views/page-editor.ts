@@ -163,7 +163,7 @@ function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): vo
   const page = el('div', 'page-editor');
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
-  head.append(el('span', 'hub-card__eyebrow', 'Task'), backLink('#/board', '← Board'));
+  head.append(el('span', 'hub-card__eyebrow', 'Task'), backLink('#/board', '← Dashboard'));
 
   const title = titleInput(task.title, 'Task title');
   title.addEventListener('input', () => {

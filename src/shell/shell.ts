@@ -45,7 +45,7 @@ export type HubViewId =
 type NavItem = { id: HubViewId; label: string; href: string };
 
 const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
-  { title: 'Home', items: [{ id: 'board', label: 'Board', href: '#/board' }] },
+  { title: 'Home', items: [{ id: 'board', label: 'Dashboard', href: '#/board' }] },
   {
     title: 'Plan',
     items: [

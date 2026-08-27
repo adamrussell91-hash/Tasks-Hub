@@ -15,6 +15,7 @@ import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { initBoard, updateBoardCounts, type BoardMoveDetail } from '@/views/sprint-board';
 import { deleteTaskNow } from '@/views/card-actions';
 import { mountTaskCard } from '@/views/hub-cards';
+import { renderDashboardOverview } from '@/views/dashboard-overview';
 
 /** Session-scoped project / domain filters for Kanban. */
 let boardProjectFilter: string | 'all' = 'all';
@@ -78,7 +79,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   teardownBoard?.();
   teardownBoard = null;
   if (!canvas.querySelector('.board')) {
-    canvas.replaceChildren(el('p', 'canvas-status', 'Loading board…'));
+    canvas.replaceChildren(el('p', 'canvas-status', 'Loading dashboard…'));
   }
   let tasks: Awaited<ReturnType<typeof tasksApi.listTasks>>;
   let projects: Awaited<ReturnType<typeof tasksApi.listProjects>>;
@@ -86,7 +87,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
   } catch (err) {
     canvas.replaceChildren(
-      el('p', 'empty-state', err instanceof Error ? err.message : 'Could not load board')
+      el('p', 'empty-state', err instanceof Error ? err.message : 'Could not load dashboard')
     );
     const retry = el('button', 'btn btn--secondary', 'Retry');
     retry.type = 'button';
@@ -105,12 +106,23 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   }
 
   canvas.replaceChildren();
+
+  const overviewHost = el('div', 'dashboard-overview');
+  renderDashboardOverview(overviewHost, {
+    tasks,
+    projects,
+    onChanged: () => void renderBoardView(canvas)
+  });
+  canvas.append(overviewHost);
+
+  const boardSection = el('section', 'dashboard-board');
+  boardSection.append(el('h2', 'section-title', 'Board'));
   const lede = el(
     'p',
     'view-lede',
     `${openTasks(scoped()).length} open in scope · drag cards between columns, or focus one and press Space.`
   );
-  canvas.append(lede);
+  boardSection.append(lede);
 
   const filterRow = createHubToolbar('board-filter');
   const scope = createHubFilter({
@@ -139,7 +151,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     }
   });
   filterRow.append(scope.el, domain.el);
-  canvas.append(filterRow);
+  boardSection.append(filterRow);
 
   const confirmHost = el('div', 'board-confirm');
 
@@ -197,12 +209,12 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     deleteTaskNow(task, () => undefined, confirmHost);
   }
 
-  canvas.append(
+  boardSection.append(
     renderQuickAdd((created) => {
       upsertTask(created);
     }, boardProjectFilter === 'all' ? null : boardProjectFilter)
   );
-  canvas.append(confirmHost);
+  boardSection.append(confirmHost);
 
   for (const col of BOARD_COLUMNS) {
     const section = el('section', 'column board-col');
@@ -244,7 +256,8 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     board.append(section);
   }
 
-  canvas.append(board);
+  boardSection.append(board);
+  canvas.append(boardSection);
   teardownBoard = initBoard(board, {
     onCardMoved: (detail) => persistMove(detail, byId, confirmHost, () => void renderBoardView(canvas))
   });

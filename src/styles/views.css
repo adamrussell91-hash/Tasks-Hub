@@ -3783,6 +3783,132 @@ body.is-universe-fullscreen .page-header {
   }
 }
 
+/* Home dashboard overview — tiles above the Kanban board */
+
+.dashboard-overview {
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-overview__lede {
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-overview__banner {
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-overview__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 100%;
+}
+
+.dashboard-overview__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.dashboard-overview__head .hub-card__eyebrow {
+  margin: 0;
+}
+
+.dashboard-overview__link {
+  flex: none;
+  font-size: var(--text-2xs);
+  padding: var(--space-1) var(--space-2);
+}
+
+.dashboard-overview__stat {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.dashboard-overview__alert {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--pastel-peach-ink);
+  line-height: 1.45;
+}
+
+.dashboard-overview__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dashboard-overview__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.dashboard-overview__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--glass-1);
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+.dashboard-overview__item:hover,
+.dashboard-overview__item:focus-visible {
+  background: var(--glass-2);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dashboard-overview__item-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--depth);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-overview__chip {
+  flex: none;
+}
+
+.dashboard-overview__pressure {
+  margin-top: var(--space-2);
+}
+
+.dashboard-board {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.dashboard-board .section-title {
+  margin: 0;
+}
+
+@media (max-width: 960px) {
+  .dashboard-overview__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Projects portfolio — pulse, status mix, lanes */
 
 .projects-pulse {
