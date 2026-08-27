@@ -46,7 +46,12 @@ import {
   recordNegotiationSample,
   type ClareProposalInput
 } from '@/domain/clare';
+import { buildClareDumpDigest } from '@/domain/clare-digest';
 import { parseBrainDump } from '@/domain/clare-dump';
+import {
+  defaultClareProposalJudge,
+  type ClareProposalJudge
+} from '@/ai/clare-proposal-judge';
 import { buildClareBriefing } from '@/domain/clare-desk';
 import { DEFAULT_STALL_WEEKS, findStallCandidates, outcomeProjectStatus } from '@/domain/stall';
 import { agentSlug, detectStressPatterns } from '@/domain/stress';
@@ -661,15 +666,47 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       return out;
     },
     async proposeWithClare(input: ClareProposalInput) {
-      const [frameworks, tasks, calibration] = await Promise.all([
+      const [frameworks, tasks, projects, calibrations, calibration] = await Promise.all([
         this.listFrameworks(),
         this.listTasks(),
+        this.listProjects(),
+        this.listClareCalibrations(),
         this.getClareCalibration(input.domain)
       ]);
+      const backlog = input.backlog_titles ?? backlogTasks(tasks).map((t) => t.title);
+      const items = parseBrainDump(input.title, {
+        preferredDomain: input.domain,
+        tasks,
+        projects
+      });
+      const judge = defaultClareProposalJudge();
+      if (judge && items.length > 0) {
+        const digest = buildClareDumpDigest({
+          text: input.title,
+          items,
+          frameworks,
+          tasks,
+          projects,
+          calibrations,
+          preferredDomain: input.domain,
+          protocolId: input.protocol_id
+        });
+        const judgment = await judge(digest);
+        const result = assembleDumpResult(
+          items,
+          frameworks,
+          () => (calibration.sample_count > 0 ? calibration : null),
+          input.protocol_id,
+          judgment
+        );
+        if (result.proposals[0]) {
+          return result.proposals[0];
+        }
+      }
       return buildProposal(
         {
           ...input,
-          backlog_titles: input.backlog_titles ?? backlogTasks(tasks).map((t) => t.title)
+          backlog_titles: backlog
         },
         frameworks,
         calibration.sample_count > 0 ? calibration : null
@@ -694,15 +731,34 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         tasks,
         projects
       });
-      return assembleDumpResult(
-        items,
-        frameworks,
-        (domain) => {
-          const cal = byDomain.get(domain);
-          return cal && cal.sample_count > 0 ? cal : null;
-        },
-        input.protocol_id
-      );
+      const calibrationFor = (domain: TaskDomain) => {
+        const cal = byDomain.get(domain);
+        return cal && cal.sample_count > 0 ? cal : null;
+      };
+      const judge: ClareProposalJudge | null =
+        input.judge === undefined ? defaultClareProposalJudge() : input.judge;
+      if (judge) {
+        const digest = buildClareDumpDigest({
+          text: input.text,
+          items,
+          frameworks,
+          tasks,
+          projects,
+          calibrations,
+          preferredDomain: input.domain ?? 'teaching',
+          protocolId: input.protocol_id,
+          now
+        });
+        const judgment = await judge(digest);
+        return assembleDumpResult(
+          items,
+          frameworks,
+          calibrationFor,
+          input.protocol_id,
+          judgment
+        );
+      }
+      return assembleDumpResult(items, frameworks, calibrationFor, input.protocol_id);
     },
     async acceptClareProposal({ proposal, accepted_minutes, framework_id }) {
       const stamp = nowIso();

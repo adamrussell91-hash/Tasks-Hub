@@ -1,6 +1,7 @@
 import type { FrameworkEntry } from '@/schemas/templates';
 import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
 import type { ClareCalibration } from '@/schemas/clare';
+import type { ClareJudgedProposalRow } from '@/ai/clare-proposal-judge';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
 import type { DumpItem } from '@/domain/clare-dump';
 import { dumpVoiceLine } from '@/domain/clare-dump';
@@ -153,17 +154,14 @@ export function applyCalibration(
   return { minutes: calibrated, note };
 }
 
-export function buildProposal(
-  input: ClareProposalInput,
-  frameworks: FrameworkEntry[],
-  calibration: ClareCalibration | null
+export function applyProtocolToProposal(
+  proposal: ClareProposal,
+  protocolId?: ClareProtocolId
 ): ClareProposal {
-  const { framework, reasoning } = selectFramework(input, frameworks);
-  const base = baseEstimateMinutes(input);
-  const { minutes, note } = applyCalibration(base, calibration);
-  let proposedMinutes = minutes;
-  let protocolReasoning = reasoning;
-  switch (input.protocol_id) {
+  if (!protocolId) return proposal;
+  let proposedMinutes = proposal.proposed_minutes;
+  let protocolReasoning = proposal.reasoning;
+  switch (protocolId) {
     case 'shrink-first-step':
       proposedMinutes = Math.min(25, proposedMinutes);
       protocolReasoning += ' Start with one small first move, then decide whether the rest deserves another block.';
@@ -173,12 +171,12 @@ export function buildProposal(
       protocolReasoning += ' Sixty seconds, one physical cue — then we talk about the rest.';
       break;
     case 'time-map':
-      proposedMinutes = Math.max(proposedMinutes, Math.round((minutes * 2) / 5) * 5);
+      proposedMinutes = Math.max(proposedMinutes, Math.round((proposedMinutes * 2) / 5) * 5);
       protocolReasoning += ' Time map: hidden setup and wrap almost always double the honest guess.';
       break;
     case 'high-stakes':
-      protocolReasoning += input.due_date
-        ? ` High-stakes: ${input.due_date} is close and this has not moved.`
+      protocolReasoning += proposal.due_date
+        ? ` High-stakes: ${proposal.due_date} is close and this has not moved.`
         : ' High-stakes: name the finish line or it will keep sliding.';
       break;
     case 'open-loops':
@@ -188,20 +186,41 @@ export function buildProposal(
       break;
   }
   return {
-    title: input.title.trim(),
-    domain: input.domain,
-    description: input.description?.trim() ?? '',
-    priority: input.priority ?? 'medium',
-    due_date: input.due_date ?? null,
-    parent_project_id: input.parent_project_id ?? null,
-    framework_id: framework.id,
-    framework_name: framework.name,
-    reasoning: protocolReasoning,
+    ...proposal,
     proposed_minutes: proposedMinutes,
     suggested_accepted_minutes: proposedMinutes,
-    calibration_note: note,
-    protocol_id: input.protocol_id
+    reasoning: protocolReasoning,
+    protocol_id: protocolId
   };
+}
+
+export function buildProposal(
+  input: ClareProposalInput,
+  frameworks: FrameworkEntry[],
+  calibration: ClareCalibration | null
+): ClareProposal {
+  const { framework, reasoning } = selectFramework(input, frameworks);
+  const base = baseEstimateMinutes(input);
+  const { minutes, note } = applyCalibration(base, calibration);
+  const proposal = applyProtocolToProposal(
+    {
+      title: input.title.trim(),
+      domain: input.domain,
+      description: input.description?.trim() ?? '',
+      priority: input.priority ?? 'medium',
+      due_date: input.due_date ?? null,
+      parent_project_id: input.parent_project_id ?? null,
+      framework_id: framework.id,
+      framework_name: framework.name,
+      reasoning,
+      proposed_minutes: minutes,
+      suggested_accepted_minutes: minutes,
+      calibration_note: note,
+      protocol_id: input.protocol_id
+    },
+    input.protocol_id
+  );
+  return proposal;
 }
 
 export function emptyCalibration(domain: TaskDomain, nowIso: string): ClareCalibration {
@@ -309,13 +328,53 @@ function proposalFromDumpItem(
   };
 }
 
+function proposalFromJudgmentRow(
+  row: ClareJudgedProposalRow,
+  item: DumpItem,
+  frameworks: FrameworkEntry[],
+  calibration: ClareCalibration | null,
+  protocolId?: ClareProtocolId
+): ClareProposal {
+  const framework =
+    frameworks.find((entry) => entry.id === row.framework_id) ?? frameworks[0];
+  if (!framework) throw new Error('Framework library is empty');
+  const { minutes, note } = applyCalibration(row.proposed_minutes, calibration);
+  const reasoning =
+    row.reasoning.length > 12 ? row.reasoning : framework.reasoning_template;
+  const proposal = applyProtocolToProposal(
+    {
+      title: row.title,
+      domain: row.domain,
+      description: row.description,
+      priority: row.priority,
+      due_date: row.due_date,
+      parent_project_id: item.parent_project_id,
+      framework_id: framework.id,
+      framework_name: framework.name,
+      reasoning,
+      proposed_minutes: minutes,
+      suggested_accepted_minutes: minutes,
+      calibration_note: note,
+      protocol_id: protocolId,
+      dump_kind: item.kind,
+      question: item.question
+    },
+    protocolId
+  );
+  return proposal;
+}
+
 /** Turn parsed dump items into negotiated proposals. Notes stay questions, not writes. */
 export function assembleDumpResult(
   items: DumpItem[],
   frameworks: FrameworkEntry[],
   calibrationFor: (domain: TaskDomain) => ClareCalibration | null,
-  protocolId?: ClareProtocolId
+  protocolId?: ClareProtocolId,
+  judgment?: { voice: string | null; proposals: ClareJudgedProposalRow[] }
 ): ClareDumpResult {
+  const judgedByIndex = judgment
+    ? new Map(judgment.proposals.map((row) => [row.item_index, row]))
+    : null;
   const questions: string[] = [];
   const notes: string[] = [];
   let working = items;
@@ -347,12 +406,17 @@ export function assembleDumpResult(
       if (item.question) questions.push(item.question);
       continue;
     }
-    const proposal = proposalFromDumpItem(
-      item,
-      frameworks,
-      calibrationFor(item.domain),
-      protocolId
-    );
+    const itemIndex = items.indexOf(item);
+    const judged = judgedByIndex?.get(itemIndex);
+    const proposal = judged
+      ? proposalFromJudgmentRow(
+          judged,
+          item,
+          frameworks,
+          calibrationFor(judged.domain),
+          protocolId
+        )
+      : proposalFromDumpItem(item, frameworks, calibrationFor(item.domain), protocolId);
     proposals.push(proposal);
     if (item.question) questions.push(item.question);
   }
@@ -367,7 +431,7 @@ export function assembleDumpResult(
   if (protocolId === 'open-loops') toolkit = buildOpenLoopsToolkit(items);
 
   return {
-    voice: dumpVoiceLine(items),
+    voice: judgment?.voice ?? dumpVoiceLine(items),
     proposals,
     questions,
     notes,

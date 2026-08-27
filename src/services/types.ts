@@ -95,6 +95,7 @@ export interface TasksStore {
     domain?: Task['domain'];
     protocol_id?: ClareProtocolId;
     now?: Date;
+    judge?: import('@/ai/clare-proposal-judge').ClareProposalJudge | null;
   }): Promise<ClareDumpResult>;
   acceptClareProposal(input: {
     proposal: ClareProposal;
