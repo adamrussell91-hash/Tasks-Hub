@@ -46,6 +46,9 @@ export function installClareSession(root: HTMLElement): ClareSession {
     isVisible: () => currentView === 'clare' || panel.isOpen(),
     onUnreadChange: (unread) => setChatUnread(root, unread)
   });
+  const closeBtn = view.querySelector<HTMLButtonElement>('#chat-close');
+  closeBtn?.addEventListener('click', () => panel.close());
+
   fab.addEventListener('click', () => {
     setChatUnread(root, false);
     toggleOverlay(overlaySlot);
