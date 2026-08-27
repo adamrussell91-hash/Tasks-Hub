@@ -2090,6 +2090,11 @@
     height: 2.4rem;
   }
 
+  .chat-view[data-panel-mode='overlay'][data-chrome='engaged'] .agent-picker {
+    margin-bottom: 0;
+    min-height: 0;
+  }
+
   .chat-view[data-panel-mode='overlay'][data-chrome='engaged']:not([data-chrome-expanded='true'])
     .agent-picker__avatar:not(.is-active) {
     display: none;
