@@ -78,6 +78,16 @@ describe('board view mutations', () => {
     const created = task({ id: 'task_new', title: 'Instant add' });
     vi.mocked(tasksApi.listTasks).mockResolvedValue([existing]);
     vi.mocked(tasksApi.createTask).mockResolvedValue(created);
+    vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    }) as unknown as MediaQueryList);
 
     const canvas = document.createElement('div');
     document.body.append(canvas);
@@ -85,6 +95,7 @@ describe('board view mutations', () => {
 
     expect(canvas.querySelector('[data-id="task_old"]')?.textContent).toContain('Existing card');
     expect(canvas.querySelector('.canvas-status')).toBeNull();
+    expect(canvas.querySelector('.board-col-nav')).not.toBeNull();
 
     const form = canvas.querySelector('form.quick-add') as HTMLFormElement;
     const title = form.querySelector('input') as HTMLInputElement;
@@ -98,6 +109,38 @@ describe('board view mutations', () => {
     expect(canvas.querySelector('.board')).not.toBeNull();
     expect(vi.mocked(tasksApi.listTasks)).toHaveBeenCalledTimes(1);
     expect(canvas.querySelector('.view-lede')?.textContent).toMatch(/^2 open in scope/);
+  });
+
+  it('moves a card via status pills without remounting the board', async () => {
+    const existing = task({ id: 'task_move', title: 'Move me', status: 'open' });
+    const moved = task({ id: 'task_move', title: 'Move me', status: 'in_progress' });
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([existing]);
+    vi.mocked(tasksApi.updateTask).mockResolvedValue(moved);
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    } as unknown as MediaQueryList);
+
+    const canvas = document.createElement('div');
+    document.body.append(canvas);
+    await renderBoardView(canvas);
+
+    const card = canvas.querySelector<HTMLElement>('[data-id="task_move"]')!;
+    card.querySelector('.hub-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    card.querySelector<HTMLButtonElement>('.board-move-pills .hub-pills__btn:nth-child(2)')?.click();
+
+    await vi.waitFor(() => {
+      expect(vi.mocked(tasksApi.updateTask)).toHaveBeenCalledWith('task_move', { status: 'in_progress' });
+      expect(canvas.querySelector('.column[data-col="doing"] [data-id="task_move"]')).not.toBeNull();
+    });
+    expect(canvas.querySelector('.column[data-col="todo"] [data-id="task_move"]')).toBeNull();
+    expect(vi.mocked(tasksApi.listTasks)).toHaveBeenCalledTimes(1);
   });
 
   it('removes a deleted card without remounting the board', async () => {

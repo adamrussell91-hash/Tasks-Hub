@@ -108,6 +108,42 @@ describe('hub cards', () => {
     expect([...slot.querySelectorAll('button')].some((btn) => btn.textContent === 'Open page')).toBe(false);
   });
 
+  it('shows move pills on expanded board cards when a move handler is wired', () => {
+    reduceMotion();
+    const list = document.createElement('ul');
+    const onMoveToColumn = vi.fn();
+    const slot = mountTaskCard(
+      list,
+      task({ id: 'task_move', title: 'Move me', status: 'open' }),
+      { onMoveToColumn, boardColumn: 'todo' },
+      true
+    );
+    slot.querySelector('.hub-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const pills = slot.querySelectorAll('.board-move-pills .hub-pills__btn');
+    expect(pills).toHaveLength(3);
+    expect([...pills].map((btn) => btn.textContent)).toEqual(['To do', 'Doing', 'Done']);
+    expect(slot.querySelector('.hub-pills__btn.is-active')?.textContent).toBe('To do');
+    slot.querySelector<HTMLButtonElement>('.hub-pills__btn:nth-child(2)')?.click();
+    expect(onMoveToColumn).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'task_move' }),
+      'doing'
+    );
+  });
+
+  it('shows a blocked note without highlighting move pills when the card sits in Blocked', () => {
+    reduceMotion();
+    const list = document.createElement('ul');
+    const slot = mountTaskCard(
+      list,
+      task({ id: 'task_blocked', title: 'Waiting on prep' }),
+      { onMoveToColumn: vi.fn(), boardColumn: 'blocked' },
+      true
+    );
+    slot.querySelector('.hub-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(slot.querySelector('.board-move-note')?.textContent).toContain('Blocked by unfinished');
+    expect(slot.querySelector('.board-move-pills .hub-pills__btn.is-active')).toBeNull();
+  });
+
   it('keeps the sprint-board card contract on list items', () => {
     const list = document.createElement('ul');
     const slot = mountTaskCard(list, task({ id: 'task_a', title: 'Alpha' }), {}, true);
