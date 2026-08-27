@@ -13,20 +13,39 @@ import {
 } from '@/views/hub-kit';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { initBoard, updateBoardCounts, type BoardMoveDetail } from '@/views/sprint-board';
+import {
+  initBoardColumnNav,
+  renderBoardColumnNav,
+  syncBoardColumnNavCounts
+} from '@/views/board-column-nav';
 import { deleteTaskNow } from '@/views/card-actions';
-import { mountTaskCard } from '@/views/hub-cards';
+import { mountTaskCard, type TaskCardHandlers } from '@/views/hub-cards';
 import { renderDashboardOverview } from '@/views/dashboard-overview';
 
 /** Session-scoped project / domain filters for Kanban. */
 let boardProjectFilter: string | 'all' = 'all';
 let boardDomainFilter: TaskDomain | 'all' = 'all';
 let teardownBoard: (() => void) | null = null;
+let teardownColumnNav: (() => void) | null = null;
+
+function boardLedeSuffix(): string {
+  const coarse =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(pointer: coarse)').matches;
+  if (coarse) {
+    return 'tap a card to expand, then move it · use the column tabs to browse';
+  }
+  return 'drag cards between columns, or focus one and press Space';
+}
 
 function appendBoardCard(
   list: HTMLElement,
   task: Task,
+  column: BoardColumnId,
   projects: Project[],
   editorHost: HTMLElement,
+  cardHandlers: TaskCardHandlers,
   onDelete: (task: Task) => void,
   onReload: (task?: Task) => void
 ): HTMLElement {
@@ -35,7 +54,9 @@ function appendBoardCard(
     task,
     {
       onEdit: (current) => void renderTaskEditor(editorHost, current, projects, onReload),
-      onDelete
+      onDelete,
+      ...cardHandlers,
+      boardColumn: column
     },
     true
   );
@@ -63,6 +84,27 @@ function persistMove(
   );
 }
 
+function persistStatus(
+  task: Task,
+  status: Task['status'],
+  byId: Map<string, Task>,
+  errorHost: HTMLElement,
+  onSuccess: (updated: Task) => void,
+  onReload: () => void
+): void {
+  if (status === task.status) return;
+  void tasksApi.updateTask(task.id, { status }).then(
+    (updated) => {
+      byId.set(updated.id, updated);
+      onSuccess(updated);
+    },
+    (err: unknown) => {
+      errorHost.replaceChildren(el('p', 'empty-state', errorMessage(err, 'Could not save the move')));
+      onReload();
+    }
+  );
+}
+
 function inScope(task: Task): boolean {
   if (task.status === 'dead' || !isBoardTask(task)) return false;
   if (boardProjectFilter !== 'all' && task.parent_project_id !== boardProjectFilter) return false;
@@ -78,6 +120,8 @@ function listForColumn(board: HTMLElement, column: BoardColumnId): HTMLElement |
 export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   teardownBoard?.();
   teardownBoard = null;
+  teardownColumnNav?.();
+  teardownColumnNav = null;
   if (!canvas.querySelector('.board')) {
     canvas.replaceChildren(el('p', 'canvas-status', 'Loading dashboard…'));
   }
@@ -117,11 +161,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
 
   const boardSection = el('section', 'dashboard-board');
   boardSection.append(el('h2', 'section-title', 'Board'));
-  const lede = el(
-    'p',
-    'view-lede',
-    `${openTasks(scoped()).length} open in scope · drag cards between columns, or focus one and press Space.`
-  );
+  const lede = el('p', 'view-lede');
   boardSection.append(lede);
 
   const filterRow = createHubToolbar('board-filter');
@@ -158,9 +198,23 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   const board = el('div', 'board board-grid');
   board.setAttribute('aria-label', 'Task board');
 
+  const boardCardHandlers = (onReload: () => void): TaskCardHandlers => ({
+    onMoveToColumn: (current, column) => {
+      const status = statusForColumn(column);
+      if (!status) return;
+      persistStatus(current, status, byId, confirmHost, upsertTask, onReload);
+    },
+    onToggle: (current) => {
+      const next = current.status === 'done' ? 'open' : 'done';
+      persistStatus(current, next, byId, confirmHost, upsertTask, onReload);
+    }
+  });
+
   function syncChrome(): void {
-    lede.textContent = `${openTasks(scoped()).length} open in scope · drag cards between columns, or focus one and press Space.`;
+    lede.textContent = `${openTasks(scoped()).length} open in scope · ${boardLedeSuffix()}.`;
     updateBoardCounts(board);
+    const nav = boardSection.querySelector<HTMLElement>('.board-col-nav');
+    if (nav) syncBoardColumnNavCounts(nav, board);
   }
 
   function upsertTask(task: Task): void {
@@ -181,8 +235,10 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     const card = appendBoardCard(
       list,
       task,
+      column,
       projects,
       confirmHost,
+      boardCardHandlers(() => void renderBoardView(canvas)),
       (current) => removeTask(current),
       (updated) => {
         if (updated) upsertTask(updated);
@@ -233,12 +289,16 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     list.dataset.col = col.id;
 
     const items = scoped().filter((t) => columnForTask(t, byId) === col.id);
+    const reload = () => void renderBoardView(canvas);
+    const handlers = boardCardHandlers(reload);
     for (const task of items) {
       const card = appendBoardCard(
         list,
         task,
+        col.id,
         projects,
         confirmHost,
+        handlers,
         (current) => removeTask(current),
         (updated) => {
           if (updated) upsertTask(updated);
@@ -256,8 +316,14 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     board.append(section);
   }
 
-  boardSection.append(board);
+  updateBoardCounts(board);
+  const columnNav = renderBoardColumnNav(board);
+  syncBoardColumnNavCounts(columnNav, board);
+  boardSection.append(columnNav, board);
   canvas.append(boardSection);
+  syncChrome();
+
+  teardownColumnNav = initBoardColumnNav(board, columnNav);
   teardownBoard = initBoard(board, {
     onCardMoved: (detail) => persistMove(detail, byId, confirmHost, () => void renderBoardView(canvas))
   });
