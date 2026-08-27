@@ -69,7 +69,7 @@ export type LaidConnector = {
 };
 
 export type LaidTrack = {
-  id: YearTrack;
+  id: string;
   label: string;
   x: number;
   disc: { cx: number; cy: number; r: number };
@@ -77,7 +77,7 @@ export type LaidTrack = {
 };
 
 export type LaidStationBody = {
-  track: YearTrack;
+  track: string;
   x: number;
   y: number;
   w: number;
@@ -108,7 +108,7 @@ export type LaidStation = {
   h: number;
   lane: number;
   weeks: number;
-  tracks: YearTrack[];
+  tracks: string[];
   bodies: LaidStationBody[];
   ports: ConnectorPort[];
   in_stroke: MapStation['in_stroke'];
@@ -295,9 +295,53 @@ export function applyDateToTickAttach(tick: MapTick, year: number): MapTick {
   };
 }
 
-export function stationTracks(station: { tracks?: YearTrack[] | null }): YearTrack[] {
-  const tracks = station.tracks?.filter((track) => YEAR_TRACKS.includes(track));
-  return tracks?.length ? tracks : [...YEAR_TRACKS];
+export type TrackDef = { id: string; label: string };
+
+export function lineTrackDefs(line: MapLine): TrackDef[] {
+  const standardIds = line.year_tracks?.length ? line.year_tracks : [...YEAR_TRACKS];
+  const standard = standardIds.map((id) => ({
+    id,
+    label: YEAR_TRACK_LABELS[id as YearTrack] ?? id
+  }));
+  const extra = (line.extra_tracks ?? []).map((track) => ({ id: track.id, label: track.label }));
+  return [...standard, ...extra];
+}
+
+export function evenTrackX(centerX: number, index: number, count: number, gap = MAP_TRACK_GAP): number {
+  return centerX + (index - (count - 1) / 2) * gap;
+}
+
+export function missingStandardYearTracks(line: MapLine): YearTrack[] {
+  const present = new Set(lineTrackDefs(line).map((track) => track.id));
+  return YEAR_TRACKS.filter((id) => !present.has(id));
+}
+
+export function addStandardYearTrack(line: MapLine): MapLine {
+  const missing = missingStandardYearTracks(line);
+  if (!missing.length) return line;
+  const current = line.year_tracks ?? [...YEAR_TRACKS];
+  return { ...line, year_tracks: [...current, missing[0]!] };
+}
+
+export function addExtraYearTrack(line: MapLine, label: string): MapLine {
+  const trimmed = label.trim();
+  if (!trimmed) return line;
+  const base = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'track';
+  let id = `extra_${base}`;
+  const existing = new Set(lineTrackDefs(line).map((track) => track.id));
+  let suffix = 2;
+  while (existing.has(id)) {
+    id = `extra_${base}_${suffix}`;
+    suffix += 1;
+  }
+  return { ...line, extra_tracks: [...(line.extra_tracks ?? []), { id, label: trimmed }] };
+}
+
+export function stationTracks(station: { tracks?: string[] | null }, line?: MapLine): string[] {
+  const defs = line ? lineTrackDefs(line) : YEAR_TRACKS.map((id) => ({ id, label: YEAR_TRACK_LABELS[id] }));
+  const allowed = new Set(defs.map((track) => track.id));
+  const tracks = station.tracks?.filter((track) => allowed.has(track));
+  return tracks?.length ? tracks : [defs[0]?.id ?? 'junior'];
 }
 
 export function cutVertical(
@@ -954,19 +998,21 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
   ];
 
   const lines: LaidLine[] = map.lines.map((line, index) => {
-    const x = MAP_FIRST_LINE_X + index * MAP_LINE_GAP;
+    const baseX = MAP_FIRST_LINE_X + index * MAP_LINE_GAP;
     const discY = yearTop - MAP_DISC_LIFT;
-    const tracks: LaidTrack[] = YEAR_TRACKS.map((id, trackIndex) => {
-      const tx = x + (trackIndex - 1) * MAP_TRACK_GAP;
+    const trackDefs = lineTrackDefs(line);
+    const count = trackDefs.length;
+    const tracks: LaidTrack[] = trackDefs.map((def, trackIndex) => {
+      const tx = evenTrackX(baseX, trackIndex, count);
       return {
-        id,
-        label: YEAR_TRACK_LABELS[id],
+        id: def.id,
+        label: def.label,
         x: tx,
         disc: { cx: tx, cy: discY, r: MAP_DISC_R },
         cuts: [{ y0: discY, y1: yearBottom }]
       };
     });
-    const center = tracks[1] ?? tracks[0]!;
+    const center = tracks[Math.floor((count - 1) / 2)] ?? tracks[0]!;
     return {
       id: line.id,
       name: line.name,
@@ -990,7 +1036,8 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
       ? Math.max(minH, dated.height)
       : Math.max(minH, remapLegacyY(dated.y + dated.height) - y);
     const weeks = spanWeeks(dated.starts_on, dated.ends_on, year);
-    const tracks = stationTracks(dated);
+    const sourceLine = map.lines.find((item) => item.id === dated.line_id);
+    const tracks = stationTracks(dated, sourceLine);
     const station: LaidStation = {
       id: dated.id,
       line_id: dated.line_id,
@@ -1115,7 +1162,9 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
       `mark-${tick.id}`,
       attach.kind === 'station' ? `st-${attach.station_id}` : '',
       ...(attach.kind === 'station'
-        ? YEAR_TRACKS.map((track) => `st-${attach.station_id}-${track}`)
+        ? (stations
+            .find((item) => item.id === attach.station_id)
+            ?.bodies.map((body) => `st-${attach.station_id}-${body.track}`) ?? [])
         : []),
       attach.kind === 'event' ? `mark-${attach.event_id}` : '',
       attach.kind === 'event' ? `tk-${attach.event_id}` : ''

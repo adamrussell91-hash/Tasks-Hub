@@ -2627,10 +2627,23 @@ html.is-map-fullscreen .map-page .map-preview {
 
 .map-key__item {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--ink);
+}
+
+.map-key__year-lines {
+  flex-basis: 100%;
+  padding-left: calc(1.75rem + var(--space-2) + 2rem + var(--space-2));
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.map-key__add-track {
+  flex-basis: 100%;
+  margin-left: calc(1.75rem + var(--space-2) + 2rem + var(--space-2));
 }
 
 .map-key__item .hub-icon-btn {
@@ -2815,8 +2828,12 @@ html.is-map-fullscreen .map-page .map-preview {
 }
 
 .map-track-label {
-  font-size: var(--text-2xs);
+  font-size: var(--text-base);
   font-weight: var(--weight-semibold);
+}
+
+.map-track-label__pill {
+  pointer-events: none;
 }
 
 .map-line-name {

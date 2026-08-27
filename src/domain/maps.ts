@@ -138,11 +138,15 @@ function renderExportSvg(map: TransitMap): string {
     for (const track of line.tracks) {
       for (const cut of track.cuts) {
         parts.push(
-          `<line x1="${track.x}" y1="${cut.y0}" x2="${track.x}" y2="${cut.y1}" stroke="${tone.stroke}" stroke-width="8" stroke-linecap="butt"/>`
+          `<line x1="${track.x}" y1="${cut.y0}" x2="${track.x}" y2="${cut.y1}" stroke="${tone.stroke}" stroke-width="8" stroke-linecap="round"/>`
         );
       }
+      const labelY = track.disc.cy - track.disc.r - 36;
+      const pillW = Math.max(56, track.label.length * 9 + 20);
+      const pillH = 24;
       parts.push(
-        `<text x="${track.disc.cx}" y="${track.disc.cy - track.disc.r - 30}" text-anchor="middle" font-size="11" fill="${tone.stroke}" font-weight="600">${escapeHtml(track.label)}</text>`,
+        `<rect x="${track.disc.cx - pillW / 2}" y="${labelY - pillH / 2}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="#fbf8f2" stroke="${tone.stroke}" stroke-width="2"/>`,
+        `<text x="${track.disc.cx}" y="${labelY + 5}" text-anchor="middle" font-size="15" fill="${tone.stroke}" font-weight="600">${escapeHtml(track.label)}</text>`,
         `<circle cx="${track.disc.cx}" cy="${track.disc.cy}" r="${track.disc.r}" fill="${tone.disc}"/>`,
         `<text x="${track.disc.cx}" y="${track.disc.cy + 5}" text-anchor="middle" font-size="16" fill="${tone.letter}" font-weight="700">${escapeHtml(line.letter)}</text>`
       );

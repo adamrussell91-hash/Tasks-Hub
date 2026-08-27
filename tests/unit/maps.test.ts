@@ -17,6 +17,9 @@ import {
 } from '@/domain/maps';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import {
+  addExtraYearTrack,
+  evenTrackX,
+  lineTrackDefs,
   applyDateSpanToStation,
   boxesOverlap,
   dateToY,
@@ -184,6 +187,28 @@ describe('year layout', () => {
       year
     );
     expect(sixMonths.height).toBeGreaterThan(short.height + 100);
+  });
+
+  it('spaces year lines evenly within each strand', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    for (const line of layout.lines) {
+      const xs = line.tracks.map((track) => track.x).sort((a, b) => a - b);
+      const gaps = xs.slice(1).map((x, index) => x - xs[index]!);
+      expect(gaps.length).toBe(2);
+      expect(gaps[0]).toBeCloseTo(gaps[1]!, 5);
+      expect(gaps[0]).toBeCloseTo(evenTrackX(0, 1, 3) - evenTrackX(0, 0, 3), 5);
+    }
+  });
+
+  it('adds a custom year line and keeps even spacing', () => {
+    const map = mindWorks2026Map();
+    const justice = addExtraYearTrack(map.lines[0]!, 'Middle');
+    expect(lineTrackDefs(justice).some((track) => track.label === 'Middle')).toBe(true);
+    const layout = layoutMap({ ...map, lines: [justice, ...map.lines.slice(1)] });
+    const xs = layout.lines[0]!.tracks.map((track) => track.x).sort((a, b) => a - b);
+    const gaps = xs.slice(1).map((x, index) => x - xs[index]!);
+    expect(layout.lines[0]!.tracks.length).toBe(4);
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(1);
   });
 
   it('connects a late competition to its program even when the date is past the station', () => {

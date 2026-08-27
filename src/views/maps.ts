@@ -1,4 +1,5 @@
-import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap, YearTrack } from '@/schemas/map';
+import type { TrackDef } from '@/domain/maps-layout';
+import type { MapColorToken, MapLine, MapStation, MapTick, TransitMap } from '@/schemas/map';
 import type { Project } from '@/schemas/project';
 import { projectPageHash } from '@/domain/cards';
 import {
@@ -15,18 +16,20 @@ import { mountMapCardIndex, type MapCardModel } from '@/views/map-cards';
 import {
   applyDateSpanToStation,
   applyDateToTickAttach,
+  addExtraYearTrack,
+  addStandardYearTrack,
   dateToY,
   layoutMap,
+  lineTrackDefs,
   LINE_COLORS,
   lineColorsNeedWriteback,
+  missingStandardYearTracks,
   moveLine,
   nextLineLetter,
   nextLineX,
   normalizeLineColors,
   schoolTerms,
   wrapEventLines,
-  YEAR_TRACKS,
-  YEAR_TRACK_LABELS,
   yearLinePoints,
   yToDate,
   type MapCanvasLayout
@@ -397,14 +400,30 @@ function renderMapSvg(
             y2: String(cut.y1),
             stroke: color,
             'stroke-width': '8',
-            'stroke-linecap': 'butt',
+            'stroke-linecap': 'round',
             class: 'map-line'
           })
         );
       }
+      const labelY = item.disc.cy - item.disc.r - 36;
+      const pillW = Math.max(56, item.label.length * 9 + 20);
+      const pillH = 24;
+      track.append(
+        svgEl('rect', {
+          x: String(item.disc.cx - pillW / 2),
+          y: String(labelY - pillH / 2),
+          width: String(pillW),
+          height: String(pillH),
+          rx: String(pillH / 2),
+          class: 'map-track-label__pill',
+          fill: 'var(--paper)',
+          stroke: color,
+          'stroke-width': '2'
+        })
+      );
       const label = svgEl('text', {
         x: String(item.disc.cx),
-        y: String(item.disc.cy - item.disc.r - 30),
+        y: String(labelY + 5),
         'text-anchor': 'middle',
         class: 'map-track-label',
         fill: color
@@ -719,25 +738,25 @@ function dateInput(value: string, aria: string): { el: HTMLLabelElement; input: 
   return createHubField({ type: 'date', ariaLabel: aria, value });
 }
 
-function trackPicker(selected: YearTrack[]): { root: HTMLElement; value: () => YearTrack[] } {
+function trackPicker(selected: string[], available: TrackDef[]): { root: HTMLElement; value: () => string[] } {
   const root = el('div', 'map-tracks');
   root.setAttribute('role', 'group');
   root.setAttribute('aria-label', 'Year lines');
-  const boxes = YEAR_TRACKS.map((track) => {
+  const boxes = available.map((track) => {
     const label = el('label', 'map-tracks__item');
     const box = document.createElement('input');
     box.type = 'checkbox';
-    box.value = track;
-    box.checked = selected.includes(track);
-    label.append(box, document.createTextNode(YEAR_TRACK_LABELS[track]));
+    box.value = track.id;
+    box.checked = selected.includes(track.id);
+    label.append(box, document.createTextNode(track.label));
     root.append(label);
     return box;
   });
   return {
     root,
     value: () => {
-      const picked = boxes.filter((box) => box.checked).map((box) => box.value as YearTrack);
-      return picked.length ? picked : ['junior'];
+      const picked = boxes.filter((box) => box.checked).map((box) => box.value);
+      return picked.length ? picked : [available[0]?.id ?? 'junior'];
     }
   };
 }
@@ -945,11 +964,40 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         mark.style.boxShadow = `inset 0 0 0 2px ${strokeOf(line.color)}`;
       }
       item.append(left, mark, el('span', 'map-key__name', `${line.name} Line`), right);
+      const yearLines = lineTrackDefs(line);
+      if (yearLines.length) {
+        const trackList = el('span', 'map-key__year-lines');
+        trackList.textContent = yearLines.map((track) => track.label).join(' · ');
+        item.append(trackList);
+      }
+      if (mode === 'edit') {
+        const addYearLine = el('button', 'btn btn--ghost map-key__add-track', '+ Year line');
+        addYearLine.type = 'button';
+        addYearLine.addEventListener('click', () => {
+          const missing = missingStandardYearTracks(line);
+          if (missing.length) {
+            current.lines = current.lines.map((entry) =>
+              entry.id === line.id ? addStandardYearTrack(entry) : entry
+            );
+          } else {
+            const label = window.prompt('Name for the extra year line on this strand:', 'Middle');
+            if (!label?.trim()) return;
+            current.lines = current.lines.map((entry) =>
+              entry.id === line.id ? addExtraYearTrack(entry, label) : entry
+            );
+          }
+          void persist().then(() => paint());
+        });
+        item.append(addYearLine);
+      }
       key.append(item);
     }
     canvas.append(key);
     const tracksKey = el('p', 'map-key__tracks');
-    tracksKey.textContent = 'Each strand has three lines: Junior, Rozelle, and Senior.';
+    tracksKey.textContent =
+      mode === 'edit'
+        ? 'Each strand shows its year lines (Junior, Rozelle, Senior) evenly spaced. Use + Year line to restore a missing standard line or add a custom one.'
+        : 'Each strand shows its year lines (Junior, Rozelle, Senior) evenly spaced across the column.';
     canvas.append(tracksKey);
 
     const body = el('div', 'map-body');
@@ -1287,7 +1335,10 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     };
     start.input.addEventListener('change', applyDates);
     end.input.addEventListener('change', applyDates);
-    const tracks = selectedStation ? trackPicker(selectedStation.tracks) : null;
+    const stationLine = selectedStation ? findLine(current, selectedStation.line_id) : null;
+    const tracks = selectedStation
+      ? trackPicker(selectedStation.tracks, stationLine ? lineTrackDefs(stationLine) : lineTrackDefs(current.lines[0]!))
+      : null;
     tracks?.root.addEventListener('change', () => {
       selectedStation!.tracks = tracks.value();
       void persist().then(() => paint());
@@ -1354,7 +1405,8 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       name: `${letter} Line`,
       letter,
       color: LINE_COLORS[current.lines.length % LINE_COLORS.length] ?? 'blue',
-      points: yearLinePoints(x)
+      points: yearLinePoints(x),
+      extra_tracks: []
     });
     void persist().then(() => paint());
   }
