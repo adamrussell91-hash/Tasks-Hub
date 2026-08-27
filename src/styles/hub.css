@@ -82,6 +82,15 @@
   .hub-canvas {
     padding: var(--space-4);
     padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .hub-canvas__body {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .page-header {

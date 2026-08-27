@@ -195,13 +195,13 @@ describe('renderDashboardOverview', () => {
 
     const panel = host.querySelector<HTMLElement>('.dashboard-overview__panel');
     const peek = host.querySelector<HTMLElement>('.dashboard-overview__peek');
-    expect(host.dataset.open).toBe('false');
-    expect(panel?.hidden).toBe(true);
-    expect(peek?.hidden).toBe(false);
-
-    host.querySelector<HTMLButtonElement>('.dashboard-overview__toggle')?.click();
     expect(host.dataset.open).toBe('true');
     expect(panel?.hidden).toBe(false);
-    expect(sessionStorage.getItem('tasks-hub:dashboard-overview-open')).toBe('true');
+    expect(peek?.hidden).toBe(true);
+
+    host.querySelector<HTMLButtonElement>('.dashboard-overview__toggle')?.click();
+    expect(host.dataset.open).toBe('false');
+    expect(panel?.hidden).toBe(true);
+    expect(sessionStorage.getItem('tasks-hub:dashboard-overview-open')).toBe('false');
   });
 });

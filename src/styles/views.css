@@ -561,9 +561,11 @@
 @media (max-width: 720px) {
   .board-grid {
     display: flex;
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    scroll-padding-inline: var(--space-4);
+    scroll-padding-inline: 0;
     gap: var(--space-3);
     padding-bottom: var(--space-2);
     -webkit-overflow-scrolling: touch;
@@ -590,9 +592,9 @@
   }
 
   .board-col {
-    flex: 0 0 min(22rem, calc(100vw - 2 * var(--space-4) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+    flex: 0 0 min(22rem, 100%);
     scroll-snap-align: start;
-    max-width: calc(100vw - 2 * var(--space-4) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    max-width: 100%;
     min-height: 12rem;
   }
 
@@ -3946,6 +3948,13 @@ body.is-universe-fullscreen .page-header {
 
 .dashboard-overview {
   margin-bottom: var(--space-6);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-overview__panel {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dashboard-overview__shell {
@@ -4105,6 +4114,9 @@ body.is-universe-fullscreen .page-header {
 .dashboard-board {
   display: grid;
   gap: var(--space-4);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .dashboard-board .section-title {
@@ -4208,6 +4220,29 @@ body.is-universe-fullscreen .page-header {
 
   .dashboard-overview__peek {
     display: block;
+  }
+
+  .dashboard-overview__portfolio {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .project-status-ring {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .project-status-ring__legend {
+    flex: 1 1 100%;
+  }
+
+  .dashboard-overview__item {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-overview__item-title {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
 
