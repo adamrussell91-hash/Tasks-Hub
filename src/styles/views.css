@@ -1600,7 +1600,7 @@
   font-size: var(--text-xl);
 }
 
-.hub-layout[data-hub-view='clare'] .page-header > .page-header__supporting {
+.hub-layout[data-hub-view='clare'] .page-header .page-header__supporting {
   display: none;
 }
 
@@ -1656,6 +1656,57 @@
 .chat-close-button {
   display: none;
   min-height: 2.2rem;
+}
+
+.chat-tools-button {
+  display: none;
+  min-height: 2.2rem;
+}
+
+/* Once the thread has messages, tuck protocols away so the transcript can breathe.
+   Expand again via #chat-tools (wired in the controller). */
+.chat-view[data-chrome='engaged'] .chat-protocols {
+  display: none;
+}
+
+.chat-view[data-chrome='engaged'][data-chrome-expanded='true'] .chat-protocols {
+  display: flex;
+}
+
+.chat-view[data-chrome='engaged'] .agent-picker__avatar {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.chat-view[data-chrome='engaged'] .clare-prefs__skip {
+  display: none;
+}
+
+.chat-view[data-chrome='engaged'] .chat-tools-button {
+  display: inline-flex;
+}
+
+@media (max-width: 720px) {
+  .hub-layout[data-hub-view='clare'] .page-header {
+    margin-bottom: var(--space-2);
+  }
+
+  .hub-layout[data-hub-view='clare'] .page-header__title {
+    font-size: var(--text-lg);
+  }
+
+  .hub-layout[data-hub-view='clare'] .clare-extras {
+    display: none;
+  }
+
+  .chat-view[data-chrome='engaged'] .agent-picker {
+    gap: var(--space-1);
+  }
+
+  .chat-view[data-chrome='engaged'] .agent-picker__avatar {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
 }
 
 .chat-protocols {

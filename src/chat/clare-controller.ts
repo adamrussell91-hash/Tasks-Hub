@@ -12,6 +12,7 @@ import {
   applyAgentAccent,
   renderAgentPicker
 } from '@/chat/render-agent-picker';
+import { syncChatChrome, toggleChatChrome } from '@/chat/chat-chrome';
 import {
   appendMessage,
   appendSavedCard,
@@ -221,6 +222,7 @@ export function createClareChatController({
   function clearThread(): void {
     root.querySelector('#chat-messages')?.replaceChildren();
     showChatError(root, '');
+    syncChatChrome(root);
   }
 
   function markUnreadIfHidden(): void {
@@ -322,6 +324,7 @@ export function createClareChatController({
   async function send(raw?: string): Promise<void> {
     const field = input();
     const text = (raw ?? field?.value ?? '').trim();
+    collapseTools();
     if (!text) {
       if (selectedSlug !== 'clare') {
         await loadNetworkBriefing(undefined, selectedProtocolId);
@@ -343,9 +346,18 @@ export function createClareChatController({
     await submitDump(text);
   }
 
+  function collapseTools(): void {
+    if (!(root instanceof HTMLElement)) return;
+    if (root.dataset.chromeExpanded === 'true') {
+      delete root.dataset.chromeExpanded;
+      syncChatChrome(root);
+    }
+  }
+
   function pickProtocol(id: string): void {
     selectedProtocolId = id;
     markActive(root, id);
+    collapseTools();
     const text = input()?.value.trim() ?? '';
     if (selectedSlug !== 'clare') {
       void loadNetworkBriefing(text || undefined, id);
@@ -404,6 +416,9 @@ export function createClareChatController({
     });
     root.querySelector('#chat-new')?.addEventListener('click', () => {
       void newChat();
+    });
+    root.querySelector('#chat-tools')?.addEventListener('click', () => {
+      toggleChatChrome(root);
     });
     const skip = root.querySelector<HTMLInputElement>('#chat-skip-reasoning');
     if (skip) {

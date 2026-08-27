@@ -1,3 +1,4 @@
+import { syncChatChrome } from '@/chat/chat-chrome';
 import { applyAgentAvatarToBubble } from '@/chat/render-agent-picker';
 
 export type ChatRole = 'user' | 'assistant' | 'status';
@@ -48,6 +49,7 @@ export function appendMessage(
   item.append(body);
   list.append(item);
   list.scrollTop = list.scrollHeight;
+  syncChatChrome(root);
   return item;
 }
 
