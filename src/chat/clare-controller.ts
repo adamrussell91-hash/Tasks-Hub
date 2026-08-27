@@ -87,7 +87,7 @@ function appendProposalCard(
   }
   card.append(meta);
   if (!skipReasoning()) {
-    card.append(el('p', 'page-header__supporting', proposal.reasoning));
+    card.append(el('p', 'record-proposal__reasoning', proposal.reasoning));
   }
   if (proposal.calibration_note) {
     card.append(el('p', 'clare-bubble__note', proposal.calibration_note));

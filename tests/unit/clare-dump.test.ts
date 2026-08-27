@@ -67,8 +67,17 @@ describe('brain dump parsing', () => {
       { now: new Date(2026, 7, 25), preferredDomain: 'teaching' }
     );
     expect(items).toHaveLength(1);
-    expect(items[0]!.title).toBe('Prep for my lead mentoring meeting with Siran');
+    expect(items[0]!.title).toBe('Prep for lead mentoring meeting with Siran');
     expect(items[0]!.due_date).toBe('2026-08-26');
+  });
+
+  it('strips I-really-need-to and possessive filler from rambling dumps', () => {
+    const items = parseBrainDump('I really need to sort out my appraisal goal.', {
+      now: new Date(2026, 7, 27),
+      preferredDomain: 'teaching'
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]!.title).toBe('Sort out appraisal goal');
   });
 
   it('does not propose notes or existing titles', () => {
