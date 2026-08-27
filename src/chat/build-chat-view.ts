@@ -97,11 +97,18 @@ export function buildChatView(): HTMLElement {
   const neu = el('button', 'btn btn--ghost chat-new-button', 'New chat');
   neu.type = 'button';
   neu.id = 'chat-new';
+  const toolsBtn = el('button', 'btn btn--ghost chat-tools-button', 'Tools');
+  toolsBtn.type = 'button';
+  toolsBtn.id = 'chat-tools';
+  toolsBtn.hidden = true;
+  toolsBtn.setAttribute('aria-expanded', 'false');
+  toolsBtn.setAttribute('aria-controls', 'chat-protocol-trays');
+  toolsBtn.setAttribute('aria-label', 'Show or hide agent tools');
   const close = el('button', 'btn btn--ghost chat-close-button', 'Close');
   close.type = 'button';
   close.id = 'chat-close';
   close.setAttribute('aria-label', 'Close chat');
-  heading.append(skip, neu, close);
+  heading.append(skip, neu, toolsBtn, close);
   view.append(heading);
 
   const picker = el('div', 'agent-picker');
@@ -110,6 +117,7 @@ export function buildChatView(): HTMLElement {
   view.append(picker);
 
   const trays = el('div', 'chat-protocols');
+  trays.id = 'chat-protocol-trays';
   const protocols = el('section');
   protocols.id = 'chat-protocols';
   const stuck = el('section');
