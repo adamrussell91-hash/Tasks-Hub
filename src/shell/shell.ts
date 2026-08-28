@@ -280,6 +280,17 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
   return refs;
 }
 
+function syncRailHighlight(root: HTMLElement, highlight: HubViewId): boolean {
+  const links = [...root.querySelectorAll<HTMLAnchorElement>('.hub-rail__link')];
+  if (!links.length) return false;
+  for (const link of links) {
+    const id = hashViewId(link.getAttribute('href') ?? '');
+    if (id === highlight) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  }
+  return true;
+}
+
 function buildNavLink(item: NavItem, highlight: HubViewId): HTMLAnchorElement {
   const link = document.createElement('a');
   link.className = 'hub-rail__link';
@@ -324,9 +335,14 @@ function sectionIdForView(view: HubViewId): RailSectionId {
 }
 
 export function renderPrimaryNav(railNav: HTMLElement, active: HubViewId): void {
-  railNav.replaceChildren();
   const highlight = railHighlightId(active);
   railDisclosure.syncActive(sectionIdForView(active));
+  if (railNav.querySelector('.hub-rail__list') && syncRailHighlight(railNav, highlight)) {
+    for (const section of NAV_SECTIONS) syncSectionDom(railNav, section.id);
+    return;
+  }
+
+  railNav.replaceChildren();
 
   const desktop = document.createElement('nav');
   desktop.className = 'hub-rail__list hub-rail__list--desktop';
@@ -399,8 +415,37 @@ export interface PageHeaderConfig {
   actions?: HTMLElement | null;
 }
 
+function syncPageHeaderCopy(refs: HubShellRefs, config: PageHeaderConfig): boolean {
+  const copy = refs.pageHeader.querySelector('.page-header__copy');
+  const eyebrow = copy?.querySelector('.page-header__eyebrow');
+  const title = copy?.querySelector('.page-header__title');
+  if (!copy || !eyebrow || !title || !refs.pageHeader.contains(refs.headerActions)) return false;
+
+  eyebrow.textContent = config.eyebrow;
+  title.textContent = config.title;
+  let supporting = copy.querySelector('.page-header__supporting');
+  if (config.supporting) {
+    if (!supporting) {
+      supporting = document.createElement('p');
+      supporting.className = 'page-header__supporting';
+      copy.append(supporting);
+    }
+    supporting.textContent = config.supporting;
+  } else {
+    supporting?.remove();
+  }
+  if ('actions' in config) {
+    refs.headerActions.replaceChildren();
+    if (config.actions) refs.headerActions.append(config.actions);
+    refs.headerActions.append(mountUtilities(refs));
+  }
+  return true;
+}
+
 /** Kit page header: uppercase eyebrow → h1 → optional supporting → actions. */
 export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): void {
+  if (syncPageHeaderCopy(refs, config)) return;
+
   refs.pageHeader.replaceChildren();
   const copy = document.createElement('div');
   copy.className = 'page-header__copy';
@@ -487,6 +532,17 @@ export function isKnownHashView(hash = location.hash): boolean {
 export function parseHashRoute(): HubViewId {
   const id = hashViewId() as HubViewId;
   return KNOWN_VIEWS.includes(id) ? id : 'board';
+}
+
+const CALENDAR_VIEWS = new Set<HubViewId>(['week', 'month']);
+
+/** Shared paint surface — week/month stay on one calendar, query-only changes stay on the same view. */
+export function viewSurface(view: HubViewId): string {
+  return CALENDAR_VIEWS.has(view) ? 'calendar' : view;
+}
+
+export function isSoftViewChange(from: HubViewId | null, to: HubViewId): boolean {
+  return from !== null && viewSurface(from) === viewSurface(to);
 }
 
 /** Public Corey share: `#/capacity/<token>` */

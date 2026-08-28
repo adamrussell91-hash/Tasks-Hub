@@ -33,7 +33,7 @@ import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import { createHubField, createHubFilter, createHubToolbar, domainFilterOptions, taskDomains } from '@/views/hub-kit';
 import { createPlusButton } from '@/views/plus-add';
 import { renderTaskEditor } from '@/views/task-editor';
-import { errorMessage, renderLoadError } from '@/views/feedback';
+import { errorMessage, renderLoadError, showViewLoading } from '@/views/feedback';
 
 const STATUS_DOT: Record<string, string> = {
   open: 'var(--shallow)',
@@ -158,7 +158,7 @@ function pill(
 }
 
 export async function renderGanttView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading Gantt…'));
+  showViewLoading(canvas, 'Loading Gantt…', '.gantt-toolbar');
   let tasks: Task[];
   let projects: Project[];
   try {

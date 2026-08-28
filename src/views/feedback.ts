@@ -15,6 +15,12 @@ export function errorMessage(err: unknown, fallback = 'Request failed'): string 
   return err instanceof Error && err.message.trim() ? err.message : fallback;
 }
 
+/** Keep the current view on screen instead of flashing “Loading…” on a remount. */
+export function showViewLoading(canvas: HTMLElement, message: string, readySelector: string): void {
+  if (canvas.matches(readySelector) || canvas.querySelector(readySelector)) return;
+  canvas.replaceChildren(el('p', 'canvas-status', message));
+}
+
 export function renderLoadError(
   host: HTMLElement,
   err: unknown,

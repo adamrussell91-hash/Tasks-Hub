@@ -242,4 +242,32 @@ describe('calendar views', () => {
     expect(canvas.querySelectorAll('.hub-calendar__day')).toHaveLength(42);
     expect(canvas.querySelector('.hub-calendar__month-label')?.textContent).toMatch(/September 2026/);
   });
+
+  it('switches week and month in place without refetching', async () => {
+    const canvas = document.createElement('main');
+    await renderMonthView(canvas);
+    expect(canvas.querySelectorAll('.hub-calendar__day')).toHaveLength(42);
+    expect(vi.mocked(tasksApi.listTasks)).toHaveBeenCalledTimes(1);
+
+    const weekTab = [...canvas.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
+      (btn) => btn.textContent === 'Week'
+    );
+    weekTab?.click();
+
+    expect(canvas.querySelector('.canvas-status')).toBeNull();
+    expect(canvas.querySelectorAll('.hub-calendar__week-day')).toHaveLength(7);
+    expect(canvas.querySelectorAll('.hub-calendar__day')).toHaveLength(0);
+    expect(vi.mocked(tasksApi.listTasks)).toHaveBeenCalledTimes(1);
+    expect(location.hash).toMatch(/^#\/week/);
+
+    const monthTab = [...canvas.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
+      (btn) => btn.textContent === 'Month'
+    );
+    monthTab?.click();
+
+    expect(canvas.querySelector('.canvas-status')).toBeNull();
+    expect(canvas.querySelectorAll('.hub-calendar__day')).toHaveLength(42);
+    expect(vi.mocked(tasksApi.listTasks)).toHaveBeenCalledTimes(1);
+    expect(location.hash).toMatch(/^#\/month/);
+  });
 });

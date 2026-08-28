@@ -27,7 +27,7 @@ import {
   type CalendarMode
 } from '@/domain/calendar';
 import { formatDisplayDate, formatDisplayDateRange } from '../../design-kit/js/format-display-date.js';
-import { errorMessage, renderLoadError } from '@/views/feedback';
+import { errorMessage, renderLoadError, showViewLoading } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { openPlusAdd } from '@/views/plus-add';
 import { renderPressureStrips } from '@/views/pinch-strip';
@@ -55,6 +55,14 @@ const sessionFilters: CalendarFilters = {
 
 let selectedDateKey: string | null = null;
 let lastMonthDelta = 0;
+
+type LiveCalendar = {
+  canvas: HTMLElement;
+  mode: CalendarMode;
+  apply: (mode: CalendarMode) => void;
+};
+
+let liveCalendar: LiveCalendar | null = null;
 
 type EventTint = 'blue' | 'sage' | 'peach' | 'gold' | 'lilac' | 'sand';
 
@@ -157,7 +165,10 @@ function wireDropTarget(
   });
 }
 
-function renderViewTabs(mode: CalendarMode, anchor: Date): HTMLElement {
+function renderViewTabs(
+  mode: CalendarMode,
+  onSwitch: (mode: CalendarMode, date?: Date) => void
+): HTMLElement {
   const tabs = el('div', 'hub-pills calendar-view-tabs');
   tabs.setAttribute('role', 'tablist');
   tabs.setAttribute('aria-label', 'Calendar view');
@@ -174,7 +185,7 @@ function renderViewTabs(mode: CalendarMode, anchor: Date): HTMLElement {
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', item.id === mode ? 'true' : 'false');
     btn.addEventListener('click', () => {
-      location.hash = calendarHash(item.id, anchor);
+      if (item.id !== mode) onSwitch(item.id);
     });
     tabs.append(btn);
   }
@@ -182,7 +193,12 @@ function renderViewTabs(mode: CalendarMode, anchor: Date): HTMLElement {
 }
 
 export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
+  if (liveCalendar && liveCalendar.canvas === canvas && canvas.querySelector('.hub-calendar')) {
+    liveCalendar.apply(mode);
+    return;
+  }
+
+  showViewLoading(canvas, 'Loading…', '.hub-calendar');
   let tasks: Task[];
   let projects: Project[];
   try {
@@ -191,19 +207,33 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
       tasksApi.listProjects().catch(() => [] as Project[])
     ]);
   } catch (err) {
+    liveCalendar = null;
     renderLoadError(canvas, err, () => void renderCalendarView(canvas, mode), 'Could not load calendar');
     return;
   }
 
   const today = new Date();
   let anchor = parseCalendarAnchor(hashQuery().get('date'), today);
+  const session: LiveCalendar = {
+    canvas,
+    mode,
+    apply: (next) => {
+      const fromHash = parseCalendarAnchor(hashQuery().get('date'), today);
+      if (session.mode === next && toDateKey(anchor) === toDateKey(fromHash)) return;
+      session.mode = next;
+      anchor = fromHash;
+      paint();
+    }
+  };
+  liveCalendar = session;
 
   function allItems(): CalendarItem[] {
     return filterCalendarItems(collectCalendarItems(tasks, projects), sessionFilters);
   }
 
   async function reload(): Promise<void> {
-    await renderCalendarView(canvas, mode);
+    liveCalendar = null;
+    await renderCalendarView(canvas, session.mode);
   }
 
   async function openItem(item: CalendarItem, preview: HTMLElement): Promise<void> {
@@ -256,11 +286,23 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     );
   }
 
+  function switchMode(next: CalendarMode, date?: Date): void {
+    if (date) {
+      anchor = date;
+      selectedDateKey = toDateKey(date);
+    }
+    if (session.mode === next && !date) return;
+    session.mode = next;
+    paint();
+    const nextHash = calendarHash(next, anchor);
+    if (location.hash !== nextHash) location.hash = nextHash;
+  }
+
   function shiftRange(delta: number): void {
-    if (mode === 'month') lastMonthDelta = delta;
-    anchor = mode === 'week' ? addWeeks(anchor, delta) : addMonths(anchor, delta);
+    if (session.mode === 'month') lastMonthDelta = delta;
+    anchor = session.mode === 'week' ? addWeeks(anchor, delta) : addMonths(anchor, delta);
     selectedDateKey = null;
-    replaceHash(mode, anchor);
+    replaceHash(session.mode, anchor);
     paint();
   }
 
@@ -268,15 +310,15 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     lastMonthDelta = 0;
     anchor = date;
     selectedDateKey = toDateKey(date);
-    replaceHash(mode, date);
+    replaceHash(session.mode, date);
     paint();
   }
 
   function selectDay(day: Date): void {
     selectedDateKey = toDateKey(day);
-    if (mode === 'month' && !isSameMonth(day, anchor)) {
+    if (session.mode === 'month' && !isSameMonth(day, anchor)) {
       anchor = day;
-      replaceHash(mode, day);
+      replaceHash(session.mode, day);
     }
     paint();
   }
@@ -289,7 +331,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     const scrollTop = canvas.scrollTop;
 
     const items = allItems();
-    const days = visibleDays(anchor, mode);
+    const days = visibleDays(anchor, session.mode);
     selectedDateKey = pickSelectedDateKey(selectedDateKey, days, today, anchor);
     const todayKey = toDateKey(today);
     const rangeStart = days[0]!;
@@ -308,7 +350,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     const summary = el(
       'p',
       'calendar-summary',
-      `${rangeItems.length} on this ${mode} · ${formatLoad(dayTaskMinutes(rangeItems)) || 'no timed work'}`
+      `${rangeItems.length} on this ${session.mode} · ${formatLoad(dayTaskMinutes(rangeItems)) || 'no timed work'}`
     );
     canvas.append(summary);
 
@@ -395,7 +437,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     );
     canvas.append(filters.root);
 
-    if (mode === 'week') {
+    if (session.mode === 'week') {
       const pressure = el('div', 'pressure-host');
       renderPressureStrips(pressure, tasks, today, () => void reload());
       canvas.append(pressure);
@@ -411,9 +453,9 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     };
 
     const calendar = el('div', 'hub-calendar');
-    calendar.append(renderCalendarNav(mode, anchor, shiftRange, goTo, today));
+    calendar.append(renderCalendarNav(session.mode, anchor, shiftRange, goTo, today, switchMode));
     const body = el('div', 'hub-calendar__body');
-    if (mode === 'week') {
+    if (session.mode === 'week') {
       body.append(
         renderWeekGrid(
           days,
@@ -444,13 +486,13 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
     }
     calendar.append(body);
     calendar.append(
-      renderAgenda(items, selectedDateKey!, mode, showPreview, (created) => {
+      renderAgenda(items, selectedDateKey!, session.mode, showPreview, (created) => {
         const index = tasks.findIndex((entry) => entry.id === created.id);
         if (index >= 0) tasks[index] = created;
         else tasks.push(created);
         if (created.due_date) selectedDateKey = created.due_date;
         paint();
-      })
+      }, switchMode)
     );
     canvas.append(calendar);
     canvas.append(preview);
@@ -473,7 +515,8 @@ function renderCalendarNav(
   anchor: Date,
   shiftRange: (delta: number) => void,
   goTo: (date: Date) => void,
-  today: Date
+  today: Date,
+  onSwitch: (mode: CalendarMode, date?: Date) => void
 ): HTMLElement {
   const days = visibleDays(anchor, mode);
   const rangeStart = days[0]!;
@@ -507,7 +550,7 @@ function renderCalendarNav(
   todayBtn.addEventListener('click', () => goTo(today));
 
   paging.append(prev, label, next, todayBtn);
-  nav.append(paging, renderViewTabs(mode, anchor));
+  nav.append(paging, renderViewTabs(mode, onSwitch));
   return nav;
 }
 
@@ -658,7 +701,8 @@ function renderAgenda(
   dateKey: string,
   mode: CalendarMode,
   onOpen: (item: CalendarItem) => void,
-  onCreated: (task: Task) => void
+  onCreated: (task: Task) => void,
+  onSwitch: (mode: CalendarMode, date?: Date) => void
 ): HTMLElement {
   const dayItems = itemsForDay(items, dateKey);
   const agenda = el('section', 'hub-calendar__detail');
@@ -669,16 +713,12 @@ function renderAgenda(
   if (mode === 'month') {
     const openWeek = el('button', 'btn btn--secondary', 'Open week');
     openWeek.type = 'button';
-    openWeek.addEventListener('click', () => {
-      location.hash = calendarHash('week', parseCalendarAnchor(dateKey));
-    });
+    openWeek.addEventListener('click', () => onSwitch('week', parseCalendarAnchor(dateKey)));
     headActions.append(openWeek);
   } else {
     const openMonth = el('button', 'btn btn--secondary', 'Open month');
     openMonth.type = 'button';
-    openMonth.addEventListener('click', () => {
-      location.hash = calendarHash('month', parseCalendarAnchor(dateKey));
-    });
+    openMonth.addEventListener('click', () => onSwitch('month', parseCalendarAnchor(dateKey)));
     headActions.append(openMonth);
   }
   agenda.append(headActions);
@@ -748,4 +788,5 @@ export function resetCalendarSession(): void {
   sessionFilters.includeDates = true;
   selectedDateKey = null;
   lastMonthDelta = 0;
+  liveCalendar = null;
 }

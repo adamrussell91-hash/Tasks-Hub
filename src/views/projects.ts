@@ -25,7 +25,7 @@ import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { deleteProjectNow } from '@/views/card-actions';
 import { renderCardMenu, type CardMenuItem } from '@/views/card-menu';
 import { renderProjectPortfolioChart } from '@/views/project-portfolio-chart';
-import { errorMessage, renderLoadError } from '@/views/feedback';
+import { errorMessage, renderLoadError, showViewLoading } from '@/views/feedback';
 import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
   createHubField,
@@ -508,7 +508,7 @@ function renderStalledQueue(
 }
 
 export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
+  showViewLoading(canvas, 'Loading…', '.projects-pulse');
   let flagWarning = '';
   try {
     await tasksApi.flagStalledProjects();
@@ -532,30 +532,15 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     return;
   }
 
-  const restoreSearch =
-    document.activeElement instanceof HTMLInputElement &&
-    document.activeElement.getAttribute('aria-label') === 'Filter projects';
-  const searchPos = restoreSearch
-    ? (document.activeElement as HTMLInputElement).selectionStart
-    : null;
-
   const now = new Date();
   const stallIds = new Set(findStallCandidates(projects, tasks, now).map((item) => item.project.id));
   const cards = projects.map((project) => buildProjectPulseCard(project, tasks, stallIds, now));
   const ctx: PulseContext = { projects, tasks, goals, cards, stallIds, now };
   const mix = projectLifecycleMix(projects, tasks, stallIds, now);
   const running = runningProjectCount(mix);
-  const tension = tensionDismissed ? null : findPortfolioTension(cards, tasks, now);
   const retro = findRetroCandidate(cards, now);
   const stalled = cards.filter((card) => card.lifecycle === 'stalled');
   const mergeTargets = projects.filter((project) => project.status !== 'archived_dead' && project.status !== 'stalled');
-
-  canvas.replaceChildren();
-  if (flagWarning) canvas.append(el('p', 'empty-state', flagWarning));
-
-  const stallConfirmHost = el('div', 'stall-confirm');
-  const closureConfirmHost = el('div', 'closure-confirm');
-  canvas.append(closureConfirmHost, stallConfirmHost);
 
   const reload = () => void renderProjectsView(canvas);
 
@@ -568,7 +553,7 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     host.append(
       renderStatusChart(nextMix, nextRunning, (id) => {
         lifecycleFilter = id;
-        reload();
+        paint();
       })
     );
     const nextStack = el('div', 'projects-pulse__stack');
@@ -576,7 +561,7 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
       renderHeatmap(ctx),
       renderRoadmap(ctx, (zoom) => {
         roadmapZoom = zoom;
-        reload();
+        paint();
       })
     );
     host.append(nextStack);
@@ -593,102 +578,123 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
 
   const boardActions: ProjectBoardActions = { onReload: reload, onDeleted: dropProject };
 
-  if (tension) canvas.append(renderTensionBanner(tension.message, () => {
-    tensionDismissed = true;
-    reload();
-  }));
+  function paint(): void {
+    const restoreSearch =
+      document.activeElement instanceof HTMLInputElement &&
+      document.activeElement.getAttribute('aria-label') === 'Filter projects';
+    const searchPos = restoreSearch
+      ? (document.activeElement as HTMLInputElement).selectionStart
+      : null;
+    const scrollTop = canvas.scrollTop;
+    const tension = tensionDismissed ? null : findPortfolioTension(ctx.cards, ctx.tasks, ctx.now);
 
-  const pulse = el('div', 'projects-pulse');
-  pulse.append(
-    renderStatusChart(mix, running, (id) => {
-      lifecycleFilter = id;
-      reload();
-    })
-  );
-  const stack = el('div', 'projects-pulse__stack');
-  stack.append(
-    renderHeatmap(ctx),
-    renderRoadmap(ctx, (zoom) => {
-      roadmapZoom = zoom;
-      reload();
-    })
-  );
-  pulse.append(stack);
-  canvas.append(pulse);
+    canvas.replaceChildren();
+    if (flagWarning) canvas.append(el('p', 'empty-state', flagWarning));
 
-  const toolbar = createHubToolbar();
-  const search = createHubSearch({
-    placeholder: 'Filter projects…',
-    ariaLabel: 'Filter projects',
-    value: projectQuery,
-    onInput: (value) => {
-      projectQuery = value;
-      reload();
-    }
-  });
-  const filters = createCollapsibleFilters({
-    id: 'projects',
-    ariaLabel: 'Filters',
-    className: 'hub-filters--inline',
-    active: Boolean(projectQuery.trim())
-  });
-  filters.panel.append(search.el);
-  toolbar.append(
-    filters.root,
-    createHubPills({
-      label: 'Group by',
-      role: 'tablist',
-      items: [
-        { id: 'status', label: 'Status' },
-        { id: 'energy', label: 'Energy' },
-        { id: 'goal', label: 'Goal area' },
-        { id: 'deadline', label: 'Deadline' }
-      ],
-      value: groupBy,
-      onSelect: (id) => {
-        groupBy = id;
-        reload();
+    const stallConfirmHost = el('div', 'stall-confirm');
+    const closureConfirmHost = el('div', 'closure-confirm');
+    canvas.append(closureConfirmHost, stallConfirmHost);
+
+    if (tension) canvas.append(renderTensionBanner(tension.message, () => {
+      tensionDismissed = true;
+      paint();
+    }));
+
+    const pulse = el('div', 'projects-pulse');
+    pulse.append(
+      renderStatusChart(mix, running, (id) => {
+        lifecycleFilter = id;
+        paint();
+      })
+    );
+    const stack = el('div', 'projects-pulse__stack');
+    stack.append(
+      renderHeatmap(ctx),
+      renderRoadmap(ctx, (zoom) => {
+        roadmapZoom = zoom;
+        paint();
+      })
+    );
+    pulse.append(stack);
+    canvas.append(pulse);
+
+    const toolbar = createHubToolbar();
+    const search = createHubSearch({
+      placeholder: 'Filter projects…',
+      ariaLabel: 'Filter projects',
+      value: projectQuery,
+      onInput: (value) => {
+        projectQuery = value;
+        paint();
       }
-    })
-  );
-  canvas.append(toolbar);
-  canvas.append(renderBoard(ctx, closureConfirmHost, boardActions));
+    });
+    const filters = createCollapsibleFilters({
+      id: 'projects',
+      ariaLabel: 'Filters',
+      className: 'hub-filters--inline',
+      active: Boolean(projectQuery.trim())
+    });
+    filters.panel.append(search.el);
+    toolbar.append(
+      filters.root,
+      createHubPills({
+        label: 'Group by',
+        role: 'tablist',
+        items: [
+          { id: 'status', label: 'Status' },
+          { id: 'energy', label: 'Energy' },
+          { id: 'goal', label: 'Goal area' },
+          { id: 'deadline', label: 'Deadline' }
+        ],
+        value: groupBy,
+        onSelect: (id) => {
+          groupBy = id;
+          paint();
+        }
+      })
+    );
+    canvas.append(toolbar);
+    canvas.append(renderBoard(ctx, closureConfirmHost, boardActions));
 
-  const retroCard = renderRetro(retro, reload);
-  if (retroCard) canvas.append(retroCard);
+    const retroCard = renderRetro(retro, reload);
+    if (retroCard) canvas.append(retroCard);
 
-  canvas.append(renderStalledQueue(stalled, tasks, mergeTargets, stallConfirmHost, reload));
+    canvas.append(renderStalledQueue(stalled, tasks, mergeTargets, stallConfirmHost, reload));
 
-  if (reviews.length) {
-    canvas.append(el('h2', 'section-title', 'Review log'));
-    const logStack = el('div', 'task-stack');
-    for (const review of [...reviews].reverse().slice(0, 8)) {
-      const proj = projects.find((project) => project.id === review.project_id);
-      const slip =
-        review.slip_days === null || review.slip_days === undefined
-          ? ''
-          : review.slip_days === 0
-            ? ' · on baseline'
-            : review.slip_days > 0
-              ? ` · +${review.slip_days}d vs baseline`
-              : ` · ${review.slip_days}d vs baseline`;
-      const row = el('article', 'task-row');
-      row.append(
-        el('h3', 'task-row__title', `${review.outcome} · ${proj?.title ?? review.project_id}`),
-        el('p', 'task-row__desc', `${review.reason}${slip}`)
-      );
-      logStack.append(row);
+    if (reviews.length) {
+      canvas.append(el('h2', 'section-title', 'Review log'));
+      const logStack = el('div', 'task-stack');
+      for (const review of [...reviews].reverse().slice(0, 8)) {
+        const proj = projects.find((project) => project.id === review.project_id);
+        const slip =
+          review.slip_days === null || review.slip_days === undefined
+            ? ''
+            : review.slip_days === 0
+              ? ' · on baseline'
+              : review.slip_days > 0
+                ? ` · +${review.slip_days}d vs baseline`
+                : ` · ${review.slip_days}d vs baseline`;
+        const row = el('article', 'task-row');
+        row.append(
+          el('h3', 'task-row__title', `${review.outcome} · ${proj?.title ?? review.project_id}`),
+          el('p', 'task-row__desc', `${review.reason}${slip}`)
+        );
+        logStack.append(row);
+      }
+      canvas.append(logStack);
     }
-    canvas.append(logStack);
+
+    canvas.scrollTop = scrollTop;
+    if (restoreSearch) {
+      const field = canvas.querySelector<HTMLInputElement>('[aria-label="Filter projects"]');
+      if (field) {
+        field.focus();
+        if (searchPos != null) field.setSelectionRange(searchPos, searchPos);
+      }
+    }
   }
 
-  if (restoreSearch) {
-    const field = canvas.querySelector<HTMLInputElement>('[aria-label="Filter projects"]');
-    if (field) {
-      field.focus();
-      if (searchPos != null) field.setSelectionRange(searchPos, searchPos);
-    }
-  }
+  paint();
 }
 
 function showCloseConfirm(
