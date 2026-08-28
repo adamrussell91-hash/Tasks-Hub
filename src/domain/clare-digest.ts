@@ -5,6 +5,7 @@ import type { ClareCalibration } from '@/schemas/clare';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
 import type { DumpItem } from '@/domain/clare-dump';
 import { toDateKey } from '@/domain/queries';
+import { lifeContextToPromptBlock, type LifeContextDigest } from '@/domain/life-context';
 
 export type ClareDumpDigestItem = {
   index: number;
@@ -38,6 +39,8 @@ export type ClareDumpDigest = {
     calibrated_default_minutes: number;
     typical_delta_minutes: number | null;
   }>;
+  /** Life Hub's operational digest — energy, mood, upcoming events, active goals. Never clinical detail. */
+  life_context: string | null;
 };
 
 function typicalDelta(cal: ClareCalibration): number | null {
@@ -57,6 +60,7 @@ export function buildClareDumpDigest(input: {
   preferredDomain: TaskDomain;
   protocolId?: ClareProtocolId;
   now?: Date;
+  lifeContext?: LifeContextDigest | null;
 }): ClareDumpDigest {
   const now = input.now ?? new Date();
   const open = input.tasks
@@ -98,6 +102,7 @@ export function buildClareDumpDigest(input: {
       sample_count: cal.sample_count,
       calibrated_default_minutes: cal.calibrated_default_minutes,
       typical_delta_minutes: typicalDelta(cal)
-    }))
+    })),
+    life_context: lifeContextToPromptBlock(input.lifeContext ?? null)
   };
 }
