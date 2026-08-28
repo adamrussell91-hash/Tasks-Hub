@@ -54,8 +54,8 @@ export function applyAgentAvatarToBubble(bubble: HTMLElement, slug: string): voi
     img = document.createElement('img');
     img.className = 'chat-message__avatar';
     img.alt = '';
-    img.width = 52;
-    img.height = 52;
+    img.width = 32;
+    img.height = 32;
     bubble.prepend(img);
   }
   img.src = agent.avatarSrc;

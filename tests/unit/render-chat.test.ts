@@ -34,8 +34,11 @@ describe('render-chat', () => {
     expect(root.querySelector('.chat-message--assistant strong')?.textContent).toBe('Overdue');
     expect(root.querySelector('.chat-message--assistant li')?.textContent).toBe('Lock the brief');
     const avatar = root.querySelector<HTMLImageElement>('.chat-message--assistant .chat-message__avatar');
+    const body = root.querySelector('.chat-message--assistant .chat-message__body');
     expect(avatar?.getAttribute('src')).toBe('/assets/agents/clare.png');
     expect(avatar?.getAttribute('alt')).toBe('Clare DeMind');
+    expect(avatar?.nextElementSibling).toBe(body);
+    expect(body?.contains(avatar)).toBe(false);
   });
 
   it('renders a single-line markdown span without wrapping a paragraph', () => {

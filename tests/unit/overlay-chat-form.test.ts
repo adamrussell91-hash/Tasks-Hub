@@ -23,3 +23,19 @@ describe('mobile overlay chat form', () => {
     expect(viewsCss).toMatch(/\.chat-message__avatar\s*\{[^}]*width:\s*1\.6rem/);
   });
 });
+
+describe('chat message bubbles', () => {
+  it('paints the assistant accent on the body so the avatar sits outside the bar', () => {
+    expect(viewsCss).toMatch(
+      /\.chat-message--assistant\[data-agent\]\s+\.chat-message__body\s*\{[^}]*border-left:/
+    );
+    const rowRule = viewsCss.match(/\.chat-message--assistant\[data-agent\]\s*\{([^}]+)\}/);
+    expect(rowRule?.[1]).not.toMatch(/border-left:/);
+  });
+
+  it('centers the full-page chat column', () => {
+    expect(viewsCss).toMatch(
+      /\.hub-layout\[data-hub-view='clare'\]\s+\.hub-canvas__body\s*\{[^}]*margin-inline:\s*auto/
+    );
+  });
+});

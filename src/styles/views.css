@@ -1580,12 +1580,15 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  max-width: 44rem;
+  width: 100%;
+  margin-inline: auto;
 }
 
 .hub-layout[data-hub-view='clare'] .chat-view {
   flex: 1 1 auto;
   min-height: 0;
-  max-width: 40rem;
+  max-width: none;
   width: 100%;
 }
 
@@ -1683,9 +1686,6 @@
   .chat-message {
     max-width: min(82%, 17.5rem);
     gap: 0.4rem;
-    padding: 0.4rem 0.7rem;
-    border-radius: 1.1rem;
-    box-shadow: none;
   }
 
   .chat-message__avatar {
@@ -1697,6 +1697,9 @@
   .chat-message__body {
     font-size: var(--text-base);
     line-height: 1.35;
+    padding: 0.4rem 0.7rem;
+    border-radius: 1.1rem;
+    box-shadow: none;
   }
 
   .chat-message__body p,
@@ -1704,15 +1707,15 @@
     margin: 0 0 0.3rem;
   }
 
-  .chat-message--assistant[data-agent] {
+  .chat-message--assistant[data-agent] .chat-message__body {
     border-left-width: 0.2rem;
   }
 
-  .chat-message--user {
+  .chat-message--user .chat-message__body {
     border-bottom-right-radius: 0.35rem;
   }
 
-  .chat-message--assistant {
+  .chat-message--assistant .chat-message__body {
     border-bottom-left-radius: 0.35rem;
   }
 
@@ -1796,19 +1799,15 @@
   align-items: flex-start;
   width: fit-content;
   max-width: min(36rem, 100%);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--glass);
-  box-shadow: var(--hub-elev-card);
 }
 
 .chat-message__avatar {
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 50%;
   object-fit: cover;
   flex: 0 0 auto;
-  margin-top: 0.1rem;
+  margin-top: 0.25rem;
 }
 
 .chat-message--user .chat-message__avatar {
@@ -1819,6 +1818,10 @@
   min-width: 0;
   flex: 1;
   font-size: var(--text-base);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--glass);
+  box-shadow: var(--hub-elev-card);
 }
 
 .chat-message__body p,
@@ -1833,12 +1836,18 @@
 
 .chat-message--user {
   align-self: flex-end;
+}
+
+.chat-message--user .chat-message__body {
   background: color-mix(in srgb, var(--agent-accent, var(--wave)) 78%, var(--depth));
   color: #fff;
 }
 
 .chat-message--assistant[data-agent] {
   align-self: flex-start;
+}
+
+.chat-message--assistant[data-agent] .chat-message__body {
   border-left: 0.3rem solid var(--agent-accent, var(--wave));
   background: color-mix(in srgb, var(--agent-accent, var(--wave)) 14%, var(--hub-glass-fill));
 }
@@ -1875,7 +1884,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  align-items: center;
+  align-items: flex-end;
   margin-left: auto;
 }
 
