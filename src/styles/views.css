@@ -3022,19 +3022,13 @@ html.is-map-fullscreen .map-page .map-preview {
 
 .map-key__year-lines {
   flex-basis: 100%;
-  padding-left: calc(1.75rem + var(--space-2) + 2rem + var(--space-2));
+  padding-left: calc(2rem + var(--space-2));
   font-size: var(--text-xs);
   color: var(--muted);
 }
 
-.map-key__add-track {
-  flex-basis: 100%;
-  margin-left: calc(1.75rem + var(--space-2) + 2rem + var(--space-2));
-}
-
-.map-key__item .hub-icon-btn {
-  width: 1.75rem;
-  height: 1.75rem;
+.map-key__item .card-menu--inline {
+  margin-left: var(--space-1);
 }
 
 .map-key__disc {
@@ -3264,8 +3258,29 @@ html.is-map-fullscreen .map-page .map-preview {
   margin-top: var(--space-3);
 }
 
-.map-term-pills {
-  margin-left: auto;
+.map-index__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.map-index__head .map-index__title {
+  margin: 0;
+}
+
+.map-index__search-slot {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 2rem;
+}
+
+.map-index__search-slot.is-open {
+  flex: 1 1 12rem;
+}
+
+.map-index__search-slot .map-index__search[hidden] {
+  display: none;
 }
 
 .map-body {
@@ -3297,6 +3312,10 @@ html.is-map-fullscreen .map-page .map-preview {
 
 .map-index__search {
   width: 100%;
+}
+
+.map-index__search-toggle {
+  color: var(--muted);
 }
 
 .map-index__list {

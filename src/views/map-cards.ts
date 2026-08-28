@@ -6,6 +6,7 @@ import { discCss, letterCss } from '@/domain/maps-colors';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { cardTransitionName, runContainerTransform } from '@/views/container-transform';
 import { closeCardMenu, renderCardMenu, type CardMenuItem } from '@/views/card-menu';
+import { createExpandableSearch } from '@/views/map-chrome';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -255,27 +256,43 @@ export function mountMapCard(
   return slot;
 }
 
+export type MapCardIndexSearch = {
+  query?: string;
+  open?: boolean;
+  onQuery?: (query: string) => void;
+  onOpen?: (open: boolean) => void;
+};
+
 export function mountMapCardIndex(
   items: MapCardModel[],
   selectedId: string | null,
   handlersFor: (model: MapCardModel) => MapCardHandlers,
-  editorFor?: (model: MapCardModel) => HTMLElement | null
+  editorFor?: (model: MapCardModel) => HTMLElement | null,
+  searchState: MapCardIndexSearch = {}
 ): HTMLElement {
   const aside = el('aside', 'map-index map-card-index');
   aside.setAttribute('aria-label', 'Map cards');
-  aside.append(el('p', 'map-index__title', 'On this map'));
-
-  const search = el('label', 'hub-search map-index__search');
-  search.append(el('span', 'visually-hidden', 'Search map cards'));
-  const input = el('input', 'hub-search__input') as HTMLInputElement;
-  input.type = 'search';
-  input.placeholder = 'Programs & competitions…';
-  input.setAttribute('aria-label', 'Search map cards');
-  search.append(input);
+  const head = el('div', 'map-index__head');
+  head.append(el('p', 'map-index__title', 'On this map'));
+  let query = searchState.query ?? '';
+  const search = createExpandableSearch({
+    placeholder: 'Programs & competitions…',
+    ariaLabel: 'Search map cards',
+    value: query,
+    open: searchState.open ?? Boolean(query),
+    onInput: (value) => {
+      query = value;
+      searchState.onQuery?.(value);
+      paint(value);
+    },
+    onOpenChange: searchState.onOpen
+  });
+  head.append(search.root);
 
   const list = el('div', 'map-index__list map-card-index__list');
 
-  const paint = (query: string) => {
+  const paint = (nextQuery: string) => {
+    query = nextQuery;
     list.replaceChildren();
     const q = query.trim().toLowerCase();
     const filtered = q
@@ -305,8 +322,7 @@ export function mountMapCardIndex(
     }
   };
 
-  input.addEventListener('input', () => paint(input.value));
-  paint('');
-  aside.append(search, list);
+  paint(query);
+  aside.append(head, list);
   return aside;
 }

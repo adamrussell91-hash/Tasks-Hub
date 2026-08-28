@@ -454,6 +454,12 @@
   z-index: 2;
 }
 
+.card-menu--inline {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
 .card-menu__dots {
   display: flex;
   align-items: center;
