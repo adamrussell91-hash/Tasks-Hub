@@ -17,6 +17,7 @@ import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderBoardTaskTile, renderTaskLinkList } from '@/views/task-tile';
 import { renderBlockerPipes } from '@/views/blocker-pipes';
 import { createVizNodeList } from '@/views/viz-node-list';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 type GraphMode = 'blockers' | 'workstreams';
@@ -387,7 +388,6 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
     placeholder: session.mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…',
     ariaLabel: 'Filter graph'
   });
-
   function onNavigate(href: string): void {
     if (href.startsWith('#/graph')) {
       session.setMode(href.includes('workstreams') ? 'workstreams' : 'blockers');
@@ -398,7 +398,13 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
   }
 
   function paintChrome(): void {
-    toolbar.replaceChildren(renderGraphFamilyPills('graph', session.mode, onNavigate), search.el);
+    const filters = createCollapsibleFilters({
+      id: 'graph',
+      ariaLabel: 'Filters',
+      className: 'hub-filters--inline'
+    });
+    filters.panel.append(search.el);
+    toolbar.replaceChildren(renderGraphFamilyPills('graph', session.mode, onNavigate), filters.root);
     search.input.placeholder = session.mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…';
   }
 

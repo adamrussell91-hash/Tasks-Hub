@@ -32,7 +32,7 @@ Open [http://localhost:5175](http://localhost:5175).
 | | |
 |---|---|
 | Local + production passphrase | `tasks-hub-local` (not `teaching-hub-local`) |
-| Seed | `fixtures/seed.json` (frameworks, Ethics Olympiad / Da Vinci templates, MindWorks + demo tasks) + `fixtures/competitions.json` (Programs catalogue; git is the only source) |
+| Seed | `fixtures/seed.json` (frameworks, one `excursion template`, MindWorks + demo tasks) + `fixtures/competitions.json` (Programs catalogue; git is the only source) |
 
 Mock API seeds automatically. Production Blobs seed on first authenticated Functions request (`meta/seeded`), via `POST /api/seed`, or:
 

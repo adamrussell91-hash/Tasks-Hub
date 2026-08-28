@@ -5,9 +5,9 @@ import { openTasks } from '@/domain/queries';
 import { BOARD_COLUMNS, columnForTask, statusForColumn, type BoardColumnId } from '@/domain/board';
 import { boardTasks, isBoardTask } from '@/domain/hierarchy';
 import { errorMessage } from '@/views/feedback';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
   createHubFilter,
-  createHubToolbar,
   domainFilterOptions,
   el
 } from '@/views/hub-kit';
@@ -166,7 +166,12 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   const lede = el('p', 'view-lede');
   boardSection.append(lede);
 
-  const filterRow = createHubToolbar('board-filter');
+  const filterRow = createCollapsibleFilters({
+    id: 'board',
+    ariaLabel: 'Filters',
+    className: 'board-filter',
+    active: boardProjectFilter !== 'all' || boardDomainFilter !== 'all'
+  });
   const scope = createHubFilter({
     key: 'Scope',
     label: 'Board project scope',
@@ -192,8 +197,8 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
       void renderBoardView(canvas);
     }
   });
-  filterRow.append(scope.el, domain.el);
-  boardSection.append(filterRow);
+  filterRow.panel.append(scope.el, domain.el);
+  boardSection.append(filterRow.root);
 
   const confirmHost = el('div', 'board-confirm');
 

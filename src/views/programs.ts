@@ -17,13 +17,13 @@ import {
 } from '@/domain/programs';
 import { hashQuery } from '@/shell/shell';
 import { showConfirmWrite } from '@/views/feedback';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
   createHubField,
   createHubFilter,
   createHubPills,
   createHubSearch,
   createHubTextarea,
-  createHubToolbar,
   el,
   optionList
 } from '@/views/hub-kit';
@@ -162,11 +162,25 @@ function renderToolbar(
 
   const add = createPlusButton('Add a program', onAdd);
 
-  const row = createHubToolbar('catalog-toolbar__row');
-  row.append(search.el, add);
+  const collapsed = createCollapsibleFilters({
+    id: 'programs',
+    ariaLabel: 'Filters',
+    active: Boolean(
+      state.filters.query?.trim() ||
+        state.filters.type ||
+        state.filters.subject ||
+        state.filters.month ||
+        state.filters.age_group ||
+        state.filters.level ||
+        state.filters.length ||
+        state.filters.cost_basis ||
+        state.filters.nsw
+    )
+  });
+  collapsed.panel.append(search.el, filters);
   const controls = el('div', 'catalog-toolbar__row');
-  controls.append(sortPills, viewPills);
-  wrap.append(row, filters, controls);
+  controls.append(sortPills, viewPills, add);
+  wrap.append(collapsed.root, controls);
   return wrap;
 }
 

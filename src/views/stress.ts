@@ -2,7 +2,8 @@ import type { StressFlag } from '@/schemas/stress';
 import { tasksApi } from '@/services/client-api';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderLoadError } from '@/views/feedback';
-import { createHubFilter, createHubToolbar, el } from '@/views/hub-kit';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
+import { createHubFilter, el } from '@/views/hub-kit';
 import type { StressAgent } from '@/schemas/stress';
 import type { IntuitiveScanMeta } from '@/domain/intuitive-scan';
 
@@ -92,8 +93,12 @@ export async function renderStressView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren();
 
   const agents = [...new Set(flags.flatMap((flag) => flag.routed_to))].sort();
-  const toolbar = createHubToolbar();
-  toolbar.append(
+  const toolbar = createCollapsibleFilters({
+    id: 'stress',
+    ariaLabel: 'Filters',
+    active: stressRoute !== 'all'
+  });
+  toolbar.panel.append(
     createHubFilter({
       key: 'Routed to',
       label: 'Routed to',
@@ -109,7 +114,7 @@ export async function renderStressView(canvas: HTMLElement): Promise<void> {
       }
     }).el
   );
-  canvas.append(toolbar);
+  canvas.append(toolbar.root);
 
   const status = el('p', 'stress-scan-status');
   if (scanError) {

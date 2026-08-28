@@ -5,6 +5,7 @@ import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { domainFill, layoutOrbit, type OrbitBody } from '@/domain/orbit';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderTaskEditor } from '@/views/task-editor';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -198,7 +199,13 @@ export async function renderOrbitView(canvas: HTMLElement): Promise<void> {
     placeholder: 'Filter orbit…',
     ariaLabel: 'Filter orbit'
   });
-  toolbar.append(search.el);
+  const filters = createCollapsibleFilters({
+    id: 'orbit',
+    ariaLabel: 'Filters',
+    className: 'hub-filters--inline'
+  });
+  filters.panel.append(search.el);
+  toolbar.append(filters.root);
   canvas.append(toolbar);
   const host = el('div', 'orbit-host graph-host');
   canvas.append(host);

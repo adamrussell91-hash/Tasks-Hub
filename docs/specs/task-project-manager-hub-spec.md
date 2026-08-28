@@ -75,7 +75,7 @@ Draft entities. Field lists are a starting point, not exhaustive.
 - drafted_documents (permission note draft, staff absence email draft, stored as text or linked doc)
 
 ### Excursion Template
-- name (for example Ethics Olympiad, Da Vinci Decathlon, Tournament of Minds)
+- one generic template (`excursion template`) with default lead times and checklist
 - default_lead_times (for example permission note minus 21 days, staff email minus 21 days, risk assessment minus 42 days)
 - checklist_items
 
@@ -130,7 +130,7 @@ Clare should not simply create a card from input. When Adam gives her a task, sh
 Distinct from single tasks, this view shows the full arc of multi-term initiatives (MindWorks, the Master's degrees) with milestones plotted against time, so Adam can see the shape of the whole thing rather than only the next action.
 
 ### 5.6 Dedicated excursions and competitions module
-Excursions get their own template engine rather than a generic project template. Creating a new excursion and selecting its type (from the Excursion Template table) should automatically generate the correct checklist and lead times for that specific competition, since something like Ethics Olympiad and Da Vinci Decathlon have genuinely different admin profiles.
+Excursions get their own template engine rather than a generic project template. Creating a new excursion from `excursion template` automatically generates the standard admin checklist and lead times (permission note, staff email, risk assessment, payment). The excursion’s name and date are edited on the page after create.
 
 ### 5.7 Automatic scheduling and document drafting
 When an excursion is created, the system should automatically generate and schedule the standard admin tasks at their correct lead times (permission notes, staff absence notifications, risk assessments, payment deadlines) without Adam needing to prompt for each one. Beyond scheduling, it should pre-draft the actual documents, a permission note and a staff notification email, and place them somewhere Adam can review and send, rather than leaving him to write them from a blank page when the deadline arrives.
@@ -208,7 +208,7 @@ These are genuinely novel rather than borrowed from standard project management 
 2. Core task CRUD through a single shared service layer, this is what Clare will also call in step 6, so build it once and correctly
 3. Day, week, month, list, and search views over that same core data, and the template picker and save-as-template flow
 4. Task dependencies, then the Kanban and Gantt views on top of them, since both depend on dependency data being real before they're worth building
-5. Excursion module with at least two Excursion Templates populated (for example Ethics Olympiad and Da Vinci Decathlon) to validate the template engine pattern
+5. Excursion module with one `excursion template` that generates dated admin tasks
 6. Automatic scheduling logic for excursion admin tasks, before attempting document drafting
 7. Clare DeMind negotiation layer and framework selection, wired into the same shared service layer from step 2 so her edit authority is consistent everywhere from the start
 8. Pinch point detection, the "shrink this" action, and simple due-soon reminders and notifications

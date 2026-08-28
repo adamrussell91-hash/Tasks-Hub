@@ -2,10 +2,10 @@ import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
 import { somedayTasks } from '@/domain/hierarchy';
 import { errorMessage, showViewLoading } from '@/views/feedback';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
   createHubFilter,
   createHubSearch,
-  createHubToolbar,
   domainFilterOptions,
   el
 } from '@/views/hub-kit';
@@ -97,7 +97,11 @@ function paintSomeday(
   hero.append(el('span', 'someday-hero__icon', '🌈'));
   canvas.append(hero);
 
-  const filters = createHubToolbar();
+  const filters = createCollapsibleFilters({
+    id: 'someday',
+    ariaLabel: 'Filters',
+    active: somedayDomain !== 'all' || Boolean(somedayQuery.trim())
+  });
   const search = createHubSearch({
     placeholder: 'Filter someday ideas…',
     ariaLabel: 'Filter someday ideas',
@@ -107,7 +111,7 @@ function paintSomeday(
       paintSomeday(canvas, items, setItems);
     }
   });
-  filters.append(
+  filters.panel.append(
     search.el,
     createHubFilter({
       key: 'Domain',
@@ -121,7 +125,7 @@ function paintSomeday(
       }
     }).el
   );
-  canvas.append(filters);
+  canvas.append(filters.root);
 
   const addForm = el('form', 'someday-add hub-toolbar');
   const title = createHubSearch({

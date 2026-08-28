@@ -29,6 +29,7 @@ import {
 } from '@/domain/gantt';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { toDateKey } from '@/domain/queries';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import { createHubField, createHubFilter, createHubToolbar, domainFilterOptions, taskDomains } from '@/views/hub-kit';
 import { createPlusButton } from '@/views/plus-add';
 import { renderTaskEditor } from '@/views/task-editor';
@@ -262,7 +263,14 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
 
   paintScopePills();
   paintZoomPills();
-  left.append(scopePills, projectFilter.el);
+  const filters = createCollapsibleFilters({
+    id: 'gantt',
+    ariaLabel: 'Filters',
+    className: 'hub-filters--inline',
+    active: session.scope === 'project'
+  });
+  filters.panel.append(scopePills, projectFilter.el);
+  left.append(filters.root);
   right.append(zoomPills, criticalBtn, newTaskBtn);
   toolbar.append(left, right);
   projectFilter.el.toggleAttribute('disabled', session.scope === 'all');

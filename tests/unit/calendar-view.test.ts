@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { tasksApi } from '@/services/client-api';
 import { renderMonthView, renderWeekView, resetCalendarSession } from '@/views/calendar';
+import { resetCollapsibleFiltersForTests } from '@/views/collapsible-filters';
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 
@@ -100,6 +101,7 @@ const tasks: Task[] = [
 describe('calendar views', () => {
   beforeEach(() => {
     resetCalendarSession();
+    resetCollapsibleFiltersForTests();
     location.hash = '#/month?date=2026-08-17';
     vi.mocked(tasksApi.listTasks).mockReset();
     vi.mocked(tasksApi.listProjects).mockReset();
@@ -138,6 +140,19 @@ describe('calendar views', () => {
     expect(canvas.querySelector('[data-kind="milestone"]')?.textContent).toContain('Term brief locked');
     expect(canvas.querySelector('.hub-calendar__month-label')?.textContent).toMatch(/August 2026/);
     expect(canvas.querySelector('[data-date="2026-08-17"][data-kind="task"]')).not.toBeNull();
+  });
+
+  it('hides calendar filters behind an icon until it is opened', async () => {
+    const canvas = document.createElement('main');
+    await renderMonthView(canvas);
+    const toggle = canvas.querySelector<HTMLButtonElement>('.hub-filters__toggle');
+    const panel = canvas.querySelector<HTMLElement>('.hub-filters__panel');
+    expect(toggle?.getAttribute('aria-label')).toBe('Filters');
+    expect(panel?.hidden).toBe(true);
+    expect(canvas.querySelector('.calendar-search')).not.toBeNull();
+    toggle?.click();
+    expect(panel?.hidden).toBe(false);
+    expect(canvas.querySelector('.calendar-search') instanceof HTMLInputElement).toBe(true);
   });
 
   it('keeps completed work off the grid until the Completed layer is on', async () => {

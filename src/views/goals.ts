@@ -9,6 +9,7 @@ import { errorMessage, showViewLoading } from '@/views/feedback';
 import { renderTaskEditor } from '@/views/task-editor';
 import { projectPageHash } from '@/domain/cards';
 import { formatTagsInput, parseTagsInput } from '@/domain/hierarchy';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import { createHubFilter, createHubSearch, createHubToolbar, el } from '@/views/hub-kit';
 import { createPlusAdd } from '@/views/plus-add';
 
@@ -228,9 +229,15 @@ function paintGoals(
   });
   const addPanel = el('div', 'plus-add__choices');
   addPanel.append(addGoal, addProject);
+  const filters = createCollapsibleFilters({
+    id: 'goals',
+    ariaLabel: 'Filters',
+    className: 'hub-filters--inline',
+    active: goalArea !== 'all' || Boolean(goalQuery.trim())
+  });
+  filters.panel.append(search.el, areaFilter.el);
   toolbar.append(
-    search.el,
-    areaFilter.el,
+    filters.root,
     createPlusAdd({
       ariaLabel: 'Add a goal or project',
       panel: addPanel,

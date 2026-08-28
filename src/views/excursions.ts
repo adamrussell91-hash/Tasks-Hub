@@ -2,6 +2,7 @@ import type { Project } from '@/schemas/project';
 import type { ExcursionTemplate } from '@/schemas/templates';
 import { tasksApi } from '@/services/client-api';
 import { defaultExcursionEventDate, formatLeadTimes } from '@/domain/excursion';
+import { DEFAULT_EXCURSION_TITLE } from '@/domain/excursion-catalog';
 import { newExcursionHash, projectPageHash } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { hashQuery } from '@/shell/shell';
@@ -58,7 +59,7 @@ function openProjectPage(project: Project): void {
 async function createFromTemplate(template: ExcursionTemplate): Promise<Project> {
   const result = await tasksApi.createExcursionFromTemplate({
     excursion_template_id: template.id,
-    title: template.name,
+    title: DEFAULT_EXCURSION_TITLE,
     event_date: defaultExcursionEventDate()
   });
   return result.project;
@@ -72,7 +73,7 @@ function confirmCreate(
   const eventDate = defaultExcursionEventDate();
   showConfirm(
     host,
-    `Create “${template.name}”`,
+    `Create “${DEFAULT_EXCURSION_TITLE}”`,
     `On ${formatDisplayDate(eventDate)}. This will add dated admin tasks (${formatLeadTimes(template)}) and draft the permission note + staff email.`,
     async () => {
       onCreated(await createFromTemplate(template));

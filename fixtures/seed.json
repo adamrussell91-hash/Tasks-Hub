@@ -25,8 +25,8 @@
   "excursion_templates": [
     {
       "schema_version": 1,
-      "id": "ext_ethics_olympiad",
-      "name": "Ethics Olympiad",
+      "id": "ext_excursion",
+      "name": "excursion template",
       "default_lead_times": {
         "permission_note_days": 21,
         "staff_email_days": 21,
@@ -39,25 +39,6 @@
         "Risk assessment lodged",
         "Payment confirmed",
         "Student list finalised"
-      ]
-    },
-    {
-      "schema_version": 1,
-      "id": "ext_da_vinci",
-      "name": "Da Vinci Decathlon",
-      "default_lead_times": {
-        "permission_note_days": 28,
-        "staff_email_days": 21,
-        "risk_assessment_days": 42,
-        "payment_days": 35
-      },
-      "checklist_items": [
-        "Team registration",
-        "Permission note drafted and sent",
-        "Staff absence email sent",
-        "Risk assessment lodged",
-        "Travel / venue logistics",
-        "Payment confirmed"
       ]
     }
   ],
@@ -237,7 +218,7 @@
       "stall_flagged_at": null,
       "created_at": "2026-07-01T00:00:00.000Z",
       "updated_at": "2026-08-01T00:00:00.000Z",
-      "competition_or_event_type": "ext_ethics_olympiad",
+      "competition_or_event_type": "ext_excursion",
       "key_dates": null,
       "student_group_reference": "Year 10 Ethics",
       "generated_admin_tasks": [],
@@ -258,7 +239,7 @@
       "stall_flagged_at": null,
       "created_at": "2026-07-01T00:00:00.000Z",
       "updated_at": "2026-08-01T00:00:00.000Z",
-      "competition_or_event_type": "ext_da_vinci",
+      "competition_or_event_type": "ext_excursion",
       "key_dates": null,
       "student_group_reference": "Year 9 Da Vinci",
       "generated_admin_tasks": [],

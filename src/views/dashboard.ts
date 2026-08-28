@@ -17,13 +17,14 @@ import { deleteProjectNow, deleteTaskNow } from '@/views/card-actions';
 import { mountProjectCard, mountTaskCard, removeMountedProjectCard, removeMountedTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
 import { defaultExcursionEventDate } from '@/domain/excursion';
+import { DEFAULT_EXCURSION_TITLE } from '@/domain/excursion-catalog';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
   createHubField,
   createHubFilter,
   createHubPills,
   createHubSearch,
-  createHubToolbar,
   domainFilterOptions,
   el,
   priorityFilterOptions
@@ -177,8 +178,12 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
       el('p', 'view-lede day-view', `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`)
     );
 
-    const filters = createHubToolbar();
-    filters.append(
+    const filters = createCollapsibleFilters({
+      id: 'today',
+      ariaLabel: 'Filters',
+      active: dayDomain !== 'all' || dayPriority !== 'all'
+    });
+    filters.panel.append(
       createHubFilter({
         key: 'Domain',
         label: 'Domain',
@@ -202,7 +207,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
         }
       }).el
     );
-    canvas.append(filters);
+    canvas.append(filters.root);
 
     const clareLink = el('p', 'clare-inline');
     const goClare = el('button', 'btn btn--secondary', 'Talk to Clare');
@@ -318,8 +323,13 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
     const scrollTop = canvas.scrollTop;
 
     canvas.replaceChildren();
-    const filters = createHubToolbar('board-filter', 'backlog-view');
-    filters.append(
+    const filters = createCollapsibleFilters({
+      id: 'backlog',
+      ariaLabel: 'Filters',
+      className: 'board-filter backlog-view',
+      active: backlogDomain !== 'all' || backlogPriority !== 'all' || Boolean(backlogTag)
+    });
+    filters.panel.append(
       createHubFilter({
         key: 'Domain',
         label: 'Domain',
@@ -354,7 +364,7 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
         }
       }).el
     );
-    canvas.append(filters);
+    canvas.append(filters.root);
     const confirmHost = el('div', 'task-confirm');
     canvas.append(
       renderQuickAdd((created) => {
@@ -434,8 +444,13 @@ export async function renderSearchView(canvas: HTMLElement): Promise<void> {
       paintSearch(results, filtered.tasks, filtered.projects);
     }
   };
-  form.append(
-    search.el,
+  const filters = createCollapsibleFilters({
+    id: 'search',
+    ariaLabel: 'Filters',
+    className: 'hub-filters--inline',
+    active: searchDomain !== 'all' || searchKind !== 'all'
+  });
+  filters.panel.append(
     createHubFilter({
       key: 'Domain',
       label: 'Domain',
@@ -461,6 +476,7 @@ export async function renderSearchView(canvas: HTMLElement): Promise<void> {
       }
     })
   );
+  form.append(search.el, filters.root);
   form.addEventListener('submit', (e) => e.preventDefault());
   search.input.addEventListener('input', () => void runSearch());
   const confirmHost = el('div', 'task-confirm');
@@ -585,8 +601,12 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
   }
   canvas.replaceChildren();
   const confirmHost = el('div', 'template-confirm');
-  const toolbar = createHubToolbar();
-  toolbar.append(
+  const toolbar = createCollapsibleFilters({
+    id: 'templates',
+    ariaLabel: 'Filters',
+    active: templateKind !== 'all'
+  });
+  toolbar.panel.append(
     createHubPills({
       label: 'Template type',
       role: 'tablist',
@@ -603,7 +623,7 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
       }
     })
   );
-  canvas.append(toolbar);
+  canvas.append(toolbar.root);
 
   if (templateKind === 'all' || templateKind === 'task') {
   canvas.append(el('h2', 'section-title', 'Task templates'));
@@ -646,12 +666,12 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
         const excursionTemplateId = pt.excursion_template_id;
         showTemplateConfirm(
           confirmHost,
-          `Create “${pt.name}”`,
+          `Create “${DEFAULT_EXCURSION_TITLE}”`,
           `This will create the excursion with dated admin tasks and open its page.`,
           async () => {
             const result = await tasksApi.createExcursionFromTemplate({
               excursion_template_id: excursionTemplateId,
-              title: pt.name,
+              title: DEFAULT_EXCURSION_TITLE,
               event_date: defaultExcursionEventDate()
             });
             location.hash = projectPageHash(result.project.id);
@@ -682,12 +702,12 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     use.addEventListener('click', () => {
       showTemplateConfirm(
         confirmHost,
-        `Create “${et.name}”`,
+        `Create “${DEFAULT_EXCURSION_TITLE}”`,
         `This will create the excursion with dated admin tasks and open its page.`,
         async () => {
           const result = await tasksApi.createExcursionFromTemplate({
             excursion_template_id: et.id,
-            title: et.name,
+            title: DEFAULT_EXCURSION_TITLE,
             event_date: defaultExcursionEventDate()
           });
           location.hash = projectPageHash(result.project.id);

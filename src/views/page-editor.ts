@@ -111,9 +111,10 @@ export async function renderPageEditor(
     ]);
     if (!project) throw new Error('Project not found');
     if (project.type === 'excursion') {
-      const template = templates?.excursion_templates.find(
-        (item: ExcursionTemplate) => item.id === project.competition_or_event_type
-      );
+      const template =
+        templates?.excursion_templates.find(
+          (item: ExcursionTemplate) => item.id === project.competition_or_event_type
+        ) ?? templates?.excursion_templates[0];
       paintExcursionPage(canvas, project, tasks, template, reload, options.header);
       return;
     }
