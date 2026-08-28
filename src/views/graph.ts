@@ -16,6 +16,7 @@ import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderBoardTaskTile, renderTaskLinkList } from '@/views/task-tile';
 import { renderBlockerPipes } from '@/views/blocker-pipes';
 import { createVizNodeList } from '@/views/viz-node-list';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 type GraphMode = 'blockers' | 'workstreams';
@@ -364,7 +365,13 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
     placeholder: mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…',
     ariaLabel: 'Filter graph'
   });
-  toolbar.append(search.el);
+  const filters = createCollapsibleFilters({
+    id: 'graph',
+    ariaLabel: 'Filters',
+    className: 'hub-filters--inline'
+  });
+  filters.panel.append(search.el);
+  toolbar.append(filters.root);
   canvas.append(toolbar);
 
   const confirmHost = el('div', 'graph-confirm');

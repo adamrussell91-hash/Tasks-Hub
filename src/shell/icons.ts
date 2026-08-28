@@ -79,3 +79,7 @@ export function signOutIcon(): SVGSVGElement {
 export function plusIcon(): SVGSVGElement {
   return createOutlineIcon(['M12 5v14', 'M5 12h14']);
 }
+
+export function filterIcon(): SVGSVGElement {
+  return createOutlineIcon(['M5 6h14l-5.2 6.4v4.2L10.2 19v-6.6L5 6z']);
+}

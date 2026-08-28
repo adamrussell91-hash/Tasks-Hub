@@ -26,6 +26,7 @@ import { deleteProjectNow } from '@/views/card-actions';
 import { renderCardMenu, type CardMenuItem } from '@/views/card-menu';
 import { renderProjectPortfolioChart } from '@/views/project-portfolio-chart';
 import { errorMessage, renderLoadError } from '@/views/feedback';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
   createHubField,
   createHubFilter,
@@ -625,8 +626,15 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
       reload();
     }
   });
+  const filters = createCollapsibleFilters({
+    id: 'projects',
+    ariaLabel: 'Filters',
+    className: 'hub-filters--inline',
+    active: Boolean(projectQuery.trim())
+  });
+  filters.panel.append(search.el);
   toolbar.append(
-    search.el,
+    filters.root,
     createHubPills({
       label: 'Group by',
       role: 'tablist',

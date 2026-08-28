@@ -3,6 +3,7 @@ import type { Project } from '@/schemas/project';
 import { tasksApi } from '@/services/client-api';
 import { hashQuery } from '@/shell/shell';
 import { layoutProjectBranch, type BranchNode } from '@/domain/branch';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import { createHubFilter, createHubToolbar } from '@/views/hub-kit';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
@@ -215,7 +216,14 @@ export async function renderBranchView(canvas: HTMLElement): Promise<void> {
       paint();
     }
   });
-  toolbar.append(projectFilter.el);
+  const filters = createCollapsibleFilters({
+    id: 'branch',
+    ariaLabel: 'Filters',
+    className: 'hub-filters--inline',
+    active: projectId !== preferred.id
+  });
+  filters.panel.append(projectFilter.el);
+  toolbar.append(filters.root);
 
   const host = el('div', 'branch-host graph-host');
   canvas.append(host);
