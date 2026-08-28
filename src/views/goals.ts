@@ -5,7 +5,7 @@ import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
 import { deleteProjectNow } from '@/views/card-actions';
 import { renderCardMenu } from '@/views/card-menu';
-import { errorMessage } from '@/views/feedback';
+import { errorMessage, showViewLoading } from '@/views/feedback';
 import { renderTaskEditor } from '@/views/task-editor';
 import { projectPageHash } from '@/domain/cards';
 import { formatTagsInput, parseTagsInput } from '@/domain/hierarchy';
@@ -145,7 +145,7 @@ function renderGoalSection(
 
 /** Area → Goal → Project hierarchy with expandable project cards. */
 export async function renderGoalsView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading hierarchy…'));
+  showViewLoading(canvas, 'Loading hierarchy…', '.hierarchy-toolbar');
   try {
     const [areas, goals, projects, tasks] = await Promise.all([
       tasksApi.listAreas(),

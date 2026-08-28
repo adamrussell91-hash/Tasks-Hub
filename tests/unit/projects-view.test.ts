@@ -229,6 +229,27 @@ describe('projects view rebuild', () => {
     expect(canvas.querySelector('[data-project-id="proj_go"]')).not.toBeNull();
   });
 
+  it('switches roadmap range without remounting or refetching', async () => {
+    const canvas = document.createElement('main');
+    await renderProjectsView(canvas);
+    const listsBefore = vi.mocked(tasksApi.listProjects).mock.calls.length;
+    expect(canvas.querySelector('.projects-pulse')).not.toBeNull();
+
+    const week = [...canvas.querySelectorAll<HTMLButtonElement>('.hub-pills__btn')].find(
+      (btn) => btn.textContent === 'Week'
+    );
+    week?.click();
+
+    expect(canvas.querySelector('.canvas-status')).toBeNull();
+    expect(canvas.querySelector('.projects-pulse')).not.toBeNull();
+    expect(week?.classList.contains('is-active') || canvas.textContent).toBeTruthy();
+    const activeRange = [...canvas.querySelectorAll<HTMLButtonElement>('.roadmap-head .hub-pills__btn')].find(
+      (btn) => btn.classList.contains('is-active')
+    );
+    expect(activeRange?.textContent).toBe('Week');
+    expect(vi.mocked(tasksApi.listProjects)).toHaveBeenCalledTimes(listsBefore);
+  });
+
   it('filters the board when a chart slice is selected', async () => {
     const canvas = document.createElement('main');
     await renderProjectsView(canvas);

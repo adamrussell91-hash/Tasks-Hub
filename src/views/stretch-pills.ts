@@ -23,7 +23,8 @@ const MODES: Array<{ id: HubViewId; label: string; href: string }> = [
 /** Graph page pills — blockers / workstreams plus stretch views. */
 export function renderGraphFamilyPills(
   active: HubViewId,
-  graphMode: 'blockers' | 'workstreams' = 'blockers'
+  graphMode: 'blockers' | 'workstreams' = 'blockers',
+  onNavigate?: (href: string) => void
 ): HTMLElement {
   const pills = el('div', 'hub-pills');
   pills.setAttribute('role', 'group');
@@ -38,7 +39,8 @@ export function renderGraphFamilyPills(
     btn.type = 'button';
     btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
     btn.addEventListener('click', () => {
-      location.hash = mode.href;
+      if (onNavigate) onNavigate(mode.href);
+      else location.hash = mode.href;
     });
     pills.append(btn);
   }

@@ -1,7 +1,7 @@
 import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
 import { somedayTasks } from '@/domain/hierarchy';
-import { errorMessage } from '@/views/feedback';
+import { errorMessage, showViewLoading } from '@/views/feedback';
 import {
   createHubFilter,
   createHubSearch,
@@ -64,7 +64,7 @@ function renderSomedayCard(task: Task, onChange: (next: Task | null) => void): H
 
 /** Someday / Maybe holding pen — off the active board until promoted. */
 export async function renderSomedayView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading someday ideas…'));
+  showViewLoading(canvas, 'Loading someday ideas…', '.someday-hero');
   try {
     let items = somedayTasks(await tasksApi.listTasks());
     const paint = () => {

@@ -38,6 +38,7 @@ import {
 } from '@/domain/maps-layout';
 import { discCss, fillCss, letterCss, strokeCss } from '@/domain/maps-colors';
 import { createHubField } from '@/views/hub-kit';
+import { showViewLoading } from '@/views/feedback';
 
 export { mapsOrSeed };
 
@@ -762,7 +763,7 @@ function trackPicker(selected: string[], available: TrackDef[]): { root: HTMLEle
 }
 
 export async function renderMapsView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading maps…'));
+  showViewLoading(canvas, 'Loading maps…', '.map-body');
   const [listed, projects] = await Promise.all([
     tasksApi.listMaps().catch(() => [] as TransitMap[]),
     tasksApi.listProjects().catch(() => [] as Project[])

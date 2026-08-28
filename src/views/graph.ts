@@ -12,6 +12,7 @@ import type { Project } from '@/schemas/project';
 import { isBlocked } from '@/domain/board';
 import { tasksApi } from '@/services/client-api';
 import { hashQuery } from '@/shell/shell';
+import { showViewLoading } from '@/views/feedback';
 import { renderGraphFamilyPills } from '@/views/stretch-pills';
 import { renderBoardTaskTile, renderTaskLinkList } from '@/views/task-tile';
 import { renderBlockerPipes } from '@/views/blocker-pipes';
@@ -350,21 +351,58 @@ function mountWorkstreamGraph(
   simulation.alpha(1).restart();
 }
 
+function hashGraphMode(): GraphMode {
+  return hashQuery().get('mode') === 'workstreams' ? 'workstreams' : 'blockers';
+}
+
+type LiveGraph = {
+  canvas: HTMLElement;
+  mode: GraphMode;
+  setMode: (mode: GraphMode) => void;
+};
+
+let liveGraph: LiveGraph | null = null;
+
 /** Graph rail page — readable blocker map plus workstream force layout. */
 export async function renderGraphView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading graph…'));
+  if (liveGraph && liveGraph.canvas === canvas && canvas.querySelector('.graph-host')) {
+    liveGraph.setMode(hashGraphMode());
+    return;
+  }
+
+  showViewLoading(canvas, 'Loading graph…', '.graph-host');
   const [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
 
-  const mode: GraphMode = hashQuery().get('mode') === 'workstreams' ? 'workstreams' : 'blockers';
+  const session: LiveGraph = {
+    canvas,
+    mode: hashGraphMode(),
+    setMode: () => undefined
+  };
+  liveGraph = session;
+
   canvas.replaceChildren();
 
   const toolbar = createHubToolbar('graph-toolbar');
-  toolbar.append(renderGraphFamilyPills('graph', mode));
   const search = createHubSearch({
-    placeholder: mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…',
+    placeholder: session.mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…',
     ariaLabel: 'Filter graph'
   });
-  toolbar.append(search.el);
+
+  function onNavigate(href: string): void {
+    if (href.startsWith('#/graph')) {
+      session.setMode(href.includes('workstreams') ? 'workstreams' : 'blockers');
+      if (location.hash !== href) location.hash = href;
+      return;
+    }
+    location.hash = href;
+  }
+
+  function paintChrome(): void {
+    toolbar.replaceChildren(renderGraphFamilyPills('graph', session.mode, onNavigate), search.el);
+    search.input.placeholder = session.mode === 'blockers' ? 'Filter gates…' : 'Filter nodes…';
+  }
+
+  paintChrome();
   canvas.append(toolbar);
 
   const confirmHost = el('div', 'graph-confirm');
@@ -397,7 +435,7 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
       expandedId = null;
     }
 
-    if (mode === 'blockers') {
+    if (session.mode === 'blockers') {
       mountBlockerGraph(
         stage,
         scopedTasks,
@@ -439,6 +477,18 @@ export async function renderGraphView(canvas: HTMLElement): Promise<void> {
     );
   };
 
+  session.setMode = (next) => {
+    if (session.mode === next) return;
+    session.mode = next;
+    paintChrome();
+    paint();
+  };
+
   search.input.addEventListener('input', () => paint());
   paint();
+}
+
+/** Test hook — drop the live graph session between specs. */
+export function resetGraphSession(): void {
+  liveGraph = null;
 }

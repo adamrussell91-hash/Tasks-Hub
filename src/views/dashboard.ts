@@ -11,7 +11,7 @@ import { tasksApi } from '@/services/client-api';
 import type { TaskTemplate, ProjectTemplate, ExcursionTemplate } from '@/schemas/templates';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
-import { errorMessage, renderLoadError } from '@/views/feedback';
+import { errorMessage, renderLoadError, showViewLoading } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { deleteProjectNow, deleteTaskNow } from '@/views/card-actions';
 import { mountProjectCard, mountTaskCard, removeMountedProjectCard, removeMountedTaskCard } from '@/views/hub-cards';
@@ -151,7 +151,7 @@ export function requestToggleDone(
 }
 
 export async function renderDayView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
+  showViewLoading(canvas, 'Loading…', '.day-view');
   let tasks: Task[];
   let projects: Project[];
   try {
@@ -173,7 +173,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
 
     canvas.replaceChildren();
     canvas.append(
-      el('p', 'view-lede', `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`)
+      el('p', 'view-lede day-view', `Focus: ${prefs.join(', ')} · ${formatDisplayDate(today)}`)
     );
 
     const filters = createHubToolbar();
@@ -298,7 +298,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
 }
 
 export async function renderListView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
+  showViewLoading(canvas, 'Loading…', '.backlog-view');
   let tasks: Task[];
   let projects: Project[];
   try {
@@ -317,7 +317,7 @@ export async function renderListView(canvas: HTMLElement): Promise<void> {
     const scrollTop = canvas.scrollTop;
 
     canvas.replaceChildren();
-    const filters = createHubToolbar('board-filter');
+    const filters = createHubToolbar('board-filter', 'backlog-view');
     filters.append(
       createHubFilter({
         key: 'Domain',
@@ -574,7 +574,7 @@ function showTemplateConfirm(
 }
 
 export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
-  canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
+  showViewLoading(canvas, 'Loading…', '.template-confirm');
   let data: Awaited<ReturnType<typeof tasksApi.listTemplates>>;
   try {
     data = await tasksApi.listTemplates();
