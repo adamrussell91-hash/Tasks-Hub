@@ -148,7 +148,7 @@ describe('page editor', () => {
     expect(labels).toEqual(['Basic', 'Media', 'Teaching', 'Learning', 'Visualisation', 'Layout']);
   });
 
-  it('shows the dated timeline and returns to Excursions on an excursion project', async () => {
+  it('opens an excursion as a task page with progress, date, tracker, and joined timeline', async () => {
     const excursion: Project = {
       ...project,
       id: 'proj_ex_ethics_seed',
@@ -169,6 +169,10 @@ describe('page editor', () => {
       }
     };
     vi.mocked(tasksApi.getProject).mockResolvedValue(excursion);
+    vi.mocked(tasksApi.updateProject).mockResolvedValue({
+      ...excursion,
+      updated_at: '2026-08-28T00:00:00.000Z'
+    });
     vi.mocked(tasksApi.listTasks).mockResolvedValue([
       {
         ...task(),
@@ -202,22 +206,77 @@ describe('page editor', () => {
     const canvas = document.createElement('main');
     await renderPageEditor(canvas, { kind: 'project', id: excursion.id });
 
-    expect(canvas.querySelector('.hub-card__eyebrow')?.textContent).toBe('Excursion');
-    expect(canvas.textContent).toContain('Year 10 Ethics');
+    const title = canvas.querySelector<HTMLInputElement>('.page-card__title-input');
+    expect(title?.value).toBe('Ethics Olympiad heat');
+    expect(canvas.querySelectorAll('.page-card__title-input').length).toBe(1);
+    expect([...canvas.querySelectorAll('.hub-card__eyebrow')].map((n) => n.textContent)).not.toContain(
+      'Excursion'
+    );
+    expect(canvas.querySelector('.hub-chip')?.textContent).not.toBe('excursion');
+    expect(canvas.textContent).not.toMatch(/Ethics Olympiad heat on 2026-10-10/);
+    expect(canvas.querySelector('.page-card__back')?.textContent).toBe('← Excursions');
+    expect(canvas.querySelector('.page-card__due')).not.toBeNull();
+    expect(canvas.querySelector('.page-card__group')).not.toBeNull();
     expect(canvas.querySelector('.excursion-progress .hub-track')).not.toBeNull();
+    expect(canvas.querySelector('.excursion-tracker .task-list')).not.toBeNull();
     expect(canvas.querySelector('.excursion-timeline')).not.toBeNull();
-    expect(canvas.querySelectorAll('.excursion-timeline__stop').length).toBeGreaterThan(1);
+    expect(canvas.querySelector('.excursion-timeline__line')).toBeNull();
+    const stops = canvas.querySelectorAll('.excursion-timeline__stop');
+    expect(stops.length).toBeGreaterThan(1);
+    expect(canvas.querySelectorAll('.excursion-timeline__joiner').length).toBe(stops.length - 1);
     expect(canvas.querySelector('.excursion-timeline__card .hub-row')?.textContent).toContain(
       'Draft permission note'
     );
     expect(canvas.textContent).toContain('Event');
-    expect(canvas.textContent).toContain('Permission note for Year 10 Ethics');
-    expect(canvas.textContent).toContain('Back to Excursions');
-
-    const back = [...canvas.querySelectorAll('button')].find((btn) =>
-      btn.textContent?.includes('Back to Excursions')
+    const draft = canvas.querySelector<HTMLTextAreaElement>(
+      'textarea[aria-label="Permission note draft"]'
     );
-    back?.click();
-    expect(location.hash).toBe('#/excursions');
+    expect(draft?.value).toContain('Permission note for Year 10 Ethics');
+
+    expect(canvas.querySelector('.page-card__back')?.getAttribute('href')).toBe('#/excursions');
+  });
+
+  it('tracks permission notes on the excursion page', async () => {
+    vi.useFakeTimers();
+    const excursion: Project = {
+      ...project,
+      id: 'proj_ex_ethics_seed',
+      title: 'Ethics Olympiad heat',
+      type: 'excursion',
+      current_end_date: '2026-10-10',
+      competition_or_event_type: 'ext_ethics_olympiad',
+      permission_notes: []
+    };
+    vi.mocked(tasksApi.getProject).mockResolvedValue(excursion);
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([]);
+    vi.mocked(tasksApi.listTemplates).mockResolvedValue({
+      frameworks: [],
+      excursion_templates: [],
+      task_templates: [],
+      project_templates: []
+    });
+    vi.mocked(tasksApi.updateProject).mockResolvedValue({
+      ...excursion,
+      permission_notes: [{ id: 'pn_1', name: 'Samira', returned: false }],
+      updated_at: '2026-08-28T00:00:00.000Z'
+    });
+
+    const canvas = document.createElement('main');
+    await renderPageEditor(canvas, { kind: 'project', id: excursion.id });
+
+    const add = canvas.querySelector<HTMLInputElement>('[aria-label="Student name"]')!;
+    add.value = 'Samira';
+    add.dispatchEvent(new Event('input', { bubbles: true }));
+    canvas.querySelector<HTMLButtonElement>('.excursion-tracker .btn')!.click();
+
+    expect(canvas.querySelector('.excursion-tracker .task-name')?.textContent).toBe('Samira');
+    await vi.advanceTimersByTimeAsync(400);
+    expect(tasksApi.updateProject).toHaveBeenCalled();
+    const patch = vi.mocked(tasksApi.updateProject).mock.calls.at(-1)?.[1] as {
+      permission_notes: Array<{ name: string; returned: boolean }>;
+    };
+    expect(patch.permission_notes).toEqual([
+      expect.objectContaining({ name: 'Samira', returned: false })
+    ]);
   });
 });

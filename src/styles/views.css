@@ -1204,19 +1204,14 @@
   gap: var(--space-3);
 }
 
-.excursion-progress {
-  position: sticky;
-  top: 0;
-  z-index: 4;
+.page-card .excursion-progress {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  background: var(--hub-glass-fill);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--hub-elev-card);
-  backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
-  -webkit-backdrop-filter: blur(var(--hub-glass-blur)) saturate(115%);
+}
+
+.excursion-tracker {
+  display: grid;
+  gap: var(--space-3);
 }
 
 .excursion-progress__copy {
@@ -1257,17 +1252,6 @@
   position: relative;
 }
 
-.excursion-timeline__line {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc(5.5rem + 1rem - 4px);
-  width: 8px;
-  border-radius: var(--radius-full);
-  background: var(--marine);
-  pointer-events: none;
-}
-
 .excursion-timeline__stop {
   display: grid;
   grid-template-columns: 5.5rem 2rem minmax(0, 1fr);
@@ -1290,6 +1274,17 @@
   place-items: center;
   position: relative;
   z-index: 1;
+}
+
+.excursion-timeline__joiner {
+  position: absolute;
+  left: 50%;
+  width: 8px;
+  transform: translateX(-50%);
+  bottom: calc(50% + 14px);
+  border-radius: var(--radius-full);
+  background: var(--marine);
+  pointer-events: none;
 }
 
 .excursion-timeline__node {
@@ -1340,10 +1335,6 @@
       'mark when'
       'mark card';
     row-gap: var(--space-1);
-  }
-
-  .excursion-timeline__line {
-    left: calc(1rem - 4px);
   }
 
   .excursion-timeline__mark {

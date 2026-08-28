@@ -345,6 +345,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         competition_or_event_type: input.competition_or_event_type ?? null,
         key_dates: input.key_dates ?? null,
         student_group_reference: input.student_group_reference ?? null,
+        permission_notes: input.permission_notes ?? [],
         generated_admin_tasks: input.generated_admin_tasks ?? [],
         drafted_documents: input.drafted_documents ?? null,
         page_blocks: input.page_blocks ?? []
@@ -609,8 +610,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
 
       let project = await this.createProject({
         title: input.title,
-        description: input.description ?? `${template.name} excursion`,
-        arc_summary: `${template.name} on ${plan.event_date}`,
+        description: input.description ?? '',
+        arc_summary: input.description ?? '',
         type: 'excursion',
         status: 'active',
         baseline_end_date: plan.event_date,

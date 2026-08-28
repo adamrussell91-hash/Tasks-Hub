@@ -151,7 +151,7 @@ const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: s
   excursions: {
     eyebrow: 'Events',
     title: 'Excursions',
-    supporting: 'Spin up admin tasks from Ethics Olympiad / Da Vinci templates.'
+    supporting: 'Open one, or use a template — confirm creates it and opens the page.'
   },
   programs: {
     eyebrow: 'Catalogue',
@@ -304,6 +304,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
       let rail: HubViewId = entity.kind === 'project' ? 'projects' : 'board';
       let eyebrow = entity.kind === 'task' ? 'Task' : 'Project';
       let title = 'Page';
+      let excursionPage = false;
       if (entity.kind === 'task') {
         const task = await tasksApi.getTask(entity.id).catch(() => null);
         if (task) title = task.title;
@@ -313,7 +314,8 @@ async function bootApp(root: HTMLElement): Promise<void> {
           title = project.title;
           if (project.type === 'excursion') {
             rail = 'excursions';
-            eyebrow = 'Excursion';
+            eyebrow = 'Events';
+            excursionPage = true;
           }
         }
       }
@@ -321,7 +323,9 @@ async function bootApp(root: HTMLElement): Promise<void> {
       renderPageHeader(shell, {
         eyebrow,
         title,
-        supporting: 'Build the page with Teaching Hub’s lesson blocks.'
+        supporting: excursionPage
+          ? 'Progress, date, and permission notes.'
+          : 'Build the page with Teaching Hub’s lesson blocks.'
       });
       try {
         await renderPageEditor(shell.canvas, entity);

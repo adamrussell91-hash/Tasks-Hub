@@ -82,20 +82,29 @@ const task: Task = {
   source: 'auto_generated_from_excursion'
 };
 
-describe('excursions view cards', () => {
-  it('opens the shared project page when a card is clicked', async () => {
-    vi.mocked(tasksApi.listProjects).mockResolvedValue([excursion]);
-    vi.mocked(tasksApi.listTasks).mockResolvedValue([task]);
-    vi.mocked(tasksApi.listTemplates).mockResolvedValue({
-      frameworks: [],
-      excursion_templates: [template],
-      task_templates: [],
-      project_templates: []
-    });
+async function mount(): Promise<HTMLElement> {
+  vi.mocked(tasksApi.listProjects).mockResolvedValue([excursion]);
+  vi.mocked(tasksApi.listTasks).mockResolvedValue([task]);
+  vi.mocked(tasksApi.listTemplates).mockResolvedValue({
+    frameworks: [],
+    excursion_templates: [template],
+    task_templates: [],
+    project_templates: []
+  });
+  const canvas = document.createElement('main');
+  await renderExcursionsView(canvas);
+  return canvas;
+}
 
+describe('excursions view', () => {
+  it('lists templates and cards without a create form', async () => {
     location.hash = '#/excursions';
-    const canvas = document.createElement('main');
-    await renderExcursionsView(canvas);
+    const canvas = await mount();
+
+    expect(canvas.querySelector('form')).toBeNull();
+    expect(canvas.textContent).not.toContain('Review & create');
+    expect(canvas.querySelector('.task-row__title')?.textContent).toBe('Ethics Olympiad');
+    expect(canvas.querySelector('.btn--primary')?.textContent).toBe('Use');
 
     const card = canvas.querySelector<HTMLElement>('.proj-row');
     expect(card).not.toBeNull();
@@ -104,5 +113,42 @@ describe('excursions view cards', () => {
 
     card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(location.hash).toBe('#/project/proj_ex_ethics_seed');
+  });
+
+  it('confirms a template then creates and opens the page', async () => {
+    location.hash = '#/excursions';
+    const created = { ...excursion, id: 'proj_new', title: 'Ethics Olympiad' };
+    vi.mocked(tasksApi.createExcursionFromTemplate).mockResolvedValue({
+      project: created,
+      tasks: [task]
+    });
+    const canvas = await mount();
+
+    canvas.querySelector<HTMLButtonElement>('.btn--primary')!.click();
+    expect(canvas.querySelector('.confirm-card')).not.toBeNull();
+    expect(tasksApi.createExcursionFromTemplate).not.toHaveBeenCalled();
+
+    canvas.querySelector<HTMLButtonElement>('.btn--ghost')!.click();
+    expect(canvas.querySelector('.confirm-card')).toBeNull();
+
+    canvas.querySelector<HTMLButtonElement>('.btn--primary')!.click();
+    canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')!.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(tasksApi.createExcursionFromTemplate).toHaveBeenCalledWith({
+      excursion_template_id: 'ext_ethics_olympiad',
+      title: 'Ethics Olympiad',
+      event_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+    });
+    expect(location.hash).toBe('#/project/proj_new');
+  });
+
+  it('opens confirm when a template query is present', async () => {
+    location.hash = '#/excursions?template=ext_ethics_olympiad';
+    const canvas = await mount();
+    expect(canvas.querySelector('.confirm-card .page-header__title')?.textContent).toBe(
+      'Create “Ethics Olympiad”'
+    );
   });
 });

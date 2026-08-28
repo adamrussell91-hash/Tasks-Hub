@@ -16,6 +16,7 @@ import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { deleteProjectNow, deleteTaskNow } from '@/views/card-actions';
 import { mountProjectCard, mountTaskCard, removeMountedProjectCard, removeMountedTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
+import { defaultExcursionEventDate } from '@/domain/excursion';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 import {
   createHubField,
@@ -642,7 +643,20 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     use.type = 'button';
     use.addEventListener('click', () => {
       if (pt.type === 'excursion' && pt.excursion_template_id) {
-        location.hash = `#/excursions?template=${encodeURIComponent(pt.excursion_template_id)}`;
+        const excursionTemplateId = pt.excursion_template_id;
+        showTemplateConfirm(
+          confirmHost,
+          `Create “${pt.name}”`,
+          `This will create the excursion with dated admin tasks and open its page.`,
+          async () => {
+            const result = await tasksApi.createExcursionFromTemplate({
+              excursion_template_id: excursionTemplateId,
+              title: pt.name,
+              event_date: defaultExcursionEventDate()
+            });
+            location.hash = projectPageHash(result.project.id);
+          }
+        );
         return;
       }
       showTemplateConfirm(
@@ -666,7 +680,19 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     const use = el('button', 'btn btn--primary', 'Use');
     use.type = 'button';
     use.addEventListener('click', () => {
-      location.hash = `#/excursions?template=${encodeURIComponent(et.id)}`;
+      showTemplateConfirm(
+        confirmHost,
+        `Create “${et.name}”`,
+        `This will create the excursion with dated admin tasks and open its page.`,
+        async () => {
+          const result = await tasksApi.createExcursionFromTemplate({
+            excursion_template_id: et.id,
+            title: et.name,
+            event_date: defaultExcursionEventDate()
+          });
+          location.hash = projectPageHash(result.project.id);
+        }
+      );
     });
     actions.append(use);
     row.append(
