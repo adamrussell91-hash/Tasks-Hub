@@ -58,7 +58,8 @@ describe('gantt view', () => {
     expect(canvas.querySelector('[aria-label="Scope"]')).not.toBeNull();
     expect(canvas.querySelector('[aria-label="Zoom"]')).not.toBeNull();
     expect(canvas.textContent).toMatch(/Critical path/);
-    expect(canvas.textContent).toMatch(/New Task/);
+    expect(canvas.querySelector('[aria-label="Add a task"]')).not.toBeNull();
+    expect(canvas.textContent).not.toMatch(/New Task/);
     expect(canvas.querySelector('.gantt-moons')).toBeNull();
     expect(canvas.querySelector('.gantt-planet')).toBeNull();
     expect(canvas.textContent).not.toMatch(/All moons|Need a place|Every card is a moon/);
@@ -73,10 +74,7 @@ describe('gantt view', () => {
     const canvas = document.createElement('main');
     await renderGanttView(canvas);
 
-    const open = [...canvas.querySelectorAll<HTMLButtonElement>('button')].find(
-      (btn) => btn.textContent === 'New Task'
-    );
-    open?.click();
+    canvas.querySelector<HTMLButtonElement>('[aria-label="Add a task"]')?.click();
 
     const form = canvas.querySelector('.gantt-new-task')!;
     expect(form).not.toBeNull();

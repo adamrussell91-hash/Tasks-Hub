@@ -1,28 +1,67 @@
-import type { Project } from '@/schemas/project';
+import type { Project, ProjectStatus, PermissionNote } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
 import type { ExcursionTemplate } from '@/schemas/templates';
-import { projectProgress, statusBadgeClass, statusLabel, taskPageHash } from '@/domain/cards';
+import type { Block } from '@/schemas/block';
+import { nextBlockIdFactory } from '@/teacher/lesson-canvas/drop';
+import { mountBlockCanvas } from '@/teacher/lesson-canvas/mount-page';
+import { tasksApi } from '@/services/client-api';
+import {
+  formatRelativeUpdated,
+  projectProgress,
+  statusBadgeClass,
+  statusLabel,
+  taskPageHash
+} from '@/domain/cards';
 import {
   collectExcursionStops,
   layoutExcursionTimeline,
   TIMELINE_NODE_R,
   type LaidTimelineStop
 } from '@/domain/excursion-timeline';
-import { formatLeadTimes } from '@/domain/excursion';
+import { bindEditablePageTitle } from '@/shell/shell';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
+import { errorMessage } from '@/views/feedback';
 import { requestToggleDone } from '@/views/dashboard';
 import { renderTaskMicroCard } from '@/views/hub-cards';
 import { renderQuickAdd } from '@/views/task-editor';
+import { mountBlockInsert } from '@/views/block-insert';
+import {
+  createHubField,
+  createHubFilter,
+  createHubTextarea,
+  el,
+  type HubFilterOption
+} from '@/views/hub-kit';
 
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
+const PROJECT_STATUSES: ProjectStatus[] = ['active', 'stalled', 'revived', 'archived_dead'];
+
+function pageBlocksOf(entity: Project): Block[] {
+  return Array.isArray(entity.page_blocks) ? entity.page_blocks : [];
+}
+
+function backLink(href: string, label: string): HTMLAnchorElement {
+  const link = el('a', 'page-card__back', label) as HTMLAnchorElement;
+  link.href = href;
+  return link;
+}
+
+function pageFilter(
+  className: string,
+  key: string,
+  options: HubFilterOption[],
+  value: string,
+  onChange: (value: string) => void
+) {
+  const filter = createHubFilter({
+    key,
+    label: key,
+    defaultValue: value,
+    options,
+    value,
+    onChange
+  });
+  filter.el.classList.add(className);
+  return filter;
 }
 
 function renderProgress(project: Project, tasks: Task[]): HTMLElement {
@@ -49,10 +88,19 @@ function renderProgress(project: Project, tasks: Task[]): HTMLElement {
   return host;
 }
 
+function renderJoiner(kind: 'up' | 'down'): HTMLElement {
+  const joiner = el('div', `excursion-timeline__joiner excursion-timeline__joiner--${kind}`);
+  joiner.setAttribute('aria-hidden', 'true');
+  return joiner;
+}
+
 function renderNode(stop: LaidTimelineStop): SVGSVGElement {
   const size = TIMELINE_NODE_R * 2;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', `excursion-timeline__node${stop.kind === 'event' ? ' is-event' : ''}${stop.task?.status === 'done' ? ' is-done' : ''}`);
+  svg.setAttribute(
+    'class',
+    `excursion-timeline__node${stop.kind === 'event' ? ' is-event' : ''}${stop.task?.status === 'done' ? ' is-done' : ''}`
+  );
   svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
   svg.setAttribute('width', String(size));
   svg.setAttribute('height', String(size));
@@ -82,10 +130,10 @@ function renderEventChip(stop: LaidTimelineStop): HTMLElement {
 function renderStop(
   stop: LaidTimelineStop,
   confirmHost: HTMLElement,
-  reload: () => Promise<void>
+  reload: () => Promise<void>,
+  join: { up: boolean; down: boolean }
 ): HTMLElement {
   const row = el('li', 'excursion-timeline__stop');
-  row.style.marginTop = `${stop.gap}px`;
   row.dataset.kind = stop.kind;
   row.dataset.id = stop.id;
   const when = document.createElement('time');
@@ -93,7 +141,9 @@ function renderStop(
   when.dateTime = stop.date;
   when.textContent = formatDisplayDate(stop.date);
   const rail = el('div', 'excursion-timeline__mark');
+  if (join.up) rail.append(renderJoiner('up'));
   rail.append(renderNode(stop));
+  if (join.down) rail.append(renderJoiner('down'));
   const body = el('div', 'excursion-timeline__card');
   if (stop.task) {
     const card = renderTaskMicroCard(stop.task, {
@@ -125,91 +175,284 @@ function renderStop(
   return row;
 }
 
-function renderDrafts(project: Project, template?: ExcursionTemplate): HTMLElement {
+function renderPermissionTracker(
+  project: Project,
+  persist: (patch: Partial<Project>) => void
+): HTMLElement {
+  const notes: PermissionNote[] = [...(project.permission_notes ?? [])];
+  const host = el('section', 'excursion-tracker');
+  host.append(el('p', 'hub-card__eyebrow', 'Permission notes'));
+  const list = el('ul', 'task-list');
+
+  const paintItems = () => {
+    list.replaceChildren();
+    if (!notes.length) {
+      list.append(el('li', 'empty-state', 'Add names as permission notes go out.'));
+      return;
+    }
+    notes.forEach((note, index) => {
+      const item = el('li', 'task-item');
+      item.style.setProperty('--i', String(index));
+      const label = el('label', 'task-check');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = note.returned;
+      box.setAttribute('aria-label', `${note.name} returned`);
+      box.addEventListener('change', () => {
+        notes[index] = { ...note, returned: box.checked };
+        persist({ permission_notes: [...notes] });
+      });
+      label.append(box, el('span', 'check-box'));
+      const body = el('div', 'task-body');
+      body.append(el('span', 'task-name', note.name));
+      item.append(label, body);
+      list.append(item);
+    });
+  };
+  paintItems();
+
+  const add = createHubField({
+    ariaLabel: 'Student name',
+    placeholder: 'Add a name'
+  });
+  const addBtn = el('button', 'btn btn--secondary', 'Add');
+  addBtn.type = 'button';
+  const submit = () => {
+    const name = add.input.value.trim();
+    if (!name) return;
+    notes.push({ id: crypto.randomUUID(), name, returned: false });
+    add.input.value = '';
+    persist({ permission_notes: [...notes] });
+    paintItems();
+  };
+  addBtn.addEventListener('click', submit);
+  add.input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submit();
+    }
+  });
+  const addRow = el('div', 'page-card__fields');
+  addRow.append(add.el, addBtn);
+  host.append(list, addRow);
+  return host;
+}
+
+function renderDrafts(project: Project, persist: (patch: Partial<Project>) => void): HTMLElement {
   const extras = el('section', 'excursion-detail');
-  extras.append(el('h2', 'section-title', 'Drafted documents'));
-  if (template) {
-    extras.append(el('p', 'view-lede', `${template.name} · lead times ${formatLeadTimes(template)}`));
-  }
   const docs = project.drafted_documents;
   if (!docs?.permission_note_draft && !docs?.staff_absence_email_draft) {
-    extras.append(el('p', 'empty-state', 'No drafts on this excursion.'));
     return extras;
   }
+  extras.append(el('p', 'hub-card__eyebrow', 'Drafts'));
   if (docs.permission_note_draft) {
-    extras.append(el('h4', 'excursion-drafts__label', 'Permission note'));
-    const pre = el('pre', 'excursion-draft');
-    pre.textContent = docs.permission_note_draft;
-    extras.append(pre);
+    const note = createHubTextarea({
+      ariaLabel: 'Permission note draft',
+      className: 'page-card__notes',
+      value: docs.permission_note_draft
+    });
+    note.input.addEventListener('input', () =>
+      persist({
+        drafted_documents: {
+          ...currentDrafts(project, docs),
+          permission_note_draft: note.input.value
+        }
+      })
+    );
+    extras.append(note.el);
   }
   if (docs.staff_absence_email_draft) {
-    extras.append(el('h4', 'excursion-drafts__label', 'Staff absence email'));
-    const pre = el('pre', 'excursion-draft');
-    pre.textContent = docs.staff_absence_email_draft;
-    extras.append(pre);
+    const email = createHubTextarea({
+      ariaLabel: 'Staff absence email draft',
+      className: 'page-card__notes',
+      value: docs.staff_absence_email_draft
+    });
+    email.input.addEventListener('input', () =>
+      persist({
+        drafted_documents: {
+          ...currentDrafts(project, docs),
+          staff_absence_email_draft: email.input.value
+        }
+      })
+    );
+    extras.append(email.el);
   }
   return extras;
 }
 
-/** Full-page excursion: kit progress tracker, then a dated MindWorks-style rail of task cards. */
-export function paintExcursionPage(
-  canvas: HTMLElement,
+function currentDrafts(
+  project: Project,
+  docs: NonNullable<Project['drafted_documents']>
+): NonNullable<Project['drafted_documents']> {
+  return {
+    permission_note_draft: docs.permission_note_draft ?? project.drafted_documents?.permission_note_draft ?? null,
+    staff_absence_email_draft:
+      docs.staff_absence_email_draft ?? project.drafted_documents?.staff_absence_email_draft ?? null
+  };
+}
+
+function renderTimeline(
   project: Project,
   tasks: Task[],
-  template: ExcursionTemplate | undefined,
-  onReload: () => Promise<void>
-): void {
-  const page = el('div', 'excursion-page');
-  const nav = el('div', 'page-editor__nav');
-  const back = el('button', 'btn btn--ghost', 'Back to Excursions');
-  back.type = 'button';
-  back.addEventListener('click', () => {
-    location.hash = '#/excursions';
-  });
-  nav.append(back);
-
-  const head = el('header', 'excursion-page__head');
-  head.append(
-    el('span', 'hub-card__eyebrow', 'Excursion'),
-    el('span', statusBadgeClass(project.status), statusLabel(project.status))
-  );
-  const title = el('h1', 'hub-card__title', project.title);
-  const tags = el('div', 'hub-chips');
-  tags.append(el('span', 'hub-chip', 'excursion'));
-  if (project.student_group_reference) tags.append(el('span', 'hub-chip', project.student_group_reference));
-  const lede = el('p', 'hub-card__meta', project.arc_summary || project.description || '');
-  const intro = el('div', 'excursion-page__intro');
-  intro.append(head, title, tags);
-  if (lede.textContent) intro.append(lede);
-
-  const confirmHost = el('div', 'excursion-confirm');
-  const reload = () => onReload();
-
-  const layout = layoutExcursionTimeline(collectExcursionStops(project, tasks));
+  confirmHost: HTMLElement,
+  reload: () => Promise<void>
+): HTMLElement {
+  const stops = layoutExcursionTimeline(collectExcursionStops(project, tasks)).stops;
   const scroller = el('div', 'excursion-timeline');
   scroller.setAttribute('tabindex', '0');
   scroller.setAttribute('aria-label', 'Excursion timeline');
   const inner = el('div', 'excursion-timeline__inner');
-  inner.style.minHeight = `${layout.height}px`;
   const list = el('ol', 'excursion-timeline__list');
-  const line = el('div', 'excursion-timeline__line');
-  line.setAttribute('aria-hidden', 'true');
-  if (!layout.stops.length) {
+  if (!stops.length) {
     list.append(el('p', 'empty-state', 'No dated tasks or key dates on this excursion yet.'));
   } else {
-    for (const stop of layout.stops) list.append(renderStop(stop, confirmHost, reload));
+    stops.forEach((stop, index) => {
+      list.append(
+        renderStop(stop, confirmHost, reload, {
+          up: index > 0,
+          down: index < stops.length - 1
+        })
+      );
+    });
   }
-  inner.append(line, list);
+  inner.append(list);
   scroller.append(inner);
+  return scroller;
+}
+
+/** Full-page excursion: task card + progress, date, permission tracker, joined timeline. */
+export function paintExcursionPage(
+  canvas: HTMLElement,
+  project: Project,
+  tasks: Task[],
+  _template: ExcursionTemplate | undefined,
+  onReload: () => Promise<void>,
+  header?: HTMLElement
+): void {
+  let current = project;
+  let saveTimer: number | undefined;
+  const errorHost = el('p', 'empty-state');
+  errorHost.hidden = true;
+  const updated = el('span', 'hub-card__meta', formatRelativeUpdated(project.updated_at));
+
+  const persist = (patch: Partial<Project>) => {
+    current = { ...current, ...patch };
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => {
+      void tasksApi
+        .updateProject(current.id, {
+          title: current.title,
+          description: current.description,
+          arc_summary: current.arc_summary,
+          status: current.status,
+          current_end_date: current.current_end_date,
+          student_group_reference: current.student_group_reference,
+          permission_notes: current.permission_notes,
+          drafted_documents: current.drafted_documents,
+          page_blocks: current.page_blocks
+        })
+        .then(
+          (next) => {
+            current = { ...current, ...next };
+            updated.textContent = formatRelativeUpdated(next.updated_at);
+            errorHost.hidden = true;
+            errorHost.textContent = '';
+          },
+          (err) => {
+            errorHost.hidden = false;
+            errorHost.textContent = errorMessage(err);
+          }
+        );
+    }, 400);
+  };
+
+  bindEditablePageTitle(header, project.title, {
+    onChange: (value) => persist({ title: value }),
+    current: () => current.title
+  });
+
+  const page = el('div', 'page-editor');
+  const card = el('article', 'hub-card page-card');
+  const head = el('header', 'task-card__head');
+  head.append(backLink('#/excursions', '← Excursions'));
+  if (project.status !== 'active') {
+    head.append(el('span', statusBadgeClass(project.status), statusLabel(project.status)));
+  }
+
+  const fields = el('div', 'page-card__fields hub-toolbar');
+  const status = pageFilter(
+    'page-card__status',
+    'Status',
+    PROJECT_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
+    project.status,
+    (value) => persist({ status: value as ProjectStatus })
+  );
+  const due = createHubField({
+    type: 'date',
+    ariaLabel: 'Excursion date',
+    value: project.current_end_date ?? '',
+    className: 'page-card__due',
+    onChange: (value) => persist({ current_end_date: value || null })
+  });
+  const group = createHubField({
+    ariaLabel: 'Student group',
+    placeholder: 'Student group',
+    value: project.student_group_reference ?? '',
+    className: 'page-card__group',
+    onInput: (value) => persist({ student_group_reference: value.trim() || null })
+  });
+  fields.append(status.el, due.el, group.el);
+
+  const notes = createHubTextarea({
+    ariaLabel: 'Notes',
+    className: 'page-card__notes',
+    value: project.arc_summary || project.description
+  });
+  notes.input.addEventListener('input', () =>
+    persist({ arc_summary: notes.input.value, description: notes.input.value })
+  );
+
+  const confirmHost = el('div', 'excursion-confirm');
+  const reload = () => onReload();
+  const foot = el('footer', 'task-card__foot');
+  foot.append(updated);
+
+  card.append(
+    head,
+    renderProgress(project, tasks),
+    fields,
+    notes.el,
+    renderPermissionTracker(project, persist),
+    renderQuickAdd(() => void reload(), project.id),
+    foot
+  );
+
+  const canvasHost = el('div', 'block-canvas');
+  const layout = el('div', 'page-editor__layout');
+  try {
+    const handle = mountBlockCanvas(canvasHost, {
+      blocks: pageBlocksOf(current),
+      idFactory: nextBlockIdFactory('block', pageBlocksOf(current)),
+      onChange: (blocks) => persist({ page_blocks: blocks })
+    });
+    const add = el('div', 'page-editor__add');
+    mountBlockInsert(add, {
+      onInsert: (type) => handle.insertType(type)
+    });
+    layout.append(add, canvasHost);
+  } catch (err) {
+    layout.replaceChildren(
+      el('p', 'empty-state', `Could not open the lesson canvas: ${errorMessage(err)}`)
+    );
+  }
 
   page.append(
-    nav,
-    intro,
-    renderProgress(project, tasks),
-    renderQuickAdd(() => void reload(), project.id),
+    card,
+    errorHost,
     confirmHost,
-    scroller,
-    renderDrafts(project, template)
+    renderTimeline(project, tasks, confirmHost, reload),
+    renderDrafts(project, persist),
+    layout
   );
   canvas.replaceChildren(page);
 }

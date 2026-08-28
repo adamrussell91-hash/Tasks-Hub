@@ -13,6 +13,12 @@ export const MilestoneSchema = z.object({
   depends_on: z.array(z.string()).optional()
 });
 
+export const PermissionNoteSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  returned: z.boolean()
+});
+
 export const ProjectTypeSchema = z.enum(['standard', 'excursion', 'academic_program']);
 export const ProjectStatusSchema = z.enum(['active', 'stalled', 'revived', 'archived_dead']);
 
@@ -45,6 +51,7 @@ export const ProjectSchema = z.object({
     .nullable()
     .default(null),
   student_group_reference: z.string().nullable().default(null),
+  permission_notes: z.array(PermissionNoteSchema).optional(),
   generated_admin_tasks: z.array(z.string()).default([]),
   drafted_documents: z
     .object({
@@ -59,6 +66,7 @@ export const ProjectSchema = z.object({
 export type Project = z.infer<typeof ProjectSchema>;
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type Milestone = z.infer<typeof MilestoneSchema>;
+export type PermissionNote = z.infer<typeof PermissionNoteSchema>;
 
 export const ProjectCreateSchema = ProjectSchema.omit({
   schema_version: true,
@@ -80,6 +88,7 @@ export const ProjectCreateSchema = ProjectSchema.omit({
   competition_or_event_type: true,
   key_dates: true,
   student_group_reference: true,
+  permission_notes: true,
   generated_admin_tasks: true,
   drafted_documents: true,
   page_blocks: true

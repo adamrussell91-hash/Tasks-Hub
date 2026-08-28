@@ -24,6 +24,7 @@ import {
   renderHubShell,
   renderPageHeader,
   renderPrimaryNav,
+  viewChrome,
   type HubViewId
 } from '@/shell/shell';
 import { renderLoadError } from '@/views/feedback';
@@ -58,33 +59,6 @@ import { renderReminderStrip } from '@/views/reminder-strip';
 import { loadTaskProperties } from '@/services/task-properties';
 import { tasksApi } from '@/services/client-api';
 import { mapsOrSeed } from '@/domain/maps';
-
-const HEADERS: Record<HubViewId, { eyebrow: string; title: string }> = {
-  board: { eyebrow: 'Home', title: 'Dashboard' },
-  goals: { eyebrow: 'Plan', title: 'Goals' },
-  someday: { eyebrow: 'Plan', title: 'Someday / Maybe' },
-  clare: { eyebrow: 'Talk to your agents', title: 'Chat' },
-  graph: { eyebrow: 'Structure', title: 'Graph' },
-  maps: { eyebrow: 'Pathways', title: 'Maps' },
-  gantt: { eyebrow: 'Project planning', title: 'Gantt' },
-  orbit: { eyebrow: 'Explore', title: 'Orbit' },
-  universe: { eyebrow: 'Explore', title: 'Universe' },
-  branch: { eyebrow: 'Explore', title: 'Branch' },
-  constellation: { eyebrow: 'Explore', title: 'Sky' },
-  day: { eyebrow: 'Focus', title: 'Today' },
-  week: { eyebrow: 'Shape', title: 'Week' },
-  month: { eyebrow: 'Horizon', title: 'Month' },
-  list: { eyebrow: 'Inbox', title: 'Backlog' },
-  search: { eyebrow: 'Find', title: 'Search' },
-  templates: { eyebrow: 'Reuse', title: 'Templates' },
-  projects: { eyebrow: 'Work', title: 'Projects' },
-  excursions: { eyebrow: 'Events', title: 'Excursions' },
-  programs: { eyebrow: 'Catalogue', title: 'Programs' },
-  stress: { eyebrow: 'Network', title: 'Network' },
-  corey: { eyebrow: 'Share', title: 'Corey' },
-  properties: { eyebrow: 'Tools', title: 'Properties' }
-};
-
 
 function renderNotFound(canvas: HTMLElement, hash: string): void {
   canvas.replaceChildren();
@@ -213,7 +187,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
           : map?.ticks.find((entry) => entry.id === mapItem.id);
       renderPrimaryNav(shell.railNav, 'maps');
       renderPageHeader(shell, {
-        eyebrow: mapItem.kind === 'station' ? 'Program' : 'Competition',
+        eyebrow: 'Maps',
         title: named?.label ?? 'Page'
       });
       try {
@@ -227,7 +201,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
     if (entity) {
       resetPaint();
       let rail: HubViewId = entity.kind === 'project' ? 'projects' : 'board';
-      let eyebrow = entity.kind === 'task' ? 'Task' : 'Project';
+      let eyebrow = entity.kind === 'task' ? 'Dashboard' : 'Projects';
       let title = 'Page';
       if (entity.kind === 'task') {
         const task = await tasksApi.getTask(entity.id).catch(() => null);
@@ -238,17 +212,14 @@ async function bootApp(root: HTMLElement): Promise<void> {
           title = project.title;
           if (project.type === 'excursion') {
             rail = 'excursions';
-            eyebrow = 'Excursion';
+            eyebrow = 'Excursions';
           }
         }
       }
       renderPrimaryNav(shell.railNav, rail);
-      renderPageHeader(shell, {
-        eyebrow,
-        title
-      });
+      renderPageHeader(shell, { eyebrow, title });
       try {
-        await renderPageEditor(shell.canvas, entity);
+        await renderPageEditor(shell.canvas, entity, { header: shell.pageHeader });
       } catch (err) {
         renderLoadError(shell.canvas, err, () => void paint({ force: true }), 'Could not open page');
       }
@@ -267,7 +238,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
     if (parseNewExcursionPage()) {
       resetPaint();
       renderPrimaryNav(shell.railNav, 'excursions');
-      renderPageHeader(shell, { eyebrow: 'Events', title: 'Excursion' });
+      renderPageHeader(shell, { eyebrow: 'Excursions', title: 'New' });
       clare.sync('excursions');
       try {
         await renderReminderStrip(shell.reminderHost, () => void paint({ force: true }));
@@ -278,8 +249,9 @@ async function bootApp(root: HTMLElement): Promise<void> {
       return;
     }
     const view = nextView ?? parseHashRoute();
+    const chrome = viewChrome(view);
     renderPrimaryNav(shell.railNav, view);
-    renderPageHeader(shell, HEADERS[view]);
+    renderPageHeader(shell, chrome);
     clare.sync(view);
     try {
       if (!soft) await renderReminderStrip(shell.reminderHost, () => void paint({ force: true }));
@@ -287,7 +259,7 @@ async function bootApp(root: HTMLElement): Promise<void> {
       lastView = view;
     } catch (err) {
       resetPaint();
-      renderLoadError(shell.canvas, err, () => void paint({ force: true }), `Could not load ${HEADERS[view].title}`);
+      renderLoadError(shell.canvas, err, () => void paint({ force: true }), `Could not load ${chrome.title}`);
     }
   }
 

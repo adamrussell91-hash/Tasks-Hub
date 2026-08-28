@@ -9,6 +9,7 @@ import {
   domainFilterOptions,
   el
 } from '@/views/hub-kit';
+import { createPlusAdd } from '@/views/plus-add';
 import type { TaskDomain } from '@/schemas/task';
 
 let somedayDomain: TaskDomain | 'all' = 'all';
@@ -150,7 +151,12 @@ function paintSomeday(
       submit.disabled = false;
     }
   });
-  canvas.append(addForm);
+  canvas.append(
+    createPlusAdd({
+      ariaLabel: 'Add a someday idea',
+      panel: addForm
+    }).root
+  );
 
   const query = somedayQuery.trim().toLowerCase();
   const visible = items.filter((item) => {

@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import * as keys from '@/storage/keys';
 import { createTasksStore, seedIfEmpty, type KvAdapter } from '@/services/store';
 import type { SeedData } from '@/services/types';
-import { buildExcursionPlan } from '@/domain/excursion';
+import { buildExcursionPlan, defaultExcursionEventDate } from '@/domain/excursion';
 
 function memoryKv(): KvAdapter {
   const map = new Map<string, unknown>();
@@ -61,6 +61,12 @@ describe('excursion plan', () => {
     expect(plan.key_dates.permission_note_due).toBe('2026-09-17'); // −28
     expect(plan.key_dates.payment_due).toBe('2026-09-10'); // −35
     expect(plan.admin_tasks.some((t) => t.title.includes('Team registration'))).toBe(true);
+  });
+});
+
+describe('defaultExcursionEventDate', () => {
+  it('is 45 days from now', () => {
+    expect(defaultExcursionEventDate(new Date('2026-08-28T00:00:00.000Z'))).toBe('2026-10-12');
   });
 });
 

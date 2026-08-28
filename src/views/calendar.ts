@@ -29,6 +29,7 @@ import {
 import { formatDisplayDate, formatDisplayDateRange } from '../../design-kit/js/format-display-date.js';
 import { errorMessage, renderLoadError, showViewLoading } from '@/views/feedback';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
+import { openPlusAdd } from '@/views/plus-add';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { requestToggleDone } from '@/views/dashboard';
 import { mountTaskCard } from '@/views/hub-cards';
@@ -584,10 +585,8 @@ function renderWeekGrid(
       event.stopPropagation();
       onSelect(day);
       queueMicrotask(() => {
-        const field = document.querySelector<HTMLInputElement>(
-          '.hub-calendar__detail .hub-search__input, .hub-calendar__detail .quick-add input'
-        );
-        field?.focus();
+        const detail = document.querySelector('.hub-calendar__detail');
+        if (detail) openPlusAdd(detail)?.focus();
       });
     });
     head.append(weekday, num, add);
@@ -664,10 +663,8 @@ function renderMonthGrid(
       event.preventDefault();
       onSelect(day);
       queueMicrotask(() => {
-        const field = document.querySelector<HTMLInputElement>(
-          '.hub-calendar__detail .hub-search__input, .hub-calendar__detail .quick-add input'
-        );
-        field?.focus();
+        const detail = document.querySelector('.hub-calendar__detail');
+        if (detail) openPlusAdd(detail)?.focus();
       });
     });
 

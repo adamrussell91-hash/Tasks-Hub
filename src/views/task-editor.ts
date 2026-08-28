@@ -26,6 +26,7 @@ import {
   optionList,
   priorityFilterOptions
 } from '@/views/hub-kit';
+import { createPlusAdd } from '@/views/plus-add';
 
 const FREQUENCIES: RecurrenceFrequency[] = ['daily', 'weekly', 'monthly', 'yearly'];
 const WEEKDAYS = [
@@ -449,6 +450,10 @@ export function renderQuickAdd(
   submit.type = 'submit';
   if (options.dueDate) form.append(title.el, due.el, domain.el, submit);
   else form.append(title.el, domain.el, submit);
+  const plus = createPlusAdd({
+    ariaLabel: options.dueDate ? 'Add a task for this day' : 'Add a task',
+    panel: form
+  });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     submit.disabled = true;
@@ -473,6 +478,7 @@ export function renderQuickAdd(
       }
       const created = await tasksApi.createTask(body);
       title.input.value = '';
+      plus.close();
       onCreated(created);
     } catch (err) {
       form.append(el('p', 'empty-state', errorMessage(err)));
@@ -480,5 +486,5 @@ export function renderQuickAdd(
       submit.disabled = false;
     }
   });
-  return form;
+  return plus.root;
 }

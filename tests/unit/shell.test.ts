@@ -7,6 +7,7 @@ import {
   renderHubShell,
   renderPageHeader,
   renderPrimaryNav,
+  viewChrome,
   viewSurface
 } from '../../src/shell/shell';
 
@@ -74,12 +75,12 @@ describe('hub shell chrome', () => {
     const refs = renderHubShell(root, { onLogout: vi.fn(), onRefresh: vi.fn() });
     renderPrimaryNav(refs.railNav, 'board');
 
-    const sections = [...refs.railNav.querySelectorAll('.hub-rail__section')].map(
-      (el) => el.textContent
-    );
-    expect(sections).toEqual(['Home', 'Plan', 'Views', 'Work', 'Network', 'Tools']);
+    const sections = [
+      ...refs.railNav.querySelectorAll('.hub-rail__list--desktop .hub-rail__section')
+    ].map((el) => el.querySelector('span')?.textContent);
+    expect(sections).toEqual(['Home', 'Views', 'Plan', 'Work', 'Network', 'Tools']);
 
-    const links = [...refs.railNav.querySelectorAll('.hub-rail__link')];
+    const links = [...refs.railNav.querySelectorAll('.hub-rail__list--desktop .hub-rail__link')];
     expect(links.some((link) => link.textContent === 'Orbit')).toBe(false);
     expect(links.some((link) => link.textContent === 'Dashboard')).toBe(true);
     expect(links.some((link) => link.textContent === 'Programs')).toBe(true);
@@ -116,6 +117,18 @@ describe('hub shell chrome', () => {
     expect(window.location.hash).toBe('#/board');
     expect(document.activeElement).toBe(main);
     root.remove();
+  });
+});
+
+describe('viewChrome', () => {
+  it('uses the rail group then the tab name', () => {
+    expect(viewChrome('day')).toEqual({ eyebrow: 'Views', title: 'Today' });
+    expect(viewChrome('week')).toEqual({ eyebrow: 'Views', title: 'Week' });
+    expect(viewChrome('month')).toEqual({ eyebrow: 'Views', title: 'Month' });
+    expect(viewChrome('list')).toEqual({ eyebrow: 'Views', title: 'Backlog' });
+    expect(viewChrome('excursions')).toEqual({ eyebrow: 'Work', title: 'Excursions' });
+    expect(viewChrome('maps')).toEqual({ eyebrow: 'Tools', title: 'Maps' });
+    expect(viewChrome('orbit')).toEqual({ eyebrow: 'Views', title: 'Orbit' });
   });
 });
 

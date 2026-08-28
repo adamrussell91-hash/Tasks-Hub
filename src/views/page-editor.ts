@@ -10,6 +10,7 @@ import { errorMessage, renderLoadError } from '@/views/feedback';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountBlockInsert } from '@/views/block-insert';
 import { paintExcursionPage } from '@/views/excursion-timeline';
+import { bindEditablePageTitle } from '@/shell/shell';
 import {
   createHubField,
   createHubFilter,
@@ -35,6 +36,8 @@ const PROJECT_STATUSES: ProjectStatus[] = ['active', 'stalled', 'revived', 'arch
 
 export type EntityPageRef = { kind: 'task' | 'project'; id: string };
 
+export type PageEditorOptions = { header?: HTMLElement };
+
 function pageBlocksOf(entity: Task | Project): Block[] {
   return Array.isArray(entity.page_blocks) ? entity.page_blocks : [];
 }
@@ -56,14 +59,6 @@ function pageFilter(
   });
   filter.el.classList.add(className);
   return filter;
-}
-
-function titleInput(value: string, label: string): HTMLInputElement {
-  const input = el('input', 'hub-card__title page-card__title-input') as HTMLInputElement;
-  input.type = 'text';
-  input.value = value;
-  input.setAttribute('aria-label', label);
-  return input;
 }
 
 function backLink(href: string, label: string): HTMLAnchorElement {
@@ -92,8 +87,13 @@ function mountEngine(
   return handle;
 }
 
-export async function renderPageEditor(canvas: HTMLElement, ref: EntityPageRef): Promise<void> {
+export async function renderPageEditor(
+  canvas: HTMLElement,
+  ref: EntityPageRef,
+  options: PageEditorOptions = {}
+): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading page…'));
+  const reload = () => renderPageEditor(canvas, ref, options);
   try {
     if (ref.kind === 'task') {
       const [task, projects] = await Promise.all([
@@ -101,7 +101,7 @@ export async function renderPageEditor(canvas: HTMLElement, ref: EntityPageRef):
         tasksApi.listProjects().catch(() => [] as Project[])
       ]);
       if (!task) throw new Error('Task not found');
-      paintTaskPage(canvas, task, projects);
+      paintTaskPage(canvas, task, projects, options.header);
       return;
     }
     const [project, tasks, templates] = await Promise.all([
@@ -114,16 +114,21 @@ export async function renderPageEditor(canvas: HTMLElement, ref: EntityPageRef):
       const template = templates?.excursion_templates.find(
         (item: ExcursionTemplate) => item.id === project.competition_or_event_type
       );
-      paintExcursionPage(canvas, project, tasks, template, () => renderPageEditor(canvas, ref));
+      paintExcursionPage(canvas, project, tasks, template, reload, options.header);
       return;
     }
-    paintProjectPage(canvas, project, tasks);
+    paintProjectPage(canvas, project, tasks, options.header);
   } catch (err) {
-    renderLoadError(canvas, err, () => void renderPageEditor(canvas, ref), 'Could not open page');
+    renderLoadError(canvas, err, () => void reload(), 'Could not open page');
   }
 }
 
-function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): void {
+function paintTaskPage(
+  canvas: HTMLElement,
+  task: Task,
+  projects: Project[],
+  header?: HTMLElement
+): void {
   let current = task;
   let saveTimer: number | undefined;
   const errorHost = el('p', 'empty-state');
@@ -160,20 +165,15 @@ function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): vo
     }, 400);
   };
 
+  bindEditablePageTitle(header, task.title, {
+    onChange: (value) => persist({ title: value }),
+    current: () => current.title
+  });
+
   const page = el('div', 'page-editor');
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
-  head.append(el('span', 'hub-card__eyebrow', 'Task'), backLink('#/board', '← Dashboard'));
-
-  const title = titleInput(task.title, 'Task title');
-  title.addEventListener('input', () => {
-    const next = title.value.trim();
-    if (!next) return;
-    persist({ title: next });
-  });
-  title.addEventListener('blur', () => {
-    if (!title.value.trim()) title.value = current.title;
-  });
+  head.append(backLink('#/board', '← Dashboard'));
 
   const fields = el('div', 'page-card__fields hub-toolbar');
   const status = pageFilter(
@@ -229,7 +229,7 @@ function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): vo
   const foot = el('footer', 'task-card__foot');
   foot.append(updated);
 
-  card.append(head, title, fields, notes.el, foot);
+  card.append(head, fields, notes.el, foot);
 
   const canvasHost = el('div', 'block-canvas');
   const layout = el('div', 'page-editor__layout');
@@ -245,7 +245,12 @@ function paintTaskPage(canvas: HTMLElement, task: Task, projects: Project[]): vo
   canvas.replaceChildren(page);
 }
 
-function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]): void {
+function paintProjectPage(
+  canvas: HTMLElement,
+  project: Project,
+  tasks: Task[],
+  header?: HTMLElement
+): void {
   let current = project;
   let saveTimer: number | undefined;
   const errorHost = el('p', 'empty-state');
@@ -280,24 +285,16 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
     }, 400);
   };
 
+  bindEditablePageTitle(header, project.title, {
+    onChange: (value) => persist({ title: value }),
+    current: () => current.title
+  });
+
   const progress = projectProgress(project, tasks);
   const page = el('div', 'page-editor');
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
-  head.append(
-    el('span', 'hub-card__eyebrow', 'Project'),
-    backLink('#/projects', 'Projects')
-  );
-
-  const title = titleInput(project.title, 'Project title');
-  title.addEventListener('input', () => {
-    const next = title.value.trim();
-    if (!next) return;
-    persist({ title: next });
-  });
-  title.addEventListener('blur', () => {
-    if (!title.value.trim()) title.value = current.title;
-  });
+  head.append(backLink('#/projects', '← Projects'));
 
   const fields = el('div', 'page-card__fields hub-toolbar');
   const status = pageFilter(
@@ -338,8 +335,13 @@ function paintProjectPage(canvas: HTMLElement, project: Project, tasks: Task[]):
   const foot = el('footer', 'task-card__foot');
   foot.append(updated);
 
-  card.append(head, title, fields, notes.el, metrics, track);
-  card.append(renderQuickAdd(() => void renderPageEditor(canvas, { kind: 'project', id: project.id }), project.id));
+  card.append(head, fields, notes.el, metrics, track);
+  card.append(
+    renderQuickAdd(
+      () => void renderPageEditor(canvas, { kind: 'project', id: project.id }, { header }),
+      project.id
+    )
+  );
   card.append(foot);
 
   const canvasHost = el('div', 'block-canvas');

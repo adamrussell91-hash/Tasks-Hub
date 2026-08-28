@@ -56,7 +56,11 @@ describe('renderQuickAdd', () => {
     const created = sampleTask({ id: 'task_created', title: '[UX-AUDIT] backlog test', due_date: null });
     vi.mocked(tasksApi.createTask).mockResolvedValue(created);
     const onCreated = vi.fn();
-    const form = renderQuickAdd(onCreated);
+    const root = renderQuickAdd(onCreated);
+    expect(root.querySelector('.plus-add__btn')?.getAttribute('aria-label')).toBe('Add a task');
+    expect(root.querySelector<HTMLElement>('.plus-add__panel')?.hidden).toBe(true);
+    root.querySelector<HTMLButtonElement>('.plus-add__btn')!.click();
+    const form = root.querySelector('form.quick-add') as HTMLFormElement;
     expect(form.querySelector('select')).toBeNull();
     expect(form.querySelector('.hub-filter')?.tagName).toBe('BUTTON');
     expect(form.querySelector('.hub-search')?.tagName).toBe('LABEL');
@@ -73,7 +77,9 @@ describe('renderQuickAdd', () => {
   });
 
   it('stamps a due date only when the calendar quick-add asks for one', async () => {
-    const form = renderQuickAdd(() => undefined, null, { dueDate: '2026-08-19' });
+    const root = renderQuickAdd(() => undefined, null, { dueDate: '2026-08-19' });
+    root.querySelector<HTMLButtonElement>('.plus-add__btn')!.click();
+    const form = root.querySelector('form.quick-add') as HTMLFormElement;
     const title = form.querySelector('input[aria-label="New task title"]') as HTMLInputElement;
     const due = form.querySelector('input[type="date"]') as HTMLInputElement;
     expect(due.value).toBe('2026-08-19');

@@ -40,6 +40,7 @@ import {
 } from '@/domain/blocked-since';
 import {
   assembleDumpResult,
+  assembleJudgedDumpResult,
   buildProposal,
   emptyCalibration,
   recordActualSample,
@@ -345,6 +346,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         competition_or_event_type: input.competition_or_event_type ?? null,
         key_dates: input.key_dates ?? null,
         student_group_reference: input.student_group_reference ?? null,
+        permission_notes: input.permission_notes ?? [],
         generated_admin_tasks: input.generated_admin_tasks ?? [],
         drafted_documents: input.drafted_documents ?? null,
         page_blocks: input.page_blocks ?? []
@@ -609,8 +611,8 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
 
       let project = await this.createProject({
         title: input.title,
-        description: input.description ?? `${template.name} excursion`,
-        arc_summary: `${template.name} on ${plan.event_date}`,
+        description: input.description ?? '',
+        arc_summary: input.description ?? '',
         type: 'excursion',
         status: 'active',
         baseline_end_date: plan.event_date,
@@ -700,15 +702,17 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           lifeContext
         });
         const judgment = await judge(digest);
-        const result = assembleDumpResult(
-          items,
-          frameworks,
-          () => (calibration.sample_count > 0 ? calibration : null),
-          input.protocol_id,
-          judgment
-        );
-        if (result.proposals[0]) {
-          return result.proposals[0];
+        if (judgment.ok) {
+          const result = assembleJudgedDumpResult(
+            judgment.items,
+            frameworks,
+            () => (calibration.sample_count > 0 ? calibration : null),
+            input.protocol_id,
+            judgment.voice
+          );
+          if (result.proposals[0]) {
+            return result.proposals[0];
+          }
         }
       }
       return buildProposal(
@@ -792,14 +796,20 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           now,
           lifeContext
         });
-        const judgment = await judge(digest);
-        return assembleDumpResult(
-          items,
-          frameworks,
-          calibrationFor,
-          input.protocol_id,
-          judgment
-        );
+        try {
+          const judgment = await judge(digest);
+          if (judgment.ok) {
+            return assembleJudgedDumpResult(
+              judgment.items,
+              frameworks,
+              calibrationFor,
+              input.protocol_id,
+              judgment.voice
+            );
+          }
+        } catch {
+          // Model call failed outright — fall through to the offline parser.
+        }
       }
       return assembleDumpResult(items, frameworks, calibrationFor, input.protocol_id);
     },

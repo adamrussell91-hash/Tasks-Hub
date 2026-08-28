@@ -27,6 +27,7 @@ import {
   el,
   optionList
 } from '@/views/hub-kit';
+import { createPlusButton } from '@/views/plus-add';
 
 type CatalogView = 'cards' | 'table';
 
@@ -159,9 +160,7 @@ function renderToolbar(
     }
   });
 
-  const add = el('button', 'btn btn--primary', 'Add');
-  add.type = 'button';
-  add.addEventListener('click', onAdd);
+  const add = createPlusButton('Add a program', onAdd);
 
   const row = createHubToolbar('catalog-toolbar__row');
   row.append(search.el, add);

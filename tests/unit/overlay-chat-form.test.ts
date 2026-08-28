@@ -33,9 +33,17 @@ describe('chat message bubbles', () => {
     expect(rowRule?.[1]).not.toMatch(/border-left:/);
   });
 
-  it('centers the full-page chat column', () => {
+  it('lets the full-page chat fill the canvas', () => {
+    const bodyRule = viewsCss.match(
+      /\.hub-layout\[data-hub-view='clare'\]\s+\.hub-canvas__body\s*\{([^}]+)\}/
+    );
+    expect(bodyRule?.[1]).not.toMatch(/max-width:/);
+    expect(bodyRule?.[1]).not.toMatch(/margin-inline:\s*auto/);
     expect(viewsCss).toMatch(
-      /\.hub-layout\[data-hub-view='clare'\]\s+\.hub-canvas__body\s*\{[^}]*margin-inline:\s*auto/
+      /\.hub-layout\[data-hub-view='clare'\]\s+\.chat-view\s*\{[^}]*width:\s*100%/
+    );
+    expect(viewsCss).toMatch(
+      /\.hub-layout\[data-hub-view='clare'\]\s+\.chat-message\s*\{[^}]*max-width:\s*100%/
     );
   });
 });

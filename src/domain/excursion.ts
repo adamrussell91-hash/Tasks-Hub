@@ -225,6 +225,11 @@ export function buildExcursionPlan(
   };
 }
 
+/** Default event day when creating from a template — no extra form step. */
+export function defaultExcursionEventDate(now = new Date()): string {
+  return toDateKey(addDays(now, 45));
+}
+
 /** Summarise lead-time offsets for UI preview. */
 export function formatLeadTimes(template: ExcursionTemplate): string {
   const l = template.default_lead_times;

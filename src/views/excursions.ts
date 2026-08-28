@@ -1,21 +1,16 @@
 import type { Project } from '@/schemas/project';
 import type { ExcursionTemplate } from '@/schemas/templates';
 import { tasksApi } from '@/services/client-api';
-import { buildExcursionPlan } from '@/domain/excursion';
+import { defaultExcursionEventDate, formatLeadTimes } from '@/domain/excursion';
 import { newExcursionHash, projectPageHash } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
-import { addDays, toDateKey } from '@/domain/queries';
 import { hashQuery } from '@/shell/shell';
 import { plusIcon } from '@/shell/icons';
 import { deleteProjectNow } from '@/views/card-actions';
 import { requestToggleDone } from '@/views/dashboard';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountProjectCard } from '@/views/hub-cards';
-import { createHubField, createHubFilter, el } from '@/views/hub-kit';
-
-function defaultEventDate(): string {
-  return toDateKey(addDays(new Date(), 45));
-}
+import { el } from '@/views/hub-kit';
 
 function showConfirm(
   host: HTMLElement,
@@ -60,6 +55,31 @@ function openProjectPage(project: Project): void {
   location.hash = projectPageHash(project.id);
 }
 
+async function createFromTemplate(template: ExcursionTemplate): Promise<Project> {
+  const result = await tasksApi.createExcursionFromTemplate({
+    excursion_template_id: template.id,
+    title: template.name,
+    event_date: defaultExcursionEventDate()
+  });
+  return result.project;
+}
+
+function confirmCreate(
+  host: HTMLElement,
+  template: ExcursionTemplate,
+  onCreated: (project: Project) => void
+): void {
+  const eventDate = defaultExcursionEventDate();
+  showConfirm(
+    host,
+    `Create “${template.name}”`,
+    `On ${formatDisplayDate(eventDate)}. This will add dated admin tasks (${formatLeadTimes(template)}) and draft the permission note + staff email.`,
+    async () => {
+      onCreated(await createFromTemplate(template));
+    }
+  );
+}
+
 function plusButton(label: string, href: string): HTMLButtonElement {
   const button = el('button', 'icon-plus-btn excursions-add') as HTMLButtonElement;
   button.type = 'button';
@@ -72,7 +92,28 @@ function plusButton(label: string, href: string): HTMLButtonElement {
   return button;
 }
 
-/** Dedicated excursions module — list active excursions; create lives on its own page. */
+function appendTemplateRows(
+  host: HTMLElement,
+  templates: ExcursionTemplate[],
+  confirmHost: HTMLElement
+): void {
+  const stack = el('div', 'task-stack');
+  for (const template of templates) {
+    const row = el('article', 'task-row');
+    const actions = el('div', 'task-row__actions');
+    const use = el('button', 'btn btn--primary', 'Use');
+    use.type = 'button';
+    use.addEventListener('click', () => {
+      confirmCreate(confirmHost, template, openProjectPage);
+    });
+    actions.append(use);
+    row.append(el('h3', 'task-row__title', template.name), actions);
+    stack.append(row);
+  }
+  host.append(stack);
+}
+
+/** Excursions list — use a template (confirm → page), no extra create form. */
 export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   const prefillId = hashQuery().get('template');
   if (prefillId) {
@@ -81,7 +122,12 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   }
 
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursions…'));
-  const [projects, tasks] = await Promise.all([tasksApi.listProjects(), tasksApi.listTasks()]);
+  const [projects, tasks, templatesPayload] = await Promise.all([
+    tasksApi.listProjects(),
+    tasksApi.listTasks(),
+    tasksApi.listTemplates()
+  ]);
+  const templates = templatesPayload.excursion_templates as ExcursionTemplate[];
   const excursions = projects.filter((p) => p.type === 'excursion');
 
   canvas.replaceChildren();
@@ -91,8 +137,14 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   addRow.append(plusButton('New excursion', newExcursionHash()));
   canvas.append(addRow, confirmHost);
 
+  if (templates.length) {
+    canvas.append(el('h2', 'section-title', 'Templates'));
+    appendTemplateRows(canvas, templates, confirmHost);
+  }
+
+  canvas.append(el('h2', 'section-title', 'Active'));
   if (!excursions.length) {
-    listHost.append(el('p', 'empty-state', 'No excursions yet.'));
+    listHost.append(el('p', 'empty-state', 'No excursions yet. Use a template above.'));
   } else {
     const reload = async () => {
       await renderExcursionsView(canvas);
@@ -112,12 +164,11 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   canvas.append(listHost);
 }
 
-/** Full-page create — same excursion chrome as `#/project/:id`, then confirm before write. */
+/** Confirm a template, then write — no Template / date / group form. */
 export async function renderNewExcursionPage(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursion…'));
   const templatesPayload = await tasksApi.listTemplates();
   const templates = templatesPayload.excursion_templates as ExcursionTemplate[];
-  const templatesById = new Map(templates.map((t) => [t.id, t]));
   const prefillId = hashQuery().get('template');
   const prefillTpl = templates.find((t) => t.id === prefillId) ?? templates[0];
 
@@ -130,72 +181,20 @@ export async function renderNewExcursionPage(canvas: HTMLElement): Promise<void>
   });
   nav.append(back);
 
-  const form = el('form', 'excursion-form excursion-form--page');
-  const head = el('header', 'excursion-page__head');
-  head.append(el('span', 'hub-card__eyebrow', 'Excursion'));
-  const title = el('input', 'hub-card__title page-card__title-input') as HTMLInputElement;
-  title.type = 'text';
-  title.required = true;
-  title.placeholder = 'Title';
-  title.setAttribute('aria-label', 'Title');
-  title.value = prefillTpl?.name ?? '';
-
-  const fields = el('div', 'page-card__fields hub-toolbar');
-  const templateSelect = createHubFilter({
-    key: 'Template',
-    label: 'Template',
-    defaultValue: prefillTpl?.id ?? '',
-    options: templates.map((t) => ({ value: t.id, label: t.name })),
-    value: prefillTpl?.id ?? '',
-    onChange: (value) => {
-      const tpl = templatesById.get(value);
-      if (tpl && !title.value.trim()) title.value = tpl.name;
-    }
-  });
-  const eventDate = createHubField({
-    type: 'date',
-    ariaLabel: 'Event date',
-    required: true,
-    value: defaultEventDate()
-  });
-  const group = createHubField({
-    ariaLabel: 'Student group',
-    placeholder: 'Student group'
-  });
-  fields.append(templateSelect.el, eventDate.el, group.el);
-
-  const submit = el('button', 'btn btn--primary', 'Review & create');
-  submit.type = 'submit';
-  form.append(head, title, fields, submit);
-
   const confirmHost = el('div', 'excursion-confirm');
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const tpl = templatesById.get(templateSelect.getValue());
-    if (!tpl) return;
-    const name = title.value.trim();
-    if (!name || !eventDate.input.value) return;
-    const plan = buildExcursionPlan(tpl, {
-      title: name,
-      event_date: eventDate.input.value,
-      student_group_reference: group.input.value
-    });
-    showConfirm(
-      confirmHost,
-      `Create “${name}”`,
-      `${tpl.name} on ${formatDisplayDate(plan.event_date)}. This will add ${plan.admin_tasks.length} dated admin tasks and draft the permission note + staff email.`,
-      async () => {
-        const result = await tasksApi.createExcursionFromTemplate({
-          excursion_template_id: tpl.id,
-          title: name,
-          event_date: eventDate.input.value,
-          student_group_reference: group.input.value.trim() || null
-        });
-        openProjectPage(result.project);
-      }
-    );
-  });
+  page.append(nav, confirmHost);
 
-  page.append(nav, form, confirmHost);
+  if (!prefillTpl) {
+    page.append(el('p', 'empty-state', 'No excursion templates yet.'));
+    canvas.replaceChildren(page);
+    return;
+  }
+
+  if (prefillId) {
+    confirmCreate(confirmHost, prefillTpl, openProjectPage);
+  } else {
+    appendTemplateRows(page, templates, confirmHost);
+  }
+
   canvas.replaceChildren(page);
 }
