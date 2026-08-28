@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   hashQuery,
+  isSoftViewChange,
   parseHashRoute,
   railHighlightId,
   renderHubShell,
   renderPageHeader,
-  renderPrimaryNav
+  renderPrimaryNav,
+  viewSurface
 } from '../../src/shell/shell';
 
 describe('hub shell chrome', () => {
@@ -126,6 +128,40 @@ describe('parseHashRoute', () => {
   it('falls back to Board for unknown hashes', () => {
     location.hash = '#/nope';
     expect(parseHashRoute()).toBe('board');
+  });
+});
+
+describe('view surfaces', () => {
+  it('keeps week and month on one calendar surface', () => {
+    expect(viewSurface('week')).toBe('calendar');
+    expect(viewSurface('month')).toBe('calendar');
+    expect(viewSurface('day')).toBe('day');
+    expect(isSoftViewChange('month', 'week')).toBe(true);
+    expect(isSoftViewChange('week', 'month')).toBe(true);
+    expect(isSoftViewChange('graph', 'graph')).toBe(true);
+    expect(isSoftViewChange('month', 'day')).toBe(false);
+    expect(isSoftViewChange(null, 'month')).toBe(false);
+  });
+
+  it('updates rail highlight and header copy without remounting chrome', () => {
+    const root = document.createElement('div');
+    const refs = renderHubShell(root, { onLogout: vi.fn(), onRefresh: vi.fn() });
+    renderPrimaryNav(refs.railNav, 'month');
+    renderPageHeader(refs, { eyebrow: 'Horizon', title: 'Month' });
+
+    const nav = refs.railNav.querySelector('.hub-rail__list');
+    const title = refs.pageHeader.querySelector('.page-header__title');
+    const refresh = refs.refreshButton;
+    expect(refs.railNav.querySelector('[aria-current="page"]')?.textContent).toBe('Month');
+
+    renderPrimaryNav(refs.railNav, 'week');
+    renderPageHeader(refs, { eyebrow: 'Shape', title: 'Week' });
+
+    expect(refs.railNav.querySelector('.hub-rail__list')).toBe(nav);
+    expect(refs.pageHeader.querySelector('.page-header__title')).toBe(title);
+    expect(refs.refreshButton).toBe(refresh);
+    expect(title?.textContent).toBe('Week');
+    expect(refs.railNav.querySelector('[aria-current="page"]')?.textContent).toBe('Week');
   });
 });
 
