@@ -93,12 +93,22 @@ function mockList() {
   });
 }
 
+async function mount(): Promise<HTMLElement> {
+  mockList();
+  const canvas = document.createElement('main');
+  await renderExcursionsView(canvas);
+  return canvas;
+}
+
 describe('excursions list', () => {
-  it('opens the shared project page when a card is clicked', async () => {
-    mockList();
+  it('lists templates and cards without a create form', async () => {
     location.hash = '#/excursions';
-    const canvas = document.createElement('main');
-    await renderExcursionsView(canvas);
+    const canvas = await mount();
+
+    expect(canvas.querySelector('form')).toBeNull();
+    expect(canvas.textContent).not.toContain('Review & create');
+    expect(canvas.querySelector('.task-row__title')?.textContent).toBe('Ethics Olympiad');
+    expect(canvas.querySelector('.btn--primary')?.textContent).toBe('Use');
 
     const card = canvas.querySelector<HTMLElement>('.proj-row');
     expect(card).not.toBeNull();
@@ -107,6 +117,35 @@ describe('excursions list', () => {
 
     card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(location.hash).toBe('#/project/proj_ex_ethics_seed');
+  });
+
+  it('confirms a template then creates and opens the page', async () => {
+    location.hash = '#/excursions';
+    const created = { ...excursion, id: 'proj_new', title: 'Ethics Olympiad' };
+    vi.mocked(tasksApi.createExcursionFromTemplate).mockResolvedValue({
+      project: created,
+      tasks: [task]
+    });
+    const canvas = await mount();
+
+    canvas.querySelector<HTMLButtonElement>('.btn--primary')!.click();
+    expect(canvas.querySelector('.confirm-card')).not.toBeNull();
+    expect(tasksApi.createExcursionFromTemplate).not.toHaveBeenCalled();
+
+    canvas.querySelector<HTMLButtonElement>('.btn--ghost')!.click();
+    expect(canvas.querySelector('.confirm-card')).toBeNull();
+
+    canvas.querySelector<HTMLButtonElement>('.btn--primary')!.click();
+    canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')!.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(tasksApi.createExcursionFromTemplate).toHaveBeenCalledWith({
+      excursion_template_id: 'ext_ethics_olympiad',
+      title: 'Ethics Olympiad',
+      event_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+    });
+    expect(location.hash).toBe('#/project/proj_new');
   });
 
   it('uses a plus button instead of an inline create form', async () => {
@@ -137,7 +176,7 @@ describe('excursions list', () => {
 });
 
 describe('new excursion page', () => {
-  it('is the excursion page and creates after confirm', async () => {
+  it('confirms a prefilled template then creates', async () => {
     mockList();
     vi.mocked(tasksApi.createExcursionFromTemplate).mockResolvedValue({
       project: excursion,
@@ -148,28 +187,19 @@ describe('new excursion page', () => {
     await renderNewExcursionPage(canvas);
 
     expect(canvas.querySelector('.excursion-page')).not.toBeNull();
-    expect(canvas.querySelector('.hub-card__eyebrow')?.textContent).toBe('Excursion');
-    const title = canvas.querySelector<HTMLInputElement>('[aria-label="Title"]');
-    expect(title?.value).toBe('Ethics Olympiad');
-    expect(canvas.querySelector('[aria-label="Event date"]')).not.toBeNull();
-    expect(canvas.querySelector('[aria-label="Student group"]')).not.toBeNull();
-
-    title!.value = 'Ethics heat';
-    canvas.querySelector<HTMLFormElement>('form')?.dispatchEvent(
-      new Event('submit', { bubbles: true, cancelable: true })
-    );
+    expect(canvas.querySelector('form')).toBeNull();
+    expect(canvas.textContent).not.toContain('Review & create');
     expect(canvas.querySelector('.confirm-card .page-header__title')?.textContent).toBe(
-      'Create “Ethics heat”'
+      'Create “Ethics Olympiad”'
     );
 
     canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')?.click();
     await vi.waitFor(() => {
-      expect(tasksApi.createExcursionFromTemplate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          excursion_template_id: 'ext_ethics_olympiad',
-          title: 'Ethics heat'
-        })
-      );
+      expect(tasksApi.createExcursionFromTemplate).toHaveBeenCalledWith({
+        excursion_template_id: 'ext_ethics_olympiad',
+        title: 'Ethics Olympiad',
+        event_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+      });
       expect(location.hash).toBe('#/project/proj_ex_ethics_seed');
     });
   });
