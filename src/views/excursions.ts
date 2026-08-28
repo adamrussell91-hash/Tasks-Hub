@@ -1,16 +1,17 @@
 import type { Project } from '@/schemas/project';
 import type { ExcursionTemplate } from '@/schemas/templates';
 import { tasksApi } from '@/services/client-api';
-import { buildExcursionPlan, formatLeadTimes } from '@/domain/excursion';
-import { projectPageHash } from '@/domain/cards';
+import { buildExcursionPlan } from '@/domain/excursion';
+import { newExcursionHash, projectPageHash } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { addDays, toDateKey } from '@/domain/queries';
 import { hashQuery } from '@/shell/shell';
+import { plusIcon } from '@/shell/icons';
 import { deleteProjectNow } from '@/views/card-actions';
 import { requestToggleDone } from '@/views/dashboard';
 import { renderQuickAdd } from '@/views/task-editor';
 import { mountProjectCard } from '@/views/hub-cards';
-import { createHubField, createHubFilter, createHubSearch, el } from '@/views/hub-kit';
+import { createHubField, createHubFilter, el } from '@/views/hub-kit';
 
 function defaultEventDate(): string {
   return toDateKey(addDays(new Date(), 45));
@@ -59,126 +60,37 @@ function openProjectPage(project: Project): void {
   location.hash = projectPageHash(project.id);
 }
 
-/** Dedicated excursions module — create from template, then open as a project. */
+function plusButton(label: string, href: string): HTMLButtonElement {
+  const button = el('button', 'icon-plus-btn excursions-add') as HTMLButtonElement;
+  button.type = 'button';
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.append(plusIcon());
+  button.addEventListener('click', () => {
+    location.hash = href;
+  });
+  return button;
+}
+
+/** Dedicated excursions module — list active excursions; create lives on its own page. */
 export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
+  const prefillId = hashQuery().get('template');
+  if (prefillId) {
+    location.hash = newExcursionHash(prefillId);
+    return;
+  }
+
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursions…'));
-  const [projects, tasks, templatesPayload] = await Promise.all([
-    tasksApi.listProjects(),
-    tasksApi.listTasks(),
-    tasksApi.listTemplates()
-  ]);
-  const templates = templatesPayload.excursion_templates as ExcursionTemplate[];
-  const templatesById = new Map(templates.map((t) => [t.id, t]));
+  const [projects, tasks] = await Promise.all([tasksApi.listProjects(), tasksApi.listTasks()]);
   const excursions = projects.filter((p) => p.type === 'excursion');
 
   canvas.replaceChildren();
-
-  const form = el('form', 'excursion-form');
-  form.append(el('h2', 'section-title', 'New excursion'));
-
-  const prefillId = hashQuery().get('template');
-
-  const prefillTpl = templates.find((t) => t.id === prefillId);
-  const templateSelect = createHubFilter({
-    key: 'Template',
-    label: 'Excursion template',
-    defaultValue: prefillId ?? templates[0]?.id ?? '',
-    options: templates.map((t) => ({ value: t.id, label: t.name })),
-    value: prefillId ?? templates[0]?.id ?? '',
-    onChange: () => refreshPreview()
-  });
-
-  const title = createHubSearch({
-    type: 'text',
-    placeholder: 'Excursion title',
-    ariaLabel: 'Title',
-    required: true,
-    value: prefillTpl?.name ?? '',
-    onInput: () => refreshPreview()
-  });
-
-  const eventDate = createHubField({
-    type: 'date',
-    ariaLabel: 'Event date',
-    required: true,
-    value: defaultEventDate(),
-    onChange: () => refreshPreview()
-  });
-
-  const group = createHubField({
-    ariaLabel: 'Student group',
-    placeholder: 'Student group (e.g. Year 10 Ethics team)'
-  });
-
-  const preview = el('p', 'excursion-preview');
-  const refreshPreview = () => {
-    const tpl = templatesById.get(templateSelect.getValue());
-    if (!tpl || !eventDate.input.value) {
-      preview.textContent = '';
-      return;
-    }
-    try {
-      const plan = buildExcursionPlan(tpl, {
-        title: title.input.value.trim() || tpl.name,
-        event_date: eventDate.input.value,
-        student_group_reference: group.input.value
-      });
-      preview.textContent = `Will schedule ${plan.admin_tasks.length} tasks · ${formatLeadTimes(tpl)} · permission ${formatDisplayDate(plan.key_dates.permission_note_due)} · risk ${formatDisplayDate(plan.key_dates.risk_assessment_due)} · event ${formatDisplayDate(plan.event_date)}`;
-    } catch {
-      preview.textContent = '';
-    }
-  };
-  refreshPreview();
-
-  const submit = el('button', 'btn btn--primary', 'Review & create');
-  submit.type = 'submit';
-
-  form.append(templateSelect.el, title.el, eventDate.el, group.el, preview, submit);
-
   const confirmHost = el('div', 'excursion-confirm');
   const listHost = el('div', 'task-stack');
+  canvas.append(plusButton('New excursion', newExcursionHash()), confirmHost);
 
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const tpl = templatesById.get(templateSelect.getValue());
-    if (!tpl) return;
-    const name = title.input.value.trim();
-    if (!name || !eventDate.input.value) return;
-    const plan = buildExcursionPlan(tpl, {
-      title: name,
-      event_date: eventDate.input.value,
-      student_group_reference: group.input.value
-    });
-    showConfirm(
-      confirmHost,
-      `Create “${name}”`,
-      `${tpl.name} on ${formatDisplayDate(plan.event_date)}. This will add ${plan.admin_tasks.length} dated admin tasks and draft the permission note + staff email.`,
-      async () => {
-        const result = await tasksApi.createExcursionFromTemplate({
-          excursion_template_id: tpl.id,
-          title: name,
-          event_date: eventDate.input.value,
-          student_group_reference: group.input.value.trim() || null
-        });
-        confirmHost.replaceChildren(
-          el('p', 'canvas-status', `Created ${result.project.title} with ${result.tasks.length} tasks.`)
-        );
-        title.input.value = '';
-        openProjectPage(result.project);
-      }
-    );
-  });
-
-  canvas.append(form, confirmHost);
-
-  canvas.append(
-    el('h2', 'section-title', 'Active excursions'),
-    el('p', 'view-lede', 'Excursions are projects. Click a card to open its page.')
-  );
   if (!excursions.length) {
-    listHost.append(
-      el('p', 'empty-state', 'No excursions yet. Ethics Olympiad and Da Vinci Decathlon templates are ready above.')
-    );
+    listHost.append(el('p', 'empty-state', 'No excursions yet.'));
   } else {
     const reload = async () => {
       await renderExcursionsView(canvas);
@@ -196,4 +108,92 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
     }
   }
   canvas.append(listHost);
+}
+
+/** Full-page create — same excursion chrome as `#/project/:id`, then confirm before write. */
+export async function renderNewExcursionPage(canvas: HTMLElement): Promise<void> {
+  canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursion…'));
+  const templatesPayload = await tasksApi.listTemplates();
+  const templates = templatesPayload.excursion_templates as ExcursionTemplate[];
+  const templatesById = new Map(templates.map((t) => [t.id, t]));
+  const prefillId = hashQuery().get('template');
+  const prefillTpl = templates.find((t) => t.id === prefillId) ?? templates[0];
+
+  const page = el('div', 'excursion-page');
+  const nav = el('div', 'page-editor__nav');
+  const back = el('button', 'btn btn--ghost', 'Back to Excursions');
+  back.type = 'button';
+  back.addEventListener('click', () => {
+    location.hash = '#/excursions';
+  });
+  nav.append(back);
+
+  const form = el('form', 'excursion-form excursion-form--page');
+  const head = el('header', 'excursion-page__head');
+  head.append(el('span', 'hub-card__eyebrow', 'Excursion'));
+  const title = el('input', 'hub-card__title page-card__title-input') as HTMLInputElement;
+  title.type = 'text';
+  title.required = true;
+  title.placeholder = 'Title';
+  title.setAttribute('aria-label', 'Title');
+  title.value = prefillTpl?.name ?? '';
+
+  const fields = el('div', 'page-card__fields hub-toolbar');
+  const templateSelect = createHubFilter({
+    key: 'Template',
+    label: 'Template',
+    defaultValue: prefillTpl?.id ?? '',
+    options: templates.map((t) => ({ value: t.id, label: t.name })),
+    value: prefillTpl?.id ?? '',
+    onChange: (value) => {
+      const tpl = templatesById.get(value);
+      if (tpl && !title.value.trim()) title.value = tpl.name;
+    }
+  });
+  const eventDate = createHubField({
+    type: 'date',
+    ariaLabel: 'Event date',
+    required: true,
+    value: defaultEventDate()
+  });
+  const group = createHubField({
+    ariaLabel: 'Student group',
+    placeholder: 'Student group'
+  });
+  fields.append(templateSelect.el, eventDate.el, group.el);
+
+  const submit = el('button', 'btn btn--primary', 'Review & create');
+  submit.type = 'submit';
+  form.append(head, title, fields, submit);
+
+  const confirmHost = el('div', 'excursion-confirm');
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const tpl = templatesById.get(templateSelect.getValue());
+    if (!tpl) return;
+    const name = title.value.trim();
+    if (!name || !eventDate.input.value) return;
+    const plan = buildExcursionPlan(tpl, {
+      title: name,
+      event_date: eventDate.input.value,
+      student_group_reference: group.input.value
+    });
+    showConfirm(
+      confirmHost,
+      `Create “${name}”`,
+      `${tpl.name} on ${formatDisplayDate(plan.event_date)}. This will add ${plan.admin_tasks.length} dated admin tasks and draft the permission note + staff email.`,
+      async () => {
+        const result = await tasksApi.createExcursionFromTemplate({
+          excursion_template_id: tpl.id,
+          title: name,
+          event_date: eventDate.input.value,
+          student_group_reference: group.input.value.trim() || null
+        });
+        openProjectPage(result.project);
+      }
+    );
+  });
+
+  page.append(nav, form, confirmHost);
+  canvas.replaceChildren(page);
 }

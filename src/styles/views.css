@@ -1101,30 +1101,29 @@
   opacity: 0.55;
 }
 
-.excursion-form {
-  display: flex;
+.excursions-add {
+  margin: 0 0 var(--space-4);
+}
+
+.excursions-add svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  display: block;
+}
+
+.excursion-form--page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.excursion-form--page .page-card__fields {
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-5);
 }
 
-.excursion-form .section-title {
-  flex: 1 0 100%;
-  margin: 0 0 var(--space-2);
-}
-
-.excursion-form .hub-search,
-.excursion-form .hub-filter {
-  min-width: 12rem;
-  flex: 1 1 12rem;
-}
-
-.excursion-preview {
-  flex: 1 0 100%;
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--muted);
+.excursion-form--page .hub-search,
+.excursion-form--page .hub-filter {
+  min-width: 10rem;
+  flex: 1 1 10rem;
 }
 
 .excursion-confirm {

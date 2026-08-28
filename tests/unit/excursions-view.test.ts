@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { renderExcursionsView } from '@/views/excursions';
+import { renderExcursionsView, renderNewExcursionPage } from '@/views/excursions';
 import { tasksApi } from '@/services/client-api';
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
@@ -82,17 +82,20 @@ const task: Task = {
   source: 'auto_generated_from_excursion'
 };
 
-describe('excursions view cards', () => {
-  it('opens the shared project page when a card is clicked', async () => {
-    vi.mocked(tasksApi.listProjects).mockResolvedValue([excursion]);
-    vi.mocked(tasksApi.listTasks).mockResolvedValue([task]);
-    vi.mocked(tasksApi.listTemplates).mockResolvedValue({
-      frameworks: [],
-      excursion_templates: [template],
-      task_templates: [],
-      project_templates: []
-    });
+function mockList() {
+  vi.mocked(tasksApi.listProjects).mockResolvedValue([excursion]);
+  vi.mocked(tasksApi.listTasks).mockResolvedValue([task]);
+  vi.mocked(tasksApi.listTemplates).mockResolvedValue({
+    frameworks: [],
+    excursion_templates: [template],
+    task_templates: [],
+    project_templates: []
+  });
+}
 
+describe('excursions list', () => {
+  it('opens the shared project page when a card is clicked', async () => {
+    mockList();
     location.hash = '#/excursions';
     const canvas = document.createElement('main');
     await renderExcursionsView(canvas);
@@ -104,5 +107,82 @@ describe('excursions view cards', () => {
 
     card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(location.hash).toBe('#/project/proj_ex_ethics_seed');
+  });
+
+  it('uses a plus button instead of an inline create form', async () => {
+    mockList();
+    location.hash = '#/excursions';
+    const canvas = document.createElement('main');
+    await renderExcursionsView(canvas);
+
+    const add = canvas.querySelector<HTMLButtonElement>('.excursions-add');
+    expect(add?.getAttribute('aria-label')).toBe('New excursion');
+    expect(canvas.querySelector('.excursion-form')).toBeNull();
+    expect(canvas.textContent).not.toContain('Active excursions');
+    expect(canvas.textContent).not.toContain('Excursions are projects');
+    expect(canvas.textContent).not.toContain('Review & create');
+
+    add?.click();
+    expect(location.hash).toBe('#/excursions/new');
+  });
+
+  it('sends a template query to the new excursion page', async () => {
+    mockList();
+    location.hash = '#/excursions?template=ext_ethics_olympiad';
+    const canvas = document.createElement('main');
+    await renderExcursionsView(canvas);
+    expect(location.hash).toBe('#/excursions/new?template=ext_ethics_olympiad');
+    expect(canvas.querySelector('.proj-row')).toBeNull();
+  });
+});
+
+describe('new excursion page', () => {
+  it('is the excursion page and creates after confirm', async () => {
+    mockList();
+    vi.mocked(tasksApi.createExcursionFromTemplate).mockResolvedValue({
+      project: excursion,
+      tasks: [task]
+    });
+    location.hash = '#/excursions/new?template=ext_ethics_olympiad';
+    const canvas = document.createElement('main');
+    await renderNewExcursionPage(canvas);
+
+    expect(canvas.querySelector('.excursion-page')).not.toBeNull();
+    expect(canvas.querySelector('.hub-card__eyebrow')?.textContent).toBe('Excursion');
+    const title = canvas.querySelector<HTMLInputElement>('[aria-label="Title"]');
+    expect(title?.value).toBe('Ethics Olympiad');
+    expect(canvas.querySelector('[aria-label="Event date"]')).not.toBeNull();
+    expect(canvas.querySelector('[aria-label="Student group"]')).not.toBeNull();
+
+    title!.value = 'Ethics heat';
+    canvas.querySelector<HTMLFormElement>('form')?.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    expect(canvas.querySelector('.confirm-card .page-header__title')?.textContent).toBe(
+      'Create “Ethics heat”'
+    );
+
+    canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')?.click();
+    await vi.waitFor(() => {
+      expect(tasksApi.createExcursionFromTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          excursion_template_id: 'ext_ethics_olympiad',
+          title: 'Ethics heat'
+        })
+      );
+      expect(location.hash).toBe('#/project/proj_ex_ethics_seed');
+    });
+  });
+
+  it('returns to the list from Back to Excursions', async () => {
+    mockList();
+    location.hash = '#/excursions/new';
+    const canvas = document.createElement('main');
+    await renderNewExcursionPage(canvas);
+    const back = [...canvas.querySelectorAll('button')].find((btn) =>
+      btn.textContent?.includes('Back to Excursions')
+    );
+    back?.click();
+    expect(location.hash).toBe('#/excursions');
   });
 });

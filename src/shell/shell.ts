@@ -304,6 +304,12 @@ export function parseEntityPage(hash = location.hash): { kind: 'task' | 'project
   return null;
 }
 
+/** New excursion page: `#/excursions/new` — not the list. */
+export function parseNewExcursionPage(hash = location.hash): boolean {
+  const path = hash.replace(/^#\/?/, '').split('?')[0] ?? '';
+  return path === 'excursions/new';
+}
+
 /** Full map card: `#/maps/:mapId/station/:id` or `#/maps/:mapId/event/:id`. */
 export function parseMapItemPage(
   hash = location.hash
@@ -324,6 +330,7 @@ export function isKnownHashView(hash = location.hash): boolean {
   const id = hashViewId(hash);
   if (id === 'capacity') return true;
   if (parseEntityPage(hash)) return true;
+  if (parseNewExcursionPage(hash)) return true;
   if (parseMapItemPage(hash)) return true;
   return KNOWN_VIEWS.includes(id as HubViewId);
 }
