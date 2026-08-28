@@ -33,11 +33,11 @@ import { openPlusAdd } from '@/views/plus-add';
 import { renderPressureStrips } from '@/views/pinch-strip';
 import { requestToggleDone } from '@/views/dashboard';
 import { mountTaskCard } from '@/views/hub-cards';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
   createHubFilter,
   createHubPills,
   createHubSearch,
-  createHubToolbar,
   domainFilterOptions,
   el
 } from '@/views/hub-kit';
@@ -326,7 +326,17 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
       canvas.append(strip);
     }
 
-    const filters = createHubToolbar('board-filter', 'calendar-filters');
+    const filters = createCollapsibleFilters({
+      id: 'calendar',
+      ariaLabel: 'Filters',
+      className: 'board-filter calendar-filters',
+      active:
+        sessionFilters.domain !== 'all' ||
+        sessionFilters.projectId !== 'all' ||
+        Boolean(sessionFilters.query.trim()) ||
+        sessionFilters.includeDone ||
+        !sessionFilters.includeDates
+    });
     const search = createHubSearch({
       placeholder: 'Filter this calendar…',
       ariaLabel: 'Filter calendar',
@@ -337,7 +347,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
         paint();
       }
     });
-    filters.append(
+    filters.panel.append(
       search.el,
       createHubFilter({
         key: 'Domain',
@@ -365,9 +375,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
           sessionFilters.projectId = value;
           paint();
         }
-      }).el
-    );
-    filters.append(
+      }).el,
       createHubPills({
         label: 'Calendar layers',
         items: [
@@ -385,7 +393,7 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
         }
       })
     );
-    canvas.append(filters);
+    canvas.append(filters.root);
 
     if (mode === 'week') {
       const pressure = el('div', 'pressure-host');

@@ -22,6 +22,7 @@ import {
   resolveSearchHits,
   type UniverseMount
 } from '@/views/universe-canvas';
+import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import { createHubSearch, createHubToolbar } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -98,7 +99,13 @@ export async function renderUniverseView(canvas: HTMLElement): Promise<void> {
     placeholder: 'Search tasks, projects, domains…',
     ariaLabel: 'Filter universe'
   });
-  toolbar.append(search.el);
+  const filters = createCollapsibleFilters({
+    id: 'universe',
+    ariaLabel: 'Filters',
+    className: 'hub-filters--inline'
+  });
+  filters.panel.append(search.el);
+  toolbar.append(filters.root);
 
   const speed = el('label', 'graph-speed');
   speed.append(el('span', 'graph-speed__label', 'Orbit speed'));

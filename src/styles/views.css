@@ -200,6 +200,53 @@
   display: none;
 }
 
+.hub-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.hub-filters--inline,
+.hub-toolbar .hub-filters,
+.gantt-toolbar .hub-filters,
+.graph-toolbar .hub-filters,
+.catalog-toolbar .hub-filters,
+.search-form .hub-filters {
+  margin-bottom: 0;
+}
+
+.hub-filters.is-open {
+  align-items: stretch;
+}
+
+.hub-filters__panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.hub-filters__panel[hidden] {
+  display: none;
+}
+
+.hub-filters .hub-toolbar,
+.hub-filters .board-filter,
+.hub-filters .calendar-filters {
+  margin-bottom: 0;
+  flex: 1 1 16rem;
+}
+
+.hub-filters__toggle.is-set {
+  border-color: color-mix(in srgb, var(--wave) 45%, var(--line));
+  background: color-mix(in srgb, var(--pastel-blue) 55%, #fff);
+  color: var(--pastel-blue-ink);
+}
+
 .plus-add__choices {
   display: flex;
   flex-wrap: wrap;
