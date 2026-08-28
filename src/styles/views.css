@@ -1580,20 +1580,20 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  max-width: 44rem;
-  width: 100%;
-  margin-inline: auto;
 }
 
 .hub-layout[data-hub-view='clare'] .chat-view {
   flex: 1 1 auto;
   min-height: 0;
-  max-width: none;
   width: 100%;
 }
 
 .hub-layout[data-hub-view='clare'] .chat-messages {
   max-height: none;
+}
+
+.hub-layout[data-hub-view='clare'] .chat-message {
+  max-width: 100%;
 }
 
 .hub-layout[data-hub-view='clare'] .clare-extras {
