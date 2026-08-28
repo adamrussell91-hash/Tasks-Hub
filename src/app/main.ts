@@ -15,6 +15,7 @@ import 'katex/dist/katex.min.css';
 import { fetchSession, logout, messageForSignInFailure, renderSignIn } from '@/auth/gate';
 import {
   isKnownHashView,
+  isSoftViewChange,
   parseCapacityShareToken,
   parseEntityPage,
   parseHashRoute,
@@ -168,27 +169,42 @@ async function bootApp(root: HTMLElement): Promise<void> {
       await logout();
       await boot(root);
     },
-    onRefresh: () => void paint()
+    onRefresh: () => void paint({ force: true })
   });
   const clare = installClareSession(root);
   void clare.start();
   await loadTaskProperties();
 
-  async function paint() {
-    window.scrollTo(0, 0);
-    document.body.classList.remove('is-universe-fullscreen');
-    const canvasWrap = shell.canvas.closest('.hub-canvas');
-    if (canvasWrap instanceof HTMLElement) canvasWrap.scrollTop = 0;
-    shell.canvas.scrollTop = 0;
-    clare.park();
+  let lastView: HubViewId | null = null;
+
+  function resetPaint(): void {
+    lastView = null;
+  }
+
+  async function paint(opts?: { force?: boolean }) {
+    const nextView = isKnownHashView() && !parseEntityPage() && !parseMapItemPage() && !parseNewExcursionPage()
+      ? parseHashRoute()
+      : null;
+    const soft = !opts?.force && nextView !== null && isSoftViewChange(lastView, nextView);
+
+    if (!soft) {
+      window.scrollTo(0, 0);
+      document.body.classList.remove('is-universe-fullscreen');
+      const canvasWrap = shell.canvas.closest('.hub-canvas');
+      if (canvasWrap instanceof HTMLElement) canvasWrap.scrollTop = 0;
+      shell.canvas.scrollTop = 0;
+      clare.park();
+    }
 
     const share = parseCapacityShareToken();
     if (share) {
+      resetPaint();
       await bootPublicCapacity(root, share);
       return;
     }
     const mapItem = parseMapItemPage();
     if (mapItem) {
+      resetPaint();
       const listed = await tasksApi.listMaps().catch(() => []);
       const map = mapsOrSeed(listed).find((entry) => entry.id === mapItem.mapId);
       const named =
@@ -203,12 +219,13 @@ async function bootApp(root: HTMLElement): Promise<void> {
       try {
         await renderMapItemPage(shell.canvas, mapItem);
       } catch (err) {
-        renderLoadError(shell.canvas, err, () => void paint(), 'Could not open card');
+        renderLoadError(shell.canvas, err, () => void paint({ force: true }), 'Could not open card');
       }
       return;
     }
     const entity = parseEntityPage();
     if (entity) {
+      resetPaint();
       let rail: HubViewId = entity.kind === 'project' ? 'projects' : 'board';
       let eyebrow = entity.kind === 'task' ? 'Task' : 'Project';
       let title = 'Page';
@@ -233,11 +250,12 @@ async function bootApp(root: HTMLElement): Promise<void> {
       try {
         await renderPageEditor(shell.canvas, entity);
       } catch (err) {
-        renderLoadError(shell.canvas, err, () => void paint(), 'Could not open page');
+        renderLoadError(shell.canvas, err, () => void paint({ force: true }), 'Could not open page');
       }
       return;
     }
     if (!isKnownHashView()) {
+      resetPaint();
       renderPrimaryNav(shell.railNav, 'board');
       renderPageHeader(shell, {
         eyebrow: 'Missing',
@@ -247,26 +265,29 @@ async function bootApp(root: HTMLElement): Promise<void> {
       return;
     }
     if (parseNewExcursionPage()) {
+      resetPaint();
       renderPrimaryNav(shell.railNav, 'excursions');
       renderPageHeader(shell, { eyebrow: 'Events', title: 'Excursion' });
       clare.sync('excursions');
       try {
-        await renderReminderStrip(shell.reminderHost, () => void paint());
+        await renderReminderStrip(shell.reminderHost, () => void paint({ force: true }));
         await renderNewExcursionPage(shell.canvas);
       } catch (err) {
-        renderLoadError(shell.canvas, err, () => void paint(), 'Could not load Excursion');
+        renderLoadError(shell.canvas, err, () => void paint({ force: true }), 'Could not load Excursion');
       }
       return;
     }
-    const view = parseHashRoute();
+    const view = nextView ?? parseHashRoute();
     renderPrimaryNav(shell.railNav, view);
     renderPageHeader(shell, HEADERS[view]);
     clare.sync(view);
     try {
-      await renderReminderStrip(shell.reminderHost, () => void paint());
+      if (!soft) await renderReminderStrip(shell.reminderHost, () => void paint({ force: true }));
       await renderActiveView(view, shell.canvas);
+      lastView = view;
     } catch (err) {
-      renderLoadError(shell.canvas, err, () => void paint(), `Could not load ${HEADERS[view].title}`);
+      resetPaint();
+      renderLoadError(shell.canvas, err, () => void paint({ force: true }), `Could not load ${HEADERS[view].title}`);
     }
   }
 
