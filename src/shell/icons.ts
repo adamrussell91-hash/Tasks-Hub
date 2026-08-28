@@ -75,3 +75,7 @@ export function signOutIcon(): SVGSVGElement {
     'm7 8-4 4 4 4'
   ]);
 }
+
+export function plusIcon(): SVGSVGElement {
+  return createOutlineIcon(['M12 5v14', 'M5 12h14']);
+}

@@ -642,7 +642,7 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     use.type = 'button';
     use.addEventListener('click', () => {
       if (pt.type === 'excursion' && pt.excursion_template_id) {
-        location.hash = `#/excursions?template=${encodeURIComponent(pt.excursion_template_id)}`;
+        location.hash = `#/excursions/new?template=${encodeURIComponent(pt.excursion_template_id)}`;
         return;
       }
       showTemplateConfirm(
@@ -666,7 +666,7 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     const use = el('button', 'btn btn--primary', 'Use');
     use.type = 'button';
     use.addEventListener('click', () => {
-      location.hash = `#/excursions?template=${encodeURIComponent(et.id)}`;
+      location.hash = `#/excursions/new?template=${encodeURIComponent(et.id)}`;
     });
     actions.append(use);
     row.append(

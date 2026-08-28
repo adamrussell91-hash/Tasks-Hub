@@ -93,10 +93,7 @@ function paintSomeday(
   canvas.replaceChildren();
 
   const hero = el('div', 'someday-hero');
-  hero.append(
-    el('span', 'someday-hero__icon', '🌈'),
-    el('p', 'view-lede', 'Ideas parked over the rainbow — promote when they are ready for a goal, project, or task.')
-  );
+  hero.append(el('span', 'someday-hero__icon', '🌈'));
   canvas.append(hero);
 
   const filters = createHubToolbar();

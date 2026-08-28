@@ -92,6 +92,12 @@ export function projectPageHash(id: string): string {
   return `#/project/${encodeURIComponent(id)}`;
 }
 
+/** Dedicated create page for an excursion — not the list. */
+export function newExcursionHash(templateId?: string | null): string {
+  if (!templateId) return '#/excursions/new';
+  return `#/excursions/new?template=${encodeURIComponent(templateId)}`;
+}
+
 export function isOpenStatus(status: TaskStatus): boolean {
   return status === 'open' || status === 'in_progress' || status === 'deferred';
 }

@@ -5,7 +5,8 @@ import {
   knownHubViews,
   parseEntityPage,
   parseHashRoute,
-  parseMapItemPage
+  parseMapItemPage,
+  parseNewExcursionPage
 } from '@/shell/shell';
 
 describe('hash routes', () => {
@@ -74,6 +75,19 @@ describe('hash routes', () => {
     expect(parseEntityPage()).toEqual({ kind: 'project', id: 'proj_mindworks' });
     expect(isKnownHashView()).toBe(true);
     expect(knownHubViews()).not.toContain('project');
+  });
+
+  it('recognises the new excursion page without adding it to the rail', () => {
+    location.hash = '#/excursions/new';
+    expect(parseNewExcursionPage()).toBe(true);
+    expect(isKnownHashView()).toBe(true);
+    expect(hashViewId()).toBe('excursions');
+    expect(parseHashRoute()).toBe('excursions');
+    expect(knownHubViews()).not.toContain('new');
+
+    location.hash = '#/excursions/new?template=ext_ethics_olympiad';
+    expect(parseNewExcursionPage()).toBe(true);
+    expect(parseNewExcursionPage('#/excursions')).toBe(false);
   });
 
   it('includes Goals and Someday in the Plan section', () => {

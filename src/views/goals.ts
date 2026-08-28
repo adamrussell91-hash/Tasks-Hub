@@ -226,15 +226,7 @@ function paintGoals(
       .catch((err) => window.alert(errorMessage(err)));
   });
   toolbar.append(search.el, areaFilter.el, addGoal, addProject);
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Area → Goal → Project. Click a project card to see milestones and tasks.'
-    ),
-    toolbar,
-    editorHost
-  );
+  canvas.append(toolbar, editorHost);
 
   const areasById = new Map(areas.map((area) => [area.id, area]));
   const query = goalQuery.trim().toLowerCase();
