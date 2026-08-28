@@ -125,10 +125,11 @@ export function buildExcursionPlan(
       leads.payment_days !== undefined ? dueBeforeEvent(eventDay, leads.payment_days) : null
   };
 
+  const label = input.title.trim() || template.name;
   const admin_tasks: PlannedAdminTask[] = [
     {
       kind: 'permission_note',
-      title: `Draft & send permission note — ${template.name}`,
+      title: `Draft & send permission note — ${label}`,
       description: `Lead time ${leads.permission_note_days} days before event. Review drafted_documents.permission_note_draft on the excursion.`,
       due_date: key_dates.permission_note_due!,
       estimated_duration: 45,
@@ -137,7 +138,7 @@ export function buildExcursionPlan(
     },
     {
       kind: 'staff_email',
-      title: `Send staff absence notification — ${template.name}`,
+      title: `Send staff absence notification — ${label}`,
       description: `Lead time ${leads.staff_email_days} days before event. Review drafted_documents.staff_absence_email_draft on the excursion.`,
       due_date: key_dates.staff_notification_due!,
       estimated_duration: 20,
@@ -146,7 +147,7 @@ export function buildExcursionPlan(
     },
     {
       kind: 'risk_assessment',
-      title: `Lodge risk assessment — ${template.name}`,
+      title: `Lodge risk assessment — ${label}`,
       description: `Lead time ${leads.risk_assessment_days} days before event.`,
       due_date: key_dates.risk_assessment_due!,
       estimated_duration: 60,
@@ -158,7 +159,7 @@ export function buildExcursionPlan(
   if (key_dates.payment_due) {
     admin_tasks.push({
       kind: 'payment',
-      title: `Confirm payment — ${template.name}`,
+      title: `Confirm payment — ${label}`,
       description: `Lead time ${leads.payment_days} days before event.`,
       due_date: key_dates.payment_due,
       estimated_duration: 30,
@@ -171,8 +172,8 @@ export function buildExcursionPlan(
     if (isCoveredByAdminTask(item)) continue;
     admin_tasks.push({
       kind: 'checklist',
-      title: `${item} — ${template.name}`,
-      description: `Checklist item from ${template.name} template.`,
+      title: `${item} — ${label}`,
+      description: `Checklist item from excursion template.`,
       due_date: eventKey,
       estimated_duration: 30,
       priority: 'medium',
@@ -183,7 +184,7 @@ export function buildExcursionPlan(
   admin_tasks.push({
     kind: 'event',
     title: `Event day — ${input.title}`,
-    description: `${template.name} event.`,
+    description: `${label} event.`,
     due_date: eventKey,
     estimated_duration: 480,
     priority: 'urgent',
@@ -213,13 +214,13 @@ export function buildExcursionPlan(
         title: input.title,
         eventDateLabel: eventLabel,
         studentGroup: group,
-        competitionName: template.name
+        competitionName: label
       }),
       staff_absence_email_draft: draftStaffAbsenceEmail({
         title: input.title,
         eventDateLabel: eventLabel,
         studentGroup: group,
-        competitionName: template.name
+        competitionName: label
       })
     }
   };
