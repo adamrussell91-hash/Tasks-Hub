@@ -89,13 +89,19 @@ export interface TasksStore {
   getClareCalibration(domain: Task['domain']): Promise<ClareCalibration>;
   listClareCalibrations(): Promise<ClareCalibration[]>;
   proposeWithClare(input: ClareProposalInput): Promise<ClareProposal>;
-  briefWithClare(input?: { protocol_id?: ClareProtocolId; now?: Date }): Promise<ClareBriefing>;
+  briefWithClare(input?: {
+    protocol_id?: ClareProtocolId;
+    now?: Date;
+    judge?: import('@/ai/clare-briefing-judge').ClareBriefingJudge | null;
+    lifeContext?: import('@/domain/life-context').LifeContextDigest | null;
+  }): Promise<ClareBriefing>;
   processDumpWithClare(input: {
     text: string;
     domain?: Task['domain'];
     protocol_id?: ClareProtocolId;
     now?: Date;
     judge?: import('@/ai/clare-proposal-judge').ClareProposalJudge | null;
+    lifeContext?: import('@/domain/life-context').LifeContextDigest | null;
   }): Promise<ClareDumpResult>;
   acceptClareProposal(input: {
     proposal: ClareProposal;

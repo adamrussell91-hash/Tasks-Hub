@@ -19,6 +19,8 @@ Minutes: honest estimate, multiples of 5, 15–180. Use domain calibrations when
 
 Due dates: respect parser due_date when set. Otherwise infer from raw text or leave null.
 
+Use life_context when present (energy, mood, upcoming events, active goals) to sanity-check due dates and priority — e.g. do not stack something heavy on a day already flagged as full, and let an upcoming event you can see explain an otherwise-vague deadline. Do not mention life_context content Adam did not ask about; use it only to make better calls silently.
+
 Only write proposals for items where propose=true. Match item_index to digest items.
 
 Return JSON only:
