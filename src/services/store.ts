@@ -10,6 +10,7 @@ import { ProjectSchema } from '@/schemas/project';
 import {
   FrameworkEntrySchema,
   ExcursionTemplateSchema,
+  type ExcursionTemplate,
   TaskTemplateSchema,
   ProjectTemplateSchema,
   AgentActionLogSchema,
@@ -33,6 +34,10 @@ import { carryReminderForward } from '@/domain/reminders';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { catalogPrograms } from '@/domain/programs-seed';
 import { buildExcursionPlan } from '@/domain/excursion';
+import {
+  catalogExcursionTemplates,
+  resolveExcursionTemplateId
+} from '@/domain/excursion-catalog';
 import { addDays, backlogTasks, toDateKey } from '@/domain/queries';
 import {
   affectedIdsForBlockedSince,
@@ -203,6 +208,31 @@ function classifierDefault(
   fallbackIndex = 0
 ): string {
   return options.find((entry) => entry.id === preferredId)?.id ?? options[fallbackIndex]?.id ?? '';
+}
+
+async function syncExcursionTemplateCatalog(
+  kv: KvAdapter,
+  keys: KeyBuilders
+): Promise<ExcursionTemplate[]> {
+  const catalog = catalogExcursionTemplates();
+  const stored = await listByIndex(
+    kv,
+    keys.excursionTemplatesIndexKey(),
+    keys.excursionTemplateKey,
+    (raw) => ExcursionTemplateSchema.parse(raw)
+  );
+  const catalogIds = catalog.map((item) => item.id).join(',');
+  const storedIds = stored.map((item) => item.id).join(',');
+  if (catalogIds === storedIds) return stored;
+  for (const item of catalog) {
+    await kv.setJSON(keys.excursionTemplateKey(item.id), item);
+  }
+  await writeIndex(
+    kv,
+    keys.excursionTemplatesIndexKey(),
+    catalog.map((item) => item.id)
+  );
+  return catalog;
 }
 
 export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
@@ -489,12 +519,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       );
     },
     async listExcursionTemplates() {
-      return listByIndex(
-        kv,
-        keys.excursionTemplatesIndexKey(),
-        keys.excursionTemplateKey,
-        (raw) => ExcursionTemplateSchema.parse(raw)
-      );
+      return syncExcursionTemplateCatalog(kv, keys);
     },
     async listTaskTemplates() {
       return listByIndex(kv, keys.taskTemplatesIndexKey(), keys.taskTemplateKey, (raw) =>
@@ -599,9 +624,10 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       return this.updateProject(project.id, { milestones });
     },
     async createExcursionFromTemplate(input) {
-      const raw = await kv.getJSON(keys.excursionTemplateKey(input.excursion_template_id));
-      if (!raw) throw new Error(`Excursion template not found: ${input.excursion_template_id}`);
-      const template = ExcursionTemplateSchema.parse(raw);
+      const templateId = resolveExcursionTemplateId(input.excursion_template_id);
+      const catalog = await syncExcursionTemplateCatalog(kv, keys);
+      const template = catalog.find((item) => item.id === templateId);
+      if (!template) throw new Error(`Excursion template not found: ${templateId}`);
       const plan = buildExcursionPlan(template, {
         title: input.title,
         event_date: input.event_date,
@@ -1426,13 +1452,14 @@ export async function seedIfEmpty(
     seed.frameworks.map((f) => f.id)
   );
 
-  for (const item of seed.excursion_templates) {
-    await kv.setJSON(keys.excursionTemplateKey(item.id), ExcursionTemplateSchema.parse(item));
+  const excursionTemplates = catalogExcursionTemplates();
+  for (const item of excursionTemplates) {
+    await kv.setJSON(keys.excursionTemplateKey(item.id), item);
   }
   await writeIndex(
     kv,
     keys.excursionTemplatesIndexKey(),
-    seed.excursion_templates.map((t) => t.id)
+    excursionTemplates.map((t) => t.id)
   );
 
   for (const item of seed.task_templates) {

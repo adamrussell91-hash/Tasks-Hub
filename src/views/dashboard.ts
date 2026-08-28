@@ -17,6 +17,7 @@ import { deleteProjectNow, deleteTaskNow } from '@/views/card-actions';
 import { mountProjectCard, mountTaskCard, removeMountedProjectCard, removeMountedTaskCard } from '@/views/hub-cards';
 import { projectPageHash } from '@/domain/cards';
 import { defaultExcursionEventDate } from '@/domain/excursion';
+import { DEFAULT_EXCURSION_TITLE } from '@/domain/excursion-catalog';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
@@ -665,12 +666,12 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
         const excursionTemplateId = pt.excursion_template_id;
         showTemplateConfirm(
           confirmHost,
-          `Create “${pt.name}”`,
+          `Create “${DEFAULT_EXCURSION_TITLE}”`,
           `This will create the excursion with dated admin tasks and open its page.`,
           async () => {
             const result = await tasksApi.createExcursionFromTemplate({
               excursion_template_id: excursionTemplateId,
-              title: pt.name,
+              title: DEFAULT_EXCURSION_TITLE,
               event_date: defaultExcursionEventDate()
             });
             location.hash = projectPageHash(result.project.id);
@@ -701,12 +702,12 @@ export async function renderTemplatesView(canvas: HTMLElement): Promise<void> {
     use.addEventListener('click', () => {
       showTemplateConfirm(
         confirmHost,
-        `Create “${et.name}”`,
+        `Create “${DEFAULT_EXCURSION_TITLE}”`,
         `This will create the excursion with dated admin tasks and open its page.`,
         async () => {
           const result = await tasksApi.createExcursionFromTemplate({
             excursion_template_id: et.id,
-            title: et.name,
+            title: DEFAULT_EXCURSION_TITLE,
             event_date: defaultExcursionEventDate()
           });
           location.hash = projectPageHash(result.project.id);

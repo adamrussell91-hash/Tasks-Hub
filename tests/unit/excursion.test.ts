@@ -26,12 +26,14 @@ const seed = JSON.parse(
 ) as SeedData;
 
 describe('excursion plan', () => {
-  it('schedules Ethics Olympiad admin tasks from lead times', () => {
-    const template = seed.excursion_templates.find((t) => t.id === 'ext_ethics_olympiad')!;
+  it('schedules admin tasks from the single excursion template lead times', () => {
+    expect(seed.excursion_templates).toHaveLength(1);
+    const template = seed.excursion_templates.find((t) => t.id === 'ext_excursion')!;
+    expect(template.name).toBe('excursion template');
     const plan = buildExcursionPlan(template, {
-      title: 'Ethics Olympiad 2026',
+      title: 'Year 10 excursion',
       event_date: '2026-10-15',
-      student_group_reference: 'Year 10 Ethics team'
+      student_group_reference: 'Year 10'
     });
 
     expect(plan.event_date).toBe('2026-10-15');
@@ -48,19 +50,9 @@ describe('excursion plan', () => {
     expect(kinds).toContain('checklist'); // student list
     expect(kinds).toContain('event');
 
-    expect(plan.drafted_documents.permission_note_draft).toContain('Year 10 Ethics team');
-    expect(plan.drafted_documents.staff_absence_email_draft).toContain('Ethics Olympiad');
-  });
-
-  it('uses Da Vinci Decathlon lead times (different from Ethics)', () => {
-    const template = seed.excursion_templates.find((t) => t.id === 'ext_da_vinci')!;
-    const plan = buildExcursionPlan(template, {
-      title: 'Da Vinci heat',
-      event_date: '2026-10-15'
-    });
-    expect(plan.key_dates.permission_note_due).toBe('2026-09-17'); // −28
-    expect(plan.key_dates.payment_due).toBe('2026-09-10'); // −35
-    expect(plan.admin_tasks.some((t) => t.title.includes('Team registration'))).toBe(true);
+    expect(plan.drafted_documents.permission_note_draft).toContain('Year 10');
+    expect(plan.drafted_documents.staff_absence_email_draft).toContain('Year 10 excursion');
+    expect(plan.admin_tasks.some((t) => t.title.includes('Year 10 excursion'))).toBe(true);
   });
 });
 
@@ -77,14 +69,14 @@ describe('createExcursionFromTemplate', () => {
     const store = createTasksStore(kv, keys);
 
     const { project, tasks } = await store.createExcursionFromTemplate({
-      excursion_template_id: 'ext_ethics_olympiad',
+      excursion_template_id: 'ext_excursion',
       title: 'Ethics State Round',
       event_date: '2026-10-15',
       student_group_reference: 'Year 10 Ethics team'
     });
 
     expect(project.type).toBe('excursion');
-    expect(project.competition_or_event_type).toBe('ext_ethics_olympiad');
+    expect(project.competition_or_event_type).toBe('ext_excursion');
     expect(project.generated_admin_tasks.length).toBe(tasks.length);
     expect(tasks.every((t) => t.source === 'auto_generated_from_excursion')).toBe(true);
     expect(tasks.every((t) => t.parent_project_id === project.id)).toBe(true);

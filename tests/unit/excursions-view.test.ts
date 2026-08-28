@@ -16,8 +16,8 @@ vi.mock('@/services/client-api', () => ({
 
 const template: ExcursionTemplate = {
   schema_version: 1,
-  id: 'ext_ethics_olympiad',
-  name: 'Ethics Olympiad',
+  id: 'ext_excursion',
+  name: 'excursion template',
   default_lead_times: {
     permission_note_days: 21,
     staff_email_days: 21,
@@ -44,7 +44,7 @@ const excursion: Project = {
   stall_flagged_at: null,
   created_at: '2026-07-01T00:00:00.000Z',
   updated_at: '2026-08-01T00:00:00.000Z',
-  competition_or_event_type: 'ext_ethics_olympiad',
+  competition_or_event_type: 'ext_excursion',
   key_dates: null,
   student_group_reference: 'Year 10 Ethics',
   generated_admin_tasks: [],
@@ -107,7 +107,7 @@ describe('excursions list', () => {
 
     expect(canvas.querySelector('form')).toBeNull();
     expect(canvas.textContent).not.toContain('Review & create');
-    expect(canvas.querySelector('.task-row__title')?.textContent).toBe('Ethics Olympiad');
+    expect(canvas.querySelector('.task-row__title')?.textContent).toBe('excursion template');
     expect(canvas.querySelector('.btn--primary')?.textContent).toBe('Use');
 
     const card = canvas.querySelector<HTMLElement>('.proj-row');
@@ -121,7 +121,7 @@ describe('excursions list', () => {
 
   it('confirms a template then creates and opens the page', async () => {
     location.hash = '#/excursions';
-    const created = { ...excursion, id: 'proj_new', title: 'Ethics Olympiad' };
+    const created = { ...excursion, id: 'proj_new', title: 'Excursion' };
     vi.mocked(tasksApi.createExcursionFromTemplate).mockResolvedValue({
       project: created,
       tasks: [task]
@@ -141,8 +141,8 @@ describe('excursions list', () => {
     await Promise.resolve();
 
     expect(tasksApi.createExcursionFromTemplate).toHaveBeenCalledWith({
-      excursion_template_id: 'ext_ethics_olympiad',
-      title: 'Ethics Olympiad',
+      excursion_template_id: 'ext_excursion',
+      title: 'Excursion',
       event_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
     });
     expect(location.hash).toBe('#/project/proj_new');
@@ -167,10 +167,10 @@ describe('excursions list', () => {
 
   it('sends a template query to the new excursion page', async () => {
     mockList();
-    location.hash = '#/excursions?template=ext_ethics_olympiad';
+    location.hash = '#/excursions?template=ext_excursion';
     const canvas = document.createElement('main');
     await renderExcursionsView(canvas);
-    expect(location.hash).toBe('#/excursions/new?template=ext_ethics_olympiad');
+    expect(location.hash).toBe('#/excursions/new?template=ext_excursion');
     expect(canvas.querySelector('.proj-row')).toBeNull();
   });
 });
@@ -182,7 +182,7 @@ describe('new excursion page', () => {
       project: excursion,
       tasks: [task]
     });
-    location.hash = '#/excursions/new?template=ext_ethics_olympiad';
+    location.hash = '#/excursions/new?template=ext_excursion';
     const canvas = document.createElement('main');
     await renderNewExcursionPage(canvas);
 
@@ -190,14 +190,14 @@ describe('new excursion page', () => {
     expect(canvas.querySelector('form')).toBeNull();
     expect(canvas.textContent).not.toContain('Review & create');
     expect(canvas.querySelector('.confirm-card .page-header__title')?.textContent).toBe(
-      'Create “Ethics Olympiad”'
+      'Create “Excursion”'
     );
 
     canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')?.click();
     await vi.waitFor(() => {
       expect(tasksApi.createExcursionFromTemplate).toHaveBeenCalledWith({
-        excursion_template_id: 'ext_ethics_olympiad',
-        title: 'Ethics Olympiad',
+        excursion_template_id: 'ext_excursion',
+        title: 'Excursion',
         event_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
       });
       expect(location.hash).toBe('#/project/proj_ex_ethics_seed');

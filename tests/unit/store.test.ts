@@ -97,6 +97,53 @@ describe('tasks store', () => {
     });
   });
 
+  it('replaces legacy excursion templates with the single catalog template', async () => {
+    const kv = memoryKv();
+    await kv.setJSON(keys.excursionTemplateKey('ext_ethics_olympiad'), {
+      schema_version: 1,
+      id: 'ext_ethics_olympiad',
+      name: 'Ethics Olympiad',
+      default_lead_times: {
+        permission_note_days: 21,
+        staff_email_days: 21,
+        risk_assessment_days: 42,
+        payment_days: 28
+      },
+      checklist_items: []
+    });
+    await kv.setJSON(keys.excursionTemplateKey('ext_da_vinci'), {
+      schema_version: 1,
+      id: 'ext_da_vinci',
+      name: 'Da Vinci Decathlon',
+      default_lead_times: {
+        permission_note_days: 28,
+        staff_email_days: 21,
+        risk_assessment_days: 42,
+        payment_days: 35
+      },
+      checklist_items: []
+    });
+    await kv.setJSON(keys.excursionTemplatesIndexKey(), {
+      ids: ['ext_ethics_olympiad', 'ext_da_vinci']
+    });
+    const store = createTasksStore(kv, keys);
+    const listed = await store.listExcursionTemplates();
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({ id: 'ext_excursion', name: 'excursion template' });
+  });
+
+  it('creates from a legacy excursion template id', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    const created = await store.createExcursionFromTemplate({
+      excursion_template_id: 'ext_ethics_olympiad',
+      title: 'Excursion',
+      event_date: '2026-10-15'
+    });
+    expect(created.project.competition_or_event_type).toBe('ext_excursion');
+  });
+
   it('saves and instantiates task templates', async () => {
     const kv = memoryKv();
     await seedIfEmpty(kv, keys, seed);
