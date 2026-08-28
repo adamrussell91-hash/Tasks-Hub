@@ -5,7 +5,6 @@ import { projectPageHash } from '@/domain/cards';
 import { findStallCandidates } from '@/domain/stall';
 import {
   LIFECYCLE_LABEL,
-  SUSTAINABLE_RUNNING_LOAD,
   buildProjectPulseCard,
   findPortfolioTension,
   findRetroCandidate,
@@ -25,6 +24,7 @@ import { tasksApi } from '@/services/client-api';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { deleteProjectNow } from '@/views/card-actions';
 import { renderCardMenu, type CardMenuItem } from '@/views/card-menu';
+import { renderProjectPortfolioChart } from '@/views/project-portfolio-chart';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 import {
   createHubField,
@@ -73,98 +73,13 @@ function renderStatusChart(
   const tile = el('section', 'hub-card projects-chart');
   tile.setAttribute('aria-label', 'Project status mix');
   tile.append(el('p', 'hub-card__eyebrow', 'Status mix'));
-
-  const total = mix.reduce((sum, slice) => sum + slice.count, 0);
-  const wrap = el('div', 'projects-chart__wrap');
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', 'projects-chart__ring');
-  svg.setAttribute('width', '132');
-  svg.setAttribute('height', '132');
-  svg.setAttribute('viewBox', '0 0 132 132');
-  svg.setAttribute('role', 'img');
-  svg.setAttribute(
-    'aria-label',
-    total
-      ? mix
-          .filter((slice) => slice.count)
-          .map((slice) => `${slice.count} ${slice.label}`)
-          .join(', ')
-      : 'No projects yet'
+  tile.append(
+    renderProjectPortfolioChart(mix, {
+      running,
+      onSelect,
+      selected: lifecycleFilter
+    })
   );
-
-  const cx = 66;
-  const cy = 66;
-  const r = 48;
-  const circ = 2 * Math.PI * r;
-  const track = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  track.setAttribute('cx', String(cx));
-  track.setAttribute('cy', String(cy));
-  track.setAttribute('r', String(r));
-  track.setAttribute('fill', 'none');
-  track.setAttribute('stroke', 'var(--shore)');
-  track.setAttribute('stroke-width', '14');
-  svg.append(track);
-
-  let offset = 0;
-  for (const slice of mix) {
-    if (!slice.count || !total) continue;
-    const length = (slice.count / total) * circ;
-    const arc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    arc.setAttribute('cx', String(cx));
-    arc.setAttribute('cy', String(cy));
-    arc.setAttribute('r', String(r));
-    arc.setAttribute('fill', 'none');
-    arc.setAttribute('stroke', slice.color);
-    arc.setAttribute('stroke-width', '14');
-    arc.setAttribute('stroke-linecap', 'butt');
-    arc.setAttribute('stroke-dasharray', `${length} ${circ - length}`);
-    arc.setAttribute('stroke-dashoffset', String(-offset));
-    arc.setAttribute('transform', `rotate(-90 ${cx} ${cy})`);
-    svg.append(arc);
-    offset += length;
-  }
-
-  const count = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  count.setAttribute('x', String(cx));
-  count.setAttribute('y', '62');
-  count.setAttribute('text-anchor', 'middle');
-  count.setAttribute('class', 'projects-chart__total');
-  count.textContent = String(total);
-  const caption = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  caption.setAttribute('x', String(cx));
-  caption.setAttribute('y', '80');
-  caption.setAttribute('text-anchor', 'middle');
-  caption.setAttribute('class', 'projects-chart__caption');
-  caption.textContent = 'projects';
-  svg.append(count, caption);
-
-  const legend = el('div', 'projects-chart__legend');
-  for (const slice of mix) {
-    const btn = el('button', 'projects-chart__slice');
-    btn.type = 'button';
-    btn.dataset.lifecycle = slice.id;
-    const pressed = lifecycleFilter === slice.id;
-    btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
-    if (pressed) btn.classList.add('is-active');
-    const swatch = el('span', 'projects-chart__swatch');
-    swatch.style.background = slice.color;
-    btn.append(swatch, el('span', 'projects-chart__name', slice.label), el('span', 'projects-chart__count', String(slice.count)));
-    btn.addEventListener('click', () => {
-      onSelect(lifecycleFilter === slice.id ? 'all' : slice.id);
-    });
-    legend.append(btn);
-  }
-
-  wrap.append(svg, legend);
-  tile.append(wrap);
-
-  const over = Math.max(0, running - SUSTAINABLE_RUNNING_LOAD);
-  const load = el('p', 'projects-chart__load');
-  load.innerHTML =
-    over > 0
-      ? `Sustainable load is <strong>~${SUSTAINABLE_RUNNING_LOAD}</strong>. You’re running <strong>${running}</strong> — ${over} over.`
-      : `Sustainable load is <strong>~${SUSTAINABLE_RUNNING_LOAD}</strong>. You’re running <strong>${running}</strong>.`;
-  tile.append(load);
   return tile;
 }
 
@@ -266,10 +181,15 @@ function energyTint(energy: ProjectPulseCard['energy']): string {
   return energy === 'deep_focus' ? 'tint-blue' : 'tint-gold';
 }
 
+type ProjectBoardActions = {
+  onReload: () => void;
+  onDeleted: (projectId: string) => void;
+};
+
 function projectBoardMenuItems(
   card: ProjectPulseCard,
   confirmHost: HTMLElement,
-  onReload: () => void
+  actions: ProjectBoardActions
 ): CardMenuItem[] {
   const items: CardMenuItem[] = [
     {
@@ -284,14 +204,15 @@ function projectBoardMenuItems(
     items.push({
       id: 'close',
       label: 'Close project',
-      onSelect: () => showCloseConfirm(confirmHost, card.project, card.slipDays, onReload)
+      onSelect: () => showCloseConfirm(confirmHost, card.project, card.slipDays, actions.onReload)
     });
   }
   items.push({
     id: 'delete',
     label: 'Delete',
     danger: true,
-    onSelect: () => deleteProjectNow(card.project, onReload, confirmHost)
+    onSelect: () =>
+      deleteProjectNow(card.project, () => actions.onDeleted(card.project.id), confirmHost)
   });
   return items;
 }
@@ -300,16 +221,16 @@ function attachProjectBoardMenu(
   host: HTMLElement,
   card: ProjectPulseCard,
   confirmHost: HTMLElement,
-  onReload: () => void
+  actions: ProjectBoardActions
 ): void {
-  host.append(renderCardMenu(`${card.project.title} card menu`, projectBoardMenuItems(card, confirmHost, onReload)));
+  host.append(renderCardMenu(`${card.project.title} card menu`, projectBoardMenuItems(card, confirmHost, actions)));
 }
 
 function renderProjectBoardCard(
   card: ProjectPulseCard,
   tasks: Task[],
   confirmHost: HTMLElement,
-  onReload: () => void
+  boardActions: ProjectBoardActions
 ): HTMLElement {
   const article = el('article', card.lifecycle === 'stalled' ? 'hub-card pcard pcard--compact' : 'hub-card pcard');
   article.dataset.projectId = card.project.id;
@@ -334,7 +255,7 @@ function renderProjectBoardCard(
     const jump = el('a', 'pcard__jump', 'Review below ↓');
     jump.href = '#stalled-queue';
     article.append(jump);
-    attachProjectBoardMenu(top, card, confirmHost, onReload);
+    attachProjectBoardMenu(top, card, confirmHost, boardActions);
     return article;
   }
 
@@ -398,19 +319,19 @@ function renderProjectBoardCard(
     const close = el('button', 'btn btn--primary', 'Close');
     close.type = 'button';
     close.addEventListener('click', () => {
-      showCloseConfirm(confirmHost, card.project, card.slipDays, onReload);
+      showCloseConfirm(confirmHost, card.project, card.slipDays, boardActions.onReload);
     });
     actions.append(close);
   }
   article.append(actions);
-  attachProjectBoardMenu(top, card, confirmHost, onReload);
+  attachProjectBoardMenu(top, card, confirmHost, boardActions);
   return article;
 }
 
 function renderBoard(
   ctx: PulseContext,
   confirmHost: HTMLElement,
-  onReload: () => void
+  actions: ProjectBoardActions
 ): HTMLElement {
   const visible = ctx.cards.filter((card) => {
     if (!matchesProjectQuery(card.project, projectQuery)) return false;
@@ -432,11 +353,44 @@ function renderBoard(
     head.append(el('span', 'lane__title', group.title), el('span', 'lane__count', String(group.cards.length)));
     lane.append(head);
     for (const card of group.cards) {
-      lane.append(renderProjectBoardCard(card, ctx.tasks, confirmHost, onReload));
+      lane.append(renderProjectBoardCard(card, ctx.tasks, confirmHost, actions));
     }
     grid.append(lane);
   }
   return grid;
+}
+
+function removeProjectNodes(canvas: HTMLElement, projectId: string): void {
+  const nodes = [...canvas.querySelectorAll<HTMLElement>(`[data-project-id="${CSS.escape(projectId)}"]`)];
+  for (const node of nodes) {
+    const lane = node.closest('.lane');
+    const stalled = node.closest('#stalled-queue');
+    node.remove();
+    if (lane instanceof HTMLElement) {
+      const remaining = lane.querySelectorAll('[data-project-id]').length;
+      const count = lane.querySelector('.lane__count');
+      if (count) count.textContent = String(remaining);
+      if (!remaining) lane.remove();
+    }
+    if (stalled instanceof HTMLElement) {
+      const remaining = stalled.querySelectorAll('[data-project-id]').length;
+      const count = stalled.querySelector('.lane__count');
+      if (count) count.textContent = String(remaining);
+      const body = stalled.querySelector('.stalled-body');
+      if (body && !remaining && !body.querySelector('.empty-state')) {
+        body.replaceChildren(el('p', 'empty-state', 'Nothing waiting on an outcome.'));
+      }
+    }
+  }
+  const board = canvas.querySelector<HTMLElement>('.projects-board');
+  if (!board) return;
+  const lanes = [...board.querySelectorAll('.lane')];
+  if (!lanes.length) {
+    board.replaceChildren(el('p', 'empty-state', 'No projects match.'));
+    board.style.gridTemplateColumns = 'minmax(0, 1fr)';
+    return;
+  }
+  board.style.gridTemplateColumns = `repeat(${lanes.length}, minmax(0, 1fr))`;
 }
 
 function renderRetro(
@@ -445,6 +399,7 @@ function renderRetro(
 ): HTMLElement | null {
   if (!candidate) return null;
   const card = el('section', 'hub-card projects-retro');
+  card.dataset.projectId = candidate.project.id;
   card.append(el('p', 'hub-card__eyebrow', candidate.eyebrow));
   card.append(el('h2', 'section-title section-title--tight', candidate.title));
   const grid = el('div', 'retro-grid');
@@ -603,6 +558,40 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
 
   const reload = () => void renderProjectsView(canvas);
 
+  function refreshPulse(): void {
+    const host = canvas.querySelector('.projects-pulse');
+    if (!host) return;
+    const nextMix = projectLifecycleMix(ctx.projects, ctx.tasks, ctx.stallIds, ctx.now);
+    const nextRunning = runningProjectCount(nextMix);
+    host.replaceChildren();
+    host.append(
+      renderStatusChart(nextMix, nextRunning, (id) => {
+        lifecycleFilter = id;
+        reload();
+      })
+    );
+    const nextStack = el('div', 'projects-pulse__stack');
+    nextStack.append(
+      renderHeatmap(ctx),
+      renderRoadmap(ctx, (zoom) => {
+        roadmapZoom = zoom;
+        reload();
+      })
+    );
+    host.append(nextStack);
+  }
+
+  function dropProject(projectId: string): void {
+    ctx.projects = ctx.projects.filter((project) => project.id !== projectId);
+    ctx.tasks = ctx.tasks.filter((task) => task.parent_project_id !== projectId);
+    ctx.cards = ctx.cards.filter((card) => card.project.id !== projectId);
+    ctx.stallIds.delete(projectId);
+    removeProjectNodes(canvas, projectId);
+    refreshPulse();
+  }
+
+  const boardActions: ProjectBoardActions = { onReload: reload, onDeleted: dropProject };
+
   if (tension) canvas.append(renderTensionBanner(tension.message, () => {
     tensionDismissed = true;
     reload();
@@ -655,7 +644,7 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     })
   );
   canvas.append(toolbar);
-  canvas.append(renderBoard(ctx, closureConfirmHost, reload));
+  canvas.append(renderBoard(ctx, closureConfirmHost, boardActions));
 
   const retroCard = renderRetro(retro, reload);
   if (retroCard) canvas.append(retroCard);
@@ -755,6 +744,7 @@ function renderStalledCard(
   onDone: () => void
 ): HTMLElement {
   const card = el('article', 'stall-card');
+  card.dataset.projectId = project.id;
   const openCount = tasks.filter(
     (task) => task.parent_project_id === project.id && task.status !== 'done' && task.status !== 'dead'
   ).length;

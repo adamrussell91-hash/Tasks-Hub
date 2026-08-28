@@ -14,12 +14,11 @@ import {
   LIFECYCLE_LABEL,
   projectLifecycleMix,
   runningProjectCount,
-  SUSTAINABLE_RUNNING_LOAD,
   type ProjectLifecycle
 } from '@/domain/projects-pulse';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderPressureStrips } from '@/views/pinch-strip';
-import { renderProjectStatusRing } from '@/views/project-status-ring';
+import { renderProjectPortfolioChart } from '@/views/project-portfolio-chart';
 import { el } from '@/views/hub-kit';
 
 export type DashboardOverviewOptions = {
@@ -149,17 +148,8 @@ function renderProjectsCard(projects: Project[], tasks: Task[], now: Date): HTML
   head.append(viewLink('#/projects', 'Open Projects'));
   card.append(head);
 
-  const over = Math.max(0, running - SUSTAINABLE_RUNNING_LOAD);
-  const load = el('p', 'dashboard-overview__stat');
-  load.textContent = over
-    ? `${running} running — ${over} over the ~${SUSTAINABLE_RUNNING_LOAD} sustainable load.`
-    : `${running} running · sustainable load ~${SUSTAINABLE_RUNNING_LOAD}.`;
-
   const portfolio = el('div', 'dashboard-overview__portfolio');
-  portfolio.append(
-    renderProjectStatusRing(mix, { size: 92, compact: true, href: '#/projects' }),
-    load
-  );
+  portfolio.append(renderProjectPortfolioChart(mix, { running, compact: true, href: '#/projects' }));
   card.append(portfolio);
 
   if (!cards.length) {
