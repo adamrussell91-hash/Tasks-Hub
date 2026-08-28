@@ -69,23 +69,49 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-  .hub-rail__section {
+  .hub-rail__list--desktop {
     display: none;
   }
 
-  .hub-rail__nav,
-  .hub-rail__list {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+  .hub-rail__mobile {
+    display: grid;
     gap: var(--space-1);
-    max-width: 100%;
     min-width: 0;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
   }
 
-  .hub-rail__link {
+  .hub-rail__mobile-tabs,
+  .hub-rail__mobile-items {
+    display: flex;
+    gap: var(--space-1);
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .hub-rail__mobile-tabs .hub-rail__section {
+    display: flex;
+    flex: 0 0 auto;
+    width: auto;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .hub-rail__mobile-panel {
+    display: flex;
+    flex: 0 0 auto;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .hub-rail__mobile-panel[data-open="true"] {
+    max-width: 100rem;
+    opacity: 1;
+  }
+
+  .hub-rail__mobile-panel .hub-rail__link {
     flex: 0 0 auto;
     width: auto;
     white-space: nowrap;

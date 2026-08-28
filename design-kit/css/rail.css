@@ -88,18 +88,61 @@ a.hub-rail__brand:focus-visible {
 }
 
 .hub-rail__section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   margin: var(--space-4) 0 0;
   padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  font-family: inherit;
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   line-height: var(--leading-snug);
   color: var(--on-dark-muted);
+  text-align: left;
+  cursor: pointer;
 }
 
 .hub-rail__section:first-child {
   margin-top: 0;
+}
+
+.hub-rail__section-chevron {
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 180ms ease;
+}
+
+.hub-rail__section[aria-expanded="true"] .hub-rail__section-chevron {
+  transform: rotate(180deg);
+}
+
+.hub-rail__section-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 220ms ease, opacity 160ms ease;
+}
+
+.hub-rail__section-panel[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.hub-rail__section-panel-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hub-rail__mobile {
+  display: none;
 }
 
 /* Primary destinations: 18px outline icon + title-case label. */
@@ -164,5 +207,59 @@ a.hub-rail__brand:focus-visible {
 @media (max-width: 720px) {
   .hub-rail {
     display: none;
+  }
+
+  .hub-rail__list--desktop {
+    display: none;
+  }
+
+  .hub-rail__mobile {
+    display: grid;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .hub-rail__mobile-tabs,
+  .hub-rail__mobile-items {
+    display: flex;
+    gap: var(--space-1);
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .hub-rail__mobile-tabs::-webkit-scrollbar,
+  .hub-rail__mobile-items::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hub-rail__mobile-tabs .hub-rail__section {
+    flex: 0 0 auto;
+    width: auto;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .hub-rail__mobile-panel {
+    display: flex;
+    flex: 0 0 auto;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-width 220ms ease, opacity 160ms ease;
+  }
+
+  .hub-rail__mobile-panel[data-open="true"] {
+    max-width: 100rem;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-rail__section-chevron,
+  .hub-rail__section-panel,
+  .hub-rail__mobile-panel {
+    transition: none;
   }
 }
