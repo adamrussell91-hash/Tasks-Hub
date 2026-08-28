@@ -9,7 +9,7 @@ import { uniquePropertyId } from '@/domain/property-ids';
 import { DEFAULT_TASK_PROPERTY_CONFIG } from '@/domain/task-properties-defaults';
 import { loadTaskProperties, saveTaskProperties } from '@/services/task-properties';
 import { errorMessage, renderLoadError } from '@/views/feedback';
-import { createHubField, createHubToolbar, el, labeledField } from '@/views/hub-kit';
+import { createHubField, createHubToolbar, el } from '@/views/hub-kit';
 
 const SECTION_META: Record<
   TaskPropertyListKey,
@@ -106,7 +106,7 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
         : uniquePropertyId(label, usedIds(draft[section], index));
       draft[section][index] = { ...current, label, id };
     });
-    row.append(labeledField('Name', name.el));
+    row.append(name.el);
 
     if (meta.color) {
       const color = createHubField({
@@ -120,9 +120,7 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
         if (!current) return;
         draft[section][index] = { ...current, color: color.input.value };
       });
-      const colourField = labeledField('Colour', color.el);
-      colourField.classList.add('property-row__colour');
-      row.append(colourField);
+      row.append(color.el);
     }
 
     const actions = el('div', 'property-row__actions');
@@ -171,6 +169,14 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
       if (!draft[section].length) {
         stack.append(el('p', 'empty-state', 'No entries yet.'));
       } else {
+        const head = el(
+          'div',
+          `property-list__head${meta.color ? ' property-list__head--colour' : ''}`
+        );
+        head.append(el('span', 'hub-field__label', 'Name'));
+        if (meta.color) head.append(el('span', 'hub-field__label', 'Colour'));
+        head.append(el('span', 'visually-hidden', 'Actions'));
+        stack.append(head);
         for (let index = 0; index < draft[section].length; index++) {
           stack.append(renderOptionRow(section, draft[section][index]!, index));
         }
@@ -234,15 +240,6 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
   });
 
   toolbar.append(save, reset);
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'These lists classify every task. Edit the name you see; the technical id stays hidden.'
-    ),
-    toolbar,
-    statusHost,
-    sectionsHost
-  );
+  canvas.append(toolbar, statusHost, sectionsHost);
   paintSections();
 }

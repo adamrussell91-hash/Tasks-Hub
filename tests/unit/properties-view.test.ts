@@ -42,16 +42,19 @@ describe('properties view', () => {
     expect(sections[0]?.querySelector('.property-section__lede')?.textContent).toMatch(/Life and work areas/);
     expect(sections[1]?.querySelector('.property-section__lede')?.textContent).toMatch(/How soon a task/);
 
+    const domains = canvas.querySelector('.property-section');
+    expect(domains?.querySelectorAll('.property-list__head .hub-field__label')).toHaveLength(2);
+    expect(
+      [...domains!.querySelectorAll('.property-list__head .hub-field__label')].map(
+        (node) => node.textContent
+      )
+    ).toEqual(['Name', 'Colour']);
     const domainRow = canvas.querySelector('.property-row--colour');
     expect(domainRow).not.toBeNull();
-    expect(domainRow?.querySelector('.hub-field__label')?.textContent).toBe('Name');
-    expect(
-      [...domainRow!.querySelectorAll('.hub-field__label')].map((node) => node.textContent)
-    ).toEqual(['Name', 'Colour']);
     expect(domainRow?.querySelectorAll('input[type="text"]')).toHaveLength(1);
     expect(domainRow?.querySelector('input[type="color"]')).not.toBeNull();
     expect(canvas.querySelector('input[placeholder="id"]')).toBeNull();
-    expect(canvas.textContent).not.toContain('Use lowercase letters');
+    expect(canvas.textContent).not.toContain('technical id');
   });
 
   it('keeps existing ids when a name changes and slugs new rows', async () => {
