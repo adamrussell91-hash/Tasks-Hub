@@ -118,3 +118,23 @@
     font-size: var(--text-xl);
   }
 }
+
+input.page-header__title-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+input.page-header__title-input:focus-visible {
+  outline: 2px solid var(--wave);
+  outline-offset: 4px;
+  border-radius: var(--radius-xs);
+}

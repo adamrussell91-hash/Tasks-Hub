@@ -5,7 +5,8 @@ import {
   railHighlightId,
   renderHubShell,
   renderPageHeader,
-  renderPrimaryNav
+  renderPrimaryNav,
+  viewChrome
 } from '../../src/shell/shell';
 
 describe('hub shell chrome', () => {
@@ -75,7 +76,7 @@ describe('hub shell chrome', () => {
     const sections = [...refs.railNav.querySelectorAll('.hub-rail__section')].map(
       (el) => el.textContent
     );
-    expect(sections).toEqual(['Home', 'Plan', 'Views', 'Work', 'Network', 'Tools']);
+    expect(sections).toEqual(['Home', 'Views', 'Plan', 'Work', 'Network', 'Tools']);
 
     const links = [...refs.railNav.querySelectorAll('.hub-rail__link')];
     expect(links.some((link) => link.textContent === 'Orbit')).toBe(false);
@@ -114,6 +115,18 @@ describe('hub shell chrome', () => {
     expect(window.location.hash).toBe('#/board');
     expect(document.activeElement).toBe(main);
     root.remove();
+  });
+});
+
+describe('viewChrome', () => {
+  it('uses the rail group then the tab name', () => {
+    expect(viewChrome('day')).toEqual({ eyebrow: 'Views', title: 'Today' });
+    expect(viewChrome('week')).toEqual({ eyebrow: 'Views', title: 'Week' });
+    expect(viewChrome('month')).toEqual({ eyebrow: 'Views', title: 'Month' });
+    expect(viewChrome('list')).toEqual({ eyebrow: 'Views', title: 'Backlog' });
+    expect(viewChrome('excursions')).toEqual({ eyebrow: 'Work', title: 'Excursions' });
+    expect(viewChrome('maps')).toEqual({ eyebrow: 'Tools', title: 'Maps' });
+    expect(viewChrome('orbit')).toEqual({ eyebrow: 'Views', title: 'Orbit' });
   });
 });
 

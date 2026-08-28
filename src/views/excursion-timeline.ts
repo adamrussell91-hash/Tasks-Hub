@@ -18,6 +18,7 @@ import {
   TIMELINE_NODE_R,
   type LaidTimelineStop
 } from '@/domain/excursion-timeline';
+import { bindEditablePageTitle } from '@/shell/shell';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { errorMessage } from '@/views/feedback';
 import { requestToggleDone } from '@/views/dashboard';
@@ -36,14 +37,6 @@ const PROJECT_STATUSES: ProjectStatus[] = ['active', 'stalled', 'revived', 'arch
 
 function pageBlocksOf(entity: Project): Block[] {
   return Array.isArray(entity.page_blocks) ? entity.page_blocks : [];
-}
-
-function titleInput(value: string, label: string): HTMLInputElement {
-  const input = el('input', 'hub-card__title page-card__title-input') as HTMLInputElement;
-  input.type = 'text';
-  input.value = value;
-  input.setAttribute('aria-label', label);
-  return input;
 }
 
 function backLink(href: string, label: string): HTMLAnchorElement {
@@ -333,7 +326,8 @@ export function paintExcursionPage(
   project: Project,
   tasks: Task[],
   _template: ExcursionTemplate | undefined,
-  onReload: () => Promise<void>
+  onReload: () => Promise<void>,
+  header?: HTMLElement
 ): void {
   let current = project;
   let saveTimer: number | undefined;
@@ -372,6 +366,11 @@ export function paintExcursionPage(
     }, 400);
   };
 
+  bindEditablePageTitle(header, project.title, {
+    onChange: (value) => persist({ title: value }),
+    current: () => current.title
+  });
+
   const page = el('div', 'page-editor');
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
@@ -379,16 +378,6 @@ export function paintExcursionPage(
   if (project.status !== 'active') {
     head.append(el('span', statusBadgeClass(project.status), statusLabel(project.status)));
   }
-
-  const title = titleInput(project.title, 'Excursion title');
-  title.addEventListener('input', () => {
-    const next = title.value.trim();
-    if (!next) return;
-    persist({ title: next });
-  });
-  title.addEventListener('blur', () => {
-    if (!title.value.trim()) title.value = current.title;
-  });
 
   const fields = el('div', 'page-card__fields hub-toolbar');
   const status = pageFilter(
@@ -431,7 +420,6 @@ export function paintExcursionPage(
   card.append(
     head,
     renderProgress(project, tasks),
-    title,
     fields,
     notes.el,
     renderPermissionTracker(project, persist),

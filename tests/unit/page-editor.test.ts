@@ -75,6 +75,16 @@ const project: Project = {
   page_blocks: []
 };
 
+function pageHeader(title: string): HTMLElement {
+  const header = document.createElement('header');
+  header.className = 'page-header';
+  const heading = document.createElement('h1');
+  heading.className = 'page-header__title';
+  heading.textContent = title;
+  header.append(heading);
+  return header;
+}
+
 describe('page editor', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -87,18 +97,20 @@ describe('page editor', () => {
     vi.mocked(tasksApi.updateTask).mockResolvedValue(task());
 
     const canvas = document.createElement('main');
-    await renderPageEditor(canvas, { kind: 'task', id: 'task_lesson' });
+    const header = pageHeader('Finish lesson pack');
+    await renderPageEditor(canvas, { kind: 'task', id: 'task_lesson' }, { header });
 
     expect(canvas.querySelector('.lesson-palette')).toBeNull();
     expect(canvas.querySelector('.page-card__back')?.textContent).toBe('← Dashboard');
     expect(canvas.querySelector('.task-card__foot .btn')).toBeNull();
+    expect(canvas.querySelector('.page-card__title-input')).toBeNull();
 
     expect(canvas.querySelector('select')).toBeNull();
     expect(canvas.querySelector('.page-card__domain')?.tagName).toBe('BUTTON');
     expect(canvas.querySelector('.page-card__status')?.classList.contains('hub-filter')).toBe(true);
     expect(canvas.querySelector('.page-card__notes')?.tagName).toBe('TEXTAREA');
 
-    const title = canvas.querySelector<HTMLInputElement>('.page-card__title-input')!;
+    const title = header.querySelector<HTMLInputElement>('.page-header__title-input')!;
     expect(title.value).toBe('Finish lesson pack');
     title.value = 'Term brief rewrite';
     title.dispatchEvent(new Event('input', { bubbles: true }));
@@ -204,11 +216,13 @@ describe('page editor', () => {
     });
 
     const canvas = document.createElement('main');
-    await renderPageEditor(canvas, { kind: 'project', id: excursion.id });
+    const header = pageHeader('Ethics Olympiad heat');
+    await renderPageEditor(canvas, { kind: 'project', id: excursion.id }, { header });
 
-    const title = canvas.querySelector<HTMLInputElement>('.page-card__title-input');
-    expect(title?.value).toBe('Ethics Olympiad heat');
-    expect(canvas.querySelectorAll('.page-card__title-input').length).toBe(1);
+    expect(header.querySelector<HTMLInputElement>('.page-header__title-input')?.value).toBe(
+      'Ethics Olympiad heat'
+    );
+    expect(canvas.querySelector('.page-card__title-input')).toBeNull();
     expect([...canvas.querySelectorAll('.hub-card__eyebrow')].map((n) => n.textContent)).not.toContain(
       'Excursion'
     );

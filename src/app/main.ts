@@ -22,6 +22,7 @@ import {
   renderHubShell,
   renderPageHeader,
   renderPrimaryNav,
+  viewChrome,
   type HubViewId
 } from '@/shell/shell';
 import { renderLoadError } from '@/views/feedback';
@@ -57,123 +58,6 @@ import { loadTaskProperties } from '@/services/task-properties';
 import { tasksApi } from '@/services/client-api';
 import { mapsOrSeed } from '@/domain/maps';
 
-const HEADERS: Record<HubViewId, { eyebrow: string; title: string; supporting: string }> = {
-  board: {
-    eyebrow: 'Home',
-    title: 'Dashboard',
-    supporting: 'Today, projects, excursions — then your board grouped by status.'
-  },
-  goals: {
-    eyebrow: 'Plan',
-    title: 'Goals',
-    supporting: 'Area → Goal → Project, with milestones and tasks underneath.'
-  },
-  someday: {
-    eyebrow: 'Plan',
-    title: 'Someday / Maybe',
-    supporting: 'Ideas parked over the rainbow until you promote them.'
-  },
-  clare: {
-    eyebrow: 'Talk to your agents',
-    title: 'Chat',
-    supporting: 'Clare, Hammond, Penelope, and Vera — pick a face, then talk.'
-  },
-  graph: {
-    eyebrow: 'Structure',
-    title: 'Graph',
-    supporting: 'See what’s blocking what.'
-  },
-  maps: {
-    eyebrow: 'Pathways',
-    title: 'Maps',
-    supporting: 'Transit diagrams for programs and projects.'
-  },
-  gantt: {
-    eyebrow: 'Project planning',
-    title: 'Gantt',
-    supporting: 'Same tasks as every other view, plotted on a timeline. Projects sit in lanes.'
-  },
-  orbit: {
-    eyebrow: 'Explore',
-    title: 'Orbit',
-    supporting: 'Adam at the centre — urgency pulls work closer.'
-  },
-  universe: {
-    eyebrow: 'Explore',
-    title: 'Universe',
-    supporting: 'Domains as planets, projects as moons — the same solar map as Knowledge Hub.'
-  },
-  branch: {
-    eyebrow: 'Explore',
-    title: 'Branch',
-    supporting: 'How one project’s tasks link together.'
-  },
-  constellation: {
-    eyebrow: 'Explore',
-    title: 'Sky',
-    supporting: 'Completions light stars — not a task list.'
-  },
-  day: {
-    eyebrow: 'Focus',
-    title: 'Today',
-    supporting: 'What needs you now, with pinch and due-soon cues.'
-  },
-  week: {
-    eyebrow: 'Shape',
-    title: 'Week',
-    supporting: 'Seven-day calendar — drag to move a due date, click a day to add.'
-  },
-  month: {
-    eyebrow: 'Horizon',
-    title: 'Month',
-    supporting: 'Full month of tasks, milestones, and excursion key dates.'
-  },
-  list: {
-    eyebrow: 'Inbox',
-    title: 'Backlog',
-    supporting: 'Open tasks with no due date yet.'
-  },
-  search: {
-    eyebrow: 'Find',
-    title: 'Search',
-    supporting: 'Titles and descriptions across tasks and projects.'
-  },
-  templates: {
-    eyebrow: 'Reuse',
-    title: 'Templates',
-    supporting: 'Start from a template — you’ll always confirm before anything’s created.'
-  },
-  projects: {
-    eyebrow: 'Work',
-    title: 'Projects',
-    supporting: 'Portfolio health, cadence, and lifecycle — not just a queue of what to kill.'
-  },
-  excursions: {
-    eyebrow: 'Events',
-    title: 'Excursions',
-    supporting: 'Open one, or use a template — confirm creates it and opens the page.'
-  },
-  programs: {
-    eyebrow: 'Catalogue',
-    title: 'Programs',
-    supporting: 'Competitions and programs — search, filter, and open a card.'
-  },
-  stress: {
-    eyebrow: 'Network',
-    title: 'Network',
-    supporting: 'Rule patterns plus Clare’s judgment — flags only, nothing rewritten.'
-  },
-  corey: {
-    eyebrow: 'Share',
-    title: 'Corey',
-    supporting: 'Read-only availability — no task titles on the public link.'
-  },
-  properties: {
-    eyebrow: 'Tools',
-    title: 'Properties',
-    supporting: 'Edit task classifiers — domains, urgency labels, statuses, tags, and more.'
-  }
-};
 
 function renderNotFound(canvas: HTMLElement, hash: string): void {
   canvas.replaceChildren();
@@ -288,9 +172,8 @@ async function bootApp(root: HTMLElement): Promise<void> {
           : map?.ticks.find((entry) => entry.id === mapItem.id);
       renderPrimaryNav(shell.railNav, 'maps');
       renderPageHeader(shell, {
-        eyebrow: mapItem.kind === 'station' ? 'Program' : 'Competition',
-        title: named?.label ?? 'Page',
-        supporting: 'A planning card — it stays off the board until you make it active.'
+        eyebrow: 'Maps',
+        title: named?.label ?? 'Page'
       });
       try {
         await renderMapItemPage(shell.canvas, mapItem);
@@ -302,9 +185,8 @@ async function bootApp(root: HTMLElement): Promise<void> {
     const entity = parseEntityPage();
     if (entity) {
       let rail: HubViewId = entity.kind === 'project' ? 'projects' : 'board';
-      let eyebrow = entity.kind === 'task' ? 'Task' : 'Project';
+      let eyebrow = entity.kind === 'task' ? 'Dashboard' : 'Projects';
       let title = 'Page';
-      let excursionPage = false;
       if (entity.kind === 'task') {
         const task = await tasksApi.getTask(entity.id).catch(() => null);
         if (task) title = task.title;
@@ -314,21 +196,14 @@ async function bootApp(root: HTMLElement): Promise<void> {
           title = project.title;
           if (project.type === 'excursion') {
             rail = 'excursions';
-            eyebrow = 'Events';
-            excursionPage = true;
+            eyebrow = 'Excursions';
           }
         }
       }
       renderPrimaryNav(shell.railNav, rail);
-      renderPageHeader(shell, {
-        eyebrow,
-        title,
-        supporting: excursionPage
-          ? 'Progress, date, and permission notes.'
-          : 'Build the page with Teaching Hub’s lesson blocks.'
-      });
+      renderPageHeader(shell, { eyebrow, title });
       try {
-        await renderPageEditor(shell.canvas, entity);
+        await renderPageEditor(shell.canvas, entity, { header: shell.pageHeader });
       } catch (err) {
         renderLoadError(shell.canvas, err, () => void paint(), 'Could not open page');
       }
@@ -345,14 +220,15 @@ async function bootApp(root: HTMLElement): Promise<void> {
       return;
     }
     const view = parseHashRoute();
+    const chrome = viewChrome(view);
     renderPrimaryNav(shell.railNav, view);
-    renderPageHeader(shell, HEADERS[view]);
+    renderPageHeader(shell, chrome);
     clare.sync(view);
     try {
       await renderReminderStrip(shell.reminderHost, () => void paint());
       await renderActiveView(view, shell.canvas);
     } catch (err) {
-      renderLoadError(shell.canvas, err, () => void paint(), `Could not load ${HEADERS[view].title}`);
+      renderLoadError(shell.canvas, err, () => void paint(), `Could not load ${chrome.title}`);
     }
   }
 

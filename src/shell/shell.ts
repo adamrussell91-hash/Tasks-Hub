@@ -47,15 +47,6 @@ type NavItem = { id: HubViewId; label: string; href: string };
 const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   { title: 'Home', items: [{ id: 'board', label: 'Dashboard', href: '#/board' }] },
   {
-    title: 'Plan',
-    items: [
-      { id: 'goals', label: 'Goals', href: '#/goals' },
-      { id: 'someday', label: 'Someday', href: '#/someday' },
-      { id: 'clare', label: 'Chat', href: '#/clare' },
-      { id: 'templates', label: 'Templates', href: '#/templates' }
-    ]
-  },
-  {
     title: 'Views',
     items: [
       { id: 'day', label: 'Today', href: '#/day' },
@@ -64,6 +55,15 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
       { id: 'list', label: 'Backlog', href: '#/list' },
       { id: 'graph', label: 'Graph', href: '#/graph' },
       { id: 'gantt', label: 'Gantt', href: '#/gantt' }
+    ]
+  },
+  {
+    title: 'Plan',
+    items: [
+      { id: 'goals', label: 'Goals', href: '#/goals' },
+      { id: 'someday', label: 'Someday', href: '#/someday' },
+      { id: 'clare', label: 'Chat', href: '#/clare' },
+      { id: 'templates', label: 'Templates', href: '#/templates' }
     ]
   },
   {
@@ -103,6 +103,44 @@ const NAV: NavItem[] = [
 
 export function railHighlightId(view: HubViewId): HubViewId {
   return STRETCH_VIEWS.includes(view) ? 'graph' : view;
+}
+
+/** Page header is the rail group, then the tab (or stretch) name. Nothing else. */
+export function viewChrome(view: HubViewId): { eyebrow: string; title: string } {
+  for (const section of NAV_SECTIONS) {
+    const item = section.items.find((entry) => entry.id === view);
+    if (item) return { eyebrow: section.title, title: item.label };
+  }
+  const stretch = NAV.find((item) => item.id === view);
+  if (stretch) return { eyebrow: 'Views', title: stretch.label };
+  return { eyebrow: 'Home', title: 'Dashboard' };
+}
+
+/** One name in the header — editable. Do not put a second title on the card. */
+export function bindEditablePageTitle(
+  header: HTMLElement | undefined,
+  value: string,
+  handlers: {
+    onChange: (value: string) => void;
+    current: () => string;
+  }
+): void {
+  if (!header) return;
+  const existing = header.querySelector('.page-header__title');
+  if (!existing) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'page-header__title page-header__title-input';
+  input.value = value;
+  input.setAttribute('aria-label', 'Title');
+  input.addEventListener('input', () => {
+    const next = input.value.trim();
+    if (next) handlers.onChange(next);
+  });
+  input.addEventListener('blur', () => {
+    if (!input.value.trim()) input.value = handlers.current();
+  });
+  existing.replaceWith(input);
 }
 
 function iconButton(
