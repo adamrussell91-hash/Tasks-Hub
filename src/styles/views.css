@@ -1101,8 +1101,16 @@
   opacity: 0.55;
 }
 
-.excursions-add {
+.excursions-toolbar {
+  display: flex;
+  align-items: center;
   margin: 0 0 var(--space-4);
+}
+
+.excursions-add {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .excursions-add svg {
@@ -1113,7 +1121,13 @@
 
 .excursion-form--page {
   display: grid;
+  justify-items: start;
   gap: var(--space-4);
+}
+
+.excursion-form--page .page-card__title-input,
+.excursion-form--page .page-card__fields {
+  width: 100%;
 }
 
 .excursion-form--page .page-card__fields {

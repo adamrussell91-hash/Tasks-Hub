@@ -87,7 +87,9 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren();
   const confirmHost = el('div', 'excursion-confirm');
   const listHost = el('div', 'task-stack');
-  canvas.append(plusButton('New excursion', newExcursionHash()), confirmHost);
+  const addRow = el('div', 'excursions-toolbar');
+  addRow.append(plusButton('New excursion', newExcursionHash()));
+  canvas.append(addRow, confirmHost);
 
   if (!excursions.length) {
     listHost.append(el('p', 'empty-state', 'No excursions yet.'));
