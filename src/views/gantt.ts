@@ -30,6 +30,7 @@ import {
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { toDateKey } from '@/domain/queries';
 import { createHubField, createHubFilter, createHubToolbar, domainFilterOptions, taskDomains } from '@/views/hub-kit';
+import { createPlusButton } from '@/views/plus-add';
 import { renderTaskEditor } from '@/views/task-editor';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 
@@ -257,9 +258,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
     paint();
   }, 'hub-pills__btn--critical');
 
-  const newTaskBtn = el('button', 'btn btn--primary', 'New Task');
-  newTaskBtn.type = 'button';
-  newTaskBtn.addEventListener('click', () => openNewTaskForm());
+  const newTaskBtn = createPlusButton('Add a task', () => openNewTaskForm());
 
   paintScopePills();
   paintZoomPills();
@@ -1052,7 +1051,7 @@ export async function renderGanttView(canvas: HTMLElement): Promise<void> {
 
     scroll.replaceChildren(svg);
     if (!layout.bars.length) {
-      const empty = el('p', 'empty-state', 'No dated tasks yet. Use New Task to add one to this timeline.');
+      const empty = el('p', 'empty-state', 'No dated tasks yet. Use + to add one to this timeline.');
       empty.style.pointerEvents = 'none';
       empty.style.position = 'absolute';
       empty.style.left = '15rem';

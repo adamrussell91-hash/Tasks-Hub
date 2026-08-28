@@ -174,6 +174,38 @@
   color: var(--muted);
 }
 
+.plus-add {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.plus-add--inline {
+  margin-bottom: 0;
+}
+
+.plus-add.is-open {
+  align-items: stretch;
+}
+
+.plus-add__btn svg,
+.icon-plus-btn svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.plus-add__panel[hidden] {
+  display: none;
+}
+
+.plus-add__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .quick-add,
 .search-form {
   display: flex;
@@ -181,6 +213,11 @@
   gap: var(--space-2);
   margin-bottom: var(--space-5);
   align-items: center;
+}
+
+.plus-add .quick-add,
+.plus-add .someday-add {
+  margin-bottom: 0;
 }
 
 .hub-toolbar,
