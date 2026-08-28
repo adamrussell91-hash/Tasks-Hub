@@ -50,13 +50,13 @@ function positionMenu(menu: HTMLElement, btn: HTMLButtonElement): void {
   menu.style.top = `${(flip ? rect.top - menu.offsetHeight - 6 : rect.bottom + 6) + window.scrollY}px`;
 }
 
-function openItems(btn: HTMLButtonElement, items: CardMenuItem[], heading: string): void {
+function openItems(btn: HTMLButtonElement, items: CardMenuItem[], ariaLabel: string, heading: string): void {
   closeCardMenu();
 
   const menu = el('div', 'hub-menu card-menu__panel');
   menu.setAttribute('role', 'menu');
-  menu.setAttribute('aria-label', heading);
-  menu.append(el('div', 'hub-menu__head', 'Card'));
+  menu.setAttribute('aria-label', ariaLabel);
+  menu.append(el('div', 'hub-menu__head', heading));
 
   const buttons: HTMLButtonElement[] = [];
   for (const item of items) {
@@ -120,8 +120,13 @@ function openItems(btn: HTMLButtonElement, items: CardMenuItem[], heading: strin
   buttons[0]?.focus();
 }
 
-export function renderCardMenu(label: string, items: CardMenuItem[]): HTMLButtonElement {
-  const btn = el('button', 'hub-icon-btn card-menu') as HTMLButtonElement;
+export function renderCardMenu(
+  label: string,
+  items: CardMenuItem[],
+  options?: { heading?: string; inline?: boolean }
+): HTMLButtonElement {
+  const heading = options?.heading ?? 'Card';
+  const btn = el('button', `hub-icon-btn card-menu${options?.inline ? ' card-menu--inline' : ''}`) as HTMLButtonElement;
   btn.type = 'button';
   btn.title = label;
   btn.setAttribute('aria-label', label);
@@ -134,13 +139,13 @@ export function renderCardMenu(label: string, items: CardMenuItem[]): HTMLButton
       closeCardMenu();
       return;
     }
-    openItems(btn, items, label);
+    openItems(btn, items, label, heading);
   });
   btn.addEventListener('keydown', (event) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
     event.stopPropagation();
-    if (openMenu?.btn !== btn) openItems(btn, items, label);
+    if (openMenu?.btn !== btn) openItems(btn, items, label, heading);
     const opts = openMenu?.menu.querySelectorAll<HTMLButtonElement>('.hub-menu__opt') ?? [];
     (event.key === 'ArrowUp' ? opts[opts.length - 1] : opts[0])?.focus();
   });

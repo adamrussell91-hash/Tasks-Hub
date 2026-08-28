@@ -1,3 +1,5 @@
+import { createExpandableSearch } from '@/views/map-chrome';
+
 export type PickerGroup = { label: string; options: Array<{ value: string; label: string }> };
 
 export type MapIndexItem = {
@@ -119,14 +121,14 @@ export function createMapIndex(
   const aside = el('aside', 'map-index');
   aside.setAttribute('aria-label', 'Map index');
 
-  const head = el('p', 'map-index__title', 'On this map');
-  const search = el('label', 'hub-search map-index__search');
-  const searchLabel = el('span', 'visually-hidden', 'Search map items');
-  const input = el('input', 'hub-search__input') as HTMLInputElement;
-  input.type = 'search';
-  input.placeholder = 'Programs & competitions…';
-  input.setAttribute('aria-label', 'Search map items');
-  search.append(searchLabel, input);
+  const head = el('div', 'map-index__head');
+  head.append(el('p', 'map-index__title', 'On this map'));
+  const search = createExpandableSearch({
+    placeholder: 'Programs & competitions…',
+    ariaLabel: 'Search map items',
+    onInput: (value) => paint(value)
+  });
+  head.append(search.root);
 
   const list = el('div', 'map-index__list');
 
@@ -164,9 +166,8 @@ export function createMapIndex(
     }
   };
 
-  input.addEventListener('input', () => paint(input.value));
   paint('');
 
-  aside.append(head, search, list);
+  aside.append(head, list);
   return aside;
 }

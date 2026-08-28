@@ -19,7 +19,10 @@ describe('map navigation helpers', () => {
       { id: 'tk1', kind: 'event', label: 'Rotary MUNA', group: 'J · competitions', y: 320 }
     ];
     const index = createMapIndex(items, null, () => {});
+    expect(index.querySelector<HTMLElement>('.hub-search')?.hidden).toBe(true);
+    index.querySelector<HTMLButtonElement>('.map-index__search-toggle')!.click();
     const input = index.querySelector<HTMLInputElement>('.hub-search__input')!;
+    expect(index.querySelector<HTMLElement>('.hub-search')?.hidden).toBe(false);
     input.value = 'mun';
     input.dispatchEvent(new Event('input'));
     expect(index.querySelectorAll('.map-index__item').length).toBe(1);
