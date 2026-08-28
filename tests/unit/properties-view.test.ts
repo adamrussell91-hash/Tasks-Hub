@@ -43,12 +43,11 @@ describe('properties view', () => {
     expect(sections[1]?.querySelector('.property-section__lede')?.textContent).toMatch(/How soon a task/);
 
     const domains = canvas.querySelector('.property-section');
-    expect(domains?.querySelectorAll('.property-list__head .hub-field__label')).toHaveLength(2);
     expect(
       [...domains!.querySelectorAll('.property-list__head .hub-field__label')].map(
         (node) => node.textContent
       )
-    ).toEqual(['Name', 'Colour']);
+    ).toEqual(['Name', 'Colour', 'Actions']);
     const domainRow = canvas.querySelector('.property-row--colour');
     expect(domainRow).not.toBeNull();
     expect(domainRow?.querySelectorAll('input[type="text"]')).toHaveLength(1);

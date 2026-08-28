@@ -175,7 +175,9 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
         );
         head.append(el('span', 'hub-field__label', 'Name'));
         if (meta.color) head.append(el('span', 'hub-field__label', 'Colour'));
-        head.append(el('span', 'visually-hidden', 'Actions'));
+        const actionsHead = el('span', 'hub-field__label', 'Actions');
+        actionsHead.classList.add('property-list__head-actions');
+        head.append(actionsHead);
         stack.append(head);
         for (let index = 0; index < draft[section].length; index++) {
           stack.append(renderOptionRow(section, draft[section][index]!, index));

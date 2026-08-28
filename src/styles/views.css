@@ -136,8 +136,9 @@
 .property-list__head,
 .property-row {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) auto;
+  grid-template-columns: minmax(12rem, 16rem) auto;
   align-items: center;
+  justify-content: start;
   gap: var(--space-3);
 }
 
@@ -145,9 +146,13 @@
   padding: 0 var(--space-5);
 }
 
+.property-list__head-actions {
+  justify-self: start;
+}
+
 .property-list__head--colour,
 .property-row--colour {
-  grid-template-columns: minmax(12rem, 1fr) var(--space-16) auto;
+  grid-template-columns: minmax(12rem, 16rem) var(--space-16) auto;
 }
 
 .property-row .hub-search {
