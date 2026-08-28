@@ -1,8 +1,6 @@
 import type { Task } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
 import type { BoardColumnId } from '@/domain/board';
-import { isBoardMoveColumn } from '@/views/board-column-nav';
-import { createHubPills } from '@/views/hub-kit';
 import {
   dueChipKind,
   dueChipLabel,
@@ -77,8 +75,6 @@ export type TaskCardHandlers = {
   onOpenPage?: (task: Task) => void;
   onExpand?: (task: Task) => void;
   onCollapse?: (task: Task) => void;
-  /** Board home — move a card to a writable column (todo / doing / done). */
-  onMoveToColumn?: (task: Task, column: BoardColumnId) => void;
   boardColumn?: BoardColumnId;
 };
 
@@ -101,8 +97,7 @@ function isInteractive(target: EventTarget | null): boolean {
 function boardCardInteractive(target: EventTarget | null): boolean {
   return (
     isInteractive(target) ||
-    (target instanceof Element &&
-      Boolean(target.closest('.board-move-pills, .card-menu, .card-menu__panel')))
+    (target instanceof Element && Boolean(target.closest('.card-menu, .card-menu__panel')))
   );
 }
 
@@ -114,27 +109,6 @@ function openTaskPage(task: Task, handlers: TaskCardHandlers): void {
 function openProjectPage(project: Project, handlers: ProjectCardHandlers): void {
   if (handlers.onOpenPage) handlers.onOpenPage(project);
   else location.hash = projectPageHash(project.id);
-}
-
-function renderBoardMovePills(task: Task, handlers: TaskCardHandlers): HTMLElement | null {
-  if (!handlers.onMoveToColumn) return null;
-  const items = [
-    { id: 'todo' as const, label: 'To do' },
-    { id: 'doing' as const, label: 'Doing' },
-    { id: 'done' as const, label: 'Done' }
-  ];
-  const active =
-    handlers.boardColumn && isBoardMoveColumn(handlers.boardColumn)
-      ? handlers.boardColumn
-      : undefined;
-  const pills = createHubPills({
-    label: 'Move task',
-    items,
-    value: active ?? [],
-    onSelect: (column) => handlers.onMoveToColumn?.(task, column)
-  });
-  pills.classList.add('board-move-pills');
-  return pills;
 }
 
 function taskMenuItems(task: Task, handlers: TaskCardHandlers): CardMenuItem[] {
@@ -208,11 +182,6 @@ export function renderTaskMicroCard(task: Task, handlers: TaskCardHandlers = {})
   if (due) meta.append(due);
   meta.append(el('span', 'hub-row__updated', formatRelativeUpdated(task.updated_at)));
   foot.append(meta);
-  const movePills = renderBoardMovePills(task, handlers);
-  if (movePills) {
-    movePills.classList.add('board-move-pills--micro');
-    foot.append(movePills);
-  }
   row.append(title, chips, foot);
   attachCardMenu(row, `${task.title} card menu`, taskMenuItems(task, handlers));
   return row;
@@ -238,10 +207,8 @@ export function renderTaskExpandedCard(task: Task, handlers: TaskCardHandlers = 
   card.append(head, title, tags);
   if (task.description) card.append(el('p', 'hub-card__meta', task.description));
   const foot = el('footer', 'task-card__foot');
-  const movePills = renderBoardMovePills(task, handlers);
-  if (movePills) foot.append(movePills);
   if (handlers.boardColumn === 'blocked') {
-    foot.append(el('p', 'board-move-note', 'Blocked by unfinished dependencies — move to Doing when ready.'));
+    foot.append(el('p', 'board-move-note', 'Blocked by unfinished dependencies — drag to Doing when ready.'));
   }
   foot.append(el('span', 'hub-card__meta', formatRelativeUpdated(task.updated_at)));
   card.append(foot);

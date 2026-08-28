@@ -111,7 +111,7 @@ describe('board view mutations', () => {
     expect(canvas.querySelector('.dashboard-board .view-lede')?.textContent).toMatch(/^2 open in scope/);
   });
 
-  it('moves a card via status pills without remounting the board', async () => {
+  it('moves a card via drop without remounting the board', async () => {
     const existing = task({ id: 'task_move', title: 'Move me', status: 'open' });
     const moved = task({ id: 'task_move', title: 'Move me', status: 'in_progress' });
     vi.mocked(tasksApi.listTasks).mockResolvedValue([existing]);
@@ -132,8 +132,10 @@ describe('board view mutations', () => {
     await renderBoardView(canvas);
 
     const card = canvas.querySelector<HTMLElement>('[data-id="task_move"]')!;
-    card.querySelector('.hub-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    card.querySelector<HTMLButtonElement>('.board-move-pills .hub-pills__btn:nth-child(2)')?.click();
+    card.focus();
+    card.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    card.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
     await vi.waitFor(() => {
       expect(vi.mocked(tasksApi.updateTask)).toHaveBeenCalledWith('task_move', { status: 'in_progress' });

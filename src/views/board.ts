@@ -35,7 +35,7 @@ function boardLedeSuffix(): string {
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(pointer: coarse)').matches;
   if (coarse) {
-    return 'tap a card to expand, then move it · use the column tabs to browse';
+    return 'drag a card to another column, or tap to expand · use the column tabs to browse';
   }
   return 'drag cards between columns, or focus one and press Space';
 }
@@ -201,11 +201,6 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   board.setAttribute('aria-label', 'Task board');
 
   const boardCardHandlers = (onReload: () => void): TaskCardHandlers => ({
-    onMoveToColumn: (current, column) => {
-      const status = statusForColumn(column);
-      if (!status) return;
-      persistStatus(current, status, byId, confirmHost, upsertTask, onReload);
-    },
     onToggle: (current) => {
       const next = current.status === 'done' ? 'open' : 'done';
       persistStatus(current, next, byId, confirmHost, upsertTask, onReload);

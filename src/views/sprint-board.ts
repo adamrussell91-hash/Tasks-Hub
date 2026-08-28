@@ -8,9 +8,8 @@ export function dragThresholdFor(event: Pick<PointerEvent, 'pointerType'>): numb
     : DRAG_THRESHOLD;
 }
 
-/** Touch uses move pills and column tabs — pointer drag fights scrolling and taps. */
-export function boardPointerDragEnabled(event: Pick<PointerEvent, 'pointerType'>): boolean {
-  if (event.pointerType === 'touch' || event.pointerType === 'pen') return false;
+/** Mice and fingers both drag; fingers use the wider lift in `dragThresholdFor`. */
+export function boardPointerDragEnabled(_event: Pick<PointerEvent, 'pointerType'>): boolean {
   return true;
 }
 
