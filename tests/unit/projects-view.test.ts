@@ -159,7 +159,8 @@ describe('projects view rebuild', () => {
 
     const chart = canvas.querySelector('.projects-chart');
     expect(chart).not.toBeNull();
-    expect(chart?.querySelector('svg')?.getAttribute('aria-label')).toMatch(/On the go/);
+    expect(chart?.querySelector('.metric-ring')?.getAttribute('aria-label')).toMatch(/running/);
+    expect(chart?.querySelector('.column-chart')?.getAttribute('aria-label')).toMatch(/On the go/);
     const legend = [...canvas.querySelectorAll('.projects-chart__slice')].map((btn) => btn.textContent);
     expect(legend.some((text) => text?.includes('On the go') && text.includes('1'))).toBe(true);
     expect(legend.some((text) => text?.includes('Planning') && text.includes('1'))).toBe(true);
@@ -210,6 +211,7 @@ describe('projects view rebuild', () => {
       true
     );
 
+    const listsBeforeDelete = vi.mocked(tasksApi.listProjects).mock.calls.length;
     menu?.querySelector<HTMLButtonElement>('[data-card-menu-item="delete"]')?.click();
     expect(canvas.querySelector('.confirm-card')).toBeNull();
     expect(canvas.textContent).not.toContain('Proposed write');
@@ -219,6 +221,12 @@ describe('projects view rebuild', () => {
         reason: 'Card delete'
       })
     );
+    await vi.waitFor(() => {
+      expect(canvas.querySelector('[data-project-id="proj_plan"]')).toBeNull();
+    });
+    expect(canvas.querySelector('.canvas-status')).toBeNull();
+    expect(vi.mocked(tasksApi.listProjects)).toHaveBeenCalledTimes(listsBeforeDelete);
+    expect(canvas.querySelector('[data-project-id="proj_go"]')).not.toBeNull();
   });
 
   it('filters the board when a chart slice is selected', async () => {

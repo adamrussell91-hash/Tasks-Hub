@@ -3,7 +3,7 @@ import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
 import type { ClareCalibration } from '@/schemas/clare';
 import type { ClareJudgedProposalRow } from '@/ai/clare-proposal-judge';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
-import type { DumpItem } from '@/domain/clare-dump';
+import type { DumpItem, DumpKind } from '@/domain/clare-dump';
 import { dumpVoiceLine } from '@/domain/clare-dump';
 import {
   buildOpenLoopsToolkit,
@@ -45,7 +45,7 @@ export type ClareProposal = {
   suggested_accepted_minutes: number;
   calibration_note: string | null;
   protocol_id?: ClareProtocolId;
-  dump_kind?: 'task' | 'communication' | 'note';
+  dump_kind?: DumpKind;
   question?: string | null;
 };
 
@@ -330,7 +330,6 @@ function proposalFromDumpItem(
 
 function proposalFromJudgmentRow(
   row: ClareJudgedProposalRow,
-  item: DumpItem,
   frameworks: FrameworkEntry[],
   calibration: ClareCalibration | null,
   protocolId?: ClareProtocolId
@@ -348,7 +347,7 @@ function proposalFromJudgmentRow(
       description: row.description,
       priority: row.priority,
       due_date: row.due_date,
-      parent_project_id: item.parent_project_id,
+      parent_project_id: row.parent_project_id,
       framework_id: framework.id,
       framework_name: framework.name,
       reasoning,
@@ -356,25 +355,25 @@ function proposalFromJudgmentRow(
       suggested_accepted_minutes: minutes,
       calibration_note: note,
       protocol_id: protocolId,
-      dump_kind: item.kind,
-      question: item.question
+      dump_kind: row.kind,
+      question: row.question
     },
     protocolId
   );
   return proposal;
 }
 
-/** Turn parsed dump items into negotiated proposals. Notes stay questions, not writes. */
+function isActionableDump(item: { kind: DumpKind; actionable?: boolean }): boolean {
+  return item.kind !== 'note' && item.kind !== 'meta' && item.actionable !== false;
+}
+
+/** Turn parser-split dump items into negotiated proposals. Notes stay questions, not writes. Offline/no-API fallback. */
 export function assembleDumpResult(
   items: DumpItem[],
   frameworks: FrameworkEntry[],
   calibrationFor: (domain: TaskDomain) => ClareCalibration | null,
-  protocolId?: ClareProtocolId,
-  judgment?: { voice: string | null; proposals: ClareJudgedProposalRow[] }
+  protocolId?: ClareProtocolId
 ): ClareDumpResult {
-  const judgedByIndex = judgment
-    ? new Map(judgment.proposals.map((row) => [row.item_index, row]))
-    : null;
   const questions: string[] = [];
   const notes: string[] = [];
   let working = items;
@@ -391,12 +390,15 @@ export function assembleDumpResult(
   }
 
   if (protocolId === 'shatter-start') {
-    const first = working.find((item) => item.kind !== 'note') ?? working[0];
+    const first = working.find((item) => isActionableDump(item)) ?? working[0];
     working = first ? [first] : [];
   }
 
   const proposals: ClareProposal[] = [];
   for (const item of working) {
+    if (item.kind === 'meta' || !item.actionable) {
+      continue;
+    }
     if (item.kind === 'note') {
       notes.push(item.title);
       if (item.question) questions.push(item.question);
@@ -406,23 +408,12 @@ export function assembleDumpResult(
       if (item.question) questions.push(item.question);
       continue;
     }
-    const itemIndex = items.indexOf(item);
-    const judged = judgedByIndex?.get(itemIndex);
-    const proposal = judged
-      ? proposalFromJudgmentRow(
-          judged,
-          item,
-          frameworks,
-          calibrationFor(judged.domain),
-          protocolId
-        )
-      : proposalFromDumpItem(item, frameworks, calibrationFor(item.domain), protocolId);
-    proposals.push(proposal);
+    proposals.push(proposalFromDumpItem(item, frameworks, calibrationFor(item.domain), protocolId));
     if (item.question) questions.push(item.question);
   }
 
   let toolkit: ClareToolkitResult | null = null;
-  const focus = items.find((item) => item.kind !== 'note') ?? items[0];
+  const focus = items.find((item) => isActionableDump(item)) ?? items[0];
   if (protocolId === 'shatter-start' && focus) toolkit = buildShatterToolkit(focus);
   if (protocolId === 'time-map' && focus) {
     const minutes = proposals[0]?.proposed_minutes ?? 45;
@@ -431,7 +422,74 @@ export function assembleDumpResult(
   if (protocolId === 'open-loops') toolkit = buildOpenLoopsToolkit(items);
 
   return {
-    voice: judgment?.voice ?? dumpVoiceLine(items),
+    voice: dumpVoiceLine(items),
+    proposals,
+    questions,
+    notes,
+    toolkit
+  };
+}
+
+/**
+ * Turn Clare's own read of the dump into negotiated proposals. She has already
+ * decided the split, kind, domain, priority, due date, duplicates, and whether
+ * a question is warranted — this only applies calibration/protocol effects.
+ * A successful judge response is authoritative: empty items means no cards.
+ */
+export function assembleJudgedDumpResult(
+  rows: ClareJudgedProposalRow[],
+  frameworks: FrameworkEntry[],
+  calibrationFor: (domain: TaskDomain) => ClareCalibration | null,
+  protocolId?: ClareProtocolId,
+  voice?: string | null
+): ClareDumpResult {
+  const questions: string[] = [];
+  const notes: string[] = [];
+  let working = rows;
+
+  if (protocolId === 'open-loops') {
+    const loops = sortOpenLoops(rows);
+    working = loops.now;
+    for (const row of loops.later) notes.push(`Later: ${row.title}`);
+    for (const row of loops.trash) notes.push(`Trash: ${row.title}`);
+  }
+
+  if (protocolId === 'shatter-start') {
+    const first = working.find((row) => isActionableDump(row)) ?? working[0];
+    working = first ? [first] : [];
+  }
+
+  const proposals: ClareProposal[] = [];
+  for (const row of working) {
+    if (row.kind === 'note' || row.kind === 'meta') {
+      notes.push(row.title);
+      if (row.question) questions.push(row.question);
+      continue;
+    }
+    if (row.existing_task_id) {
+      if (row.question) questions.push(row.question);
+      else questions.push(`“${row.title}” is already on the board. Leave it, or make a new one?`);
+      continue;
+    }
+    proposals.push(proposalFromJudgmentRow(row, frameworks, calibrationFor(row.domain), protocolId));
+    if (row.question) questions.push(row.question);
+  }
+
+  let toolkit: ClareToolkitResult | null = null;
+  const focus = rows.find((row) => isActionableDump(row)) ?? rows[0];
+  if (protocolId === 'shatter-start' && focus) toolkit = buildShatterToolkit(focus);
+  if (protocolId === 'time-map' && focus) {
+    const minutes = proposals[0]?.proposed_minutes ?? 45;
+    toolkit = buildTimeMapToolkit(focus, minutes);
+  }
+  if (protocolId === 'open-loops') toolkit = buildOpenLoopsToolkit(rows);
+
+  const fallbackVoice = !rows.length
+    ? 'That dump came through empty. Try again — I only sort chaos that actually arrives.'
+    : `Right, I read that as ${rows.length} thing${rows.length === 1 ? '' : 's'}. Let me untangle it.`;
+
+  return {
+    voice: voice && voice.trim().length > 8 ? voice : fallbackVoice,
     proposals,
     questions,
     notes,

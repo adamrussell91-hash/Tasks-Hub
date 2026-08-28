@@ -73,12 +73,12 @@ describe('hub shell chrome', () => {
     const refs = renderHubShell(root, { onLogout: vi.fn(), onRefresh: vi.fn() });
     renderPrimaryNav(refs.railNav, 'board');
 
-    const sections = [...refs.railNav.querySelectorAll('.hub-rail__section')].map(
-      (el) => el.textContent
-    );
+    const sections = [
+      ...refs.railNav.querySelectorAll('.hub-rail__list--desktop .hub-rail__section')
+    ].map((el) => el.querySelector('span')?.textContent);
     expect(sections).toEqual(['Home', 'Views', 'Plan', 'Work', 'Network', 'Tools']);
 
-    const links = [...refs.railNav.querySelectorAll('.hub-rail__link')];
+    const links = [...refs.railNav.querySelectorAll('.hub-rail__list--desktop .hub-rail__link')];
     expect(links.some((link) => link.textContent === 'Orbit')).toBe(false);
     expect(links.some((link) => link.textContent === 'Dashboard')).toBe(true);
     expect(links.some((link) => link.textContent === 'Programs')).toBe(true);

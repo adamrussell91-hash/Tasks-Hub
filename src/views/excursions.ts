@@ -2,9 +2,10 @@ import type { Project } from '@/schemas/project';
 import type { ExcursionTemplate } from '@/schemas/templates';
 import { tasksApi } from '@/services/client-api';
 import { defaultExcursionEventDate, formatLeadTimes } from '@/domain/excursion';
-import { projectPageHash } from '@/domain/cards';
+import { newExcursionHash, projectPageHash } from '@/domain/cards';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { hashQuery } from '@/shell/shell';
+import { plusIcon } from '@/shell/icons';
 import { deleteProjectNow } from '@/views/card-actions';
 import { requestToggleDone } from '@/views/dashboard';
 import { renderQuickAdd } from '@/views/task-editor';
@@ -79,8 +80,47 @@ function confirmCreate(
   );
 }
 
+function plusButton(label: string, href: string): HTMLButtonElement {
+  const button = el('button', 'icon-plus-btn excursions-add') as HTMLButtonElement;
+  button.type = 'button';
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.append(plusIcon());
+  button.addEventListener('click', () => {
+    location.hash = href;
+  });
+  return button;
+}
+
+function appendTemplateRows(
+  host: HTMLElement,
+  templates: ExcursionTemplate[],
+  confirmHost: HTMLElement
+): void {
+  const stack = el('div', 'task-stack');
+  for (const template of templates) {
+    const row = el('article', 'task-row');
+    const actions = el('div', 'task-row__actions');
+    const use = el('button', 'btn btn--primary', 'Use');
+    use.type = 'button';
+    use.addEventListener('click', () => {
+      confirmCreate(confirmHost, template, openProjectPage);
+    });
+    actions.append(use);
+    row.append(el('h3', 'task-row__title', template.name), actions);
+    stack.append(row);
+  }
+  host.append(stack);
+}
+
 /** Excursions list — use a template (confirm → page), no extra create form. */
 export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
+  const prefillId = hashQuery().get('template');
+  if (prefillId) {
+    location.hash = newExcursionHash(prefillId);
+    return;
+  }
+
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursions…'));
   const [projects, tasks, templatesPayload] = await Promise.all([
     tasksApi.listProjects(),
@@ -93,26 +133,15 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren();
   const confirmHost = el('div', 'excursion-confirm');
   const listHost = el('div', 'task-stack');
+  const addRow = el('div', 'excursions-toolbar');
+  addRow.append(plusButton('New excursion', newExcursionHash()));
+  canvas.append(addRow, confirmHost);
 
   if (templates.length) {
     canvas.append(el('h2', 'section-title', 'Templates'));
-    const stack = el('div', 'task-stack');
-    for (const template of templates) {
-      const row = el('article', 'task-row');
-      const actions = el('div', 'task-row__actions');
-      const use = el('button', 'btn btn--primary', 'Use');
-      use.type = 'button';
-      use.addEventListener('click', () => {
-        confirmCreate(confirmHost, template, openProjectPage);
-      });
-      actions.append(use);
-      row.append(el('h3', 'task-row__title', template.name), actions);
-      stack.append(row);
-    }
-    canvas.append(stack);
+    appendTemplateRows(canvas, templates, confirmHost);
   }
 
-  canvas.append(confirmHost);
   canvas.append(el('h2', 'section-title', 'Active'));
   if (!excursions.length) {
     listHost.append(el('p', 'empty-state', 'No excursions yet. Use a template above.'));
@@ -133,10 +162,39 @@ export async function renderExcursionsView(canvas: HTMLElement): Promise<void> {
     }
   }
   canvas.append(listHost);
+}
 
+/** Confirm a template, then write — no Template / date / group form. */
+export async function renderNewExcursionPage(canvas: HTMLElement): Promise<void> {
+  canvas.replaceChildren(el('p', 'canvas-status', 'Loading excursion…'));
+  const templatesPayload = await tasksApi.listTemplates();
+  const templates = templatesPayload.excursion_templates as ExcursionTemplate[];
   const prefillId = hashQuery().get('template');
-  const prefillTpl = templates.find((t) => t.id === prefillId);
-  if (prefillTpl) {
-    confirmCreate(confirmHost, prefillTpl, openProjectPage);
+  const prefillTpl = templates.find((t) => t.id === prefillId) ?? templates[0];
+
+  const page = el('div', 'excursion-page');
+  const nav = el('div', 'page-editor__nav');
+  const back = el('button', 'btn btn--ghost', 'Back to Excursions');
+  back.type = 'button';
+  back.addEventListener('click', () => {
+    location.hash = '#/excursions';
+  });
+  nav.append(back);
+
+  const confirmHost = el('div', 'excursion-confirm');
+  page.append(nav, confirmHost);
+
+  if (!prefillTpl) {
+    page.append(el('p', 'empty-state', 'No excursion templates yet.'));
+    canvas.replaceChildren(page);
+    return;
   }
+
+  if (prefillId) {
+    confirmCreate(confirmHost, prefillTpl, openProjectPage);
+  } else {
+    appendTemplateRows(page, templates, confirmHost);
+  }
+
+  canvas.replaceChildren(page);
 }

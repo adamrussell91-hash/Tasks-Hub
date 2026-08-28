@@ -13,6 +13,7 @@ import { tasksApi } from '@/services/client-api';
 import { exportMapHtml, mapsOrSeed, pickCurrentYearMap } from '@/domain/maps';
 import { createFilteredPicker, type MapIndexItem, type PickerGroup } from '@/views/map-nav';
 import { mountMapCardIndex, type MapCardModel } from '@/views/map-cards';
+import { createMapKey, createMapToolbar } from '@/views/map-chrome';
 import {
   applyDateSpanToStation,
   applyDateToTickAttach,
@@ -36,12 +37,7 @@ import {
   type MapCanvasLayout
 } from '@/domain/maps-layout';
 import { discCss, fillCss, letterCss, strokeCss } from '@/domain/maps-colors';
-import {
-  createHubField,
-  createHubFilter,
-  createHubPills,
-  createHubToolbar
-} from '@/views/hub-kit';
+import { createHubField } from '@/views/hub-kit';
 
 export { mapsOrSeed };
 
@@ -796,6 +792,8 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   let camY = 0;
   let joining = false;
   let toast = '';
+  let indexQuery = '';
+  let indexSearchOpen = false;
 
   const activeTouches = new Map<number, { x: number; y: number }>();
   let pinchStartDist = 0;
@@ -850,159 +848,79 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     const terms = schoolTerms(year);
     const layout = layoutMap(current);
     canvas.replaceChildren();
-    const toolbar = createHubToolbar('map-toolbar');
-    const select = createHubFilter({
-      key: 'Map',
-      label: 'Map',
-      defaultValue: current.id,
-      options: maps.map((map) => ({ value: map.id, label: map.title })),
-      value: current.id,
-      onChange: (value) => {
-        const next = maps.find((m) => m.id === value);
-        if (next) {
-          current = next;
-          selectedId = null;
+    const toolbar = createMapToolbar({
+      maps,
+      currentId: current.id,
+      mode,
+      fullscreen,
+      joining,
+      handlers: {
+        onSelectMap: (value) => {
+          const next = maps.find((m) => m.id === value);
+          if (next) {
+            current = next;
+            selectedId = null;
+            paint();
+          }
+        },
+        onMode: (next) => {
+          mode = next;
+          if (next === 'view') joining = false;
+          paint();
+        },
+        onExport: () => downloadHtml(current),
+        onNewMap: () => {
+          void tasksApi.createMap({ title: 'Untitled map', year }).then((created) => {
+            maps.push(created);
+            current = created;
+            mode = 'edit';
+            paint();
+          });
+        },
+        onFullscreen: () => {
+          applyFullscreen(!fullscreen);
+          paint();
+        },
+        onAddLine: () => addLineNow(),
+        onAddProgram: () => addStationNow(),
+        onAddCompetition: () => addEventNow(),
+        onJoin: () => {
+          joining = !joining;
+          toast = joining ? 'Drag from one element to another to join. Ports show only in this mode.' : '';
           paint();
         }
       }
     });
-
-    const pills = createHubPills({
-      label: 'Map mode',
-      role: 'group',
-      items: [
-        { id: 'view', label: 'View' },
-        { id: 'edit', label: 'Edit' }
-      ],
-      value: mode,
-      onSelect: (id) => {
-        mode = id as Mode;
-        if (id === 'view') {
-          joining = false;
-        }
-        paint();
-      }
-    });
-
-    const exportBtn = el('button', 'btn btn--secondary', 'Export');
-    exportBtn.type = 'button';
-    exportBtn.addEventListener('click', () => downloadHtml(current));
-
-    const newBtn = el('button', 'btn btn--primary', 'New map');
-    newBtn.type = 'button';
-    newBtn.addEventListener('click', async () => {
-      const created = await tasksApi.createMap({ title: 'Untitled map', year });
-      maps.push(created);
-      current = created;
-      mode = 'edit';
-      paint();
-    });
-
-    const fullBtn = el(
-      'button',
-      fullscreen ? 'btn btn--primary' : 'btn btn--ghost',
-      fullscreen ? 'Exit full screen' : 'Full screen'
-    );
-    fullBtn.type = 'button';
-    fullBtn.setAttribute('aria-pressed', fullscreen ? 'true' : 'false');
-    fullBtn.addEventListener('click', () => {
-      applyFullscreen(!fullscreen);
-      paint();
-    });
-
-    toolbar.append(select.el, pills, exportBtn, newBtn, fullBtn);
-
-    const termPills = el('div', 'hub-pills map-term-pills');
-    termPills.setAttribute('role', 'group');
-    termPills.setAttribute('aria-label', 'Jump to term');
-    for (const term of layout.terms) {
-      const btn = el('button', 'hub-pills__btn', term.label);
-      btn.type = 'button';
-      btn.addEventListener('click', () => {
-        camY = focusCameraOnY(layout, term.y, zoom);
-        paint();
-      });
-      termPills.append(btn);
-    }
-    toolbar.append(termPills);
-
-    if (mode === 'edit') {
-      const addLine = el('button', 'btn btn--ghost', '+ Line');
-      const addStation = el('button', 'btn btn--ghost', '+ Program');
-      const addEvent = el('button', 'btn btn--ghost', '+ Competition');
-      addLine.type = 'button';
-      addStation.type = 'button';
-      addEvent.type = 'button';
-      addLine.addEventListener('click', () => addLineNow());
-      addStation.addEventListener('click', () => addStationNow());
-      addEvent.addEventListener('click', () => addEventNow());
-      const joinBtn = el('button', joining ? 'btn btn--primary' : 'btn btn--ghost', 'Join');
-      joinBtn.type = 'button';
-      joinBtn.setAttribute('aria-pressed', joining ? 'true' : 'false');
-      joinBtn.addEventListener('click', () => {
-        joining = !joining;
-        toast = joining ? 'Drag from one element to another to join. Ports show only in this mode.' : '';
-        paint();
-      });
-      toolbar.append(addLine, addStation, addEvent, joinBtn);
-    }
     canvas.append(toolbar);
 
-    const key = el('div', 'map-key');
-    key.setAttribute('aria-label', 'Map key');
-    for (const [index, line] of current.lines.entries()) {
-      const item = el('span', 'map-key__item');
-      const left = el('button', 'hub-icon-btn', '‹');
-      left.type = 'button';
-      left.setAttribute('aria-label', `Move ${line.name} left`);
-      left.disabled = index === 0;
-      const right = el('button', 'hub-icon-btn', '›');
-      right.type = 'button';
-      right.setAttribute('aria-label', `Move ${line.name} right`);
-      right.disabled = index === current.lines.length - 1;
-      const shift = (delta: -1 | 1) => {
-        current.lines = moveLine(current.lines, line.id, delta);
-        paint();
-        void persist();
-      };
-      left.addEventListener('click', () => void shift(-1));
-      right.addEventListener('click', () => void shift(1));
-      const mark = el('span', 'map-key__disc', line.letter);
-      mark.style.background = discFill(line.color);
-      mark.style.color = letterFill(line.color);
-      if (line.color === 'yellow' || line.color === 'high-sea') {
-        mark.style.boxShadow = `inset 0 0 0 2px ${strokeOf(line.color)}`;
-      }
-      item.append(left, mark, el('span', 'map-key__name', `${line.name} Line`), right);
-      const yearLines = lineTrackDefs(line);
-      if (yearLines.length) {
-        const trackList = el('span', 'map-key__year-lines');
-        trackList.textContent = yearLines.map((track) => track.label).join(' · ');
-        item.append(trackList);
-      }
-      if (mode === 'edit') {
-        const addYearLine = el('button', 'btn btn--ghost map-key__add-track', '+ Year line');
-        addYearLine.type = 'button';
-        addYearLine.addEventListener('click', () => {
-          const missing = missingStandardYearTracks(line);
-          if (missing.length) {
-            current.lines = current.lines.map((entry) =>
-              entry.id === line.id ? addStandardYearTrack(entry) : entry
-            );
-          } else {
-            const label = window.prompt('Name for the extra year line on this strand:', 'Middle');
-            if (!label?.trim()) return;
-            current.lines = current.lines.map((entry) =>
-              entry.id === line.id ? addExtraYearTrack(entry, label) : entry
-            );
+    canvas.append(
+      createMapKey({
+        lines: current.lines,
+        mode,
+        handlers: {
+          onMove: (id, delta) => {
+            current.lines = moveLine(current.lines, id, delta);
+            paint();
+            void persist();
+          },
+          onAddYearLine: (line) => {
+            const missing = missingStandardYearTracks(line);
+            if (missing.length) {
+              current.lines = current.lines.map((entry) =>
+                entry.id === line.id ? addStandardYearTrack(entry) : entry
+              );
+            } else {
+              const label = window.prompt('Name for the extra year line on this strand:', 'Middle');
+              if (!label?.trim()) return;
+              current.lines = current.lines.map((entry) =>
+                entry.id === line.id ? addExtraYearTrack(entry, label) : entry
+              );
+            }
+            void persist().then(() => paint());
           }
-          void persist().then(() => paint());
-        });
-        item.append(addYearLine);
-      }
-      key.append(item);
-    }
-    canvas.append(key);
+        }
+      })
+    );
     const tracksKey = el('p', 'map-key__tracks');
     tracksKey.textContent =
       mode === 'edit'
@@ -1080,7 +998,17 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           if (selectedId === model.id) selectedId = null;
         }
       }),
-      (model) => (mode === 'edit' ? buildItemEditor(model.id, year, terms) : null)
+      (model) => (mode === 'edit' ? buildItemEditor(model.id, year, terms) : null),
+      {
+        query: indexQuery,
+        open: indexSearchOpen,
+        onQuery: (value) => {
+          indexQuery = value;
+        },
+        onOpen: (open) => {
+          indexSearchOpen = open;
+        }
+      }
     );
     body.append(stage, index);
     if (selectedId) {

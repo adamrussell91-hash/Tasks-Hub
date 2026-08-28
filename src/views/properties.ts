@@ -10,40 +10,14 @@ import { loadTaskProperties, saveTaskProperties } from '@/services/task-properti
 import { errorMessage, renderLoadError } from '@/views/feedback';
 import { createHubField, createHubToolbar, el } from '@/views/hub-kit';
 
-const SECTION_META: Record<
-  TaskPropertyListKey,
-  { title: string; supporting: string; color?: boolean }
-> = {
-  domains: {
-    title: 'Domains',
-    supporting: 'Life areas — drive filters, Today focus, and Universe planets.',
-    color: true
-  },
-  priorities: {
-    title: 'Urgency / priority',
-    supporting: 'How urgent work is ranked in lists and pinch cues.'
-  },
-  statuses: {
-    title: 'Statuses',
-    supporting: 'Where a task sits on the board and in filters.'
-  },
-  kinds: {
-    title: 'Kinds',
-    supporting: 'Task vs checklist step — usually leave as task and step.'
-  },
-  buckets: {
-    title: 'Buckets',
-    supporting: 'Active work vs Someday / Maybe parking.'
-  },
-  sources: {
-    title: 'Sources',
-    supporting: 'How the task entered the system.'
-  },
-  tags: {
-    title: 'Tag vocabulary',
-    supporting:
-      'Suggested tags for pickers. Tasks can still use any tag text — this list powers suggestions.'
-  }
+const SECTION_META: Record<TaskPropertyListKey, { title: string; color?: boolean }> = {
+  domains: { title: 'Domains', color: true },
+  priorities: { title: 'Urgency / priority' },
+  statuses: { title: 'Statuses' },
+  kinds: { title: 'Kinds' },
+  buckets: { title: 'Buckets' },
+  sources: { title: 'Sources' },
+  tags: { title: 'Tag vocabulary' }
 };
 
 function slugify(label: string): string {
@@ -160,7 +134,6 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
       const block = el('section', 'property-section');
       const meta = SECTION_META[section];
       block.append(el('h2', 'section-title', meta.title));
-      block.append(el('p', 'view-lede', meta.supporting));
 
       const stack = el('div', 'task-stack');
       if (!draft[section].length) {

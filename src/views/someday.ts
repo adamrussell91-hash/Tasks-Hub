@@ -9,6 +9,7 @@ import {
   domainFilterOptions,
   el
 } from '@/views/hub-kit';
+import { createPlusAdd } from '@/views/plus-add';
 import type { TaskDomain } from '@/schemas/task';
 
 let somedayDomain: TaskDomain | 'all' = 'all';
@@ -93,10 +94,7 @@ function paintSomeday(
   canvas.replaceChildren();
 
   const hero = el('div', 'someday-hero');
-  hero.append(
-    el('span', 'someday-hero__icon', '🌈'),
-    el('p', 'view-lede', 'Ideas parked over the rainbow — promote when they are ready for a goal, project, or task.')
-  );
+  hero.append(el('span', 'someday-hero__icon', '🌈'));
   canvas.append(hero);
 
   const filters = createHubToolbar();
@@ -153,7 +151,12 @@ function paintSomeday(
       submit.disabled = false;
     }
   });
-  canvas.append(addForm);
+  canvas.append(
+    createPlusAdd({
+      ariaLabel: 'Add a someday idea',
+      panel: addForm
+    }).root
+  );
 
   const query = somedayQuery.trim().toLowerCase();
   const visible = items.filter((item) => {

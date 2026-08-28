@@ -4,7 +4,7 @@ import type { Task } from '@/schemas/task';
 import { projectLifecycleMix } from '@/domain/projects-pulse';
 import { upcomingExcursionDates } from '@/domain/dashboard-overview';
 import { renderDashboardOverview } from '@/views/dashboard-overview';
-import { renderProjectStatusRing } from '@/views/project-status-ring';
+import { renderProjectPortfolioChart } from '@/views/project-portfolio-chart';
 
 function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
   return {
@@ -110,8 +110,8 @@ describe('upcomingExcursionDates', () => {
   });
 });
 
-describe('renderProjectStatusRing', () => {
-  it('renders a compact ring with legend counts', () => {
+describe('renderProjectPortfolioChart', () => {
+  it('renders a Life Hub load ring and mix bars', () => {
     const mix = projectLifecycleMix(
       [
         project({ id: 'p1', title: 'Live', status: 'active' }),
@@ -121,10 +121,11 @@ describe('renderProjectStatusRing', () => {
       new Set(),
       new Date('2026-08-27T12:00:00.000Z')
     );
-    const ring = renderProjectStatusRing(mix, { size: 92, compact: true, href: '#/projects' });
-    expect(ring.querySelector('.project-status-ring__svg')).not.toBeNull();
-    expect(ring.querySelector('a[href="#/projects"]')).not.toBeNull();
-    expect(ring.querySelector('.project-status-ring__legend-row')).not.toBeNull();
+    const chart = renderProjectPortfolioChart(mix, { running: 1, compact: true, href: '#/projects' });
+    expect(chart.querySelector('.metric-ring')).not.toBeNull();
+    expect(chart.querySelector('a[href="#/projects"]')).not.toBeNull();
+    expect(chart.textContent).toContain('running');
+    expect(chart.querySelector('.column-bar--row')).not.toBeNull();
   });
 });
 
@@ -147,7 +148,7 @@ describe('renderDashboardOverview', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders today, projects ring, and excursions tiles', () => {
+  it('renders today, projects chart, and excursions tiles', () => {
     const now = new Date('2026-08-27T12:00:00.000Z');
     const host = document.createElement('div');
     renderDashboardOverview(host, {
@@ -168,7 +169,8 @@ describe('renderDashboardOverview', () => {
 
     expect(host.querySelector('.dashboard-overview__lede')?.textContent).toContain('Focus:');
     expect(host.querySelector('[aria-label="Today"]')?.textContent).toContain('Mark essays');
-    expect(host.querySelector('[aria-label="Projects"] .project-status-ring')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Projects"] .project-pulse-chart')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Projects"] .metric-ring')).not.toBeNull();
     expect(host.querySelector('[aria-label="Projects"]')?.textContent).toContain('MindWorks');
     expect(host.querySelector('[aria-label="Excursions"]')?.textContent).toContain('Permission note');
     expect(host.querySelector('.dashboard-overview__pressure')).not.toBeNull();

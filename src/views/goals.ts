@@ -10,6 +10,7 @@ import { renderTaskEditor } from '@/views/task-editor';
 import { projectPageHash } from '@/domain/cards';
 import { formatTagsInput, parseTagsInput } from '@/domain/hierarchy';
 import { createHubFilter, createHubSearch, createHubToolbar, el } from '@/views/hub-kit';
+import { createPlusAdd } from '@/views/plus-add';
 
 let goalArea = 'all';
 let goalQuery = '';
@@ -225,16 +226,18 @@ function paintGoals(
       .then(reload)
       .catch((err) => window.alert(errorMessage(err)));
   });
-  toolbar.append(search.el, areaFilter.el, addGoal, addProject);
-  canvas.append(
-    el(
-      'p',
-      'view-lede',
-      'Area → Goal → Project. Click a project card to see milestones and tasks.'
-    ),
-    toolbar,
-    editorHost
+  const addPanel = el('div', 'plus-add__choices');
+  addPanel.append(addGoal, addProject);
+  toolbar.append(
+    search.el,
+    areaFilter.el,
+    createPlusAdd({
+      ariaLabel: 'Add a goal or project',
+      panel: addPanel,
+      className: 'plus-add--inline'
+    }).root
   );
+  canvas.append(toolbar, editorHost);
 
   const areasById = new Map(areas.map((area) => [area.id, area]));
   const query = goalQuery.trim().toLowerCase();

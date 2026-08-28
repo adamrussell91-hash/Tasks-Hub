@@ -117,22 +117,26 @@ describe('sprint-board engine', () => {
     expect(dragThresholdFor({ pointerType: 'touch' })).toBeGreaterThan(DRAG_THRESHOLD);
   });
 
-  it('disables pointer drag for touch and pen', () => {
+  it('allows pointer drag for mouse, touch, and pen', () => {
     expect(boardPointerDragEnabled({ pointerType: 'mouse' })).toBe(true);
-    expect(boardPointerDragEnabled({ pointerType: 'touch' })).toBe(false);
-    expect(boardPointerDragEnabled({ pointerType: 'pen' })).toBe(false);
+    expect(boardPointerDragEnabled({ pointerType: 'touch' })).toBe(true);
+    expect(boardPointerDragEnabled({ pointerType: 'pen' })).toBe(true);
   });
 
-  it('does not start a touch drag on pointerdown', () => {
+  it('does not start a touch drag until the wider lift is crossed', () => {
     const { root, todoCard } = mountMiniBoard();
     initBoard(root);
     todoCard.dispatchEvent(
       new PointerEvent('pointerdown', { bubbles: true, clientX: 20, clientY: 20, button: 0, pointerType: 'touch' })
     );
     document.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, clientX: 80, clientY: 80, pointerType: 'touch' })
+      new PointerEvent('pointermove', { bubbles: true, clientX: 26, clientY: 20, pointerType: 'touch' })
     );
     expect(todoCard.classList.contains('dragging')).toBe(false);
+    document.dispatchEvent(
+      new PointerEvent('pointermove', { bubbles: true, clientX: 40, clientY: 20, pointerType: 'touch' })
+    );
+    expect(todoCard.classList.contains('dragging')).toBe(true);
   });
 
   afterEach(() => {

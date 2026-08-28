@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { renderExcursionsView } from '@/views/excursions';
+import { renderExcursionsView, renderNewExcursionPage } from '@/views/excursions';
 import { tasksApi } from '@/services/client-api';
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
@@ -82,7 +82,7 @@ const task: Task = {
   source: 'auto_generated_from_excursion'
 };
 
-async function mount(): Promise<HTMLElement> {
+function mockList() {
   vi.mocked(tasksApi.listProjects).mockResolvedValue([excursion]);
   vi.mocked(tasksApi.listTasks).mockResolvedValue([task]);
   vi.mocked(tasksApi.listTemplates).mockResolvedValue({
@@ -91,12 +91,16 @@ async function mount(): Promise<HTMLElement> {
     task_templates: [],
     project_templates: []
   });
+}
+
+async function mount(): Promise<HTMLElement> {
+  mockList();
   const canvas = document.createElement('main');
   await renderExcursionsView(canvas);
   return canvas;
 }
 
-describe('excursions view', () => {
+describe('excursions list', () => {
   it('lists templates and cards without a create form', async () => {
     location.hash = '#/excursions';
     const canvas = await mount();
@@ -144,11 +148,71 @@ describe('excursions view', () => {
     expect(location.hash).toBe('#/project/proj_new');
   });
 
-  it('opens confirm when a template query is present', async () => {
+  it('uses a plus button instead of an inline create form', async () => {
+    mockList();
+    location.hash = '#/excursions';
+    const canvas = document.createElement('main');
+    await renderExcursionsView(canvas);
+
+    const add = canvas.querySelector<HTMLButtonElement>('.excursions-add');
+    expect(add?.getAttribute('aria-label')).toBe('New excursion');
+    expect(canvas.querySelector('.excursion-form')).toBeNull();
+    expect(canvas.textContent).not.toContain('Active excursions');
+    expect(canvas.textContent).not.toContain('Excursions are projects');
+    expect(canvas.textContent).not.toContain('Review & create');
+
+    add?.click();
+    expect(location.hash).toBe('#/excursions/new');
+  });
+
+  it('sends a template query to the new excursion page', async () => {
+    mockList();
     location.hash = '#/excursions?template=ext_ethics_olympiad';
-    const canvas = await mount();
+    const canvas = document.createElement('main');
+    await renderExcursionsView(canvas);
+    expect(location.hash).toBe('#/excursions/new?template=ext_ethics_olympiad');
+    expect(canvas.querySelector('.proj-row')).toBeNull();
+  });
+});
+
+describe('new excursion page', () => {
+  it('confirms a prefilled template then creates', async () => {
+    mockList();
+    vi.mocked(tasksApi.createExcursionFromTemplate).mockResolvedValue({
+      project: excursion,
+      tasks: [task]
+    });
+    location.hash = '#/excursions/new?template=ext_ethics_olympiad';
+    const canvas = document.createElement('main');
+    await renderNewExcursionPage(canvas);
+
+    expect(canvas.querySelector('.excursion-page')).not.toBeNull();
+    expect(canvas.querySelector('form')).toBeNull();
+    expect(canvas.textContent).not.toContain('Review & create');
     expect(canvas.querySelector('.confirm-card .page-header__title')?.textContent).toBe(
       'Create “Ethics Olympiad”'
     );
+
+    canvas.querySelector<HTMLButtonElement>('.confirm-card .btn--primary')?.click();
+    await vi.waitFor(() => {
+      expect(tasksApi.createExcursionFromTemplate).toHaveBeenCalledWith({
+        excursion_template_id: 'ext_ethics_olympiad',
+        title: 'Ethics Olympiad',
+        event_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+      });
+      expect(location.hash).toBe('#/project/proj_ex_ethics_seed');
+    });
+  });
+
+  it('returns to the list from Back to Excursions', async () => {
+    mockList();
+    location.hash = '#/excursions/new';
+    const canvas = document.createElement('main');
+    await renderNewExcursionPage(canvas);
+    const back = [...canvas.querySelectorAll('button')].find((btn) =>
+      btn.textContent?.includes('Back to Excursions')
+    );
+    back?.click();
+    expect(location.hash).toBe('#/excursions');
   });
 });

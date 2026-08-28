@@ -19,6 +19,7 @@ import {
   parseEntityPage,
   parseHashRoute,
   parseMapItemPage,
+  parseNewExcursionPage,
   renderHubShell,
   renderPageHeader,
   renderPrimaryNav,
@@ -36,7 +37,7 @@ import { renderBranchView } from '@/views/branch';
 import { renderConstellationView } from '@/views/constellation';
 import { renderClareView } from '@/views/clare';
 import { installClareSession } from '@/chat/clare-session';
-import { renderExcursionsView } from '@/views/excursions';
+import { renderExcursionsView, renderNewExcursionPage } from '@/views/excursions';
 import { renderProgramsView } from '@/views/programs';
 import { renderStressView } from '@/views/stress';
 import { renderCoreyView, renderPublicCapacityView } from '@/views/corey';
@@ -57,7 +58,6 @@ import { renderReminderStrip } from '@/views/reminder-strip';
 import { loadTaskProperties } from '@/services/task-properties';
 import { tasksApi } from '@/services/client-api';
 import { mapsOrSeed } from '@/domain/maps';
-
 
 function renderNotFound(canvas: HTMLElement, hash: string): void {
   canvas.replaceChildren();
@@ -131,8 +131,7 @@ async function bootPublicCapacity(root: HTMLElement, token: string): Promise<voi
   shell.logoutButton?.remove();
   renderPageHeader(shell, {
     eyebrow: 'Shared',
-    title: 'Capacity',
-    supporting: 'Adam’s rough availability — nothing task-level.'
+    title: 'Capacity'
   });
   await renderPublicCapacityView(shell.canvas, token);
 }
@@ -213,10 +212,21 @@ async function bootApp(root: HTMLElement): Promise<void> {
       renderPrimaryNav(shell.railNav, 'board');
       renderPageHeader(shell, {
         eyebrow: 'Missing',
-        title: 'Page not found',
-        supporting: 'That page doesn’t exist.'
+        title: 'Page not found'
       });
       renderNotFound(shell.canvas, location.hash);
+      return;
+    }
+    if (parseNewExcursionPage()) {
+      renderPrimaryNav(shell.railNav, 'excursions');
+      renderPageHeader(shell, { eyebrow: 'Excursions', title: 'New' });
+      clare.sync('excursions');
+      try {
+        await renderReminderStrip(shell.reminderHost, () => void paint());
+        await renderNewExcursionPage(shell.canvas);
+      } catch (err) {
+        renderLoadError(shell.canvas, err, () => void paint(), 'Could not load Excursion');
+      }
       return;
     }
     const view = parseHashRoute();
