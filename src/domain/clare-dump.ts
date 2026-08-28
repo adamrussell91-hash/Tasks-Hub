@@ -2,12 +2,14 @@ import type { Project } from '@/schemas/project';
 import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
 import { addDays, toDateKey } from '@/domain/queries';
 
-export type DumpKind = 'task' | 'communication' | 'note';
+export type DumpKind = 'task' | 'communication' | 'note' | 'meta';
 
 export type DumpItem = {
   raw: string;
   title: string;
   kind: DumpKind;
+  /** False for meta-commentary, corrections, and other non-work chat turns. */
+  actionable: boolean;
   domain: TaskDomain;
   priority: TaskPriority;
   due_date: string | null;
@@ -71,6 +73,30 @@ const COMMS = [
   'write back'
 ];
 const NOTE = ['remember', 'note:', 'fyi', 'just so', 'ref:', 'for later', 'idea:'];
+
+/** Corrections, questions-about-Clare, and other chat turns that are not work to capture. */
+const NON_ACTIONABLE = [
+  /\bit was a question\b/i,
+  /\bnot something to create\b/i,
+  /\bnot a task\b/i,
+  /\bwasn'?t a task\b/i,
+  /\bthis isn'?t a task\b/i,
+  /\bthat isn'?t a task\b/i,
+  /\bno task here\b/i,
+  /\bwasn'?t asking\b/i,
+  /\bnot asking you to\b/i,
+  /\bjust (?:a )?question\b/i,
+  /\bjust asking\b/i,
+  /\byou misread\b/i,
+  /\bthat was a question\b/i,
+  /\bdidn'?t mean (?:for you|to)\b/i,
+  /\bdon'?t create\b/i,
+  /\bdo not create\b/i,
+  /\bstop trying to\b/i,
+  /\bcontext drop(ped)?\b/i,
+  /\bsomething got misread\b/i,
+  /\bmisread (?:that|this|it)\b/i
+];
 
 function includesAny(hay: string, needles: string[]): boolean {
   return needles.some((n) => hay.includes(n));
@@ -143,7 +169,18 @@ function inferPriority(text: string): TaskPriority {
   return 'medium';
 }
 
+function isNonActionable(text: string): boolean {
+  if (NON_ACTIONABLE.some((pattern) => pattern.test(text))) return true;
+  // Pure questions with no action verb are usually clarifications, not tasks.
+  if (/\?\s*$/.test(text.trim()) && !includesAny(text, COMMS)) {
+    const actionish = /\b(?:email|call|book|schedule|write|draft|finish|prep|mark|send|reply|fix|sort|organis[ez]e|plan|review|update|handle|tackle)\b/i;
+    if (!actionish.test(text)) return true;
+  }
+  return false;
+}
+
 function inferKind(text: string): DumpKind {
+  if (isNonActionable(text)) return 'meta';
   if (NOTE.some((n) => text.startsWith(n) || text.includes(` ${n}`))) return 'note';
   if (includesAny(text, COMMS)) return 'communication';
   return 'task';
@@ -215,10 +252,12 @@ function matchExisting(title: string, tasks: Task[]): string | null {
 function questionFor(item: {
   title: string;
   kind: DumpKind;
+  actionable: boolean;
   due_date: string | null;
   hint: string | null;
   existing_title: string | null;
 }): string | null {
+  if (!item.actionable || item.kind === 'meta') return null;
   if (item.existing_title) {
     return `“${item.title}” is already on the board. Leave it, or make a new one?`;
   }
@@ -269,13 +308,15 @@ export function parseBrainDump(
   return splitDumpLines(text).map((line) => {
     const lower = line.toLowerCase();
     const kind = inferKind(lower);
+    const actionable = kind !== 'meta';
     const { due_date, hint } = inferDue(lower, now);
     const title = titleCaseAction(line) || stripListPrefix(line);
-    const existing_title = matchExisting(title, tasks);
+    const existing_title = actionable ? matchExisting(title, tasks) : null;
     const item = {
       raw: line,
       title,
       kind,
+      actionable,
       domain: inferDomain(lower, preferred),
       priority: inferPriority(lower),
       due_date,
@@ -287,6 +328,7 @@ export function parseBrainDump(
       raw: item.raw,
       title: item.title,
       kind: item.kind,
+      actionable: item.actionable,
       domain: item.domain,
       priority: item.priority,
       due_date: item.due_date,
@@ -297,12 +339,21 @@ export function parseBrainDump(
   });
 }
 
+export function metaVoiceLine(raw: string): string {
+  const snippet = raw.trim().slice(0, 72);
+  return `Hey — "${snippet}" doesn't parse as work for me. Was that feedback on something I misread, or is there an actual task hiding in there?`;
+}
+
 export function dumpVoiceLine(items: DumpItem[]): string {
-  const tasks = items.filter((i) => i.kind !== 'note' && !i.existing_title);
+  const tasks = items.filter((i) => i.actionable && i.kind !== 'note' && !i.existing_title);
   const notes = items.filter((i) => i.kind === 'note');
+  const meta = items.filter((i) => i.kind === 'meta');
   const twins = items.filter((i) => i.existing_title);
   if (!items.length) {
     return 'That dump came through empty. Try again — I only sort chaos that actually arrives.';
+  }
+  if (meta.length && !tasks.length && !notes.length && !twins.length) {
+    return metaVoiceLine(meta[0]!.raw);
   }
   if (items.length === 1 && tasks.length === 1) {
     return 'Right — one thing, and it actually has a shape. Here is my take.';

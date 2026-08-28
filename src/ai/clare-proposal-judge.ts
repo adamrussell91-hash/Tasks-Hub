@@ -19,7 +19,13 @@ Minutes: honest estimate, multiples of 5, 15–180. Use domain calibrations when
 
 Due dates: respect parser due_date when set. Otherwise infer from raw text or leave null.
 
-Only write proposals for items where propose=true. Match item_index to digest items.
+Only write proposals for items where propose=true AND the raw text is concrete work Adam wants captured.
+
+Non-actionable input (return proposals: [] — voice only):
+- Meta-commentary about the chat or a previous misread ("it was a question", "not something to create", "that wasn't a task", "you misread", "context dropped")
+- Corrections and clarifications with no implied next action
+- Pure questions with no work to capture
+When the whole dump is non-actionable, explain in voice that you need the actual work — do NOT parrot the line as a task title.
 
 Return JSON only:
 {"voice":"optional Clare reply to the whole dump","proposals":[{"item_index":0,"title":"...","description":"","domain":"teaching","priority":"medium","due_date":null,"framework_id":"fw_timeboxing","reasoning":"...","proposed_minutes":45}]}`;

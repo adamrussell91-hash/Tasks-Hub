@@ -45,7 +45,7 @@ export type ClareProposal = {
   suggested_accepted_minutes: number;
   calibration_note: string | null;
   protocol_id?: ClareProtocolId;
-  dump_kind?: 'task' | 'communication' | 'note';
+  dump_kind?: 'task' | 'communication' | 'note' | 'meta';
   question?: string | null;
 };
 
@@ -391,12 +391,15 @@ export function assembleDumpResult(
   }
 
   if (protocolId === 'shatter-start') {
-    const first = working.find((item) => item.kind !== 'note') ?? working[0];
+    const first = working.find((item) => item.actionable && item.kind !== 'note' && item.kind !== 'meta') ?? working[0];
     working = first ? [first] : [];
   }
 
   const proposals: ClareProposal[] = [];
   for (const item of working) {
+    if (item.kind === 'meta' || !item.actionable) {
+      continue;
+    }
     if (item.kind === 'note') {
       notes.push(item.title);
       if (item.question) questions.push(item.question);
@@ -408,6 +411,9 @@ export function assembleDumpResult(
     }
     const itemIndex = items.indexOf(item);
     const judged = judgedByIndex?.get(itemIndex);
+    if (judgedByIndex && !judged) {
+      continue;
+    }
     const proposal = judged
       ? proposalFromJudgmentRow(
           judged,
@@ -422,7 +428,7 @@ export function assembleDumpResult(
   }
 
   let toolkit: ClareToolkitResult | null = null;
-  const focus = items.find((item) => item.kind !== 'note') ?? items[0];
+  const focus = items.find((item) => item.actionable && item.kind !== 'note' && item.kind !== 'meta') ?? items[0];
   if (protocolId === 'shatter-start' && focus) toolkit = buildShatterToolkit(focus);
   if (protocolId === 'time-map' && focus) {
     const minutes = proposals[0]?.proposed_minutes ?? 45;

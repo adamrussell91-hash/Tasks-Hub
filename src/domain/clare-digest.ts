@@ -89,7 +89,7 @@ export function buildClareDumpDigest(input: {
       priority: item.priority,
       due_date: item.due_date,
       existing_on_board: Boolean(item.existing_title),
-      propose: item.kind !== 'note' && !item.existing_title
+      propose: item.actionable && item.kind !== 'note' && item.kind !== 'meta' && !item.existing_title
     })),
     open_tasks: open,
     projects: input.projects.map((project) => ({ id: project.id, title: project.title })),

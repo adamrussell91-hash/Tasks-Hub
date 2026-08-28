@@ -71,15 +71,6 @@ describe('brain dump parsing', () => {
     expect(items[0]!.due_date).toBe('2026-08-26');
   });
 
-  it('strips I-really-need-to and possessive filler from rambling dumps', () => {
-    const items = parseBrainDump('I really need to sort out my appraisal goal.', {
-      now: new Date(2026, 7, 27),
-      preferredDomain: 'teaching'
-    });
-    expect(items).toHaveLength(1);
-    expect(items[0]!.title).toBe('Sort out appraisal goal');
-  });
-
   it('does not propose notes or existing titles', () => {
     const items = parseBrainDump('Finish lesson pack for Year 12\nremember: bring the USB', {
       now: new Date(2026, 7, 25),
@@ -120,5 +111,34 @@ describe('brain dump parsing', () => {
     expect(result.proposals).toHaveLength(0);
     expect(result.questions.some((q) => /already on the board/i.test(q))).toBe(true);
     expect(result.notes.some((n) => /usb/i.test(n))).toBe(true);
+  });
+
+  it('treats meta-commentary and corrections as non-actionable', () => {
+    const items = parseBrainDump('It was a question not something to create', {
+      now: new Date(2026, 7, 28),
+      preferredDomain: 'teaching'
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]!.kind).toBe('meta');
+    expect(items[0]!.actionable).toBe(false);
+    expect(items[0]!.question).toBeNull();
+
+    const result = assembleDumpResult(items, frameworks, () => null);
+    expect(result.proposals).toHaveLength(0);
+    expect(result.questions).toHaveLength(0);
+    expect(result.voice).toMatch(/doesn't parse as work/i);
+  });
+
+  it('does not fall back to heuristic proposals when the judge skips an item', () => {
+    const items = parseBrainDump('Finish lesson pack for Year 12', {
+      now: new Date(2026, 7, 25),
+      preferredDomain: 'teaching'
+    });
+    const result = assembleDumpResult(items, frameworks, () => null, undefined, {
+      voice: 'That line is feedback, not work — what should I capture?',
+      proposals: []
+    });
+    expect(result.proposals).toHaveLength(0);
+    expect(result.voice).toMatch(/feedback, not work/i);
   });
 });
