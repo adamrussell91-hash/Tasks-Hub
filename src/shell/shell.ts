@@ -1,4 +1,5 @@
 import { railIconFor, refreshIcon, signOutIcon } from '@/shell/icons';
+import { createRailDisclosureState, type RailSectionId } from '@/shell/rail-disclosure';
 
 export interface HubShellRefs {
   root: HTMLElement;
@@ -44,18 +45,32 @@ export type HubViewId =
 
 type NavItem = { id: HubViewId; label: string; href: string };
 
-const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
-  { title: 'Home', items: [{ id: 'board', label: 'Dashboard', href: '#/board' }] },
+type NavSection = {
+  id: RailSectionId;
+  title: string;
+  items: NavItem[];
+};
+
+const NAV_SECTIONS: NavSection[] = [
   {
+    id: 'home',
+    title: 'Home',
+    items: [
+      { id: 'board', label: 'Dashboard', href: '#/board' },
+      { id: 'clare', label: 'Chat', href: '#/clare' }
+    ]
+  },
+  {
+    id: 'plan',
     title: 'Plan',
     items: [
       { id: 'goals', label: 'Goals', href: '#/goals' },
       { id: 'someday', label: 'Someday', href: '#/someday' },
-      { id: 'clare', label: 'Chat', href: '#/clare' },
       { id: 'templates', label: 'Templates', href: '#/templates' }
     ]
   },
   {
+    id: 'views',
     title: 'Views',
     items: [
       { id: 'day', label: 'Today', href: '#/day' },
@@ -67,6 +82,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     ]
   },
   {
+    id: 'work',
     title: 'Work',
     items: [
       { id: 'projects', label: 'Projects', href: '#/projects' },
@@ -75,6 +91,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     ]
   },
   {
+    id: 'network',
     title: 'Network',
     items: [
       { id: 'stress', label: 'Network', href: '#/stress' },
@@ -82,6 +99,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     ]
   },
   {
+    id: 'tools',
     title: 'Tools',
     items: [
       { id: 'maps', label: 'Maps', href: '#/maps' },
@@ -90,6 +108,12 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     ]
   }
 ];
+
+const railDisclosure = createRailDisclosureState();
+
+export function resetRailDisclosureStateForTests(): void {
+  railDisclosure.reset();
+}
 
 const STRETCH_VIEWS: HubViewId[] = ['orbit', 'universe', 'branch', 'constellation'];
 
@@ -218,29 +242,116 @@ export function renderHubShell(root: HTMLElement, options: HubShellOptions = {})
   return refs;
 }
 
+function buildNavLink(item: NavItem, highlight: HubViewId): HTMLAnchorElement {
+  const link = document.createElement('a');
+  link.className = 'hub-rail__link';
+  link.href = item.href;
+  if (item.id === highlight) link.setAttribute('aria-current', 'page');
+  if (item.id === 'clare') link.dataset.clareNav = 'true';
+  link.append(railIconFor(item.id), document.createTextNode(item.label));
+  return link;
+}
+
+function buildSectionButton(section: NavSection, panelId: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'hub-rail__section';
+  button.dataset.sectionToggle = section.id;
+  button.setAttribute('aria-controls', panelId);
+  const label = document.createElement('span');
+  label.textContent = section.title;
+  const chevron = document.createElement('span');
+  chevron.className = 'hub-rail__section-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  chevron.textContent = '⌄';
+  button.append(label, chevron);
+  return button;
+}
+
+function syncSectionDom(root: HTMLElement, id: RailSectionId): void {
+  const open = railDisclosure.isOpen(id);
+  root.querySelectorAll<HTMLElement>(`[data-section-toggle="${id}"]`).forEach((control) => {
+    control.setAttribute('aria-expanded', String(open));
+  });
+  root.querySelectorAll<HTMLElement>(`[data-section-panel="${id}"]`).forEach((panel) => {
+    panel.dataset.open = String(open);
+    panel.setAttribute('aria-hidden', String(!open));
+    panel.inert = !open;
+  });
+}
+
+function sectionIdForView(view: HubViewId): RailSectionId {
+  const highlight = railHighlightId(view);
+  return NAV_SECTIONS.find((section) => section.items.some((item) => item.id === highlight))?.id ?? 'home';
+}
+
 export function renderPrimaryNav(railNav: HTMLElement, active: HubViewId): void {
   railNav.replaceChildren();
-  const nav = document.createElement('nav');
-  nav.className = 'hub-rail__list';
-  nav.setAttribute('aria-label', 'Primary');
   const highlight = railHighlightId(active);
+  railDisclosure.syncActive(sectionIdForView(active));
+
+  const desktop = document.createElement('nav');
+  desktop.className = 'hub-rail__list hub-rail__list--desktop';
+  desktop.setAttribute('aria-label', 'Primary');
 
   for (const section of NAV_SECTIONS) {
-    const heading = document.createElement('p');
-    heading.className = 'hub-rail__section';
-    heading.textContent = section.title;
-    nav.append(heading);
-    for (const item of section.items) {
-      const link = document.createElement('a');
-      link.className = 'hub-rail__link';
-      link.href = item.href;
-      if (item.id === highlight) link.setAttribute('aria-current', 'page');
-      if (item.id === 'clare') link.dataset.clareNav = 'true';
-      link.append(railIconFor(item.id), document.createTextNode(item.label));
-      nav.append(link);
-    }
+    const panelId = `rail-section-${section.id}`;
+    const group = document.createElement('section');
+    group.dataset.navSection = section.id;
+
+    const button = buildSectionButton(section, panelId);
+    button.addEventListener('click', () => {
+      railDisclosure.toggle(section.id);
+      syncSectionDom(railNav, section.id);
+    });
+
+    const panel = document.createElement('div');
+    panel.id = panelId;
+    panel.className = 'hub-rail__section-panel';
+    panel.dataset.sectionPanel = section.id;
+
+    const inner = document.createElement('div');
+    inner.className = 'hub-rail__section-panel-inner';
+    inner.append(...section.items.map((item) => buildNavLink(item, highlight)));
+    panel.append(inner);
+
+    group.append(button, panel);
+    desktop.append(group);
   }
-  railNav.append(nav);
+
+  const mobile = document.createElement('nav');
+  mobile.className = 'hub-rail__mobile';
+  mobile.dataset.mobileRail = 'true';
+  mobile.setAttribute('aria-label', 'Primary');
+
+  const tabs = document.createElement('div');
+  tabs.className = 'hub-rail__mobile-tabs';
+  tabs.setAttribute('aria-label', 'Navigation sections');
+
+  const items = document.createElement('div');
+  items.className = 'hub-rail__mobile-items';
+  items.setAttribute('aria-label', 'Open section destinations');
+
+  for (const section of NAV_SECTIONS) {
+    const panelId = `rail-mobile-section-${section.id}`;
+    const button = buildSectionButton(section, panelId);
+    button.addEventListener('click', () => {
+      railDisclosure.toggle(section.id);
+      syncSectionDom(railNav, section.id);
+    });
+    tabs.append(button);
+
+    const panel = document.createElement('div');
+    panel.id = panelId;
+    panel.className = 'hub-rail__mobile-panel';
+    panel.dataset.sectionPanel = section.id;
+    panel.append(...section.items.map((item) => buildNavLink(item, highlight)));
+    items.append(panel);
+  }
+
+  mobile.append(tabs, items);
+  railNav.append(desktop, mobile);
+  for (const section of NAV_SECTIONS) syncSectionDom(railNav, section.id);
 }
 
 export interface PageHeaderConfig {
