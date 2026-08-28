@@ -223,7 +223,9 @@ describe('page editor', () => {
     expect(canvas.querySelector('.excursion-timeline__line')).toBeNull();
     const stops = canvas.querySelectorAll('.excursion-timeline__stop');
     expect(stops.length).toBeGreaterThan(1);
-    expect(canvas.querySelectorAll('.excursion-timeline__joiner').length).toBe(stops.length - 1);
+    expect(canvas.querySelectorAll('.excursion-timeline__joiner').length).toBe(
+      Math.max(0, (stops.length - 1) * 2)
+    );
     expect(canvas.querySelector('.excursion-timeline__card .hub-row')?.textContent).toContain(
       'Draft permission note'
     );

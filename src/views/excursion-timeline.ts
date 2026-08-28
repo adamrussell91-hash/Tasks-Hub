@@ -95,11 +95,9 @@ function renderProgress(project: Project, tasks: Task[]): HTMLElement {
   return host;
 }
 
-function renderJoiner(gap: number): HTMLElement {
-  const joiner = el('div', 'excursion-timeline__joiner');
+function renderJoiner(kind: 'up' | 'down'): HTMLElement {
+  const joiner = el('div', `excursion-timeline__joiner excursion-timeline__joiner--${kind}`);
   joiner.setAttribute('aria-hidden', 'true');
-  const length = Math.max(0, gap - TIMELINE_NODE_R * 2);
-  joiner.style.height = `${length}px`;
   return joiner;
 }
 
@@ -140,10 +138,9 @@ function renderStop(
   stop: LaidTimelineStop,
   confirmHost: HTMLElement,
   reload: () => Promise<void>,
-  previous: LaidTimelineStop | null
+  join: { up: boolean; down: boolean }
 ): HTMLElement {
   const row = el('li', 'excursion-timeline__stop');
-  row.style.marginTop = `${stop.gap}px`;
   row.dataset.kind = stop.kind;
   row.dataset.id = stop.id;
   const when = document.createElement('time');
@@ -151,8 +148,9 @@ function renderStop(
   when.dateTime = stop.date;
   when.textContent = formatDisplayDate(stop.date);
   const rail = el('div', 'excursion-timeline__mark');
-  if (previous) rail.append(renderJoiner(stop.gap));
+  if (join.up) rail.append(renderJoiner('up'));
   rail.append(renderNode(stop));
+  if (join.down) rail.append(renderJoiner('down'));
   const body = el('div', 'excursion-timeline__card');
   if (stop.task) {
     const card = renderTaskMicroCard(stop.task, {
@@ -306,21 +304,23 @@ function renderTimeline(
   confirmHost: HTMLElement,
   reload: () => Promise<void>
 ): HTMLElement {
-  const layout = layoutExcursionTimeline(collectExcursionStops(project, tasks));
+  const stops = layoutExcursionTimeline(collectExcursionStops(project, tasks)).stops;
   const scroller = el('div', 'excursion-timeline');
   scroller.setAttribute('tabindex', '0');
   scroller.setAttribute('aria-label', 'Excursion timeline');
   const inner = el('div', 'excursion-timeline__inner');
-  inner.style.minHeight = `${layout.height}px`;
   const list = el('ol', 'excursion-timeline__list');
-  if (!layout.stops.length) {
+  if (!stops.length) {
     list.append(el('p', 'empty-state', 'No dated tasks or key dates on this excursion yet.'));
   } else {
-    let previous: LaidTimelineStop | null = null;
-    for (const stop of layout.stops) {
-      list.append(renderStop(stop, confirmHost, reload, previous));
-      previous = stop;
-    }
+    stops.forEach((stop, index) => {
+      list.append(
+        renderStop(stop, confirmHost, reload, {
+          up: index > 0,
+          down: index < stops.length - 1
+        })
+      );
+    });
   }
   inner.append(list);
   scroller.append(inner);
