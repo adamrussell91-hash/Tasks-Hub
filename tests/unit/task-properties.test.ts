@@ -4,6 +4,7 @@ import {
   validateTaskClassifierPatch,
   validateTaskPropertyConfig
 } from '@/schemas/task-properties';
+import { slugifyPropertyId, uniquePropertyId } from '@/domain/property-ids';
 import { DEFAULT_TASK_PROPERTY_CONFIG } from '@/domain/task-properties-defaults';
 
 describe('task property config', () => {
@@ -30,5 +31,13 @@ describe('task property config', () => {
     expect(() =>
       validateTaskClassifierPatch({ priority: 'teaching' }, DEFAULT_TASK_PROPERTY_CONFIG)
     ).toThrow(/Unknown priority/);
+  });
+
+  it('slugifies display names into valid hidden ids', () => {
+    expect(slugifyPropertyId('Teaching extra')).toBe('teaching_extra');
+    expect(slugifyPropertyId('123')).toBe('item_123');
+    expect(slugifyPropertyId('   ')).toBe('item');
+    expect(uniquePropertyId('new item', ['new_item'])).toBe('new_item_2');
+    expect(uniquePropertyId('teaching', ['teaching', 'teaching_2'])).toBe('teaching_3');
   });
 });

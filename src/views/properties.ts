@@ -5,32 +5,55 @@ import {
   type TaskPropertyConfig,
   type TaskPropertyListKey
 } from '@/schemas/task-properties';
+import { uniquePropertyId } from '@/domain/property-ids';
 import { DEFAULT_TASK_PROPERTY_CONFIG } from '@/domain/task-properties-defaults';
 import { loadTaskProperties, saveTaskProperties } from '@/services/task-properties';
 import { errorMessage, renderLoadError } from '@/views/feedback';
 import { createHubField, createHubToolbar, el } from '@/views/hub-kit';
 
-const SECTION_META: Record<TaskPropertyListKey, { title: string; color?: boolean }> = {
-  domains: { title: 'Domains', color: true },
-  priorities: { title: 'Urgency / priority' },
-  statuses: { title: 'Statuses' },
-  kinds: { title: 'Kinds' },
-  buckets: { title: 'Buckets' },
-  sources: { title: 'Sources' },
-  tags: { title: 'Tag vocabulary' }
+const SECTION_META: Record<
+  TaskPropertyListKey,
+  { title: string; lede: string; color?: boolean }
+> = {
+  domains: {
+    title: 'Domains',
+    lede: 'Life and work areas. Colour the universe and drive Today’s adaptive focus.',
+    color: true
+  },
+  priorities: {
+    title: 'Urgency / priority',
+    lede: 'How soon a task needs attention — urgent down to low.'
+  },
+  statuses: {
+    title: 'Statuses',
+    lede: 'Where a task sits on the board: open, in progress, done, deferred, or dead.'
+  },
+  kinds: {
+    title: 'Kinds',
+    lede: 'What the row is — a standalone task, or a step under one.'
+  },
+  buckets: {
+    title: 'Buckets',
+    lede: 'Active work versus someday / maybe.'
+  },
+  sources: {
+    title: 'Sources',
+    lede: 'How the item entered the hub — typed, excursion, or Clare.'
+  },
+  tags: {
+    title: 'Tag vocabulary',
+    lede: 'Extra labels for filtering. Separate from domain.'
+  }
 };
-
-function slugify(label: string): string {
-  const slug = label
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return slug || 'item';
-}
 
 function cloneConfig(config: TaskPropertyConfig): TaskPropertyConfig {
   return structuredClone(config);
+}
+
+function lockedIdsFrom(config: TaskPropertyConfig): Record<TaskPropertyListKey, Set<string>> {
+  return Object.fromEntries(
+    TASK_PROPERTY_LIST_KEYS.map((key) => [key, new Set(config[key].map((entry) => entry.id))])
+  ) as Record<TaskPropertyListKey, Set<string>>;
 }
 
 function moveOption(list: PropertyOption[], index: number, delta: number): PropertyOption[] {
@@ -43,6 +66,10 @@ function moveOption(list: PropertyOption[], index: number, delta: number): Prope
   return next;
 }
 
+function usedIds(list: PropertyOption[], skipIndex?: number): string[] {
+  return list.filter((_, index) => index !== skipIndex).map((entry) => entry.id);
+}
+
 export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
   canvas.replaceChildren(el('p', 'canvas-status', 'Loading…'));
   let draft: TaskPropertyConfig;
@@ -53,6 +80,7 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
     return;
   }
 
+  let lockedIds = lockedIdsFrom(draft);
   const statusHost = el('div', 'property-status');
   const sectionsHost = el('div', 'property-sections');
 
@@ -61,54 +89,55 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
     option: PropertyOption,
     index: number
   ): HTMLElement => {
-    const row = el('article', 'task-row property-row');
-    const fields = el('div', 'property-row__fields hub-toolbar');
+    const meta = SECTION_META[section];
+    const row = el('article', `task-row property-row${meta.color ? ' property-row--colour' : ''}`);
 
-    const label = createHubField({
-      ariaLabel: `${SECTION_META[section].title} label`,
+    const name = createHubField({
+      ariaLabel: `${meta.title} name`,
       value: option.label,
-      placeholder: 'Label'
+      placeholder: 'Name'
     });
-    label.input.addEventListener('input', () => {
-      draft[section][index] = { ...draft[section][index]!, label: label.input.value };
+    name.input.addEventListener('input', () => {
+      const current = draft[section][index];
+      if (!current) return;
+      const label = name.input.value;
+      const id = lockedIds[section].has(current.id)
+        ? current.id
+        : uniquePropertyId(label, usedIds(draft[section], index));
+      draft[section][index] = { ...current, label, id };
     });
+    row.append(name.el);
 
-    const id = createHubField({
-      ariaLabel: `${SECTION_META[section].title} id`,
-      value: option.id,
-      placeholder: 'id'
-    });
-    id.input.addEventListener('input', () => {
-      draft[section][index] = { ...draft[section][index]!, id: id.input.value };
-    });
-
-    fields.append(label.el, id.el);
-
-    if (SECTION_META[section].color) {
+    if (meta.color) {
       const color = createHubField({
         type: 'color',
-        ariaLabel: `${SECTION_META[section].title} colour`,
-        value: option.color ?? '#244f7c'
+        ariaLabel: `${meta.title} colour`,
+        value: option.color ?? '#244f7c',
+        className: 'property-swatch'
       });
       color.input.addEventListener('input', () => {
-        draft[section][index] = { ...draft[section][index]!, color: color.input.value };
+        const current = draft[section][index];
+        if (!current) return;
+        draft[section][index] = { ...current, color: color.input.value };
       });
-      fields.append(color.el);
+      row.append(color.el);
     }
 
-    const actions = el('div', 'task-row__actions');
-    const up = el('button', 'btn btn--ghost', '↑');
+    const actions = el('div', 'property-row__actions');
+    const up = el('button', 'btn btn--ghost property-row__move', '↑');
     up.type = 'button';
     up.title = 'Move up';
+    up.setAttribute('aria-label', `Move ${option.label} up`);
     up.disabled = index === 0;
     up.addEventListener('click', () => {
       draft[section] = moveOption(draft[section], index, -1);
       paintSections();
     });
 
-    const down = el('button', 'btn btn--ghost', '↓');
+    const down = el('button', 'btn btn--ghost property-row__move', '↓');
     down.type = 'button';
     down.title = 'Move down';
+    down.setAttribute('aria-label', `Move ${option.label} down`);
     down.disabled = index === draft[section].length - 1;
     down.addEventListener('click', () => {
       draft[section] = moveOption(draft[section], index, 1);
@@ -124,7 +153,7 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
     });
 
     actions.append(up, down, remove);
-    row.append(fields, actions);
+    row.append(actions);
     return row;
   };
 
@@ -134,11 +163,22 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
       const block = el('section', 'property-section');
       const meta = SECTION_META[section];
       block.append(el('h2', 'section-title', meta.title));
+      block.append(el('p', 'property-section__lede', meta.lede));
 
-      const stack = el('div', 'task-stack');
+      const stack = el('div', 'task-stack property-stack');
       if (!draft[section].length) {
         stack.append(el('p', 'empty-state', 'No entries yet.'));
       } else {
+        const head = el(
+          'div',
+          `property-list__head${meta.color ? ' property-list__head--colour' : ''}`
+        );
+        head.append(el('span', 'hub-field__label', 'Name'));
+        if (meta.color) head.append(el('span', 'hub-field__label', 'Colour'));
+        const actionsHead = el('span', 'hub-field__label', 'Actions');
+        actionsHead.classList.add('property-list__head-actions');
+        head.append(actionsHead);
+        stack.append(head);
         for (let index = 0; index < draft[section].length; index++) {
           stack.append(renderOptionRow(section, draft[section][index]!, index));
         }
@@ -148,7 +188,7 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
       add.type = 'button';
       add.addEventListener('click', () => {
         const label = section === 'tags' ? 'new tag' : 'new item';
-        const id = slugify(label);
+        const id = uniquePropertyId(label, usedIds(draft[section]));
         draft[section] = [
           ...draft[section],
           { id, label, ...(meta.color ? { color: '#244f7c' } : {}) }
@@ -177,6 +217,7 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
       void saveTaskProperties(parsed)
         .then((saved) => {
           draft = cloneConfig(saved);
+          lockedIds = lockedIdsFrom(draft);
           paintSections();
           statusHost.append(el('p', 'empty-state', 'Saved.'));
         })
@@ -194,6 +235,7 @@ export async function renderPropertiesView(canvas: HTMLElement): Promise<void> {
 
   reset.addEventListener('click', () => {
     draft = cloneConfig(DEFAULT_TASK_PROPERTY_CONFIG);
+    lockedIds = lockedIdsFrom(draft);
     paintSections();
     statusHost.replaceChildren();
     statusHost.append(el('p', 'empty-state', 'Draft reset — click Save to persist.'));
