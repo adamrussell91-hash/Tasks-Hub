@@ -73,4 +73,6 @@ Rule detectors (overlap, dense pinch, missed deadlines) stay deterministic. A Ha
 | StressFlag sync vs batch | Write-on-create; consumers poll |
 | Reminder delivery | In-app only for v1 |
 
+**Clare dump authority:** when an Anthropic judge is configured, she reads the raw dump and is authoritative on split/kind/domain/due date. The regex parser is the offline / no-key fallback only. A successful judge response with an empty item list means no cards — do not resurrect heuristic proposals.
+
 Deferred (not blockers): Teaching Day Book feed, Life Hub bloods → CapacitySignal, push/email channel.

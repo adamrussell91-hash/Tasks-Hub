@@ -40,6 +40,7 @@ import {
 } from '@/domain/blocked-since';
 import {
   assembleDumpResult,
+  assembleJudgedDumpResult,
   buildProposal,
   emptyCalibration,
   recordActualSample,
@@ -700,15 +701,17 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           lifeContext
         });
         const judgment = await judge(digest);
-        const result = assembleDumpResult(
-          items,
-          frameworks,
-          () => (calibration.sample_count > 0 ? calibration : null),
-          input.protocol_id,
-          judgment
-        );
-        if (result.proposals[0]) {
-          return result.proposals[0];
+        if (judgment.ok) {
+          const result = assembleJudgedDumpResult(
+            judgment.items,
+            frameworks,
+            () => (calibration.sample_count > 0 ? calibration : null),
+            input.protocol_id,
+            judgment.voice
+          );
+          if (result.proposals[0]) {
+            return result.proposals[0];
+          }
         }
       }
       return buildProposal(
@@ -792,14 +795,20 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           now,
           lifeContext
         });
-        const judgment = await judge(digest);
-        return assembleDumpResult(
-          items,
-          frameworks,
-          calibrationFor,
-          input.protocol_id,
-          judgment
-        );
+        try {
+          const judgment = await judge(digest);
+          if (judgment.ok) {
+            return assembleJudgedDumpResult(
+              judgment.items,
+              frameworks,
+              calibrationFor,
+              input.protocol_id,
+              judgment.voice
+            );
+          }
+        } catch {
+          // Model call failed outright — fall through to the offline parser.
+        }
       }
       return assembleDumpResult(items, frameworks, calibrationFor, input.protocol_id);
     },

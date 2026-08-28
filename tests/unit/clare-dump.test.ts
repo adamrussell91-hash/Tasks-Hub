@@ -137,4 +137,20 @@ describe('brain dump parsing', () => {
     expect(result.questions.some((q) => /already on the board/i.test(q))).toBe(true);
     expect(result.notes.some((n) => /usb/i.test(n))).toBe(true);
   });
+
+  it('treats meta-commentary and corrections as non-actionable', () => {
+    const items = parseBrainDump('It was a question not something to create', {
+      now: new Date(2026, 7, 28),
+      preferredDomain: 'teaching'
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]!.kind).toBe('meta');
+    expect(items[0]!.actionable).toBe(false);
+    expect(items[0]!.question).toBeNull();
+
+    const result = assembleDumpResult(items, frameworks, () => null);
+    expect(result.proposals).toHaveLength(0);
+    expect(result.questions).toHaveLength(0);
+    expect(result.voice).toMatch(/doesn't parse as work/i);
+  });
 });
