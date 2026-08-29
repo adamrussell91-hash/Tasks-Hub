@@ -400,6 +400,8 @@
   display: block;
   align-items: flex-start;
   min-height: 0;
+  /* Search chrome is a 999px pill. On a short textarea that becomes an oval. */
+  border-radius: var(--radius-md);
 }
 
 .task-editor__notes {
