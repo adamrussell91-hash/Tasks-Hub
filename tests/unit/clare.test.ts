@@ -141,6 +141,31 @@ describe('clare store dump + batch', () => {
     expect(tasks).toHaveLength(dump.proposals.length);
     expect(tasks.some((t) => t.tags.includes('comms'))).toBe(true);
   });
+
+  it('remembers timezone from chat via hub prefs', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    expect((await store.getHubPrefs()).timezone).toBe('Australia/Sydney');
+    const saved = await store.setHubTimezone('Melbourne');
+    expect(saved.ok).toBe(true);
+    expect(saved.timezone).toBe('Australia/Melbourne');
+    expect((await store.getHubPrefs()).timezone).toBe('Australia/Melbourne');
+  });
+
+  it('lets Clare rewrite her operating protocol from the store', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    const seedProtocol = await store.getAgentProtocol('clare');
+    expect(seedProtocol.markdown).toMatch(/Clare DeMind/);
+    const saved = await store.setAgentProtocol(
+      'clare',
+      '# Clare\n\n## Clock\n\nAlways trust Adam on Sydney Sundays.\n'
+    );
+    expect(saved.ok).toBe(true);
+    expect((await store.getAgentProtocol('clare')).markdown).toMatch(/Sydney Sundays/);
+  });
 });
 
 describe('clare store negotiation', () => {

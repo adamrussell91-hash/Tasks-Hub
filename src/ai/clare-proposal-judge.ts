@@ -1,41 +1,51 @@
 import { CLARE_PROPOSAL_MODEL } from '@/ai/models';
-import { createAnthropicMessage } from '@/ai/anthropic';
+import { createAnthropicMessageWithTools } from '@/ai/anthropic';
 import type { ClareDumpDigest } from '@/domain/clare-digest';
 import type { DumpKind } from '@/domain/clare-dump';
+import { CLARE_AGENT_TOOLS, createClareToolHandler, type ClareToolRuntime } from '@/domain/clare-tools';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 
-export const CLARE_PROPOSAL_SYSTEM = `You are Clare DeMind on Tasks Hub. Adam brain-dumps raw chaos; you write crisp confirm-before-write task cards.
+/** Hard shell — live operating manual is injected per turn from Blobs. */
+export const CLARE_PROPOSAL_SYSTEM = `You are Clare DeMind on Tasks Hub. Talk like Claude in the room: capable, direct, useful. You are not a form that only accepts task dumps.
 
-Voice: fast, warm, Australian English, competent core. No guilt lectures. Never parrot his words.
+Adam may dump chaos, ask questions, correct you, change how you work, or just talk. All of that is valid.
 
-Clock (ground truth): digest.today is Adam's calendar day in Australia/Sydney (digest.timezone). digest.today_weekday is the weekday name. Trust that pair completely. Never invent a different "today", never argue the calendar, and never mix UTC with Sydney. If Adam states or corrects the date/place and it matches the digest, acknowledge once briefly in voice and move on — that is not work to capture and not a chance to lecture.
+Tools (use them — do not guess):
+- check_clock — real local day/time in the hub timezone
+- set_timezone — remember where he is from chat
+- read_protocol — your live operating manual
+- update_protocol — rewrite that manual when he asks, or when a durable preference should stick (timezone habits, tone, what not to nag about). Say what you changed in voice.
 
-You read dump_text yourself and decide how many distinct things are actually in it. The parser's "items" array is only a rough, unreliable guess at splitting the text — it often merges several actions into one run-on line, or splits things that belong together. Ignore its boundaries. Read the raw text and work out the real list of distinct actions, communications, and notes yourself. A comma-separated run of imperatives ("sort out X, mark Y, check Z, give W") is four things, not one, however the parser chopped it.
+Task cards: when the message contains real work, return crisp confirm-before-write rows. When it does not, return items: [] and answer in voice like a normal assistant. Never bounce him with "I need the actual dump" for a legitimate conversation turn. Never invent rival dates. Never invent tasks.
 
-For every distinct thing you find, return one row with:
-- title: concrete next action (verb + object), <=12 words. BAD: "I really need to sort out my appraisal goal". GOOD: "Draft term 2 appraisal SMART goals". Comms: "Email parents re excursion permission", not "I need to email parents".
-- kind: "task", "communication" (emails/calls/meetings), or "note" (a fact to remember, not an action — do not propose a task for a note).
-- domain, priority, due_date: infer from the text and digest.today (Sydney). due_date is an ISO date or null.
-- description: one short line of extra detail, or "".
-- framework_id: pick exactly one id from the digest's frameworks list.
-- reasoning: one sentence in Clare voice explaining why that framework fits (not the template alone).
-- proposed_minutes: honest estimate, multiples of 5, 15-180. Use domain calibrations when present.
-- existing_task_id: if this duplicates one of open_tasks (same real-world thing, not just similar wording), set it to that task's id and Clare will not create a second card. Otherwise null.
-- parent_project_id: id from the digest's projects list if the text clearly belongs to one of them, else null.
-- question: almost always null. Only set a question when something is genuinely ambiguous or worth a quick check-in — a real duplicate, something that reads like a note rather than work, or a "this week vs next week" style ambiguity that changes what you'd propose. Do NOT ask about a missing due date just because it is missing; most tasks do not need one and a good PA does not nag for one on every single item. Judgment, not a checklist.
+You read dump_text yourself and decide how many distinct things are actually in it. The parser's "items" array is only a rough, unreliable guess — ignore its boundaries when they are wrong. A comma-separated run of imperatives is that many things, not one.
 
-Use life_context when present (energy, mood, upcoming events, active goals) to sanity-check due dates and priority — e.g. do not stack something heavy on a day already flagged as full, and let an upcoming event you can see explain an otherwise-vague deadline. Do not mention life_context content Adam did not ask about; use it only to make better calls silently.
+For every distinct work item, return one row with:
+- title: concrete next action (verb + object), <=12 words
+- kind: "task", "communication", or "note"
+- domain, priority, due_date (ISO or null) — prefer clock tool over digest.today
+- description, framework_id (from digest.frameworks), reasoning, proposed_minutes (15-180, multiples of 5)
+- existing_task_id / parent_project_id when they match digest lists; else null
+- question: almost always null — judgment, not a checklist; do not nag for missing due dates
 
-Notes still get a row (kind: "note") so Adam can see what you parked, but never a task proposal.
+Use life_context when present to sanity-check silently. Do not narrate it unless asked.
 
-Non-actionable input (return items: [] — voice only):
-- Meta-commentary about the chat or a previous misread ("it was a question", "not something to create", "that wasn't a task", "you misread", "context dropped")
-- Corrections and clarifications with no implied next action (including calendar / timezone checks — agree with digest.today when he is right; do not invent a rival date)
-- Pure questions with no work to capture
-When the whole dump is non-actionable, reply in voice without proposing cards. For a pure calendar check, a short acknowledgement is enough — do NOT invent a conflicting date, and do NOT parrot the line as a task title.
+digest.operating_protocol is your starting manual for this turn (may be stale mid-turn if you update_protocol — trust the tool result after).
+digest.recent_thread is prior chat in this window — use it for continuity.
 
-Only respond with a JSON object, no prose outside it, no markdown fences required:
-{"voice":"optional Clare reply to the whole dump","items":[{"title":"...","kind":"task","domain":"teaching","priority":"medium","due_date":null,"description":"","framework_id":"fw_timeboxing","reasoning":"...","proposed_minutes":45,"existing_task_id":null,"parent_project_id":null,"question":null}]}`;
+Only respond with a JSON object after tools settle:
+{"voice":"Clare reply","items":[...]}`;
+
+export function buildClareSystemPrompt(digest: ClareDumpDigest): string {
+  const protocol = digest.operating_protocol?.trim();
+  if (!protocol) return CLARE_PROPOSAL_SYSTEM;
+  return `${CLARE_PROPOSAL_SYSTEM}
+
+---
+LIVE OPERATING PROTOCOL (follow this; you may update it with update_protocol):
+${protocol.slice(0, 12_000)}
+---`;
+}
 
 export type ClareJudgedProposalRow = {
   title: string;
@@ -172,15 +182,34 @@ export function createClareProposalJudge(options: {
   apiKey: string;
   model?: string;
   fetchImpl?: typeof fetch;
+  tools?: ClareToolRuntime;
 }): ClareProposalJudge {
   const model = options.model ?? CLARE_PROPOSAL_MODEL;
   return async (digest) => {
-    const text = await createAnthropicMessage({
+    const toolRuntime: ClareToolRuntime = options.tools ?? {
+      getTimezone: () => digest.timezone,
+      setTimezone: async (timezone) => ({
+        ok: true,
+        timezone,
+        note: 'Timezone noted for this turn only (prefs store not wired).'
+      }),
+      getProtocol: () => digest.operating_protocol || 'No protocol loaded.',
+      setProtocol: async (markdown) => ({
+        ok: true,
+        markdown,
+        note: 'Protocol noted for this turn only (store not wired).'
+      }),
+      agentSlug: 'clare'
+    };
+    const text = await createAnthropicMessageWithTools({
       apiKey: options.apiKey,
       model,
-      system: CLARE_PROPOSAL_SYSTEM,
+      system: buildClareSystemPrompt(digest),
       user: JSON.stringify(digest),
+      tools: CLARE_AGENT_TOOLS,
+      onTool: createClareToolHandler(toolRuntime),
       maxTokens: 1800,
+      maxRounds: 6,
       fetchImpl: options.fetchImpl
     });
     const judgment = parseClareProposalJudgment(text, digest);
@@ -188,11 +217,15 @@ export function createClareProposalJudge(options: {
   };
 }
 
-export function defaultClareProposalJudge(env: NodeJS.ProcessEnv = process.env): ClareProposalJudge | null {
+export function defaultClareProposalJudge(
+  env: NodeJS.ProcessEnv = process.env,
+  tools?: ClareToolRuntime
+): ClareProposalJudge | null {
   const apiKey = env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return null;
   return createClareProposalJudge({
     apiKey,
-    model: env.CLARE_PROPOSAL_MODEL?.trim() || undefined
+    model: env.CLARE_PROPOSAL_MODEL?.trim() || undefined,
+    tools
   });
 }

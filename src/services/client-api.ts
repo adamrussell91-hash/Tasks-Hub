@@ -113,6 +113,7 @@ export const tasksApi = {
     text: string;
     domain?: string;
     protocol_id?: import('@/domain/clare-protocols').ClareProtocolId;
+    recent_thread?: Array<{ role: 'user' | 'assistant'; text: string }>;
   }) =>
     apiPost<import('@/domain/clare').ClareDumpResult>('/api/clare', { action: 'dump', ...body }),
 

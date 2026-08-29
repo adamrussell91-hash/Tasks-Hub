@@ -39,6 +39,13 @@ import {
   resolveExcursionTemplateId
 } from '@/domain/excursion-catalog';
 import { addDays, backlogTasks, hubCalendarDate, toDateKey } from '@/domain/queries';
+import { DEFAULT_HUB_PREFS, parseHubPrefs, resolveTimeZoneInput, type HubPrefs } from '@/domain/hub-prefs';
+import {
+  defaultAgentProtocol,
+  parseAgentProtocol,
+  type AgentProtocolDoc,
+  type AgentProtocolSlug
+} from '@/domain/agent-protocol';
 import {
   affectedIdsForBlockedSince,
   reconcileBlockedSinceBatch
@@ -110,6 +117,8 @@ export interface KeyBuilders {
   clareNegotiationLogKey: (id: string) => string;
   metaSeededKey: () => string;
   taskPropertiesKey: () => string;
+  hubPrefsKey: () => string;
+  agentProtocolKey: (slug: string) => string;
   mapKey: (id: string) => string;
   mapsIndexKey: () => string;
   programKey: (id: string) => string;
@@ -697,6 +706,52 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       if (raw) return ClareCalibrationSchema.parse(raw);
       return emptyCalibration(domain, nowIso());
     },
+    async getHubPrefs(): Promise<HubPrefs> {
+      return parseHubPrefs(await kv.getJSON(keys.hubPrefsKey()));
+    },
+    async setHubTimezone(timezoneOrCity: string): Promise<{ ok: boolean; timezone: string; note: string }> {
+      const resolved = resolveTimeZoneInput(timezoneOrCity);
+      if (!resolved) {
+        const current = await this.getHubPrefs();
+        return {
+          ok: false,
+          timezone: current.timezone,
+          note: `Could not map "${timezoneOrCity}" to a timezone.`
+        };
+      }
+      const prefs: HubPrefs = {
+        ...DEFAULT_HUB_PREFS,
+        ...(await this.getHubPrefs()),
+        timezone: resolved,
+        updated_at: nowIso()
+      };
+      await kv.setJSON(keys.hubPrefsKey(), prefs);
+      return {
+        ok: true,
+        timezone: resolved,
+        note: `Remembered ${resolved} for Adam's calendar.`
+      };
+    },
+    async getAgentProtocol(slug: AgentProtocolSlug): Promise<AgentProtocolDoc> {
+      return parseAgentProtocol(await kv.getJSON(keys.agentProtocolKey(slug)), slug);
+    },
+    async setAgentProtocol(
+      slug: AgentProtocolSlug,
+      markdown: string
+    ): Promise<{ ok: boolean; markdown: string; note: string }> {
+      const trimmed = markdown.trim();
+      if (!trimmed) {
+        const current = await this.getAgentProtocol(slug);
+        return { ok: false, markdown: current.markdown, note: 'Empty protocol — not saved.' };
+      }
+      const doc: AgentProtocolDoc = {
+        ...defaultAgentProtocol(slug),
+        markdown: trimmed.slice(0, 24_000),
+        updated_at: nowIso()
+      };
+      await kv.setJSON(keys.agentProtocolKey(slug), doc);
+      return { ok: true, markdown: doc.markdown, note: `Saved ${slug} operating protocol.` };
+    },
     async listClareCalibrations() {
       const ids = await readIndex(kv, keys.clareCalibrationsIndexKey());
       const out = [];
@@ -759,10 +814,11 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
     },
     async briefWithClare(input = {}) {
       const tasks = await this.listTasks();
+      const prefs = await this.getHubPrefs();
       const facts = buildClareBriefing(
         tasks,
         input.protocol_id,
-        hubCalendarDate(input.now ?? new Date())
+        hubCalendarDate(input.now ?? new Date(), prefs.timezone)
       );
       const judge: ClareBriefingJudge | null =
         input.judge === undefined ? defaultClareBriefingJudge() : input.judge;
@@ -796,7 +852,10 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       }
     },
     async processDumpWithClare(input) {
-      const now = hubCalendarDate(input.now ?? new Date());
+      const prefs = await this.getHubPrefs();
+      const timezone = prefs.timezone;
+      const protocolDoc = await this.getAgentProtocol('clare');
+      const now = hubCalendarDate(input.now ?? new Date(), timezone);
       const [frameworks, tasks, projects, calibrations] = await Promise.all([
         this.listFrameworks(),
         this.listTasks(),
@@ -806,6 +865,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       const byDomain = new Map(calibrations.map((c) => [c.domain, c]));
       const items = parseBrainDump(input.text, {
         now,
+        timezone,
         preferredDomain: input.domain,
         tasks,
         projects
@@ -814,8 +874,18 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         const cal = byDomain.get(domain);
         return cal && cal.sample_count > 0 ? cal : null;
       };
+      const toolRuntime = {
+        getTimezone: async () => (await this.getHubPrefs()).timezone,
+        setTimezone: (zone: string) => this.setHubTimezone(zone),
+        getProtocol: async () => (await this.getAgentProtocol('clare')).markdown,
+        setProtocol: (markdown: string) => this.setAgentProtocol('clare', markdown),
+        agentSlug: 'clare' as const,
+        now: () => input.now ?? new Date()
+      };
       const judge: ClareProposalJudge | null =
-        input.judge === undefined ? defaultClareProposalJudge() : input.judge;
+        input.judge === undefined
+          ? defaultClareProposalJudge(process.env, toolRuntime)
+          : input.judge;
       if (judge) {
         const lifeContext =
           input.lifeContext === undefined
@@ -830,8 +900,11 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           calibrations,
           preferredDomain: input.domain ?? 'teaching',
           protocolId: input.protocol_id,
-          now,
-          lifeContext
+          now: input.now ?? new Date(),
+          timezone,
+          lifeContext,
+          operatingProtocol: protocolDoc.markdown,
+          recentThread: input.recent_thread
         });
         try {
           const judgment = await judge(digest);

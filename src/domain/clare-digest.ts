@@ -21,10 +21,10 @@ export type ClareDumpDigestItem = {
 
 export type ClareDumpDigest = {
   dump_text: string;
-  /** Adam's calendar day in Australia/Sydney — never the server's UTC date. */
+  /** Adam's calendar day in the hub timezone — never the server's UTC date. */
   today: string;
   today_weekday: string;
-  timezone: typeof HUB_TZ;
+  timezone: string;
   preferred_domain: TaskDomain;
   protocol_id: ClareProtocolId | null;
   frameworks: Array<{
@@ -44,6 +44,10 @@ export type ClareDumpDigest = {
   }>;
   /** Life Hub's operational digest — energy, mood, upcoming events, active goals. Never clinical detail. */
   life_context: string | null;
+  /** Live operating manual from Blobs (Clare may rewrite via tool). */
+  operating_protocol: string;
+  /** Prior turns in this chat window for continuity. */
+  recent_thread: Array<{ role: 'user' | 'assistant'; text: string }>;
 };
 
 function typicalDelta(cal: ClareCalibration): number | null {
@@ -63,9 +67,13 @@ export function buildClareDumpDigest(input: {
   preferredDomain: TaskDomain;
   protocolId?: ClareProtocolId;
   now?: Date;
+  timezone?: string;
   lifeContext?: LifeContextDigest | null;
+  operatingProtocol?: string;
+  recentThread?: Array<{ role: 'user' | 'assistant'; text: string }>;
 }): ClareDumpDigest {
   const now = input.now ?? new Date();
+  const timezone = input.timezone ?? HUB_TZ;
   const open = input.tasks
     .filter((task) => task.status !== 'done' && task.status !== 'dead')
     .slice(0, 40)
@@ -78,9 +86,9 @@ export function buildClareDumpDigest(input: {
 
   return {
     dump_text: input.text.trim(),
-    today: toHubDateKey(now),
-    today_weekday: hubWeekdayLong(now),
-    timezone: HUB_TZ,
+    today: toHubDateKey(now, timezone),
+    today_weekday: hubWeekdayLong(now, timezone),
+    timezone,
     preferred_domain: input.preferredDomain,
     protocol_id: input.protocolId ?? null,
     frameworks: input.frameworks.map((framework) => ({
@@ -108,6 +116,11 @@ export function buildClareDumpDigest(input: {
       calibrated_default_minutes: cal.calibrated_default_minutes,
       typical_delta_minutes: typicalDelta(cal)
     })),
-    life_context: lifeContextToPromptBlock(input.lifeContext ?? null)
+    life_context: lifeContextToPromptBlock(input.lifeContext ?? null),
+    operating_protocol: (input.operatingProtocol ?? '').slice(0, 12_000),
+    recent_thread: (input.recentThread ?? []).slice(-12).map((turn) => ({
+      role: turn.role,
+      text: turn.text.slice(0, 500)
+    }))
   };
 }

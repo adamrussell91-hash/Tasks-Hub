@@ -100,6 +100,16 @@ export function taskPropertiesKey(): string {
   return 'meta/task_properties';
 }
 
+/** Hub-wide prefs Clare can update from chat (timezone, etc.). */
+export function hubPrefsKey(): string {
+  return 'meta/hub_prefs';
+}
+
+/** Per-agent operating manual — agents may rewrite from chat. */
+export function agentProtocolKey(slug: string): string {
+  return `agent_protocols/${slug}`;
+}
+
 export function mapKey(id: string): string {
   return `maps/${id}`;
 }
