@@ -73,6 +73,20 @@ describe('board view mutations', () => {
     vi.restoreAllMocks();
   });
 
+  it('places the filter toggle beside the add button', async () => {
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([]);
+
+    const canvas = document.createElement('div');
+    document.body.append(canvas);
+    await renderBoardView(canvas);
+
+    const toolbar = canvas.querySelector('.dashboard-board .board-toolbar');
+    const filters = toolbar?.querySelector('.hub-filters');
+    expect(toolbar?.querySelector('.hub-filters__toggle')?.getAttribute('aria-label')).toBe('Filters');
+    expect(toolbar?.querySelector('.plus-add__btn')?.getAttribute('aria-label')).toBe('Add a task');
+    expect(filters?.nextElementSibling?.classList.contains('plus-add')).toBe(true);
+  });
+
   it('inserts a quick-add card without remounting the board', async () => {
     const existing = task({ id: 'task_old', title: 'Existing card' });
     const created = task({ id: 'task_new', title: 'Instant add' });

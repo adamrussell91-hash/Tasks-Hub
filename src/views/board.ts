@@ -8,6 +8,7 @@ import { errorMessage } from '@/views/feedback';
 import { createCollapsibleFilters } from '@/views/collapsible-filters';
 import {
   createHubFilter,
+  createHubToolbar,
   domainFilterOptions,
   el
 } from '@/views/hub-kit';
@@ -166,10 +167,11 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
   const lede = el('p', 'view-lede');
   boardSection.append(lede);
 
+  const toolbar = createHubToolbar('board-toolbar');
   const filterRow = createCollapsibleFilters({
     id: 'board',
     ariaLabel: 'Filters',
-    className: 'board-filter',
+    className: 'board-filter hub-filters--inline',
     active: boardProjectFilter !== 'all' || boardDomainFilter !== 'all'
   });
   const scope = createHubFilter({
@@ -198,7 +200,13 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     }
   });
   filterRow.panel.append(scope.el, domain.el);
-  boardSection.append(filterRow.root);
+  toolbar.append(
+    filterRow.root,
+    renderQuickAdd((created) => {
+      upsertTask(created);
+    }, boardProjectFilter === 'all' ? null : boardProjectFilter)
+  );
+  boardSection.append(toolbar);
 
   const confirmHost = el('div', 'board-confirm');
 
@@ -268,11 +276,6 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     deleteTaskNow(task, () => undefined, confirmHost);
   }
 
-  boardSection.append(
-    renderQuickAdd((created) => {
-      upsertTask(created);
-    }, boardProjectFilter === 'all' ? null : boardProjectFilter)
-  );
   boardSection.append(confirmHost);
 
   for (const col of BOARD_COLUMNS) {

@@ -248,8 +248,14 @@
   margin-bottom: var(--space-5);
 }
 
-.plus-add--inline {
+.plus-add--inline,
+.hub-toolbar .plus-add {
   margin-bottom: 0;
+}
+
+.hub-toolbar .plus-add.is-open {
+  flex: 1 1 16rem;
+  min-width: 0;
 }
 
 .plus-add.is-open {
@@ -4505,6 +4511,11 @@ body.is-universe-fullscreen .page-header {
 
 .dashboard-board .section-title {
   margin: 0;
+}
+
+.dashboard-board .view-lede,
+.dashboard-board .board-toolbar {
+  margin-bottom: 0;
 }
 
 .project-pulse-chart {
