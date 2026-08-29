@@ -260,7 +260,10 @@ describe('year layout', () => {
   it('wraps long event names so chips stay compact', () => {
     const lines = wrapEventLines('International Philosophy Olympiad selection workshop and public showcase');
     expect(lines.length).toBeGreaterThan(1);
-    expect(lines.every((line) => line.length <= 26)).toBe(true);
+    expect(lines.every((line) => line.length <= 22)).toBe(true);
+    expect(wrapEventLines('StatewideJuniorMootingChampionshipFinal').every((line) => line.length <= 22)).toBe(
+      true
+    );
   });
 
   it('gives an event four cardinal ports', () => {
@@ -343,23 +346,21 @@ describe('year layout', () => {
 
   it('slides a later line right when the first line grows a wide event', () => {
     const base = mindWorks2026Map();
-    const packed = layoutMap(base);
+    const tick = (id: string, label: string) => ({
+      id,
+      label,
+      attach: { kind: 'line' as const, line_id: 'line_justice', y: 220 },
+      stroke: 'solid' as const,
+      connects_to: null,
+      starts_on: '2026-03-12',
+      ends_on: null,
+      link: null,
+      planning: 'planned' as const
+    });
+    const packed = layoutMap({ ...base, ticks: [tick('tk_short', 'Moot')] });
     const grown = layoutMap({
       ...base,
-      ticks: [
-        ...base.ticks,
-        {
-          id: 'tk_wide',
-          label: 'SupercalifragilisticexpialidociousFestivalOfIdeasChampionship',
-          attach: { kind: 'line', line_id: 'line_justice', y: 220 },
-          stroke: 'solid',
-          connects_to: null,
-          starts_on: '2026-03-12',
-          ends_on: null,
-          link: null,
-          planning: 'planned'
-        }
-      ]
+      ticks: [tick('tk_wide', 'Statewide Junior Mooting Championship Final')]
     });
     const firstI = packed.lines.find((line) => line.id === 'line_innovation')!.x;
     const grownI = grown.lines.find((line) => line.id === 'line_innovation')!.x;

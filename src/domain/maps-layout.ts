@@ -16,11 +16,11 @@ export const MAP_TICK_R = 14;
 export const MAP_LABEL_PAD = 16;
 export const MAP_PORT_GAP = 36;
 export const MAP_LANE_MIN = 640;
-export const MAP_LANE_GUTTER = 96;
+export const MAP_LANE_GUTTER = 140;
 export const MAP_EVENT_STEM = 64;
 export const MAP_CHIP_PAD = 6;
 export const MAP_LINE_STROKE = 8;
-export const MAP_TRACK_GAP = 88;
+export const MAP_TRACK_GAP = 160;
 export const MAP_DISC_LIFT = 48;
 
 export const YEAR_TRACKS: YearTrack[] = ['junior', 'rozelle', 'senior'];
@@ -205,11 +205,20 @@ export function estimateVerticalLabel(text: string, fontSize = 12): { w: number;
 export function estimateHorizontalLabel(text: string, fontSize = 12): { w: number; h: number } {
   const lines = wrapEventLines(text);
   const longest = lines.reduce((max, line) => Math.max(max, line.length), 1);
-  return { w: Math.max(fontSize, longest * fontSize * 0.64), h: lines.length * (fontSize + 6) + 2 };
+  return { w: Math.max(fontSize, longest * fontSize * 0.8), h: lines.length * (fontSize + 6) + 2 };
 }
 
-export function wrapEventLines(text: string, maxChars = 26): string[] {
-  const words = text.trim().split(/\s+/).filter(Boolean);
+export function wrapEventLines(text: string, maxChars = 22): string[] {
+  const words = text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((word) => {
+      if (word.length <= maxChars) return [word];
+      const chunks: string[] = [];
+      for (let i = 0; i < word.length; i += maxChars) chunks.push(word.slice(i, i + maxChars));
+      return chunks;
+    });
   if (!words.length) return [text];
   const lines: string[] = [];
   let current = words[0]!;
