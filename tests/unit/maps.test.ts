@@ -18,7 +18,9 @@ import {
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import {
   addExtraYearTrack,
+  adjacentStrandBoxesOverlap,
   evenTrackX,
+  lineContentBox,
   lineTrackDefs,
   applyDateSpanToStation,
   boxesOverlap,
@@ -27,6 +29,7 @@ import {
   labelHitsForeignLine,
   layoutMap,
   lineStrokeBoxes,
+  MAP_LINE_GAP,
   matchConnectTarget,
   moveLine,
   normalizeLineColors,
@@ -257,7 +260,10 @@ describe('year layout', () => {
   it('wraps long event names so chips stay compact', () => {
     const lines = wrapEventLines('International Philosophy Olympiad selection workshop and public showcase');
     expect(lines.length).toBeGreaterThan(1);
-    expect(lines.every((line) => line.length <= 26)).toBe(true);
+    expect(lines.every((line) => line.length <= 22)).toBe(true);
+    expect(wrapEventLines('StatewideJuniorMootingChampionshipFinal').every((line) => line.length <= 22)).toBe(
+      true
+    );
   });
 
   it('gives an event four cardinal ports', () => {
@@ -340,28 +346,67 @@ describe('year layout', () => {
 
   it('slides a later line right when the first line grows a wide event', () => {
     const base = mindWorks2026Map();
-    const packed = layoutMap(base);
+    const tick = (id: string, label: string) => ({
+      id,
+      label,
+      attach: { kind: 'line' as const, line_id: 'line_justice', y: 220 },
+      stroke: 'solid' as const,
+      connects_to: null,
+      starts_on: '2026-03-12',
+      ends_on: null,
+      link: null,
+      planning: 'planned' as const
+    });
+    const packed = layoutMap({ ...base, ticks: [tick('tk_short', 'Moot')] });
     const grown = layoutMap({
+      ...base,
+      ticks: [tick('tk_wide', 'Statewide Junior Mooting Championship Final')]
+    });
+    const firstI = packed.lines.find((line) => line.id === 'line_innovation')!.x;
+    const grownI = grown.lines.find((line) => line.id === 'line_innovation')!.x;
+    expect(grownI).toBeGreaterThan(firstI);
+    expect(labelHitsForeignLine(grown)).toBe(false);
+    expect(adjacentStrandBoxesOverlap(grown.lines, grown.stations, grown.ticks)).toBe(false);
+    const chip = grown.ticks.find((tick) => tick.id === 'tk_wide')!.labelBox;
+    const next = grown.lines.find((line) => line.id === 'line_innovation')!;
+    expect(lineStrokeBoxes(next).some((box) => boxesOverlap(chip, box))).toBe(false);
+    expect(boxesOverlap(chip, lineContentBox(next, grown.stations, grown.ticks))).toBe(false);
+  });
+
+  it('keeps a renamed championship chip off the next strand', () => {
+    const base = mindWorks2026Map();
+    const layout = layoutMap({
       ...base,
       ticks: [
         ...base.ticks,
         {
-          id: 'tk_wide',
-          label: 'SupercalifragilisticexpialidociousFestivalOfIdeasChampionship',
-          attach: { kind: 'line', line_id: 'line_justice', y: 220 },
+          id: 'tk_champ',
+          label: 'Statewide Junior Mooting Championship Final',
+          attach: { kind: 'line', line_id: 'line_justice', y: 200 },
           stroke: 'solid',
           connects_to: null,
-          starts_on: '2026-03-12',
+          starts_on: '2026-01-27',
           ends_on: null,
           link: null,
           planning: 'planned'
         }
       ]
     });
-    const firstI = packed.lines.find((line) => line.id === 'line_innovation')!.x;
-    const grownI = grown.lines.find((line) => line.id === 'line_innovation')!.x;
-    expect(grownI).toBeGreaterThan(firstI);
-    expect(labelHitsForeignLine(grown)).toBe(false);
+    const chip = layout.ticks.find((tick) => tick.id === 'tk_champ')!.labelBox;
+    const next = layout.lines.find((line) => line.id === 'line_innovation')!;
+    const nextLeft = Math.min(...next.tracks.map((track) => track.x)) - 8;
+    expect(chip.x + chip.w).toBeLessThan(nextLeft);
+    expect(labelHitsForeignLine(layout)).toBe(false);
+  });
+
+  it('spreads strands evenly with room for event chips between them', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    const xs = layout.lines.map((line) => line.x).sort((a, b) => a - b);
+    const gaps = xs.slice(1).map((x, index) => x - xs[index]!);
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(MAP_LINE_GAP - 1);
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(1);
+    expect(adjacentStrandBoxesOverlap(layout.lines, layout.stations, layout.ticks)).toBe(false);
+    expect(labelHitsForeignLine(layout)).toBe(false);
   });
 
   it('keeps every line lane the same width', () => {
