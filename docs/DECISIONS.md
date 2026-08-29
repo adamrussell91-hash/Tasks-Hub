@@ -75,4 +75,12 @@ Rule detectors (overlap, dense pinch, missed deadlines) stay deterministic. A Ha
 
 **Clare dump authority:** when an Anthropic judge is configured, she reads the raw dump and is authoritative on split/kind/domain/due date. The regex parser is the offline / no-key fallback only. A successful judge response with an empty item list means no cards — do not resurrect heuristic proposals.
 
+## Understand Anything graph
+
+**Keep the committed graph in `.ua/`.** It is a local / agent tool and a design seed for Maps, Universe, Graph, whiteboards, and concept mapping — not a production rail tab.
+
+- Source of truth: `.ua/knowledge-graph.json` + `docs/understand-anything.md`.
+- Do not vendor Understand-Anything into the SPA. Do not make Pages or Functions depend on it.
+- Do not store the graph in Notion or iCloud. Git only, same as Programs.
+
 Deferred (not blockers): Teaching Day Book feed, Life Hub bloods → CapacitySignal, push/email channel.

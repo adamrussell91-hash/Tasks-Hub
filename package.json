@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "generate:auth": "node scripts/generate-auth-secrets.mjs",
-    "seed:blobs": "node scripts/seed-blobs.mjs"
+    "seed:blobs": "node scripts/seed-blobs.mjs",
+    "understand:dashboard": "npx --yes https://github.com/Egonex-AI/Understand-Anything/releases/latest/download/understand-anything-viewer.tgz ."
   },
   "engines": {
     "node": ">=22"
