@@ -9,3 +9,6 @@ test-results/
 playwright-report/
 .superpowers/
 .worktrees/
+.ua/intermediate/
+.ua/diff-overlay.json
+.ua/.trash-*/
