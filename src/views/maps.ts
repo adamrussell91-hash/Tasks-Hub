@@ -1309,7 +1309,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
     const name = textInput(item.label, 'Name');
     name.input.addEventListener('change', () => {
       item.label = name.input.value.trim() || item.label;
-      void persist();
+      void persist().then(() => paint());
     });
     const start = dateInput(item.starts_on ?? terms.t1, selectedStation ? 'Starts' : 'Date');
     const end = dateInput(item.ends_on ?? item.starts_on ?? terms.e, 'Ends');
