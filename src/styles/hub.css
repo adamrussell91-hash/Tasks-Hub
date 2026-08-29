@@ -151,6 +151,10 @@
   }
 }
 
+.page-header--cover .page-header__copy {
+  min-height: 0;
+}
+
 input.page-header__title-input {
   display: block;
   width: 100%;

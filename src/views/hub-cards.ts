@@ -269,9 +269,6 @@ export function renderProjectExpandedCard(
   const tags = el('div', 'task-card__tags-row');
   const chips = el('div', 'hub-chips');
   chips.append(el('span', 'hub-chip', project.type === 'excursion' ? 'excursion' : project.type));
-  if (project.type === 'excursion' && project.student_group_reference) {
-    chips.append(el('span', 'hub-chip', project.student_group_reference));
-  }
   tags.append(chips);
   const due = dateBadge(project.current_end_date, 'Target ');
   if (due) tags.append(due);

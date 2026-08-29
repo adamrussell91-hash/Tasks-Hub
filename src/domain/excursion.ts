@@ -357,6 +357,59 @@ export function buildExcursionPlan(
   };
 }
 
+function shiftDateKey(value: string | null | undefined, deltaDays: number): string | null {
+  const date = parseDue(value ?? null);
+  return date ? toDateKey(addDays(date, deltaDays)) : value ?? null;
+}
+
+/**
+ * Move the event day and every dated child / key date with it.
+ * The toolbar date field used to write `current_end_date` only.
+ */
+export function shiftExcursionDates(
+  project: Project,
+  tasks: Task[],
+  nextEventDate: string
+): {
+  project: Pick<Project, 'current_end_date' | 'key_dates' | 'milestones'>;
+  tasks: Array<{ id: string; due_date: string }>;
+} {
+  const next = parseDue(nextEventDate);
+  if (!next) throw new Error(`Invalid event_date: ${nextEventDate}`);
+  const nextKey = toDateKey(startOfDay(next));
+  const current = parseDue(project.current_end_date);
+  const delta = current
+    ? Math.round((startOfDay(next).getTime() - startOfDay(current).getTime()) / 86_400_000)
+    : 0;
+
+  const keys = project.key_dates;
+  const key_dates = keys
+    ? {
+        permission_note_due: shiftDateKey(keys.permission_note_due, delta),
+        staff_notification_due: shiftDateKey(keys.staff_notification_due, delta),
+        risk_assessment_due: shiftDateKey(keys.risk_assessment_due, delta),
+        payment_due: shiftDateKey(keys.payment_due, delta)
+      }
+    : null;
+
+  return {
+    project: {
+      current_end_date: nextKey,
+      key_dates,
+      milestones: project.milestones.map((item) => ({
+        ...item,
+        due_date: item.due_date ? shiftDateKey(item.due_date, delta) : item.due_date
+      }))
+    },
+    tasks: tasks
+      .filter((task) => task.parent_project_id === project.id && task.due_date)
+      .map((task) => ({
+        id: task.id,
+        due_date: delta === 0 ? task.due_date! : shiftDateKey(task.due_date, delta)!
+      }))
+  };
+}
+
 /** Default event day when creating from a template — no extra form step. */
 export function defaultExcursionEventDate(now = new Date()): string {
   return toDateKey(addDays(now, 45));

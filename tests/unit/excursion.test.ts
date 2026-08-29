@@ -10,7 +10,8 @@ import {
   defaultExcursionEventDate,
   excursionDatesFromAdminTask,
   matchAdminTask,
-  planAdminTaskForKind
+  planAdminTaskForKind,
+  shiftExcursionDates
 } from '@/domain/excursion';
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
@@ -62,6 +63,84 @@ describe('excursion plan', () => {
     expect(plan.drafted_documents.permission_note_draft).toContain('Year 10');
     expect(plan.drafted_documents.staff_absence_email_draft).toContain('Year 10 excursion');
     expect(plan.admin_tasks.some((t) => t.title.includes('Year 10 excursion'))).toBe(true);
+  });
+});
+
+describe('shiftExcursionDates', () => {
+  it('moves the event, key dates, and child tasks by the same delta', () => {
+    const shifted = shiftExcursionDates(
+      {
+        schema_version: 1,
+        id: 'proj_ex',
+        title: 'Ethics heat',
+        description: '',
+        parent_goal_id: null,
+        tags: [],
+        arc_summary: '',
+        type: 'excursion',
+        milestones: [{ id: 'ms_1', project_id: 'proj_ex', title: 'Event day', due_date: '2026-10-10', status: 'open' }],
+        status: 'active',
+        baseline_end_date: '2026-10-10',
+        current_end_date: '2026-10-10',
+        review_summary: null,
+        stall_flagged_at: null,
+        created_at: '2026-07-01T00:00:00.000Z',
+        updated_at: '2026-08-01T00:00:00.000Z',
+        competition_or_event_type: 'ext_excursion',
+        key_dates: {
+          permission_note_due: '2026-09-24',
+          staff_notification_due: '2026-09-24',
+          risk_assessment_due: '2026-09-03',
+          payment_due: '2026-09-17'
+        },
+        student_group_reference: null,
+        generated_admin_tasks: ['task_permission'],
+        drafted_documents: null
+      },
+      [
+        {
+          schema_version: 1,
+          id: 'task_permission',
+          title: 'Draft permission note',
+          description: '',
+          kind: 'task',
+          bucket: 'active',
+          step_order: 0,
+          domain: 'teaching',
+          framework_used: null,
+          estimated_duration: 45,
+          actual_duration: null,
+          due_date: '2026-09-24',
+          created_at: '2026-08-01T00:00:00.000Z',
+          updated_at: '2026-08-01T00:00:00.000Z',
+          completed_at: null,
+          status: 'open',
+          blocked_since: null,
+          priority: 'high',
+          parent_project_id: 'proj_ex',
+          parent_task_id: null,
+          depends_on: [],
+          tags: [],
+          recurrence_rule: null,
+          due_time: null,
+          remind_at: null,
+          remind_dismissed_at: null,
+          attachments: [],
+          source: 'auto_generated_from_excursion'
+        }
+      ],
+      '2026-10-17'
+    );
+
+    expect(shifted.project.current_end_date).toBe('2026-10-17');
+    expect(shifted.project.key_dates).toEqual({
+      permission_note_due: '2026-10-01',
+      staff_notification_due: '2026-10-01',
+      risk_assessment_due: '2026-09-10',
+      payment_due: '2026-09-24'
+    });
+    expect(shifted.project.milestones[0]?.due_date).toBe('2026-10-17');
+    expect(shifted.tasks).toEqual([{ id: 'task_permission', due_date: '2026-10-01' }]);
   });
 });
 
