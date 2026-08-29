@@ -128,6 +128,7 @@ const tasks: Task[] = [
 describe('projects view rebuild', () => {
   beforeEach(() => {
     resetProjectsViewStateForTests();
+    vi.clearAllMocks();
     vi.mocked(tasksApi.flagStalledProjects).mockResolvedValue({ flagged: [], candidates: 0 });
     vi.mocked(tasksApi.listProjects).mockResolvedValue(Object.values(fixtures));
     vi.mocked(tasksApi.listTasks).mockResolvedValue(tasks);
@@ -264,6 +265,45 @@ describe('projects view rebuild', () => {
       expect(titles).not.toContain('HSC Tool');
       expect(canvas.querySelector('.projects-chart__slice.is-active')?.textContent).toMatch(/Planning/);
     });
+  });
+
+  it('puts the kanban first, status mix beside the timeline, and the heatmap last', async () => {
+    const canvas = document.createElement('main');
+    await renderProjectsView(canvas);
+
+    const board = canvas.querySelector('.projects-board');
+    const pulse = canvas.querySelector('.projects-pulse');
+    const heat = canvas.querySelector('.projects-heatmap');
+    const chart = canvas.querySelector('.projects-chart');
+    expect(board).not.toBeNull();
+    expect(pulse).not.toBeNull();
+    expect(heat).not.toBeNull();
+    expect(chart).not.toBeNull();
+    expect(board!.compareDocumentPosition(pulse!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(pulse!.compareDocumentPosition(heat!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(canvas.textContent).not.toContain('Portfolio health');
+    expect(canvas.querySelector('.roadmap-lede')?.textContent).toMatch(/calendar time/);
+    expect(canvas.querySelector('.roadmap-axis__kind')?.textContent).toBe('Time');
+  });
+
+  it('changes the timeline range without remounting the page', async () => {
+    const canvas = document.createElement('main');
+    await renderProjectsView(canvas);
+    expect(tasksApi.listProjects).toHaveBeenCalledTimes(1);
+    expect(canvas.querySelector('.canvas-status')).toBeNull();
+
+    const week = [...canvas.querySelectorAll<HTMLButtonElement>('.projects-roadmap .hub-pills button')].find(
+      (btn) => btn.textContent === 'Week'
+    );
+    expect(week).not.toBeUndefined();
+    week?.click();
+
+    expect(tasksApi.listProjects).toHaveBeenCalledTimes(1);
+    expect(tasksApi.flagStalledProjects).toHaveBeenCalledTimes(1);
+    expect(canvas.querySelector('.canvas-status')).toBeNull();
+    expect(canvas.textContent).not.toContain('Loading…');
+    const pressed = canvas.querySelector('.projects-roadmap .hub-pills [aria-pressed="true"]');
+    expect(pressed?.textContent).toBe('Week');
   });
 
   it('keeps the stalled outcome queue and confirm write', async () => {
