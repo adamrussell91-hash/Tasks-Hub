@@ -82,22 +82,45 @@ describe('excursion timeline', () => {
       'Staff notification',
       'Event'
     ]);
-    expect(stops.at(-1)).toMatchObject({ kind: 'event', date: '2026-10-10' });
+    expect(stops.every((stop) => stop.task === null)).toBe(true);
+    expect(stops.at(-1)).toMatchObject({ kind: 'event', date: '2026-10-10', adminKind: 'event' });
   });
 
-  it('prefers a task card over a key-date chip on the same day', () => {
+  it('uses a matching admin task instead of a key-date chip', () => {
     const stops = collectExcursionStops(project(), [
-      task({ id: 't1', title: 'Draft permission note', due_date: '2026-09-24' })
+      task({
+        id: 't1',
+        title: 'Draft permission note',
+        due_date: '2026-09-24',
+        tags: ['excursion', 'admin', 'permission']
+      })
     ]);
-    expect(stops.filter((stop) => stop.date === '2026-09-24').map((stop) => stop.kind)).toEqual(['task']);
-    expect(stops.some((stop) => stop.label === 'Permission note')).toBe(false);
+    expect(stops.some((stop) => stop.label === 'Permission note' && !stop.task)).toBe(false);
+    expect(stops.find((stop) => stop.task?.id === 't1')).toMatchObject({
+      adminKind: 'permission_note',
+      kind: 'key_date'
+    });
+  });
+
+  it('does not add a second Event chip when an event task exists', () => {
+    const stops = collectExcursionStops(project(), [
+      task({
+        id: 't-event',
+        title: 'Event day — Ethics heat',
+        due_date: '2026-10-10',
+        tags: ['excursion', 'event']
+      })
+    ]);
+    const events = stops.filter((stop) => stop.kind === 'event');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.task?.id).toBe('t-event');
   });
 
   it('spaces later dates further down and keeps a min gap for same-day cards', () => {
     const layout = layoutExcursionTimeline([
-      { id: 'a', date: '2026-09-03', kind: 'key_date', label: 'Risk', task: null },
-      { id: 'b', date: '2026-09-03', kind: 'task', label: 'Lodge risk', task: null },
-      { id: 'c', date: '2026-10-10', kind: 'event', label: 'Event', task: null }
+      { id: 'a', date: '2026-09-03', kind: 'key_date', label: 'Risk', task: null, adminKind: 'risk_assessment' },
+      { id: 'b', date: '2026-09-03', kind: 'task', label: 'Lodge risk', task: null, adminKind: null },
+      { id: 'c', date: '2026-10-10', kind: 'event', label: 'Event', task: null, adminKind: 'event' }
     ]);
     expect(layout.stops[0]?.y).toBe(TIMELINE_PAD_TOP);
     expect(layout.stops[1]!.y - layout.stops[0]!.y).toBe(TIMELINE_MIN_GAP);

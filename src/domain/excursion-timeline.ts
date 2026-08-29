@@ -2,6 +2,11 @@ import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
 import { parseDue, toDateKey } from '@/domain/queries';
 import { projectChildTasks } from '@/domain/cards';
+import {
+  KEY_DATE_DEFS,
+  adminTaskKind,
+  type KeyDateKind
+} from '@/domain/excursion';
 
 export const TIMELINE_PAD_TOP = 28;
 export const TIMELINE_PAD_BOTTOM = 48;
@@ -17,6 +22,7 @@ export type TimelineStop = {
   kind: TimelineKind;
   label: string;
   task: Task | null;
+  adminKind: KeyDateKind | null;
 };
 
 export type LaidTimelineStop = TimelineStop & {
@@ -29,52 +35,46 @@ export type TimelineLayout = {
   height: number;
 };
 
-const KEY_DATE_ROWS: Array<[string, (project: Project) => string | null | undefined]> = [
-  ['Permission note', (project) => project.key_dates?.permission_note_due],
-  ['Staff notification', (project) => project.key_dates?.staff_notification_due],
-  ['Risk assessment', (project) => project.key_dates?.risk_assessment_due],
-  ['Payment', (project) => project.key_dates?.payment_due]
-];
-
 function dateKey(value: string | null | undefined): string | null {
   const parsed = parseDue(value ?? null);
   return parsed ? toDateKey(parsed) : null;
 }
 
-/** Tasks, unused key dates, and the event — one stop per moment, earliest first. */
+function kindForAdmin(kind: KeyDateKind | null): TimelineKind {
+  if (kind === 'event') return 'event';
+  if (kind) return 'key_date';
+  return 'task';
+}
+
+/** Tasks first, then unmatched key dates / event as placeholders — earliest first. */
 export function collectExcursionStops(project: Project, tasks: Task[]): TimelineStop[] {
   const children = projectChildTasks(project, tasks);
-  const taskDates = new Set(
-    children.map((task) => dateKey(task.due_date)).filter((key): key is string => Boolean(key))
-  );
-  const stops: TimelineStop[] = children.map((task) => ({
-    id: task.id,
-    date: dateKey(task.due_date) ?? dateKey(task.created_at) ?? toDateKey(new Date()),
-    kind: 'task',
-    label: task.title,
-    task
-  }));
+  const claimed = new Set<KeyDateKind>();
+  const stops: TimelineStop[] = children.map((task) => {
+    const adminKind = adminTaskKind(task);
+    const keyKind = adminKind && adminKind !== 'checklist' ? adminKind : null;
+    if (keyKind) claimed.add(keyKind);
+    return {
+      id: task.id,
+      date: dateKey(task.due_date) ?? dateKey(task.created_at) ?? toDateKey(new Date()),
+      kind: kindForAdmin(keyKind),
+      label: task.title,
+      task,
+      adminKind: keyKind
+    };
+  });
 
-  for (const [label, read] of KEY_DATE_ROWS) {
-    const date = dateKey(read(project) ?? null);
-    if (!date || taskDates.has(date)) continue;
+  for (const row of KEY_DATE_DEFS) {
+    if (claimed.has(row.kind)) continue;
+    const date = dateKey(row.read(project) ?? null);
+    if (!date) continue;
     stops.push({
-      id: `key:${label}:${date}`,
+      id: `key:${row.kind}:${date}`,
       date,
-      kind: 'key_date',
-      label,
-      task: null
-    });
-  }
-
-  const event = dateKey(project.current_end_date);
-  if (event) {
-    stops.push({
-      id: `event:${project.id}`,
-      date: event,
-      kind: 'event',
-      label: 'Event',
-      task: null
+      kind: kindForAdmin(row.kind),
+      label: row.label,
+      task: null,
+      adminKind: row.kind
     });
   }
 

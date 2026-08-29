@@ -33,7 +33,7 @@ import {
 import { carryReminderForward } from '@/domain/reminders';
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import { catalogPrograms } from '@/domain/programs-seed';
-import { buildExcursionPlan } from '@/domain/excursion';
+import { buildExcursionPlan, excursionDatesFromAdminTask } from '@/domain/excursion';
 import {
   catalogExcursionTemplates,
   resolveExcursionTemplateId
@@ -322,6 +322,13 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         await kv.setJSON(keys.taskKey(taskId), task);
       }
       next = updates.get(id) ?? next;
+      if (next.parent_project_id && next.due_date !== existing.due_date) {
+        const project = await this.getProject(next.parent_project_id);
+        if (project) {
+          const dates = excursionDatesFromAdminTask(project, next);
+          if (dates) await this.updateProject(project.id, dates);
+        }
+      }
       return next;
     },
     async deleteTask(id, meta) {

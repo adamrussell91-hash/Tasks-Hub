@@ -132,6 +132,31 @@ describe('calendar domain', () => {
     expect(items.find((item) => item.kind === 'milestone')?.project_title).toBe('MindWorks');
   });
 
+  it('does not duplicate a key date when the matching admin task is already on the calendar', () => {
+    const items = collectCalendarItems(
+      [
+        task({
+          id: 't-note',
+          title: 'Draft permission note',
+          due_date: '2026-09-14',
+          parent_project_id: 'p2',
+          tags: ['excursion', 'admin', 'permission']
+        })
+      ],
+      [
+        project({
+          id: 'p2',
+          title: 'Ethics heat',
+          type: 'excursion',
+          current_end_date: '2026-10-05',
+          key_dates: { permission_note_due: '2026-09-14', payment_due: null }
+        })
+      ]
+    );
+    expect(items.map((item) => item.id)).toEqual(['task:t-note', 'key:p2:Event']);
+    expect(items.some((item) => item.id === 'key:p2:Permission note')).toBe(false);
+  });
+
   it('filters completed work, domains, and title search', () => {
     const items = collectCalendarItems(
       [
