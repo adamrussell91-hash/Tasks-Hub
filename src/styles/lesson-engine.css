@@ -3076,16 +3076,7 @@
 }
 
 .lesson-page__cover {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.lesson-page__cover .lesson-page__title {
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--tracking-tight);
-  line-height: var(--leading-tight);
-  color: var(--navy);
+  position: relative;
 }
 
 .lesson-page__title {

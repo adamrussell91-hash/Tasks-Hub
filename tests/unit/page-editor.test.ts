@@ -223,6 +223,7 @@ describe('page editor', () => {
     expect(canvas.querySelector<HTMLInputElement>('.lesson-page__title')?.value).toBe(
       'Ethics Olympiad heat'
     );
+    expect(canvas.querySelector('.entity-banner .lesson-page__title')).not.toBeNull();
     expect(canvas.querySelector('.entity-banner')).not.toBeNull();
     expect(canvas.querySelector('.page-card__title-input')).toBeNull();
     expect(canvas.querySelector('.page-card__due')).toBeNull();

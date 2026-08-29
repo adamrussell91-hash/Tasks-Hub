@@ -1317,11 +1317,63 @@
   border: 0;
 }
 
+.excursion-page.lesson-page,
 .excursion-page {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
   min-height: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.excursion-page .lesson-page__cover {
+  width: calc(100% + (2 * var(--space-6)));
+  margin-inline: calc(-1 * var(--space-6));
+}
+
+.excursion-page .entity-banner {
+  min-height: 22rem;
+  border-radius: 0;
+}
+
+.excursion-page .lesson-page__title {
+  position: absolute;
+  z-index: 2;
+  left: var(--space-6);
+  right: 8rem;
+  bottom: var(--space-5);
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--on-dark);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.excursion-page .lesson-page__title::placeholder {
+  color: var(--on-dark-muted);
+}
+
+.excursion-page .lesson-page__title:focus-visible {
+  outline-color: var(--wave);
+}
+
+@media (max-width: 720px) {
+  .excursion-page .lesson-page__cover {
+    width: calc(100% + (2 * var(--space-4)));
+    margin-inline: calc(-1 * var(--space-4));
+  }
+
+  .excursion-page .lesson-page__title {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+    font-size: var(--text-xl);
+  }
 }
 
 .excursion-page__intro {

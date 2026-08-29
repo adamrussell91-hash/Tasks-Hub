@@ -371,7 +371,8 @@ export function paintExcursionPage(
   title.addEventListener('blur', () => {
     if (!title.value.trim()) title.value = current.title;
   });
-  coverHost.append(title);
+  const banner = coverHost.querySelector('.entity-banner');
+  (banner ?? coverHost).append(title);
 
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
