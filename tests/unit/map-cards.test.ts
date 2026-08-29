@@ -126,8 +126,9 @@ describe('map cards', () => {
       () => ({})
     );
     expect(index.querySelectorAll('.map-card-slot')).toHaveLength(2);
-    expect(index.querySelector<HTMLElement>('.hub-search')?.hidden).toBe(true);
-    index.querySelector<HTMLButtonElement>('.map-index__search-toggle')!.click();
+    expect(index.classList.contains('is-open')).toBe(false);
+    index.querySelector<HTMLButtonElement>('[data-map-index-toggle]')!.click();
+    expect(index.classList.contains('is-open')).toBe(true);
     const input = index.querySelector<HTMLInputElement>('.hub-search__input')!;
     input.value = 'rotary';
     input.dispatchEvent(new Event('input'));

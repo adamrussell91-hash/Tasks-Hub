@@ -1,4 +1,4 @@
-import { createExpandableSearch } from '@/views/map-chrome';
+import { createMapIndexSearch, createMapIndexShell } from '@/views/map-chrome';
 
 export type PickerGroup = { label: string; options: Array<{ value: string; label: string }> };
 
@@ -112,23 +112,19 @@ export function createFilteredPicker(
   };
 }
 
-/** Sidebar index for jumping to stations and competitions without scrolling the canvas. */
+/** Overlay index for jumping to stations and competitions without scrolling the canvas. */
 export function createMapIndex(
   items: MapIndexItem[],
   selectedId: string | null,
-  onPick: (item: MapIndexItem) => void
+  onPick: (item: MapIndexItem) => void,
+  open = false
 ): HTMLElement {
-  const aside = el('aside', 'map-index');
-  aside.setAttribute('aria-label', 'Map index');
-
-  const head = el('div', 'map-index__head');
-  head.append(el('p', 'map-index__title', 'On this map'));
-  const search = createExpandableSearch({
+  const shell = createMapIndexShell({ open });
+  const search = createMapIndexSearch({
     placeholder: 'Programs & competitions…',
     ariaLabel: 'Search map items',
     onInput: (value) => paint(value)
   });
-  head.append(search.root);
 
   const list = el('div', 'map-index__list');
 
@@ -167,7 +163,6 @@ export function createMapIndex(
   };
 
   paint('');
-
-  aside.append(head, list);
-  return aside;
+  shell.inner.append(search.root, list);
+  return shell.root;
 }

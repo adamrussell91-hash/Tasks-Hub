@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MapLine } from '@/schemas/map';
 import { closeCardMenu } from '@/views/card-menu';
-import { createExpandableSearch, createMapKey, createMapToolbar } from '@/views/map-chrome';
+import { createMapIndexSearch, createMapIndexShell, createMapToolbar } from '@/views/map-chrome';
 
 function line(partial: Partial<MapLine> = {}): MapLine {
   return {
@@ -100,39 +100,82 @@ describe('map chrome', () => {
     ]);
   });
 
-  it('shows line letters without mover arrows, and parks moves in the edit menu', () => {
+  it('hides line chrome in view and parks line edits in the toolbar menu', () => {
     const onMove = vi.fn();
     const onAddYearLine = vi.fn();
     const lines = [
       line(),
       line({ id: 'line_innovation', name: 'Innovation', letter: 'I', color: 'yellow' })
     ];
-    const viewing = createMapKey({ lines, mode: 'view', handlers: { onMove, onAddYearLine } });
-    expect(viewing.textContent).toContain('Justice Line');
-    expect(viewing.querySelector('[aria-label="Move Justice left"]')).toBeNull();
-    expect(viewing.querySelector('.card-menu')).toBeNull();
+    const handlers = {
+      onSelectMap: vi.fn(),
+      onMode: vi.fn(),
+      onExport: vi.fn(),
+      onNewMap: vi.fn(),
+      onFullscreen: vi.fn(),
+      onAddLine: vi.fn(),
+      onAddProgram: vi.fn(),
+      onAddCompetition: vi.fn(),
+      onJoin: vi.fn(),
+      onMove,
+      onAddYearLine
+    };
+    const viewing = createMapToolbar({
+      maps: [{ id: 'map_a', title: 'MindWorks 2026' }],
+      currentId: 'map_a',
+      mode: 'view',
+      fullscreen: false,
+      joining: false,
+      lines,
+      handlers
+    });
+    expect(viewing.querySelector('[aria-label="Lines menu"]')).toBeNull();
+    expect(viewing.textContent).not.toContain('Justice Line');
+    expect(viewing.textContent).not.toContain('Junior · Rozelle · Senior');
 
-    const editing = createMapKey({ lines, mode: 'edit', handlers: { onMove, onAddYearLine } });
-    expect(editing.querySelector('[aria-label="Move Justice left"]')).toBeNull();
-    const menu = openMenu(editing, 'Justice Line menu');
-    expect(menuLabels(menu)).toEqual(['Move right', 'Add extra year line']);
-    menu.querySelector<HTMLButtonElement>('[data-card-menu-item="right"]')?.click();
+    const editing = createMapToolbar({
+      maps: [{ id: 'map_a', title: 'MindWorks 2026' }],
+      currentId: 'map_a',
+      mode: 'edit',
+      fullscreen: false,
+      joining: false,
+      lines,
+      handlers
+    });
+    const menu = openMenu(editing, 'Lines menu');
+    expect(menuLabels(menu)).toEqual([
+      'Move Justice right',
+      'Add extra year line to Justice',
+      'Move Innovation left',
+      'Add extra year line to Innovation'
+    ]);
+    menu.querySelector<HTMLButtonElement>('[data-card-menu-item="right-line_justice"]')?.click();
     expect(onMove).toHaveBeenCalledWith('line_justice', 1);
   });
 
-  it('starts search as an icon and expands the field on click', () => {
+  it('starts the map index as an icon and expands the panel on click', () => {
+    const onOpen = vi.fn();
     const onInput = vi.fn();
-    const search = createExpandableSearch({
+    const shell = createMapIndexShell({ onOpenChange: onOpen });
+    const search = createMapIndexSearch({
       placeholder: 'Programs & competitions…',
       ariaLabel: 'Search map cards',
       onInput
     });
-    expect(search.root.querySelector<HTMLElement>('.hub-search')?.hidden).toBe(true);
-    search.root.querySelector<HTMLButtonElement>('.map-index__search-toggle')!.click();
-    expect(search.root.querySelector<HTMLElement>('.hub-search')?.hidden).toBe(false);
+    shell.inner.append(search.root);
+
+    expect(shell.root.classList.contains('is-open')).toBe(false);
+    expect(shell.root.querySelector('[data-map-index-toggle]')?.getAttribute('aria-expanded')).toBe('false');
+    shell.root.querySelector<HTMLButtonElement>('[data-map-index-toggle]')!.click();
+    expect(shell.root.classList.contains('is-open')).toBe(true);
+    expect(onOpen).toHaveBeenCalledWith(true);
     expect(search.input.placeholder).toBe('Programs & competitions…');
     search.input.value = 'rotary';
     search.input.dispatchEvent(new Event('input'));
     expect(onInput).toHaveBeenCalledWith('rotary');
+
+    shell.root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(shell.root.classList.contains('is-open')).toBe(false);
+    expect(onOpen).toHaveBeenCalledWith(false);
   });
 });
