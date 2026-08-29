@@ -86,8 +86,9 @@ function renderStatusChart(
 
 function renderHeatmap(ctx: PulseContext): HTMLElement {
   const model = projectActivityHeatmap(ctx.projects, ctx.tasks, ctx.now);
-  const tile = el('section', 'hub-card');
+  const tile = el('section', 'hub-card projects-heatmap');
   tile.append(el('p', 'hub-card__eyebrow', 'Activity — last 12 weeks'));
+  tile.append(el('p', 'heat-lede', 'A filled cell is a week with any task activity. Not a count.'));
   const rows = el('div', 'heat-rows');
   for (const row of model.rows) {
     const line = el('div', 'heat-row');
@@ -110,12 +111,12 @@ function renderHeatmap(ctx: PulseContext): HTMLElement {
 
 function renderRoadmap(ctx: PulseContext, onZoom: (zoom: RoadmapZoom) => void): HTMLElement {
   const model = projectRoadmap(ctx.projects, ctx.tasks, roadmapZoom, ctx.now);
-  const tile = el('section', 'hub-card');
+  const tile = el('section', 'hub-card projects-roadmap');
   const head = el('div', 'roadmap-head');
-  head.append(el('p', 'hub-card__eyebrow', 'Roadmap'));
+  head.append(el('p', 'hub-card__eyebrow', 'Timeline'));
   head.append(
     createHubPills({
-      label: 'Roadmap range',
+      label: 'Timeline range',
       items: [
         { id: 'week', label: 'Week' },
         { id: 'month', label: 'Month' },
@@ -126,6 +127,13 @@ function renderRoadmap(ctx: PulseContext, onZoom: (zoom: RoadmapZoom) => void): 
     })
   );
   tile.append(head);
+  tile.append(
+    el(
+      'p',
+      'roadmap-lede',
+      'Each bar is calendar time — when the project runs, from start to target. The dashed outline is the original plan. Not a task count.'
+    )
+  );
   const rows = el('div', 'roadmap-rows');
   for (const row of model.rows) {
     const line = el('div', 'roadmap-row');
@@ -149,7 +157,7 @@ function renderRoadmap(ctx: PulseContext, onZoom: (zoom: RoadmapZoom) => void): 
   }
   if (!model.rows.length) rows.append(el('p', 'empty-state empty-state--compact', 'No live projects on the horizon.'));
   const axis = el('div', 'roadmap-axis');
-  axis.append(el('span'));
+  axis.append(el('span', 'roadmap-axis__kind', 'Time'));
   const ticks = el('div', 'roadmap-axis__ticks');
   for (const tick of model.axis) ticks.append(el('span', undefined, tick));
   axis.append(ticks);
@@ -536,35 +544,31 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
   const stallIds = new Set(findStallCandidates(projects, tasks, now).map((item) => item.project.id));
   const cards = projects.map((project) => buildProjectPulseCard(project, tasks, stallIds, now));
   const ctx: PulseContext = { projects, tasks, goals, cards, stallIds, now };
-  const mix = projectLifecycleMix(projects, tasks, stallIds, now);
-  const running = runningProjectCount(mix);
   const retro = findRetroCandidate(cards, now);
   const stalled = cards.filter((card) => card.lifecycle === 'stalled');
   const mergeTargets = projects.filter((project) => project.status !== 'archived_dead' && project.status !== 'stalled');
 
   const reload = () => void renderProjectsView(canvas);
 
+  function mountRoadmap(): HTMLElement {
+    return renderRoadmap(ctx, (zoom) => {
+      roadmapZoom = zoom;
+      canvas.querySelector('.projects-roadmap')?.replaceWith(mountRoadmap());
+    });
+  }
+
   function refreshPulse(): void {
     const host = canvas.querySelector('.projects-pulse');
     if (!host) return;
     const nextMix = projectLifecycleMix(ctx.projects, ctx.tasks, ctx.stallIds, ctx.now);
     const nextRunning = runningProjectCount(nextMix);
-    host.replaceChildren();
-    host.append(
+    host.replaceChildren(
       renderStatusChart(nextMix, nextRunning, (id) => {
         lifecycleFilter = id;
         paint();
-      })
+      }),
+      mountRoadmap()
     );
-    const nextStack = el('div', 'projects-pulse__stack');
-    nextStack.append(
-      renderHeatmap(ctx),
-      renderRoadmap(ctx, (zoom) => {
-        roadmapZoom = zoom;
-        paint();
-      })
-    );
-    host.append(nextStack);
   }
 
   function dropProject(projectId: string): void {
@@ -587,6 +591,8 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
       : null;
     const scrollTop = canvas.scrollTop;
     const tension = tensionDismissed ? null : findPortfolioTension(ctx.cards, ctx.tasks, ctx.now);
+    const nextMix = projectLifecycleMix(ctx.projects, ctx.tasks, ctx.stallIds, ctx.now);
+    const nextRunning = runningProjectCount(nextMix);
 
     canvas.replaceChildren();
     if (flagWarning) canvas.append(el('p', 'empty-state', flagWarning));
@@ -595,28 +601,14 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     const closureConfirmHost = el('div', 'closure-confirm');
     canvas.append(closureConfirmHost, stallConfirmHost);
 
-    if (tension) canvas.append(renderTensionBanner(tension.message, () => {
-      tensionDismissed = true;
-      paint();
-    }));
-
-    const pulse = el('div', 'projects-pulse');
-    pulse.append(
-      renderStatusChart(mix, running, (id) => {
-        lifecycleFilter = id;
-        paint();
-      })
-    );
-    const stack = el('div', 'projects-pulse__stack');
-    stack.append(
-      renderHeatmap(ctx),
-      renderRoadmap(ctx, (zoom) => {
-        roadmapZoom = zoom;
-        paint();
-      })
-    );
-    pulse.append(stack);
-    canvas.append(pulse);
+    if (tension) {
+      canvas.append(
+        renderTensionBanner(tension.message, () => {
+          tensionDismissed = true;
+          paint();
+        })
+      );
+    }
 
     const toolbar = createHubToolbar();
     const search = createHubSearch({
@@ -656,6 +648,16 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
     canvas.append(toolbar);
     canvas.append(renderBoard(ctx, closureConfirmHost, boardActions));
 
+    const pulse = el('div', 'projects-pulse');
+    pulse.append(
+      renderStatusChart(nextMix, nextRunning, (id) => {
+        lifecycleFilter = id;
+        paint();
+      }),
+      mountRoadmap()
+    );
+    canvas.append(pulse);
+
     const retroCard = renderRetro(retro, reload);
     if (retroCard) canvas.append(retroCard);
 
@@ -683,6 +685,8 @@ export async function renderProjectsView(canvas: HTMLElement): Promise<void> {
       }
       canvas.append(logStack);
     }
+
+    canvas.append(renderHeatmap(ctx));
 
     canvas.scrollTop = scrollTop;
     if (restoreSearch) {
