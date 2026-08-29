@@ -3065,6 +3065,10 @@
   box-shadow: var(--elev-3);
 }
 
+.entity-banner__panel[hidden] {
+  display: none;
+}
+
 .entity-banner__actions {
   display: flex;
   flex-wrap: wrap;

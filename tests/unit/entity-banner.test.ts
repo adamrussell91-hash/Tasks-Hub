@@ -23,6 +23,7 @@ describe('entity banner', () => {
 
     expect(host.querySelector('.entity-banner--hero')).not.toBeNull();
     expect(host.querySelector('.entity-banner.has-cover')).toBeNull();
+    expect(host.querySelector<HTMLElement>('.entity-banner__panel')?.hidden).toBe(true);
 
     const url = host.querySelector<HTMLInputElement>('[aria-label="Cover image URL"]')!;
     url.value = 'https://example.com/tom.jpg';
@@ -32,5 +33,6 @@ describe('entity banner', () => {
     expect(host.querySelector('.entity-banner.has-cover img')?.getAttribute('src')).toBe(
       'https://example.com/tom.jpg'
     );
+    expect(host.querySelector<HTMLElement>('.entity-banner__panel')?.hidden).toBe(true);
   });
 });

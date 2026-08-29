@@ -117,6 +117,7 @@ export function renderEntityBanner(
     url.addEventListener('change', () => {
       const next = url.value.trim();
       save(next ? { url: next } : null);
+      setOpen(false);
     });
     file.addEventListener('change', () => {
       const picked = file.files?.[0];
@@ -128,8 +129,13 @@ export function renderEntityBanner(
       );
     });
 
+    const setOpen = (open: boolean) => {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    toggle.setAttribute('aria-expanded', 'false');
     toggle.addEventListener('click', () => {
-      panel.hidden = !panel.hidden;
+      setOpen(panel.hidden);
     });
 
     const actions = document.createElement('div');
