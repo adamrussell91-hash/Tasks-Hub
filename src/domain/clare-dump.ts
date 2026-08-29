@@ -1,6 +1,6 @@
 import type { Project } from '@/schemas/project';
 import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
-import { addDays, toDateKey } from '@/domain/queries';
+import { addDays, hubCalendarDate, toDateKey, toHubDateKey } from '@/domain/queries';
 
 export type DumpKind = 'task' | 'communication' | 'note' | 'meta';
 
@@ -281,15 +281,17 @@ function parseExplicitDate(text: string, now: Date): string | null {
 function inferDue(text: string, now: Date): { due_date: string | null; hint: string | null } {
   const explicit = parseExplicitDate(text, now);
   if (explicit) return { due_date: explicit, hint: null };
+  // Anchor relative words to Adam's Sydney calendar day (UTC hosts would otherwise shift).
+  const hubDay = hubCalendarDate(now);
   if (/\btoday\b/.test(text) || /\bthis afternoon\b/.test(text) || /\btonight\b/.test(text)) {
-    return { due_date: toDateKey(now), hint: null };
+    return { due_date: toHubDateKey(now), hint: null };
   }
   if (/\btomorrow\b/.test(text)) {
-    return { due_date: toDateKey(addDays(now, 1)), hint: null };
+    return { due_date: toDateKey(addDays(hubDay, 1)), hint: null };
   }
   const weekday = Object.keys(WEEKDAYS).find((name) => new RegExp(`\\b${name}\\b`).test(text));
   if (weekday) {
-    return { due_date: toDateKey(nextWeekday(now, WEEKDAYS[weekday]!)), hint: null };
+    return { due_date: toDateKey(nextWeekday(hubDay, WEEKDAYS[weekday]!)), hint: null };
   }
   if (/\bthis week\b/.test(text)) return { due_date: null, hint: 'this-week' };
   if (/\bnext week\b/.test(text)) return { due_date: null, hint: 'next-week' };

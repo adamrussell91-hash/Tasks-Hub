@@ -153,4 +153,14 @@ describe('brain dump parsing', () => {
     expect(result.questions).toHaveLength(0);
     expect(result.voice).toMatch(/doesn't parse as work/i);
   });
+
+  it('anchors "due today" to Australia/Sydney when the host clock is UTC', () => {
+    // Saturday 29 Aug 2026 22:05 UTC = Sunday 30 Aug morning in Sydney
+    const utcEvening = new Date('2026-08-29T22:05:00.000Z');
+    const items = parseBrainDump('email parents due today', {
+      now: utcEvening,
+      preferredDomain: 'teaching'
+    });
+    expect(items[0]!.due_date).toBe('2026-08-30');
+  });
 });

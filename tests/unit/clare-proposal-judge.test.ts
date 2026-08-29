@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CLARE_PROPOSAL_SYSTEM,
   parseClareProposalJudgment,
   type ClareProposalJudge
 } from '@/ai/clare-proposal-judge';
@@ -13,6 +14,30 @@ import type { SeedData } from '@/services/types';
 const seed = JSON.parse(
   readFileSync(resolve(process.cwd(), 'fixtures/seed.json'), 'utf8')
 ) as SeedData;
+
+describe('Clare dump digest clock', () => {
+  it('puts Sydney today + weekday in the digest even on a UTC host clock', () => {
+    const digest = buildClareDumpDigest({
+      text: 'Today is Sunday the 30th. This is Sydney.',
+      items: [],
+      frameworks: seed.frameworks,
+      tasks: [],
+      projects: [],
+      calibrations: [],
+      preferredDomain: 'life',
+      now: new Date('2026-08-29T22:05:00.000Z')
+    });
+    expect(digest.today).toBe('2026-08-30');
+    expect(digest.today_weekday).toBe('Sunday');
+    expect(digest.timezone).toBe('Australia/Sydney');
+  });
+
+  it('tells the model to trust the Sydney digest clock', () => {
+    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/Australia\/Sydney/);
+    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/digest\.today/);
+    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/Never invent a different "today"/);
+  });
+});
 
 describe('parseClareProposalJudgment', () => {
   const items = parseBrainDump('I really need to sort out my appraisal goal.', {
