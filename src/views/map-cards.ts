@@ -6,7 +6,7 @@ import { discCss, letterCss } from '@/domain/maps-colors';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { cardTransitionName, runContainerTransform } from '@/views/container-transform';
 import { closeCardMenu, renderCardMenu, type CardMenuItem } from '@/views/card-menu';
-import { createExpandableSearch } from '@/views/map-chrome';
+import { createMapIndexSearch, createMapIndexShell } from '@/views/map-chrome';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -270,24 +270,22 @@ export function mountMapCardIndex(
   editorFor?: (model: MapCardModel) => HTMLElement | null,
   searchState: MapCardIndexSearch = {}
 ): HTMLElement {
-  const aside = el('aside', 'map-index map-card-index');
-  aside.setAttribute('aria-label', 'Map cards');
-  const head = el('div', 'map-index__head');
-  head.append(el('p', 'map-index__title', 'On this map'));
   let query = searchState.query ?? '';
-  const search = createExpandableSearch({
+  const shell = createMapIndexShell({
+    open: searchState.open ?? Boolean(query),
+    onOpenChange: searchState.onOpen
+  });
+  shell.root.classList.add('map-card-index');
+  const search = createMapIndexSearch({
     placeholder: 'Programs & competitions…',
     ariaLabel: 'Search map cards',
     value: query,
-    open: searchState.open ?? Boolean(query),
     onInput: (value) => {
       query = value;
       searchState.onQuery?.(value);
       paint(value);
-    },
-    onOpenChange: searchState.onOpen
+    }
   });
-  head.append(search.root);
 
   const list = el('div', 'map-index__list map-card-index__list');
 
@@ -323,6 +321,6 @@ export function mountMapCardIndex(
   };
 
   paint(query);
-  aside.append(head, list);
-  return aside;
+  shell.inner.append(search.root, list);
+  return shell.root;
 }

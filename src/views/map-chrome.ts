@@ -1,77 +1,85 @@
-import type { MapColorToken, MapLine } from '@/schemas/map';
-import { lineTrackDefs, missingStandardYearTracks } from '@/domain/maps-layout';
-import { discCss, letterCss } from '@/domain/maps-colors';
+import type { MapLine } from '@/schemas/map';
+import { missingStandardYearTracks } from '@/domain/maps-layout';
 import { createOutlineIcon, RAIL_ICON_PATHS } from '@/shell/icons';
 import { renderCardMenu, type CardMenuItem } from '@/views/card-menu';
 import { createHubFilter, createHubToolbar, el } from '@/views/hub-kit';
 
 export type MapMode = 'view' | 'edit';
 
-export type ExpandableSearchOptions = {
-  placeholder: string;
-  ariaLabel: string;
-  value?: string;
+export type MapIndexShellOptions = {
   open?: boolean;
-  onInput: (value: string) => void;
   onOpenChange?: (open: boolean) => void;
 };
 
-export function createExpandableSearch(options: ExpandableSearchOptions): {
+export type MapIndexShell = {
   root: HTMLElement;
-  input: HTMLInputElement;
-} {
-  let open = Boolean(options.open || options.value);
-  const root = el('div', 'map-index__search-slot');
-  const toggle = el('button', 'hub-icon-btn map-index__search-toggle') as HTMLButtonElement;
+  inner: HTMLElement;
+  setOpen: (open: boolean) => void;
+};
+
+/** Collapsed search icon that expands into the map index — same motion as the universe key. */
+export function createMapIndexShell(options: MapIndexShellOptions = {}): MapIndexShell {
+  let open = Boolean(options.open);
+  const root = el('aside', `map-index${open ? ' is-open' : ''}`);
+  root.setAttribute('aria-label', 'On this map');
+  root.setAttribute('data-map-index', '');
+
+  const toggle = el('button', 'map-index__toggle') as HTMLButtonElement;
   toggle.type = 'button';
-  toggle.title = options.ariaLabel;
-  toggle.setAttribute('aria-label', options.ariaLabel);
-  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.setAttribute('data-map-index-toggle', '');
+  toggle.setAttribute('aria-controls', 'map-index-panel');
+  toggle.title = 'On this map';
   toggle.append(createOutlineIcon(RAIL_ICON_PATHS.search ?? []));
+  toggle.append(el('span', 'map-index__title', 'On this map'));
 
-  const search = el('label', 'hub-search map-index__search');
-  search.append(el('span', 'visually-hidden', options.ariaLabel));
-  const input = el('input', 'hub-search__input') as HTMLInputElement;
-  input.type = 'search';
-  input.placeholder = options.placeholder;
-  input.setAttribute('aria-label', options.ariaLabel);
-  if (options.value) input.value = options.value;
-  search.append(input);
+  const panel = el('div', 'map-index__panel');
+  panel.id = 'map-index-panel';
+  const inner = el('div', 'map-index__panel-inner');
+  panel.append(inner);
 
-  const paint = () => {
+  const sync = () => {
     root.classList.toggle('is-open', open);
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    search.hidden = !open;
-    toggle.hidden = open;
+    toggle.setAttribute('aria-label', open ? 'Collapse map index' : 'On this map');
   };
 
   const setOpen = (next: boolean) => {
     if (open === next) return;
     open = next;
-    paint();
+    sync();
     options.onOpenChange?.(open);
-    if (open) input.focus();
+    if (open) inner.querySelector<HTMLInputElement>('.hub-search__input')?.focus();
+    else toggle.focus();
   };
 
-  toggle.addEventListener('click', () => setOpen(true));
-  input.addEventListener('input', () => options.onInput(input.value));
-  input.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    if (input.value) {
-      input.value = '';
-      options.onInput('');
-      return;
-    }
-    setOpen(false);
-    toggle.focus();
-  });
-  input.addEventListener('blur', () => {
-    if (input.value.trim()) return;
+  toggle.addEventListener('click', () => setOpen(!open));
+  root.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !open) return;
+    event.stopPropagation();
+    event.preventDefault();
     setOpen(false);
   });
 
-  paint();
-  root.append(toggle, search);
+  sync();
+  root.append(toggle, panel);
+  return { root, inner, setOpen };
+}
+
+export function createMapIndexSearch(options: {
+  placeholder: string;
+  ariaLabel: string;
+  value?: string;
+  onInput: (value: string) => void;
+}): { root: HTMLElement; input: HTMLInputElement } {
+  const root = el('label', 'hub-search map-index__search');
+  root.append(el('span', 'visually-hidden', options.ariaLabel));
+  const input = el('input', 'hub-search__input') as HTMLInputElement;
+  input.type = 'search';
+  input.placeholder = options.placeholder;
+  input.setAttribute('aria-label', options.ariaLabel);
+  if (options.value) input.value = options.value;
+  input.addEventListener('input', () => options.onInput(input.value));
+  root.append(input);
   return { root, input };
 }
 
@@ -85,6 +93,8 @@ export type MapToolbarHandlers = {
   onAddProgram: () => void;
   onAddCompetition: () => void;
   onJoin: () => void;
+  onMove?: (id: string, delta: -1 | 1) => void;
+  onAddYearLine?: (line: MapLine) => void;
 };
 
 export function createMapToolbar(options: {
@@ -93,6 +103,7 @@ export function createMapToolbar(options: {
   mode: MapMode;
   fullscreen: boolean;
   joining: boolean;
+  lines?: MapLine[];
   handlers: MapToolbarHandlers;
 }): HTMLElement {
   const toolbar = createHubToolbar('map-toolbar');
@@ -137,64 +148,36 @@ export function createMapToolbar(options: {
     );
   }
 
-  toolbar.append(
-    select.el,
-    renderCardMenu('Map menu', items, { heading: 'Map', inline: true })
-  );
-  return toolbar;
-}
+  toolbar.append(select.el, renderCardMenu('Map menu', items, { heading: 'Map', inline: true }));
 
-export type MapKeyHandlers = {
-  onMove: (id: string, delta: -1 | 1) => void;
-  onAddYearLine: (line: MapLine) => void;
-};
-
-export function createMapKey(options: {
-  lines: MapLine[];
-  mode: MapMode;
-  handlers: MapKeyHandlers;
-}): HTMLElement {
-  const key = el('div', 'map-key');
-  key.setAttribute('aria-label', 'Map key');
-  for (const [index, line] of options.lines.entries()) {
-    const item = el('span', 'map-key__item');
-    const mark = el('span', 'map-key__disc', line.letter);
-    mark.style.background = discCss(line.color as MapColorToken);
-    mark.style.color = letterCss(line.color as MapColorToken);
-    if (line.color === 'yellow' || line.color === 'high-sea') {
-      mark.style.boxShadow = `inset 0 0 0 2px ${discCss(line.color)}`;
-    }
-    item.append(mark, el('span', 'map-key__name', `${line.name} Line`));
-    const yearLines = lineTrackDefs(line);
-    if (yearLines.length) {
-      const trackList = el('span', 'map-key__year-lines');
-      trackList.textContent = yearLines.map((track) => track.label).join(' · ');
-      item.append(trackList);
-    }
-    if (options.mode === 'edit') {
-      const menuItems: CardMenuItem[] = [];
+  const lines = options.lines ?? [];
+  if (options.mode === 'edit' && lines.length && options.handlers.onMove && options.handlers.onAddYearLine) {
+    const lineItems: CardMenuItem[] = [];
+    for (const [index, line] of lines.entries()) {
       if (index > 0) {
-        menuItems.push({
-          id: 'left',
-          label: 'Move left',
-          onSelect: () => options.handlers.onMove(line.id, -1)
+        lineItems.push({
+          id: `left-${line.id}`,
+          label: `Move ${line.name} left`,
+          onSelect: () => options.handlers.onMove?.(line.id, -1)
         });
       }
-      if (index < options.lines.length - 1) {
-        menuItems.push({
-          id: 'right',
-          label: 'Move right',
-          onSelect: () => options.handlers.onMove(line.id, 1)
+      if (index < lines.length - 1) {
+        lineItems.push({
+          id: `right-${line.id}`,
+          label: `Move ${line.name} right`,
+          onSelect: () => options.handlers.onMove?.(line.id, 1)
         });
       }
-      menuItems.push({
-        id: 'year-line',
-        label: missingStandardYearTracks(line).length ? 'Add year line' : 'Add extra year line',
-        onSelect: () => options.handlers.onAddYearLine(line)
+      lineItems.push({
+        id: `year-${line.id}`,
+        label: missingStandardYearTracks(line).length
+          ? `Add year line to ${line.name}`
+          : `Add extra year line to ${line.name}`,
+        onSelect: () => options.handlers.onAddYearLine?.(line)
       });
-      item.append(renderCardMenu(`${line.name} Line menu`, menuItems, { heading: 'Line', inline: true }));
     }
-    key.append(item);
+    toolbar.append(renderCardMenu('Lines menu', lineItems, { heading: 'Lines', inline: true }));
   }
-  return key;
+
+  return toolbar;
 }

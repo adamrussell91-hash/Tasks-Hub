@@ -13,7 +13,7 @@ import { tasksApi } from '@/services/client-api';
 import { exportMapHtml, mapsOrSeed, pickCurrentYearMap } from '@/domain/maps';
 import { createFilteredPicker, type MapIndexItem, type PickerGroup } from '@/views/map-nav';
 import { mountMapCardIndex, type MapCardModel } from '@/views/map-cards';
-import { createMapKey, createMapToolbar } from '@/views/map-chrome';
+import { createMapToolbar } from '@/views/map-chrome';
 import {
   applyDateSpanToStation,
   applyDateToTickAttach,
@@ -794,7 +794,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
   let joining = false;
   let toast = '';
   let indexQuery = '';
-  let indexSearchOpen = false;
+  let indexOpen = false;
 
   const activeTouches = new Map<number, { x: number; y: number }>();
   let pinchStartDist = 0;
@@ -855,6 +855,7 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       mode,
       fullscreen,
       joining,
+      lines: current.lines,
       handlers: {
         onSelectMap: (value) => {
           const next = maps.find((m) => m.id === value);
@@ -889,45 +890,30 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
           joining = !joining;
           toast = joining ? 'Drag from one element to another to join. Ports show only in this mode.' : '';
           paint();
+        },
+        onMove: (id, delta) => {
+          current.lines = moveLine(current.lines, id, delta);
+          paint();
+          void persist();
+        },
+        onAddYearLine: (line) => {
+          const missing = missingStandardYearTracks(line);
+          if (missing.length) {
+            current.lines = current.lines.map((entry) =>
+              entry.id === line.id ? addStandardYearTrack(entry) : entry
+            );
+          } else {
+            const label = window.prompt('Name for the extra year line on this strand:', 'Middle');
+            if (!label?.trim()) return;
+            current.lines = current.lines.map((entry) =>
+              entry.id === line.id ? addExtraYearTrack(entry, label) : entry
+            );
+          }
+          void persist().then(() => paint());
         }
       }
     });
     canvas.append(toolbar);
-
-    canvas.append(
-      createMapKey({
-        lines: current.lines,
-        mode,
-        handlers: {
-          onMove: (id, delta) => {
-            current.lines = moveLine(current.lines, id, delta);
-            paint();
-            void persist();
-          },
-          onAddYearLine: (line) => {
-            const missing = missingStandardYearTracks(line);
-            if (missing.length) {
-              current.lines = current.lines.map((entry) =>
-                entry.id === line.id ? addStandardYearTrack(entry) : entry
-              );
-            } else {
-              const label = window.prompt('Name for the extra year line on this strand:', 'Middle');
-              if (!label?.trim()) return;
-              current.lines = current.lines.map((entry) =>
-                entry.id === line.id ? addExtraYearTrack(entry, label) : entry
-              );
-            }
-            void persist().then(() => paint());
-          }
-        }
-      })
-    );
-    const tracksKey = el('p', 'map-key__tracks');
-    tracksKey.textContent =
-      mode === 'edit'
-        ? 'Each strand shows its year lines (Junior, Rozelle, Senior) evenly spaced. Use + Year line to restore a missing standard line or add a custom one.'
-        : 'Each strand shows its year lines (Junior, Rozelle, Senior) evenly spaced across the column.';
-    canvas.append(tracksKey);
 
     const body = el('div', 'map-body');
     const stage = el('div', `map-stage${joining ? ' is-joining' : ''}${mode === 'edit' ? ' is-edit' : ''}`);
@@ -1002,16 +988,17 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
       (model) => (mode === 'edit' ? buildItemEditor(model.id, year, terms) : null),
       {
         query: indexQuery,
-        open: indexSearchOpen,
+        open: indexOpen,
         onQuery: (value) => {
           indexQuery = value;
         },
         onOpen: (open) => {
-          indexSearchOpen = open;
+          indexOpen = open;
         }
       }
     );
-    body.append(stage, index);
+    stage.append(index);
+    body.append(stage);
     if (selectedId) {
       index
         .querySelector<HTMLElement>(`.map-card-slot[data-map-item-id="${selectedId}"]`)

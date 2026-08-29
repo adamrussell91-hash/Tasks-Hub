@@ -3130,6 +3130,10 @@
   --map-yellow-fill: #fff3b0;
   --map-green-fill: #c8f0d2;
   --map-purple-fill: #edd6fa;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: calc(100vh - 8rem);
 }
 
 html.is-map-fullscreen,
@@ -3163,25 +3167,15 @@ html.is-map-fullscreen .map-page {
   min-height: calc(100vh - var(--space-3) * 2);
 }
 
-html.is-map-fullscreen .map-page .map-key__tracks {
-  display: none;
-}
-
 html.is-map-fullscreen .map-page .map-body {
   flex: 1;
   min-height: 0;
   position: relative;
-  align-items: stretch;
 }
 
 html.is-map-fullscreen .map-page .map-stage {
   height: 100%;
   min-height: 0;
-}
-
-html.is-map-fullscreen .map-page .map-index {
-  max-height: none;
-  height: 100%;
 }
 
 html.is-map-fullscreen .map-page .map-preview {
@@ -3205,7 +3199,7 @@ html.is-map-fullscreen .map-page .map-preview {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: 0;
 }
 
 .map-key {
@@ -3285,8 +3279,8 @@ html.is-map-fullscreen .map-page .map-preview {
   background: var(--cotton);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  min-height: 56rem;
-  height: calc(100vh - 14rem);
+  min-height: 24rem;
+  height: 100%;
   overflow: hidden;
   cursor: grab;
   touch-action: none;
@@ -3318,7 +3312,7 @@ html.is-map-fullscreen .map-page .map-preview {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 56rem;
+  min-height: 24rem;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -3326,7 +3320,7 @@ html.is-map-fullscreen .map-page .map-preview {
 .map-zoom {
   position: absolute;
   top: var(--space-3);
-  right: var(--space-3);
+  right: calc(var(--space-3) + 3.25rem);
   display: flex;
   gap: var(--space-2);
 }
@@ -3462,64 +3456,129 @@ html.is-map-fullscreen .map-page .map-preview {
   margin-top: var(--space-3);
 }
 
-.map-index__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.map-index__head .map-index__title {
-  margin: 0;
-}
-
-.map-index__search-slot {
-  display: flex;
-  justify-content: flex-end;
-  min-width: 2rem;
-}
-
-.map-index__search-slot.is-open {
-  flex: 1 1 12rem;
-}
-
-.map-index__search-slot .map-index__search[hidden] {
-  display: none;
-}
-
 .map-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
-  gap: var(--space-4);
-  align-items: start;
+  position: relative;
+  display: block;
+  flex: 1;
+  min-height: 24rem;
 }
 
 .map-index {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-height: calc(100vh - 14rem);
-  padding: var(--space-3);
+  --map-index-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  bottom: auto;
+  z-index: 6;
+  width: 2.75rem;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--navy) 22%, var(--line));
   background: var(--paper);
-  border: 1px solid var(--line);
+  box-shadow: var(--elev-3);
+  pointer-events: auto;
+  transition:
+    width 0.52s var(--map-index-ease),
+    border-radius 0.52s var(--map-index-ease),
+    border-color 0.52s var(--map-index-ease);
+}
+
+.map-index.is-open {
+  width: min(24rem, calc(100% - var(--space-8)));
+  max-height: calc(100% - var(--space-8));
   border-radius: var(--radius-md);
 }
 
-.map-index__title {
+.map-index__toggle {
+  display: grid;
+  grid-template-columns: 1.25rem 0fr;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 100%;
+  aspect-ratio: 1;
   margin: 0;
-  font-size: var(--text-xs);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.map-index.is-open .map-index__toggle {
+  aspect-ratio: auto;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  justify-content: start;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4) var(--space-1);
+}
+
+.map-index__toggle svg,
+.map-index__toggle .hub-rail__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.map-index__title {
+  overflow: hidden;
+  min-width: 0;
+  margin: 0;
+  opacity: 0;
+  white-space: nowrap;
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--navy);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  transition: opacity 0.28s ease;
+}
+
+.map-index.is-open .map-index__title {
+  opacity: 1;
+  transition-delay: 0.16s;
+}
+
+.map-index__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  min-height: 0;
+  transition: grid-template-rows 0.52s var(--map-index-ease);
+}
+
+.map-index.is-open .map-index__panel {
+  grid-template-rows: 1fr;
+}
+
+.map-index__panel-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  opacity: 0;
+  transform: translateY(-0.35rem);
+  transition:
+    opacity 0.28s ease,
+    transform 0.5s var(--map-index-ease),
+    padding 0.52s var(--map-index-ease);
+}
+
+.map-index.is-open .map-index__panel-inner {
+  padding: 0 var(--space-4) var(--space-4);
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.06s;
 }
 
 .map-index__search {
   width: 100%;
-}
-
-.map-index__search-toggle {
-  color: var(--muted);
 }
 
 .map-index__list {
@@ -3528,6 +3587,7 @@ html.is-map-fullscreen .map-page .map-preview {
   gap: var(--space-1);
   overflow: auto;
   min-height: 0;
+  max-height: min(28rem, calc(100vh - 22rem));
 }
 
 .map-index__group {
@@ -3660,13 +3720,10 @@ html.is-map-fullscreen .map-page .map-preview {
   color: var(--muted);
 }
 
-@media (max-width: 960px) {
-  .map-body {
-    grid-template-columns: 1fr;
-  }
-
+@media (max-width: 720px) {
   .map-index {
-    max-height: 14rem;
+    top: var(--space-2);
+    right: var(--space-2);
   }
 }
 
@@ -4361,7 +4418,12 @@ body.is-universe-fullscreen .page-header {
   .universe-key__toggle,
   .universe-key__title,
   .universe-key__panel,
-  .universe-key__panel-inner {
+  .universe-key__panel-inner,
+  .map-index,
+  .map-index__toggle,
+  .map-index__title,
+  .map-index__panel,
+  .map-index__panel-inner {
     transition: none;
   }
 
