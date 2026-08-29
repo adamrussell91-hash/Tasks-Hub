@@ -18,7 +18,9 @@ import {
 import { mindWorks2026Map } from '@/domain/maps-seed';
 import {
   addExtraYearTrack,
+  adjacentStrandBoxesOverlap,
   evenTrackX,
+  lineContentBox,
   lineTrackDefs,
   applyDateSpanToStation,
   boxesOverlap,
@@ -27,6 +29,7 @@ import {
   labelHitsForeignLine,
   layoutMap,
   lineStrokeBoxes,
+  MAP_LINE_GAP,
   matchConnectTarget,
   moveLine,
   normalizeLineColors,
@@ -362,6 +365,21 @@ describe('year layout', () => {
     const grownI = grown.lines.find((line) => line.id === 'line_innovation')!.x;
     expect(grownI).toBeGreaterThan(firstI);
     expect(labelHitsForeignLine(grown)).toBe(false);
+    expect(adjacentStrandBoxesOverlap(grown.lines, grown.stations, grown.ticks)).toBe(false);
+    const chip = grown.ticks.find((tick) => tick.id === 'tk_wide')!.labelBox;
+    const next = grown.lines.find((line) => line.id === 'line_innovation')!;
+    expect(lineStrokeBoxes(next).some((box) => boxesOverlap(chip, box))).toBe(false);
+    expect(boxesOverlap(chip, lineContentBox(next, grown.stations, grown.ticks))).toBe(false);
+  });
+
+  it('spreads strands evenly with room for event chips between them', () => {
+    const layout = layoutMap(mindWorks2026Map());
+    const xs = layout.lines.map((line) => line.x).sort((a, b) => a - b);
+    const gaps = xs.slice(1).map((x, index) => x - xs[index]!);
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(MAP_LINE_GAP - 1);
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(1);
+    expect(adjacentStrandBoxesOverlap(layout.lines, layout.stations, layout.ticks)).toBe(false);
+    expect(labelHitsForeignLine(layout)).toBe(false);
   });
 
   it('keeps every line lane the same width', () => {

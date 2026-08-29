@@ -8,14 +8,15 @@ export function lineX(line: { points: Point[] }): number {
 export const MAP_YEAR_TOP = 168;
 export const MAP_YEAR_BOTTOM = 1680;
 export const MAP_LEFT = 88;
-export const MAP_LINE_GAP = 360;
-export const MAP_FIRST_LINE_X = 220;
+export const MAP_LINE_GAP = 640;
+export const MAP_FIRST_LINE_X = 240;
 export const MAP_DISC_R = 26;
 export const MAP_STATION_W = 48;
 export const MAP_TICK_R = 14;
 export const MAP_LABEL_PAD = 16;
 export const MAP_PORT_GAP = 36;
-export const MAP_LANE_MIN = 300;
+export const MAP_LANE_MIN = 640;
+export const MAP_LANE_GUTTER = 96;
 export const MAP_EVENT_STEM = 64;
 export const MAP_CHIP_PAD = 6;
 export const MAP_LINE_STROKE = 8;
@@ -622,12 +623,18 @@ function exclusiveBoxes(
   return boxes;
 }
 
-function lineContentBox(
+function strandHalfWidth(line: LaidLine): number {
+  if (!line.tracks.length) return MAP_DISC_R + MAP_STATION_W / 2;
+  const xs = line.tracks.map((track) => track.x);
+  return (Math.max(...xs) - Math.min(...xs)) / 2 + MAP_DISC_R + 8;
+}
+
+export function lineContentBox(
   line: LaidLine,
   stations: LaidStation[],
   ticks: LaidTick[]
 ): LabelBox {
-  const parts: LabelBox[] = [];
+  const parts: LabelBox[] = [lineStrokeBox(line)];
   for (const track of line.tracks) {
     parts.push({
       id: `disc-${line.id}-${track.id}`,
@@ -636,6 +643,7 @@ function lineContentBox(
       w: track.disc.r * 2 + 8,
       h: track.disc.r * 2 + 32
     });
+    parts.push(trackLabelBox(line, track));
   }
   for (const station of stations.filter((item) => item.line_id === line.id)) {
     for (const body of station.bodies) {
@@ -656,6 +664,34 @@ function lineContentBox(
   const x1 = Math.max(...parts.map((p) => p.x + p.w));
   const y1 = Math.max(...parts.map((p) => p.y + p.h));
   return { id: `group-${line.id}`, x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+export function lineExtents(
+  line: LaidLine,
+  stations: LaidStation[],
+  ticks: LaidTick[]
+): { left: number; right: number } {
+  const box = lineContentBox(line, stations, ticks);
+  const half = strandHalfWidth(line);
+  return {
+    left: Math.max(half, line.x - box.x),
+    right: Math.max(half, box.x + box.w - line.x)
+  };
+}
+
+export function adjacentStrandBoxesOverlap(
+  lines: LaidLine[],
+  stations: LaidStation[],
+  ticks: LaidTick[],
+  pad = MAP_LABEL_PAD
+): boolean {
+  const boxes = [...lines]
+    .sort((a, b) => a.x - b.x)
+    .map((line) => lineContentBox(line, stations, ticks));
+  for (let i = 1; i < boxes.length; i += 1) {
+    if (boxesOverlap(boxes[i - 1]!, boxes[i]!, pad)) return true;
+  }
+  return false;
 }
 
 function separateEventMarks(ticks: LaidTick[]): void {
@@ -682,18 +718,35 @@ function separateEventMarks(ticks: LaidTick[]): void {
 }
 
 function laneNeed(line: LaidLine, stations: LaidStation[], ticks: LaidTick[]): number {
-  const box = lineContentBox(line, stations, ticks);
-  const left = Math.max(0, line.x - box.x);
-  const right = Math.max(0, box.x + box.w - line.x);
-  return Math.max(MAP_LANE_MIN, left + right + MAP_PORT_GAP);
+  const { left, right } = lineExtents(line, stations, ticks);
+  return Math.max(MAP_LANE_MIN, left + right + MAP_LANE_GUTTER);
 }
 
-function packLines(lines: LaidLine[], stations: LaidStation[], ticks: LaidTick[]): void {
+function packLines(
+  lines: LaidLine[],
+  stations: LaidStation[],
+  ticks: LaidTick[],
+  extraGutter = 0
+): void {
   if (!lines.length) return;
   const ordered = [...lines].sort((a, b) => a.x - b.x);
-  const laneW = Math.max(MAP_LANE_MIN, ...ordered.map((line) => laneNeed(line, stations, ticks)));
-  let cursor = MAP_FIRST_LINE_X;
-  for (const line of ordered) {
+  const extents = ordered.map((line) => ({
+    line,
+    ...lineExtents(line, stations, ticks)
+  }));
+  let laneW = Math.max(MAP_LINE_GAP, MAP_LANE_MIN);
+  for (const extent of extents) {
+    laneW = Math.max(laneW, extent.left + extent.right + MAP_LANE_GUTTER + extraGutter);
+  }
+  for (let i = 1; i < extents.length; i += 1) {
+    laneW = Math.max(
+      laneW,
+      extents[i - 1]!.right + MAP_LANE_GUTTER + extraGutter + extents[i]!.left
+    );
+  }
+  const firstLeft = extents[0]?.left ?? strandHalfWidth(ordered[0]!);
+  let cursor = Math.max(MAP_FIRST_LINE_X, MAP_LEFT + firstLeft + MAP_LABEL_PAD);
+  for (const { line } of extents) {
     shiftX(line, stations, ticks, cursor - line.x);
     cursor += laneW;
   }
@@ -1091,11 +1144,12 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
 
   packLines(lines, stations, ticks);
 
-  let width = Math.max(1200, ...lines.map((line) => line.x + 320));
+  let width = Math.max(1600, ...lines.map((line) => line.x + 360));
   const height = yearBottom + 80;
   const canvas = { width, height };
+  let extraGutter = 0;
 
-  for (let pass = 0; pass < 6; pass += 1) {
+  for (let pass = 0; pass < 8; pass += 1) {
     const occupied = exclusiveBoxes(terms, lines, stations, ticks);
     const obstacles = lines.flatMap((line) => lineStrokeBoxes(line));
     for (const tick of ticks) {
@@ -1104,11 +1158,23 @@ export function layoutMap(map: TransitMap): MapCanvasLayout {
       if (idx >= 0) occupied[idx] = tick.labelBox;
       else occupied.push(tick.labelBox);
     }
-    packLines(lines, stations, ticks);
+    packLines(lines, stations, ticks, extraGutter);
+    if (
+      adjacentStrandBoxesOverlap(lines, stations, ticks) ||
+      ticks.some((tick) =>
+        lines.some(
+          (line) =>
+            line.id !== tick.lineId && lineStrokeBoxes(line).some((box) => boxesOverlap(tick.labelBox, box))
+        )
+      )
+    ) {
+      extraGutter += 48;
+      packLines(lines, stations, ticks, extraGutter);
+    }
     width = Math.max(
       width,
-      ...lines.map((line) => line.x + 320),
-      ...ticks.map((tick) => tick.labelBox.x + tick.labelBox.w + 48)
+      ...lines.map((line) => line.x + 360),
+      ...ticks.map((tick) => tick.labelBox.x + tick.labelBox.w + 80)
     );
     canvas.width = width;
   }
