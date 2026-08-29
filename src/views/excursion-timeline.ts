@@ -4,6 +4,7 @@ import type { ExcursionTemplate } from '@/schemas/templates';
 import type { Block } from '@/schemas/block';
 import { nextBlockIdFactory } from '@/teacher/lesson-canvas/drop';
 import { mountBlockCanvas } from '@/teacher/lesson-canvas/mount-page';
+import { renderEntityBanner } from '@/teacher/entity-banner';
 import { tasksApi } from '@/services/client-api';
 import {
   formatRelativeUpdated,
@@ -12,13 +13,13 @@ import {
   statusLabel,
   taskPageHash
 } from '@/domain/cards';
+import { shiftExcursionDates } from '@/domain/excursion';
 import {
   collectExcursionStops,
   layoutExcursionTimeline,
   TIMELINE_NODE_R,
   type LaidTimelineStop
 } from '@/domain/excursion-timeline';
-import { bindEditablePageTitle } from '@/shell/shell';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { errorMessage } from '@/views/feedback';
 import { requestToggleDone } from '@/views/dashboard';
@@ -28,7 +29,6 @@ import { mountBlockInsert } from '@/views/block-insert';
 import {
   createHubField,
   createHubFilter,
-  createHubTextarea,
   el,
   type HubFilterOption
 } from '@/views/hub-kit';
@@ -117,13 +117,29 @@ function renderNode(stop: LaidTimelineStop): SVGSVGElement {
   return svg;
 }
 
-function renderEventChip(stop: LaidTimelineStop): HTMLElement {
+function renderEventChip(
+  stop: LaidTimelineStop,
+  onEventDate?: (date: string) => void
+): HTMLElement {
   const chip = el('article', 'excursion-timeline__event');
   chip.append(
     el('span', 'hub-card__eyebrow', stop.kind === 'event' ? 'Event' : 'Key date'),
-    el('h3', 'hub-row__title', stop.label),
-    el('span', 'date-badge', formatDisplayDate(stop.date))
+    el('h3', 'hub-row__title', stop.label)
   );
+  if (stop.kind === 'event' && onEventDate) {
+    const due = createHubField({
+      type: 'date',
+      ariaLabel: 'Excursion date',
+      value: stop.date,
+      className: 'excursion-timeline__event-date',
+      onChange: (value) => {
+        if (value) onEventDate(value);
+      }
+    });
+    chip.append(due.el);
+  } else {
+    chip.append(el('span', 'date-badge', formatDisplayDate(stop.date)));
+  }
   return chip;
 }
 
@@ -131,7 +147,8 @@ function renderStop(
   stop: LaidTimelineStop,
   confirmHost: HTMLElement,
   reload: () => Promise<void>,
-  join: { up: boolean; down: boolean }
+  join: { up: boolean; down: boolean },
+  onEventDate?: (date: string) => void
 ): HTMLElement {
   const row = el('li', 'excursion-timeline__stop');
   row.dataset.kind = stop.kind;
@@ -169,7 +186,7 @@ function renderStop(
     });
     body.append(card);
   } else {
-    body.append(renderEventChip(stop));
+    body.append(renderEventChip(stop, onEventDate));
   }
   row.append(when, rail, body);
   return row;
@@ -238,64 +255,12 @@ function renderPermissionTracker(
   return host;
 }
 
-function renderDrafts(project: Project, persist: (patch: Partial<Project>) => void): HTMLElement {
-  const extras = el('section', 'excursion-detail');
-  const docs = project.drafted_documents;
-  if (!docs?.permission_note_draft && !docs?.staff_absence_email_draft) {
-    return extras;
-  }
-  extras.append(el('p', 'hub-card__eyebrow', 'Drafts'));
-  if (docs.permission_note_draft) {
-    const note = createHubTextarea({
-      ariaLabel: 'Permission note draft',
-      className: 'page-card__notes',
-      value: docs.permission_note_draft
-    });
-    note.input.addEventListener('input', () =>
-      persist({
-        drafted_documents: {
-          ...currentDrafts(project, docs),
-          permission_note_draft: note.input.value
-        }
-      })
-    );
-    extras.append(note.el);
-  }
-  if (docs.staff_absence_email_draft) {
-    const email = createHubTextarea({
-      ariaLabel: 'Staff absence email draft',
-      className: 'page-card__notes',
-      value: docs.staff_absence_email_draft
-    });
-    email.input.addEventListener('input', () =>
-      persist({
-        drafted_documents: {
-          ...currentDrafts(project, docs),
-          staff_absence_email_draft: email.input.value
-        }
-      })
-    );
-    extras.append(email.el);
-  }
-  return extras;
-}
-
-function currentDrafts(
-  project: Project,
-  docs: NonNullable<Project['drafted_documents']>
-): NonNullable<Project['drafted_documents']> {
-  return {
-    permission_note_draft: docs.permission_note_draft ?? project.drafted_documents?.permission_note_draft ?? null,
-    staff_absence_email_draft:
-      docs.staff_absence_email_draft ?? project.drafted_documents?.staff_absence_email_draft ?? null
-  };
-}
-
 function renderTimeline(
   project: Project,
   tasks: Task[],
   confirmHost: HTMLElement,
-  reload: () => Promise<void>
+  reload: () => Promise<void>,
+  onEventDate?: (date: string) => void
 ): HTMLElement {
   const stops = layoutExcursionTimeline(collectExcursionStops(project, tasks)).stops;
   const scroller = el('div', 'excursion-timeline');
@@ -308,10 +273,16 @@ function renderTimeline(
   } else {
     stops.forEach((stop, index) => {
       list.append(
-        renderStop(stop, confirmHost, reload, {
-          up: index > 0,
-          down: index < stops.length - 1
-        })
+        renderStop(
+          stop,
+          confirmHost,
+          reload,
+          {
+            up: index > 0,
+            down: index < stops.length - 1
+          },
+          onEventDate
+        )
       );
     });
   }
@@ -320,7 +291,7 @@ function renderTimeline(
   return scroller;
 }
 
-/** Full-page excursion: task card + progress, date, permission tracker, joined timeline. */
+/** Lesson page + progress, permission tracker, and a date-tied timeline. */
 export function paintExcursionPage(
   canvas: HTMLElement,
   project: Project,
@@ -342,13 +313,12 @@ export function paintExcursionPage(
       void tasksApi
         .updateProject(current.id, {
           title: current.title,
-          description: current.description,
-          arc_summary: current.arc_summary,
           status: current.status,
           current_end_date: current.current_end_date,
-          student_group_reference: current.student_group_reference,
+          key_dates: current.key_dates,
+          milestones: current.milestones,
           permission_notes: current.permission_notes,
-          drafted_documents: current.drafted_documents,
+          cover: current.cover ?? null,
           page_blocks: current.page_blocks
         })
         .then(
@@ -366,12 +336,43 @@ export function paintExcursionPage(
     }, 400);
   };
 
-  bindEditablePageTitle(header, project.title, {
-    onChange: (value) => persist({ title: value }),
-    current: () => current.title
+  if (header) {
+    header.classList.add('page-header--cover');
+    const heading = header.querySelector('.page-header__title, .page-header__title-input');
+    if (heading instanceof HTMLElement) heading.classList.add('visually-hidden');
+  }
+
+  const page = el('div', 'page-editor lesson-page excursion-page');
+  const coverHost = el('div', 'lesson-page__cover');
+  renderEntityBanner(coverHost, {
+    cover: project.cover ?? null,
+    title: project.title,
+    eyebrow: 'Excursion',
+    entityId: project.id,
+    editable: true,
+    size: 'hero',
+    fallback: 'marine',
+    onSave: (cover) => persist({ cover: cover ? { url: (cover as { url: string }).url } : null })
   });
 
-  const page = el('div', 'page-editor');
+  const title = document.createElement('input');
+  title.type = 'text';
+  title.className = 'lesson-page__title';
+  title.value = project.title;
+  title.placeholder = 'Untitled excursion';
+  title.setAttribute('aria-label', 'Title');
+  title.addEventListener('input', () => {
+    const next = title.value.trim();
+    if (!next) return;
+    persist({ title: next });
+    const heading = header?.querySelector('.page-header__title, .page-header__title-input');
+    if (heading) heading.textContent = next;
+  });
+  title.addEventListener('blur', () => {
+    if (!title.value.trim()) title.value = current.title;
+  });
+  coverHost.append(title);
+
   const card = el('article', 'hub-card page-card');
   const head = el('header', 'task-card__head');
   head.append(backLink('#/excursions', '← Excursions'));
@@ -387,41 +388,31 @@ export function paintExcursionPage(
     project.status,
     (value) => persist({ status: value as ProjectStatus })
   );
-  const due = createHubField({
-    type: 'date',
-    ariaLabel: 'Excursion date',
-    value: project.current_end_date ?? '',
-    className: 'page-card__due',
-    onChange: (value) => persist({ current_end_date: value || null })
-  });
-  const group = createHubField({
-    ariaLabel: 'Student group',
-    placeholder: 'Student group',
-    value: project.student_group_reference ?? '',
-    className: 'page-card__group',
-    onInput: (value) => persist({ student_group_reference: value.trim() || null })
-  });
-  fields.append(status.el, due.el, group.el);
-
-  const notes = createHubTextarea({
-    ariaLabel: 'Notes',
-    className: 'page-card__notes',
-    value: project.arc_summary || project.description
-  });
-  notes.input.addEventListener('input', () =>
-    persist({ arc_summary: notes.input.value, description: notes.input.value })
-  );
+  fields.append(status.el);
 
   const confirmHost = el('div', 'excursion-confirm');
   const reload = () => onReload();
   const foot = el('footer', 'task-card__foot');
   foot.append(updated);
 
+  const applyEventDate = async (nextDate: string) => {
+    try {
+      const shifted = shiftExcursionDates(current, tasks, nextDate);
+      await Promise.all([
+        tasksApi.updateProject(current.id, shifted.project),
+        ...shifted.tasks.map((task) => tasksApi.updateTask(task.id, { due_date: task.due_date }))
+      ]);
+      await onReload();
+    } catch (err) {
+      errorHost.hidden = false;
+      errorHost.textContent = errorMessage(err);
+    }
+  };
+
   card.append(
     head,
-    renderProgress(project, tasks),
     fields,
-    notes.el,
+    renderProgress(project, tasks),
     renderPermissionTracker(project, persist),
     renderQuickAdd(() => void reload(), project.id),
     foot
@@ -447,11 +438,11 @@ export function paintExcursionPage(
   }
 
   page.append(
+    coverHost,
     card,
     errorHost,
     confirmHost,
-    renderTimeline(project, tasks, confirmHost, reload),
-    renderDrafts(project, persist),
+    renderTimeline(project, tasks, confirmHost, reload, (date) => void applyEventDate(date)),
     layout
   );
   canvas.replaceChildren(page);

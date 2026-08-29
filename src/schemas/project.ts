@@ -19,6 +19,10 @@ export const PermissionNoteSchema = z.object({
   returned: z.boolean()
 });
 
+export const PageCoverSchema = z.object({
+  url: z.string().min(1)
+});
+
 export const ProjectTypeSchema = z.enum(['standard', 'excursion', 'academic_program']);
 export const ProjectStatusSchema = z.enum(['active', 'stalled', 'revived', 'archived_dead']);
 
@@ -60,6 +64,7 @@ export const ProjectSchema = z.object({
     })
     .nullable()
     .default(null),
+  cover: PageCoverSchema.nullable().optional(),
   page_blocks: z.array(PageBlockSchema).optional()
 });
 
@@ -67,6 +72,7 @@ export type Project = z.infer<typeof ProjectSchema>;
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type Milestone = z.infer<typeof MilestoneSchema>;
 export type PermissionNote = z.infer<typeof PermissionNoteSchema>;
+export type PageCover = z.infer<typeof PageCoverSchema>;
 
 export const ProjectCreateSchema = ProjectSchema.omit({
   schema_version: true,
@@ -91,6 +97,7 @@ export const ProjectCreateSchema = ProjectSchema.omit({
   permission_notes: true,
   generated_admin_tasks: true,
   drafted_documents: true,
+  cover: true,
   page_blocks: true
 }).extend({
   title: z.string().min(1)

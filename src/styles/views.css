@@ -1304,6 +1304,19 @@
   margin-top: var(--space-5);
 }
 
+.page-header--cover .page-header__title,
+.page-header--cover .page-header__title-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .excursion-page {
   display: flex;
   flex-direction: column;
@@ -1451,6 +1464,10 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   box-shadow: var(--elev-1);
+}
+
+.excursion-timeline__event-date {
+  max-width: 14rem;
 }
 
 @media (max-width: 720px) {
