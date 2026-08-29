@@ -32,10 +32,11 @@ describe('Clare dump digest clock', () => {
     expect(digest.timezone).toBe('Australia/Sydney');
   });
 
-  it('tells the model to use clock tools instead of inventing dates', () => {
+  it('tells the model to converse and use clock/protocol tools', () => {
     expect(CLARE_PROPOSAL_SYSTEM).toMatch(/check_clock/);
-    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/set_timezone/);
-    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/Never invent or argue a rival date/);
+    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/update_protocol/);
+    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/Talk like Claude/);
+    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/Never bounce him/);
   });
 });
 

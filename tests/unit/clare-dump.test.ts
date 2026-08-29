@@ -151,7 +151,7 @@ describe('brain dump parsing', () => {
     const result = assembleDumpResult(items, frameworks, () => null);
     expect(result.proposals).toHaveLength(0);
     expect(result.questions).toHaveLength(0);
-    expect(result.voice).toMatch(/doesn't parse as work/i);
+    expect(result.voice).toMatch(/listening|got it/i);
   });
 
   it('anchors "due today" to Australia/Sydney when the host clock is UTC', () => {

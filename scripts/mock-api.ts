@@ -341,7 +341,10 @@ export function createMockApi({ seed }: MockApiOptions) {
               protocol_id:
                 b.protocol_id === undefined
                   ? undefined
-                  : (String(b.protocol_id) as import('../src/domain/clare-protocols').ClareProtocolId)
+                  : (String(b.protocol_id) as import('../src/domain/clare-protocols').ClareProtocolId),
+              recent_thread: Array.isArray(b.recent_thread)
+                ? (b.recent_thread as Array<{ role: 'user' | 'assistant'; text: string }>)
+                : undefined
             })
           });
         }

@@ -73,13 +73,18 @@ export default async function handler(request: Request): Promise<Response> {
     }
 
     if (action === 'dump') {
+      const recent =
+        Array.isArray(body.recent_thread)
+          ? (body.recent_thread as Array<{ role: 'user' | 'assistant'; text: string }>)
+          : undefined;
       const result = await store.processDumpWithClare({
         text: String(body.text ?? ''),
         domain: body.domain === undefined ? undefined : (body.domain as 'teaching'),
         protocol_id:
           body.protocol_id === undefined
             ? undefined
-            : (String(body.protocol_id) as import('../../src/domain/clare-protocols').ClareProtocolId)
+            : (String(body.protocol_id) as import('../../src/domain/clare-protocols').ClareProtocolId),
+        recent_thread: recent
       });
       return withCors(okResponse(200, result), request, env);
     }

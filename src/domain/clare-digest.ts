@@ -44,6 +44,10 @@ export type ClareDumpDigest = {
   }>;
   /** Life Hub's operational digest — energy, mood, upcoming events, active goals. Never clinical detail. */
   life_context: string | null;
+  /** Live operating manual from Blobs (Clare may rewrite via tool). */
+  operating_protocol: string;
+  /** Prior turns in this chat window for continuity. */
+  recent_thread: Array<{ role: 'user' | 'assistant'; text: string }>;
 };
 
 function typicalDelta(cal: ClareCalibration): number | null {
@@ -65,6 +69,8 @@ export function buildClareDumpDigest(input: {
   now?: Date;
   timezone?: string;
   lifeContext?: LifeContextDigest | null;
+  operatingProtocol?: string;
+  recentThread?: Array<{ role: 'user' | 'assistant'; text: string }>;
 }): ClareDumpDigest {
   const now = input.now ?? new Date();
   const timezone = input.timezone ?? HUB_TZ;
@@ -110,6 +116,11 @@ export function buildClareDumpDigest(input: {
       calibrated_default_minutes: cal.calibrated_default_minutes,
       typical_delta_minutes: typicalDelta(cal)
     })),
-    life_context: lifeContextToPromptBlock(input.lifeContext ?? null)
+    life_context: lifeContextToPromptBlock(input.lifeContext ?? null),
+    operating_protocol: (input.operatingProtocol ?? '').slice(0, 12_000),
+    recent_thread: (input.recentThread ?? []).slice(-12).map((turn) => ({
+      role: turn.role,
+      text: turn.text.slice(0, 500)
+    }))
   };
 }

@@ -92,6 +92,13 @@ export interface TasksStore {
   setHubTimezone(
     timezoneOrCity: string
   ): Promise<{ ok: boolean; timezone: string; note: string }>;
+  getAgentProtocol(
+    slug: import('@/domain/agent-protocol').AgentProtocolSlug
+  ): Promise<import('@/domain/agent-protocol').AgentProtocolDoc>;
+  setAgentProtocol(
+    slug: import('@/domain/agent-protocol').AgentProtocolSlug,
+    markdown: string
+  ): Promise<{ ok: boolean; markdown: string; note: string }>;
   proposeWithClare(input: ClareProposalInput): Promise<ClareProposal>;
   briefWithClare(input?: {
     protocol_id?: ClareProtocolId;
@@ -106,6 +113,7 @@ export interface TasksStore {
     now?: Date;
     judge?: import('@/ai/clare-proposal-judge').ClareProposalJudge | null;
     lifeContext?: import('@/domain/life-context').LifeContextDigest | null;
+    recent_thread?: Array<{ role: 'user' | 'assistant'; text: string }>;
   }): Promise<ClareDumpResult>;
   acceptClareProposal(input: {
     proposal: ClareProposal;

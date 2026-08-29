@@ -4,10 +4,13 @@ import { createClareProposalJudge } from '@/ai/clare-proposal-judge';
 import { buildClareDumpDigest } from '@/domain/clare-digest';
 import {
   CLARE_CHECK_CLOCK_TOOL,
+  CLARE_READ_PROTOCOL_TOOL,
   CLARE_SET_TIMEZONE_TOOL,
+  CLARE_UPDATE_PROTOCOL_TOOL,
   createClareToolHandler,
   readClareClock
 } from '@/domain/clare-tools';
+import { applyProtocolUpdate } from '@/domain/agent-protocol';
 import { resolveTimeZoneInput } from '@/domain/hub-prefs';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -31,6 +34,8 @@ describe('clare clock tools', () => {
     const handler = createClareToolHandler({
       getTimezone: () => 'Australia/Sydney',
       setTimezone: async (timezone) => ({ ok: true, timezone, note: 'ok' }),
+      getProtocol: () => '# Clare\n',
+      setProtocol: async (markdown) => ({ ok: true, markdown, note: 'ok' }),
       now: () => instant
     });
     const result = (await handler(CLARE_CHECK_CLOCK_TOOL, { reason: 'Adam asked' })) as {
@@ -52,6 +57,8 @@ describe('clare clock tools', () => {
         stored = timezone;
         return { ok: true, timezone, note: `Remembered ${timezone}` };
       },
+      getProtocol: () => '# Clare\n',
+      setProtocol: async (markdown) => ({ ok: true, markdown, note: 'ok' }),
       now: () => instant
     });
     const result = (await handler(CLARE_SET_TIMEZONE_TOOL, {
@@ -62,6 +69,32 @@ describe('clare clock tools', () => {
     expect(stored).toBe('Australia/Sydney');
     expect(result.clock.today).toBe('2026-08-30');
     expect(readClareClock(instant, 'UTC').today).toBe('2026-08-29');
+  });
+
+  it('update_protocol can replace a ## section and persist', async () => {
+    let protocol = '# Clare\n\n## Clock\n\nOld clock rules.\n\n## Voice\n\nFast.\n';
+    const handler = createClareToolHandler({
+      getTimezone: () => 'Australia/Sydney',
+      setTimezone: async (timezone) => ({ ok: true, timezone, note: 'ok' }),
+      getProtocol: () => protocol,
+      setProtocol: async (markdown) => {
+        protocol = markdown;
+        return { ok: true, markdown, note: 'Saved' };
+      },
+      agentSlug: 'clare'
+    });
+    const result = (await handler(CLARE_UPDATE_PROTOCOL_TOOL, {
+      mode: 'replace_section',
+      section_heading: 'Clock',
+      markdown: 'Always Australia/Sydney. Never invent dates.',
+      reason: 'Adam corrected the day'
+    })) as { ok: boolean; markdown: string };
+    expect(result.ok).toBe(true);
+    expect(protocol).toMatch(/Always Australia\/Sydney/);
+    expect(protocol).toMatch(/## Voice/);
+    expect(applyProtocolUpdate('# X\n', { mode: 'append', markdown: 'More.' }).ok).toBe(true);
+    const read = (await handler(CLARE_READ_PROTOCOL_TOOL, {})) as { markdown: string };
+    expect(read.markdown).toBe(protocol);
   });
 });
 
@@ -173,6 +206,8 @@ describe('createClareProposalJudge with tools', () => {
       tools: {
         getTimezone: () => 'Australia/Sydney',
         setTimezone: async (timezone) => ({ ok: true, timezone, note: 'ok' }),
+        getProtocol: () => '# Clare\n',
+        setProtocol: async (markdown) => ({ ok: true, markdown, note: 'ok' }),
         now: () => new Date('2026-08-29T22:05:00.000Z')
       }
     });
@@ -198,7 +233,9 @@ describe('createClareProposalJudge with tools', () => {
     );
     expect(firstBody.tools.map((t: { name: string }) => t.name)).toEqual([
       CLARE_CHECK_CLOCK_TOOL,
-      CLARE_SET_TIMEZONE_TOOL
+      CLARE_SET_TIMEZONE_TOOL,
+      CLARE_READ_PROTOCOL_TOOL,
+      CLARE_UPDATE_PROTOCOL_TOOL
     ]);
   });
 });

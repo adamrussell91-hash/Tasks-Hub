@@ -105,6 +105,11 @@ export function hubPrefsKey(): string {
   return 'meta/hub_prefs';
 }
 
+/** Per-agent operating manual — agents may rewrite from chat. */
+export function agentProtocolKey(slug: string): string {
+  return `agent_protocols/${slug}`;
+}
+
 export function mapKey(id: string): string {
   return `maps/${id}`;
 }

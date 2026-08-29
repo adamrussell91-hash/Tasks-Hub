@@ -41,6 +41,12 @@ import {
 import { addDays, backlogTasks, hubCalendarDate, toDateKey } from '@/domain/queries';
 import { DEFAULT_HUB_PREFS, parseHubPrefs, resolveTimeZoneInput, type HubPrefs } from '@/domain/hub-prefs';
 import {
+  defaultAgentProtocol,
+  parseAgentProtocol,
+  type AgentProtocolDoc,
+  type AgentProtocolSlug
+} from '@/domain/agent-protocol';
+import {
   affectedIdsForBlockedSince,
   reconcileBlockedSinceBatch
 } from '@/domain/blocked-since';
@@ -112,6 +118,7 @@ export interface KeyBuilders {
   metaSeededKey: () => string;
   taskPropertiesKey: () => string;
   hubPrefsKey: () => string;
+  agentProtocolKey: (slug: string) => string;
   mapKey: (id: string) => string;
   mapsIndexKey: () => string;
   programKey: (id: string) => string;
@@ -725,6 +732,26 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         note: `Remembered ${resolved} for Adam's calendar.`
       };
     },
+    async getAgentProtocol(slug: AgentProtocolSlug): Promise<AgentProtocolDoc> {
+      return parseAgentProtocol(await kv.getJSON(keys.agentProtocolKey(slug)), slug);
+    },
+    async setAgentProtocol(
+      slug: AgentProtocolSlug,
+      markdown: string
+    ): Promise<{ ok: boolean; markdown: string; note: string }> {
+      const trimmed = markdown.trim();
+      if (!trimmed) {
+        const current = await this.getAgentProtocol(slug);
+        return { ok: false, markdown: current.markdown, note: 'Empty protocol — not saved.' };
+      }
+      const doc: AgentProtocolDoc = {
+        ...defaultAgentProtocol(slug),
+        markdown: trimmed.slice(0, 24_000),
+        updated_at: nowIso()
+      };
+      await kv.setJSON(keys.agentProtocolKey(slug), doc);
+      return { ok: true, markdown: doc.markdown, note: `Saved ${slug} operating protocol.` };
+    },
     async listClareCalibrations() {
       const ids = await readIndex(kv, keys.clareCalibrationsIndexKey());
       const out = [];
@@ -827,6 +854,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
     async processDumpWithClare(input) {
       const prefs = await this.getHubPrefs();
       const timezone = prefs.timezone;
+      const protocolDoc = await this.getAgentProtocol('clare');
       const now = hubCalendarDate(input.now ?? new Date(), timezone);
       const [frameworks, tasks, projects, calibrations] = await Promise.all([
         this.listFrameworks(),
@@ -849,6 +877,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       const toolRuntime = {
         getTimezone: async () => (await this.getHubPrefs()).timezone,
         setTimezone: (zone: string) => this.setHubTimezone(zone),
+        getProtocol: async () => (await this.getAgentProtocol('clare')).markdown,
+        setProtocol: (markdown: string) => this.setAgentProtocol('clare', markdown),
+        agentSlug: 'clare' as const,
         now: () => input.now ?? new Date()
       };
       const judge: ClareProposalJudge | null =
@@ -871,7 +902,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           protocolId: input.protocol_id,
           now: input.now ?? new Date(),
           timezone,
-          lifeContext
+          lifeContext,
+          operatingProtocol: protocolDoc.markdown,
+          recentThread: input.recent_thread
         });
         try {
           const judgment = await judge(digest);

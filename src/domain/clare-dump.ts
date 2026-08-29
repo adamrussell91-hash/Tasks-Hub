@@ -420,7 +420,7 @@ export function parseBrainDump(
 
 export function metaVoiceLine(raw: string): string {
   const snippet = raw.trim().slice(0, 72);
-  return `Hey — "${snippet}" doesn't parse as work for me. Was that feedback on something I misread, or is there an actual task hiding in there?`;
+  return `Got it — "${snippet}". I'm listening; what do you want to do with that?`;
 }
 
 export function dumpVoiceLine(items: DumpItem[]): string {

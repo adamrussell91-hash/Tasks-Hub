@@ -61,6 +61,27 @@ function syncComposer(root: ParentNode, slug: ChatAgentSlug): void {
   if (skip) skip.hidden = slug !== 'clare';
 }
 
+function collectRecentThread(
+  root: ParentNode
+): Array<{ role: 'user' | 'assistant'; text: string }> {
+  const list = root.querySelector('#chat-messages');
+  if (!list) return [];
+  const out: Array<{ role: 'user' | 'assistant'; text: string }> = [];
+  for (const node of list.querySelectorAll<HTMLElement>('.chat-message')) {
+    if (node.classList.contains('chat-message--status')) continue;
+    const role = node.classList.contains('chat-message--user')
+      ? 'user'
+      : node.classList.contains('chat-message--assistant')
+        ? 'assistant'
+        : null;
+    if (!role) continue;
+    const text = (node.textContent ?? '').replace(/\s+/g, ' ').trim();
+    if (!text || text.length < 2) continue;
+    out.push({ role, text: text.slice(0, 500) });
+  }
+  return out.slice(-12);
+}
+
 function appendProposalCard(
   root: ParentNode,
   proposal: ClareProposal,
@@ -306,11 +327,13 @@ export function createClareChatController({
   }
 
   async function submitDump(text: string): Promise<void> {
+    const recent_thread = collectRecentThread(root);
     const result = await withWait(() =>
       tasksApi.processDumpWithClare({
         text,
         domain: domainValue(),
-        protocol_id: selectedProtocolId as ClareProtocolId | undefined
+        protocol_id: selectedProtocolId as ClareProtocolId | undefined,
+        recent_thread
       })
     );
     if (!result) return;
