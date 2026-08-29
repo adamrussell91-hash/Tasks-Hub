@@ -27,7 +27,9 @@ import {
   type CalendarMode
 } from '@/domain/calendar';
 import { formatDisplayDate, formatDisplayDateRange } from '../../design-kit/js/format-display-date.js';
+import { keyDateKindFromLabel } from '@/domain/excursion';
 import { errorMessage, renderLoadError, showViewLoading } from '@/views/feedback';
+import { materializeExcursionAdminTask } from '@/views/excursion-admin';
 import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { openPlusAdd } from '@/views/plus-add';
 import { renderPressureStrips } from '@/views/pinch-strip';
@@ -239,14 +241,27 @@ export async function renderCalendarView(canvas: HTMLElement, mode: CalendarMode
   async function openItem(item: CalendarItem, preview: HTMLElement): Promise<void> {
     selectedDateKey = item.date_key;
     preview.hidden = false;
-    if (item.task) {
+    let task = item.task;
+    if (!task && item.kind === 'key_date' && item.project_id) {
+      const project = projects.find((entry) => entry.id === item.project_id);
+      const kind = keyDateKindFromLabel(item.title);
+      if (project && kind) {
+        try {
+          task = await materializeExcursionAdminTask(project, kind, item.date_key);
+        } catch (err) {
+          preview.replaceChildren(el('p', 'empty-state', errorMessage(err)));
+          return;
+        }
+      }
+    }
+    if (task) {
       preview.replaceChildren();
-      await renderTaskEditor(preview, item.task, projects, () => void reload());
+      await renderTaskEditor(preview, task, projects, () => void reload());
       const actions = el('div', 'calendar-preview__actions');
-      const done = el('button', 'btn btn--secondary', item.task.status === 'done' ? 'Reopen' : 'Done');
+      const done = el('button', 'btn btn--secondary', task.status === 'done' ? 'Reopen' : 'Done');
       done.type = 'button';
       done.addEventListener('click', () => {
-        requestToggleDone(preview, item.task!, () => reload());
+        requestToggleDone(preview, task, () => reload());
       });
       actions.append(done);
       preview.append(actions);
@@ -743,6 +758,9 @@ function renderAgenda(
     }
     const row = el('article', 'hub-row');
     row.dataset.kind = item.kind;
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `Edit ${item.title}`);
     row.append(el('p', 'hub-row__title', item.title));
     const chips = el('div', 'hub-chips');
     if (item.domain) {
@@ -764,6 +782,13 @@ function renderAgenda(
     meta.append(due);
     foot.append(meta);
     row.append(foot);
+    row.addEventListener('click', () => onOpen(item));
+    row.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        onOpen(item);
+      }
+    });
     stack.append(row);
   }
   agenda.append(stack);

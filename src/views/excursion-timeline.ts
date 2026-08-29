@@ -12,6 +12,7 @@ import {
   statusLabel,
   taskPageHash
 } from '@/domain/cards';
+import { matchAdminTask } from '@/domain/excursion';
 import {
   collectExcursionStops,
   layoutExcursionTimeline,
@@ -21,9 +22,11 @@ import {
 import { bindEditablePageTitle } from '@/shell/shell';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { errorMessage } from '@/views/feedback';
+import { deleteTaskNow } from '@/views/card-actions';
 import { requestToggleDone } from '@/views/dashboard';
-import { renderTaskMicroCard } from '@/views/hub-cards';
-import { renderQuickAdd } from '@/views/task-editor';
+import { materializeExcursionAdminTask } from '@/views/excursion-admin';
+import { mountTaskCard } from '@/views/hub-cards';
+import { renderQuickAdd, renderTaskEditor } from '@/views/task-editor';
 import { mountBlockInsert } from '@/views/block-insert';
 import {
   createHubField,
@@ -117,18 +120,56 @@ function renderNode(stop: LaidTimelineStop): SVGSVGElement {
   return svg;
 }
 
-function renderEventChip(stop: LaidTimelineStop): HTMLElement {
-  const chip = el('article', 'excursion-timeline__event');
-  chip.append(
-    el('span', 'hub-card__eyebrow', stop.kind === 'event' ? 'Event' : 'Key date'),
-    el('h3', 'hub-row__title', stop.label),
-    el('span', 'date-badge', formatDisplayDate(stop.date))
-  );
-  return chip;
+function renderMissingCard(
+  stop: LaidTimelineStop,
+  project: Project,
+  confirmHost: HTMLElement,
+  reload: () => Promise<void>
+): HTMLElement {
+  const row = el('article', 'hub-row');
+  row.setAttribute('role', 'button');
+  row.tabIndex = 0;
+  row.dataset.cardKind = 'task';
+  if (stop.adminKind) row.dataset.adminKind = stop.adminKind;
+  row.setAttribute('aria-label', `Edit ${stop.label}`);
+  const chips = el('div', 'hub-chips');
+  const domain = el('span', 'hub-chip', 'Teaching');
+  domain.dataset.area = 'teaching';
+  chips.append(domain);
+  const foot = el('div', 'hub-row__foot');
+  const meta = el('div', 'hub-row__foot-meta');
+  meta.append(el('span', 'date-badge', formatDisplayDate(stop.date)));
+  foot.append(meta);
+  row.append(el('p', 'hub-row__title card-title', stop.label), chips, foot);
+
+  const open = async () => {
+    if (!stop.adminKind) return;
+    row.setAttribute('aria-busy', 'true');
+    try {
+      const created = await materializeExcursionAdminTask(project, stop.adminKind, stop.date);
+      await renderTaskEditor(confirmHost, created, [project], reload);
+    } catch (err) {
+      confirmHost.replaceChildren(el('p', 'empty-state', errorMessage(err)));
+    } finally {
+      row.removeAttribute('aria-busy');
+    }
+  };
+  row.addEventListener('click', (event) => {
+    if (event.target instanceof Element && event.target.closest('button')) return;
+    void open();
+  });
+  row.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      void open();
+    }
+  });
+  return row;
 }
 
 function renderStop(
   stop: LaidTimelineStop,
+  project: Project,
   confirmHost: HTMLElement,
   reload: () => Promise<void>,
   join: { up: boolean; down: boolean }
@@ -146,30 +187,16 @@ function renderStop(
   if (join.down) rail.append(renderJoiner('down'));
   const body = el('div', 'excursion-timeline__card');
   if (stop.task) {
-    const card = renderTaskMicroCard(stop.task, {
+    mountTaskCard(body, stop.task, {
       onToggle: (task) => requestToggleDone(confirmHost, task, reload),
+      onEdit: (task) => void renderTaskEditor(confirmHost, task, [project], reload),
       onOpenPage: (task) => {
         location.hash = taskPageHash(task.id);
-      }
+      },
+      onDelete: (task) => deleteTaskNow(task, reload, confirmHost)
     });
-    card.setAttribute('role', 'button');
-    card.tabIndex = 0;
-    const open = () => {
-      location.hash = taskPageHash(stop.task!.id);
-    };
-    card.addEventListener('click', (event) => {
-      if (event.target instanceof Element && event.target.closest('button')) return;
-      open();
-    });
-    card.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        open();
-      }
-    });
-    body.append(card);
   } else {
-    body.append(renderEventChip(stop));
+    body.append(renderMissingCard(stop, project, confirmHost, reload));
   }
   row.append(when, rail, body);
   return row;
@@ -308,7 +335,7 @@ function renderTimeline(
   } else {
     stops.forEach((stop, index) => {
       list.append(
-        renderStop(stop, confirmHost, reload, {
+        renderStop(stop, project, confirmHost, reload, {
           up: index > 0,
           down: index < stops.length - 1
         })
@@ -337,6 +364,12 @@ export function paintExcursionPage(
 
   const persist = (patch: Partial<Project>) => {
     current = { ...current, ...patch };
+    if (patch.current_end_date !== undefined) {
+      const eventTask = matchAdminTask(tasks, 'event');
+      if (eventTask && eventTask.due_date !== (patch.current_end_date || null)) {
+        void tasksApi.updateTask(eventTask.id, { due_date: patch.current_end_date || null });
+      }
+    }
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
       void tasksApi

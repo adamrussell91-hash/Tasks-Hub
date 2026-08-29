@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { closeCardMenu } from '@/views/card-menu';
 import { tasksApi } from '@/services/client-api';
 import { renderPageEditor } from '@/views/page-editor';
 import type { Task } from '@/schemas/task';
@@ -11,6 +12,7 @@ vi.mock('@/services/client-api', () => ({
     updateTask: vi.fn(),
     getProject: vi.fn(),
     listTasks: vi.fn(),
+    createTask: vi.fn(),
     updateProject: vi.fn(),
     listTemplates: vi.fn()
   }
@@ -87,6 +89,7 @@ function pageHeader(title: string): HTMLElement {
 
 describe('page editor', () => {
   afterEach(() => {
+    closeCardMenu();
     vi.useRealTimers();
   });
 
@@ -240,9 +243,11 @@ describe('page editor', () => {
     expect(canvas.querySelectorAll('.excursion-timeline__joiner').length).toBe(
       Math.max(0, (stops.length - 1) * 2)
     );
-    expect(canvas.querySelector('.excursion-timeline__card .hub-row')?.textContent).toContain(
-      'Draft permission note'
+    const titles = [...canvas.querySelectorAll('.excursion-timeline__card .hub-row__title')].map(
+      (node) => node.textContent
     );
+    expect(titles).toContain('Draft permission note');
+    expect(titles).toContain('Event');
     expect(canvas.textContent).toContain('Event');
     const draft = canvas.querySelector<HTMLTextAreaElement>(
       'textarea[aria-label="Permission note draft"]'
@@ -250,6 +255,109 @@ describe('page editor', () => {
     expect(draft?.value).toContain('Permission note for Year 10 Ethics');
 
     expect(canvas.querySelector('.page-card__back')?.getAttribute('href')).toBe('#/excursions');
+    expect(canvas.querySelector('.excursion-timeline__event')).toBeNull();
+    const eventCard = [...canvas.querySelectorAll<HTMLElement>('.excursion-timeline__card .hub-row')].find(
+      (row) => row.querySelector('.hub-row__title')?.textContent === 'Event'
+    );
+    expect(eventCard?.getAttribute('role')).toBe('button');
+    expect(eventCard?.getAttribute('aria-label')).toBe('Edit Event');
+  });
+
+  it('turns a timeline key date into a task and opens the editor', async () => {
+    const excursion: Project = {
+      ...project,
+      id: 'proj_ex_ethics_seed',
+      title: 'Ethics Olympiad heat',
+      type: 'excursion',
+      current_end_date: '2026-10-10',
+      key_dates: {
+        permission_note_due: '2026-09-24',
+        staff_notification_due: '2026-09-24',
+        risk_assessment_due: '2026-09-03',
+        payment_due: '2026-09-17'
+      }
+    };
+    const created: Task = {
+      ...task(),
+      id: 'task_event',
+      title: 'Event day — Ethics Olympiad heat',
+      parent_project_id: excursion.id,
+      due_date: '2026-10-10',
+      tags: ['excursion', 'event'],
+      source: 'auto_generated_from_excursion'
+    };
+    vi.mocked(tasksApi.getProject).mockResolvedValue(excursion);
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([]);
+    vi.mocked(tasksApi.listTemplates).mockResolvedValue({
+      frameworks: [],
+      excursion_templates: [],
+      task_templates: [],
+      project_templates: []
+    });
+    vi.mocked(tasksApi.createTask).mockResolvedValue(created);
+    vi.mocked(tasksApi.updateProject).mockResolvedValue({
+      ...excursion,
+      generated_admin_tasks: [created.id]
+    });
+
+    const canvas = document.createElement('main');
+    await renderPageEditor(canvas, { kind: 'project', id: excursion.id });
+
+    const eventCard = [...canvas.querySelectorAll<HTMLElement>('.excursion-timeline__card .hub-row')].find(
+      (row) => row.querySelector('.hub-row__title')?.textContent === 'Event'
+    );
+    expect(eventCard).not.toBeNull();
+    eventCard!.click();
+    await vi.waitFor(() => {
+      expect(tasksApi.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Event day — Ethics Olympiad heat',
+          due_date: '2026-10-10',
+          parent_project_id: excursion.id,
+          source: 'auto_generated_from_excursion'
+        })
+      );
+      expect(canvas.querySelector('.task-editor [aria-label="Due date"]')).not.toBeNull();
+    });
+  });
+
+  it('edits an existing timeline task from the card menu', async () => {
+    const excursion: Project = {
+      ...project,
+      id: 'proj_ex_ethics_seed',
+      title: 'Ethics Olympiad heat',
+      type: 'excursion',
+      current_end_date: '2026-10-10'
+    };
+    const existing: Task = {
+      ...task(),
+      id: 'task_event',
+      title: 'Event day — Ethics Olympiad heat',
+      parent_project_id: excursion.id,
+      due_date: '2026-10-10',
+      tags: ['excursion', 'event'],
+      source: 'auto_generated_from_excursion'
+    };
+    vi.mocked(tasksApi.getProject).mockResolvedValue(excursion);
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([existing]);
+    vi.mocked(tasksApi.listTemplates).mockResolvedValue({
+      frameworks: [],
+      excursion_templates: [],
+      task_templates: [],
+      project_templates: []
+    });
+    vi.mocked(tasksApi.updateProject).mockResolvedValue(excursion);
+
+    const canvas = document.createElement('main');
+    await renderPageEditor(canvas, { kind: 'project', id: excursion.id });
+
+    const trigger = canvas.querySelector<HTMLButtonElement>('.card-menu');
+    expect(trigger).not.toBeNull();
+    trigger!.click();
+    document.querySelector<HTMLButtonElement>('[data-card-menu-item="edit"]')!.click();
+    await vi.waitFor(() => {
+      expect(canvas.querySelector('.task-editor [aria-label="Due date"]')).not.toBeNull();
+    });
   });
 
   it('tracks permission notes on the excursion page', async () => {

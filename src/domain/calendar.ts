@@ -1,5 +1,6 @@
 import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
 import type { Project } from '@/schemas/project';
+import { KEY_DATE_DEFS, matchAdminTask } from '@/domain/excursion';
 import { addDays, parseDue, startOfDay, toDateKey, weekDays } from '@/domain/queries';
 
 export type CalendarKind = 'task' | 'milestone' | 'key_date';
@@ -154,21 +155,19 @@ export function collectCalendarItems(tasks: Task[], projects: Project[]): Calend
       });
     }
     if (project.type !== 'excursion') continue;
-    const pairs: Array<[string, string | null | undefined]> = [
-      ['Permission note', project.key_dates?.permission_note_due],
-      ['Staff notification', project.key_dates?.staff_notification_due],
-      ['Risk assessment', project.key_dates?.risk_assessment_due],
-      ['Payment', project.key_dates?.payment_due],
-      ['Event', project.current_end_date]
-    ];
-    for (const [label, due_date] of pairs) {
+    const children = tasks.filter(
+      (task) => task.parent_project_id === project.id && task.status !== 'dead'
+    );
+    for (const row of KEY_DATE_DEFS) {
+      if (matchAdminTask(children, row.kind)) continue;
+      const due_date = row.read(project);
       if (!due_date) continue;
       const due = parseDue(due_date);
       if (!due) continue;
       items.push({
-        id: `key:${project.id}:${label}`,
+        id: `key:${project.id}:${row.label}`,
         kind: 'key_date',
-        title: label,
+        title: row.label,
         date_key: toDateKey(due),
         domain: null,
         priority: null,

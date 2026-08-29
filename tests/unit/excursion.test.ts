@@ -4,7 +4,16 @@ import { resolve } from 'node:path';
 import * as keys from '@/storage/keys';
 import { createTasksStore, seedIfEmpty, type KvAdapter } from '@/services/store';
 import type { SeedData } from '@/services/types';
-import { buildExcursionPlan, defaultExcursionEventDate } from '@/domain/excursion';
+import {
+  adminTaskKind,
+  buildExcursionPlan,
+  defaultExcursionEventDate,
+  excursionDatesFromAdminTask,
+  matchAdminTask,
+  planAdminTaskForKind
+} from '@/domain/excursion';
+import type { Project } from '@/schemas/project';
+import type { Task } from '@/schemas/task';
 
 function memoryKv(): KvAdapter {
   const map = new Map<string, unknown>();
@@ -83,5 +92,88 @@ describe('createExcursionFromTemplate', () => {
     expect(project.milestones.length).toBeGreaterThan(0);
     expect(project.drafted_documents?.permission_note_draft).toContain('Permission note');
     expect(project.key_dates?.risk_assessment_due).toBe('2026-09-03');
+  });
+
+  it('syncs the project event date when the event task due date changes', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    const { project, tasks } = await store.createExcursionFromTemplate({
+      excursion_template_id: 'ext_excursion',
+      title: 'Ethics State Round',
+      event_date: '2026-10-15',
+      student_group_reference: 'Year 10 Ethics team'
+    });
+    const event = tasks.find((item) => item.tags.includes('event'))!;
+    await store.updateTask(event.id, { due_date: '2026-10-20' });
+    const next = await store.getProject(project.id);
+    expect(next?.current_end_date).toBe('2026-10-20');
+  });
+});
+
+describe('admin task matching', () => {
+  const sample: Task = {
+    schema_version: 1,
+    id: 't1',
+    title: 'Draft permission note',
+    description: '',
+    kind: 'task',
+    bucket: 'active',
+    step_order: 0,
+    domain: 'teaching',
+    framework_used: null,
+    estimated_duration: 45,
+    actual_duration: null,
+    due_date: '2026-09-24',
+    created_at: '2026-08-01T00:00:00.000Z',
+    updated_at: '2026-08-01T00:00:00.000Z',
+    completed_at: null,
+    status: 'open',
+    blocked_since: null,
+    priority: 'high',
+    parent_project_id: 'proj_ex',
+    parent_task_id: null,
+    depends_on: [],
+    tags: ['excursion', 'admin', 'permission'],
+    recurrence_rule: null,
+    due_time: null,
+    remind_at: null,
+    remind_dismissed_at: null,
+    attachments: [],
+    source: 'auto_generated_from_excursion'
+  };
+
+  it('reads kind from tags or title', () => {
+    expect(adminTaskKind(sample)).toBe('permission_note');
+    expect(adminTaskKind({ ...sample, tags: [], title: 'Event day — Heat' })).toBe('event');
+    expect(matchAdminTask([sample], 'permission_note')?.id).toBe('t1');
+  });
+
+  it('plans a missing key date as an admin task', () => {
+    const planned = planAdminTaskForKind('risk_assessment', { title: 'Heat' } as Project, '2026-09-03');
+    expect(planned.title).toContain('risk assessment');
+    expect(planned.tags).toContain('risk');
+    expect(planned.due_date).toBe('2026-09-03');
+  });
+
+  it('patches key dates when an admin task moves', () => {
+    const project = {
+      type: 'excursion',
+      key_dates: { permission_note_due: '2026-09-24' },
+      current_end_date: '2026-10-15'
+    } as Project;
+    expect(
+      excursionDatesFromAdminTask(project, { ...sample, due_date: '2026-09-30' })
+    ).toEqual({
+      key_dates: { permission_note_due: '2026-09-30' }
+    });
+    expect(
+      excursionDatesFromAdminTask(project, {
+        ...sample,
+        tags: ['excursion', 'event'],
+        title: 'Event day — Heat',
+        due_date: '2026-10-20'
+      })
+    ).toEqual({ current_end_date: '2026-10-20' });
   });
 });
