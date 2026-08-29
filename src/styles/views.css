@@ -4513,6 +4513,7 @@ body.is-universe-fullscreen .page-header {
   margin: 0;
 }
 
+.dashboard-board .view-lede,
 .dashboard-board .board-toolbar {
   margin-bottom: 0;
 }
