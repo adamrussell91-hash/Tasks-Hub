@@ -444,6 +444,7 @@ function syncPageHeaderCopy(refs: HubShellRefs, config: PageHeaderConfig): boole
 
 /** Kit page header: uppercase eyebrow → h1 → optional supporting → actions. */
 export function renderPageHeader(refs: HubShellRefs, config: PageHeaderConfig): void {
+  refs.pageHeader.classList.remove('page-header--cover');
   if (syncPageHeaderCopy(refs, config)) return;
 
   refs.pageHeader.replaceChildren();

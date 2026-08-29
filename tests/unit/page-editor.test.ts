@@ -219,18 +219,20 @@ describe('page editor', () => {
     const header = pageHeader('Ethics Olympiad heat');
     await renderPageEditor(canvas, { kind: 'project', id: excursion.id }, { header });
 
-    expect(header.querySelector<HTMLInputElement>('.page-header__title-input')?.value).toBe(
+    expect(header.classList.contains('page-header--cover')).toBe(true);
+    expect(canvas.querySelector<HTMLInputElement>('.lesson-page__title')?.value).toBe(
       'Ethics Olympiad heat'
     );
+    expect(canvas.querySelector('.entity-banner .lesson-page__title')).not.toBeNull();
+    expect(canvas.querySelector('.entity-banner')).not.toBeNull();
     expect(canvas.querySelector('.page-card__title-input')).toBeNull();
-    expect([...canvas.querySelectorAll('.hub-card__eyebrow')].map((n) => n.textContent)).not.toContain(
-      'Excursion'
-    );
+    expect(canvas.querySelector('.page-card__due')).toBeNull();
+    expect(canvas.querySelector('.page-card__group')).toBeNull();
+    expect(canvas.querySelector('.page-card__notes')).toBeNull();
+    expect(canvas.querySelector('textarea[aria-label="Permission note draft"]')).toBeNull();
     expect(canvas.querySelector('.hub-chip')?.textContent).not.toBe('excursion');
     expect(canvas.textContent).not.toMatch(/Ethics Olympiad heat on 2026-10-10/);
     expect(canvas.querySelector('.page-card__back')?.textContent).toBe('← Excursions');
-    expect(canvas.querySelector('.page-card__due')).not.toBeNull();
-    expect(canvas.querySelector('.page-card__group')).not.toBeNull();
     expect(canvas.querySelector('.excursion-progress .hub-track')).not.toBeNull();
     expect(canvas.querySelector('.excursion-tracker .task-list')).not.toBeNull();
     expect(canvas.querySelector('.excursion-timeline')).not.toBeNull();
@@ -244,12 +246,30 @@ describe('page editor', () => {
       'Draft permission note'
     );
     expect(canvas.textContent).toContain('Event');
-    const draft = canvas.querySelector<HTMLTextAreaElement>(
-      'textarea[aria-label="Permission note draft"]'
-    );
-    expect(draft?.value).toContain('Permission note for Year 10 Ethics');
+    expect(
+      canvas.querySelector<HTMLInputElement>('[aria-label="Excursion date"]')?.value
+    ).toBe('2026-10-10');
 
     expect(canvas.querySelector('.page-card__back')?.getAttribute('href')).toBe('#/excursions');
+
+    vi.mocked(tasksApi.updateTask).mockResolvedValue({
+      ...task(),
+      id: 'task_permission',
+      title: 'Draft permission note',
+      parent_project_id: excursion.id,
+      due_date: '2026-10-01',
+      source: 'auto_generated_from_excursion'
+    });
+    const eventDate = canvas.querySelector<HTMLInputElement>('[aria-label="Excursion date"]')!;
+    eventDate.value = '2026-10-17';
+    eventDate.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => {
+      expect(tasksApi.updateTask).toHaveBeenCalledWith('task_permission', { due_date: '2026-10-01' });
+    });
+    expect(tasksApi.updateProject).toHaveBeenCalledWith(
+      excursion.id,
+      expect.objectContaining({ current_end_date: '2026-10-17' })
+    );
   });
 
   it('tracks permission notes on the excursion page', async () => {

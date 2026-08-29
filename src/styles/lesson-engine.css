@@ -3014,6 +3014,71 @@
   height: 1.1rem;
 }
 
+.entity-banner {
+  position: relative;
+  min-height: 16rem;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--marine) 0%, var(--depth) 78%);
+}
+
+.entity-banner--hero {
+  min-height: 18rem;
+}
+
+.entity-banner__media,
+.entity-banner__scrim,
+.entity-banner__image {
+  position: absolute;
+  inset: 0;
+}
+
+.entity-banner__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.entity-banner__scrim {
+  background: linear-gradient(to top, color-mix(in srgb, var(--depth) 45%, transparent), transparent 55%);
+  pointer-events: none;
+}
+
+.entity-banner__tools {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 2;
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
+}
+
+.entity-banner__panel {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 16rem;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  box-shadow: var(--elev-3);
+}
+
+.entity-banner__panel[hidden] {
+  display: none;
+}
+
+.entity-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.lesson-page__cover {
+  position: relative;
+}
+
 .lesson-page__title {
   width: 100%;
   margin: 0;
