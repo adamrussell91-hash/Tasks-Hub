@@ -997,7 +997,8 @@ export async function renderMapsView(canvas: HTMLElement): Promise<void> {
         }
       }
     );
-    body.append(stage, index);
+    stage.append(index);
+    body.append(stage);
     if (selectedId) {
       index
         .querySelector<HTMLElement>(`.map-card-slot[data-map-item-id="${selectedId}"]`)

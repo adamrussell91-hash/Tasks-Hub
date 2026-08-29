@@ -3053,6 +3053,10 @@
   --map-yellow-fill: #fff3b0;
   --map-green-fill: #c8f0d2;
   --map-purple-fill: #edd6fa;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: calc(100vh - 8rem);
 }
 
 html.is-map-fullscreen,
@@ -3118,7 +3122,7 @@ html.is-map-fullscreen .map-page .map-preview {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: 0;
 }
 
 .map-key {
@@ -3198,8 +3202,8 @@ html.is-map-fullscreen .map-page .map-preview {
   background: var(--cotton);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  min-height: 56rem;
-  height: calc(100vh - 10rem);
+  min-height: 24rem;
+  height: 100%;
   overflow: hidden;
   cursor: grab;
   touch-action: none;
@@ -3231,7 +3235,7 @@ html.is-map-fullscreen .map-page .map-preview {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 56rem;
+  min-height: 24rem;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -3378,21 +3382,23 @@ html.is-map-fullscreen .map-page .map-preview {
 .map-body {
   position: relative;
   display: block;
+  flex: 1;
+  min-height: 24rem;
 }
 
 .map-index {
   --map-index-ease: cubic-bezier(0.22, 1, 0.36, 1);
   position: absolute;
   right: var(--space-4);
-  bottom: var(--space-4);
-  z-index: 5;
+  bottom: calc(var(--space-6) + 3.2rem + var(--space-4));
+  z-index: 6;
   width: 2.75rem;
   padding: 0;
   overflow: hidden;
   border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--navy) 18%, white);
-  background: var(--glass);
-  box-shadow: var(--elev-2);
+  border: 1px solid color-mix(in srgb, var(--navy) 22%, var(--line));
+  background: var(--paper);
+  box-shadow: var(--elev-3);
   pointer-events: auto;
   transition:
     width 0.52s var(--map-index-ease),
@@ -3431,11 +3437,13 @@ html.is-map-fullscreen .map-page .map-preview {
   padding: var(--space-3) var(--space-4) var(--space-1);
 }
 
-.map-index__toggle svg {
+.map-index__toggle svg,
+.map-index__toggle .hub-rail__icon {
   width: 1.25rem;
   height: 1.25rem;
   display: block;
   flex-shrink: 0;
+  color: inherit;
 }
 
 .map-index__title {
@@ -3637,7 +3645,7 @@ html.is-map-fullscreen .map-page .map-preview {
 @media (max-width: 720px) {
   .map-index {
     right: var(--space-2);
-    bottom: var(--space-2);
+    bottom: calc(var(--space-6) + 3.2rem + var(--space-3));
   }
 }
 
