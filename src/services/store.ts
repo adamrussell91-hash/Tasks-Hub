@@ -38,7 +38,7 @@ import {
   catalogExcursionTemplates,
   resolveExcursionTemplateId
 } from '@/domain/excursion-catalog';
-import { addDays, backlogTasks, toDateKey } from '@/domain/queries';
+import { addDays, backlogTasks, hubCalendarDate, toDateKey } from '@/domain/queries';
 import {
   affectedIdsForBlockedSince,
   reconcileBlockedSinceBatch
@@ -759,7 +759,11 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
     },
     async briefWithClare(input = {}) {
       const tasks = await this.listTasks();
-      const facts = buildClareBriefing(tasks, input.protocol_id, input.now ?? new Date());
+      const facts = buildClareBriefing(
+        tasks,
+        input.protocol_id,
+        hubCalendarDate(input.now ?? new Date())
+      );
       const judge: ClareBriefingJudge | null =
         input.judge === undefined ? defaultClareBriefingJudge() : input.judge;
       if (!judge) return facts;
@@ -792,7 +796,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       }
     },
     async processDumpWithClare(input) {
-      const now = input.now ?? new Date();
+      const now = hubCalendarDate(input.now ?? new Date());
       const [frameworks, tasks, projects, calibrations] = await Promise.all([
         this.listFrameworks(),
         this.listTasks(),

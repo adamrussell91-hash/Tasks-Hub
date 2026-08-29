@@ -39,6 +39,9 @@ export function addDays(date: Date, days: number): Date {
 
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+/** Adam's calendar — Netlify Functions run in UTC; never use process-local "today". */
+export const HUB_TZ = 'Australia/Sydney';
+
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -46,6 +49,40 @@ function pad2(n: number): string {
 /** Calendar date in the local timezone — never UTC (`toISOString` shifts Sydney/AU dates). */
 export function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+/**
+ * Calendar day of an instant in Australia/Sydney (DST-safe).
+ * Use this whenever "today" means Adam's day — especially on UTC servers.
+ */
+export function toHubDateKey(date: Date = new Date(), timeZone: string = HUB_TZ): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+      .formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+/** Weekday name for an instant in Australia/Sydney (e.g. "Sunday"). */
+export function hubWeekdayLong(date: Date = new Date(), timeZone: string = HUB_TZ): string {
+  return new Intl.DateTimeFormat('en-AU', { timeZone, weekday: 'long' }).format(date);
+}
+
+/**
+ * Local midnight Date for Adam's current Sydney calendar day.
+ * Safe to pass into `toDateKey` / `startOfDay` / `tasksForDay` on a UTC host.
+ */
+export function hubCalendarDate(date: Date = new Date(), timeZone: string = HUB_TZ): Date {
+  const key = toHubDateKey(date, timeZone);
+  const local = parseDue(key);
+  return local ?? startOfDay(date);
 }
 
 /**

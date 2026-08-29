@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildExcursionPlan } from '@/domain/excursion';
 import {
+  hubCalendarDate,
+  hubWeekdayLong,
   parseDue,
   tasksForDay,
   toDateKey,
+  toHubDateKey,
   weekDays
 } from '@/domain/queries';
 import type { Task } from '@/schemas/task';
@@ -100,5 +103,31 @@ describe('date-only calendar keys', () => {
   it('still parses ISO timestamps as instants', () => {
     const stamp = parseDue('2026-06-01T00:00:00.000Z');
     expect(stamp?.toISOString()).toBe('2026-06-01T00:00:00.000Z');
+  });
+});
+
+describe('hub (Sydney) calendar day from an instant', () => {
+  const previousTz = process.env.TZ;
+
+  afterEach(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  it('uses Australia/Sydney even when the process is on UTC', () => {
+    process.env.TZ = 'UTC';
+    // Saturday 29 Aug 2026 22:05 UTC = Sunday 30 Aug 08:05 AEST
+    const instant = new Date('2026-08-29T22:05:00.000Z');
+    expect(toDateKey(instant)).toBe('2026-08-29');
+    expect(toHubDateKey(instant)).toBe('2026-08-30');
+    expect(hubWeekdayLong(instant)).toBe('Sunday');
+    expect(toDateKey(hubCalendarDate(instant))).toBe('2026-08-30');
+  });
+
+  it('stays on the same Sydney day when the process is already Sydney', () => {
+    process.env.TZ = 'Australia/Sydney';
+    const instant = new Date('2026-08-29T22:05:00.000Z');
+    expect(toHubDateKey(instant)).toBe('2026-08-30');
+    expect(hubWeekdayLong(instant)).toBe('Sunday');
   });
 });

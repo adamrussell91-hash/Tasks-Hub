@@ -4,7 +4,7 @@ import type { Task, TaskDomain } from '@/schemas/task';
 import type { ClareCalibration } from '@/schemas/clare';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
 import type { DumpItem } from '@/domain/clare-dump';
-import { toDateKey } from '@/domain/queries';
+import { HUB_TZ, hubWeekdayLong, toHubDateKey } from '@/domain/queries';
 import { lifeContextToPromptBlock, type LifeContextDigest } from '@/domain/life-context';
 
 export type ClareDumpDigestItem = {
@@ -21,7 +21,10 @@ export type ClareDumpDigestItem = {
 
 export type ClareDumpDigest = {
   dump_text: string;
+  /** Adam's calendar day in Australia/Sydney — never the server's UTC date. */
   today: string;
+  today_weekday: string;
+  timezone: typeof HUB_TZ;
   preferred_domain: TaskDomain;
   protocol_id: ClareProtocolId | null;
   frameworks: Array<{
@@ -75,7 +78,9 @@ export function buildClareDumpDigest(input: {
 
   return {
     dump_text: input.text.trim(),
-    today: toDateKey(now),
+    today: toHubDateKey(now),
+    today_weekday: hubWeekdayLong(now),
+    timezone: HUB_TZ,
     preferred_domain: input.preferredDomain,
     protocol_id: input.protocolId ?? null,
     frameworks: input.frameworks.map((framework) => ({
