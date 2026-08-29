@@ -542,6 +542,18 @@ function renderMapSvg(
           class: 'map-tick__mark'
         })
       );
+      const clipId = `tick-clip-${tick.id}`;
+      const clip = svgEl('clipPath', { id: clipId });
+      clip.append(
+        svgEl('rect', {
+          x: String(tick.labelBox.x),
+          y: String(tick.labelBox.y),
+          width: String(tick.labelBox.w),
+          height: String(tick.labelBox.h),
+          rx: '8'
+        })
+      );
+      g.append(clip);
       g.append(
         svgEl('rect', {
           x: String(tick.labelBox.x),
@@ -552,16 +564,16 @@ function renderMapSvg(
           class: 'map-tick__chip'
         })
       );
-      g.append(
-        horizontalText(
-          tick.labelBox.x + tick.labelBox.w / 2,
-          tick.labelBox.y + tick.labelBox.h / 2,
-          tick.label,
-          'map-tick__label',
-          tickColor,
-          tick.labelBox.h
-        )
+      const label = horizontalText(
+        tick.labelBox.x + tick.labelBox.w / 2,
+        tick.labelBox.y + tick.labelBox.h / 2,
+        tick.label,
+        'map-tick__label',
+        tickColor,
+        tick.labelBox.h
       );
+      label.setAttribute('clip-path', `url(#${clipId})`);
+      g.append(label);
       if (showPorts) {
         for (const port of tick.ports) {
           g.append(portDot(port.x, port.y, port.id, tickColor));

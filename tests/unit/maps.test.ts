@@ -373,6 +373,32 @@ describe('year layout', () => {
     expect(boxesOverlap(chip, lineContentBox(next, grown.stations, grown.ticks))).toBe(false);
   });
 
+  it('keeps a renamed championship chip off the next strand', () => {
+    const base = mindWorks2026Map();
+    const layout = layoutMap({
+      ...base,
+      ticks: [
+        ...base.ticks,
+        {
+          id: 'tk_champ',
+          label: 'Statewide Junior Mooting Championship Final',
+          attach: { kind: 'line', line_id: 'line_justice', y: 200 },
+          stroke: 'solid',
+          connects_to: null,
+          starts_on: '2026-01-27',
+          ends_on: null,
+          link: null,
+          planning: 'planned'
+        }
+      ]
+    });
+    const chip = layout.ticks.find((tick) => tick.id === 'tk_champ')!.labelBox;
+    const next = layout.lines.find((line) => line.id === 'line_innovation')!;
+    const nextLeft = Math.min(...next.tracks.map((track) => track.x)) - 8;
+    expect(chip.x + chip.w).toBeLessThan(nextLeft);
+    expect(labelHitsForeignLine(layout)).toBe(false);
+  });
+
   it('spreads strands evenly with room for event chips between them', () => {
     const layout = layoutMap(mindWorks2026Map());
     const xs = layout.lines.map((line) => line.x).sort((a, b) => a - b);
