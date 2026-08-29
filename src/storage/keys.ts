@@ -100,6 +100,11 @@ export function taskPropertiesKey(): string {
   return 'meta/task_properties';
 }
 
+/** Hub-wide prefs Clare can update from chat (timezone, etc.). */
+export function hubPrefsKey(): string {
+  return 'meta/hub_prefs';
+}
+
 export function mapKey(id: string): string {
   return `maps/${id}`;
 }

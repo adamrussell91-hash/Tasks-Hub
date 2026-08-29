@@ -1,6 +1,6 @@
 import type { Project } from '@/schemas/project';
 import type { Task, TaskDomain, TaskPriority } from '@/schemas/task';
-import { addDays, hubCalendarDate, toDateKey, toHubDateKey } from '@/domain/queries';
+import { addDays, hubCalendarDate, toDateKey, toHubDateKey, HUB_TZ } from '@/domain/queries';
 
 export type DumpKind = 'task' | 'communication' | 'note' | 'meta';
 
@@ -278,13 +278,17 @@ function parseExplicitDate(text: string, now: Date): string | null {
   return null;
 }
 
-function inferDue(text: string, now: Date): { due_date: string | null; hint: string | null } {
+function inferDue(
+  text: string,
+  now: Date,
+  timeZone: string
+): { due_date: string | null; hint: string | null } {
   const explicit = parseExplicitDate(text, now);
   if (explicit) return { due_date: explicit, hint: null };
-  // Anchor relative words to Adam's Sydney calendar day (UTC hosts would otherwise shift).
-  const hubDay = hubCalendarDate(now);
+  // Anchor relative words to Adam's hub calendar day (UTC hosts would otherwise shift).
+  const hubDay = hubCalendarDate(now, timeZone);
   if (/\btoday\b/.test(text) || /\bthis afternoon\b/.test(text) || /\btonight\b/.test(text)) {
-    return { due_date: toHubDateKey(now), hint: null };
+    return { due_date: toHubDateKey(now, timeZone), hint: null };
   }
   if (/\btomorrow\b/.test(text)) {
     return { due_date: toDateKey(addDays(hubDay, 1)), hint: null };
@@ -369,12 +373,14 @@ export function parseBrainDump(
   text: string,
   options: {
     now?: Date;
+    timezone?: string;
     preferredDomain?: TaskDomain;
     tasks?: Task[];
     projects?: Project[];
   } = {}
 ): DumpItem[] {
   const now = options.now ?? new Date();
+  const timezone = options.timezone ?? HUB_TZ;
   const preferred = options.preferredDomain ?? 'teaching';
   const tasks = options.tasks ?? [];
   const projects = options.projects ?? [];
@@ -382,7 +388,7 @@ export function parseBrainDump(
     const lower = line.toLowerCase();
     const kind = inferKind(lower);
     const actionable = kind !== 'meta';
-    const { due_date, hint } = inferDue(lower, now);
+    const { due_date, hint } = inferDue(lower, now, timezone);
     const title = titleCaseAction(line) || stripListPrefix(line);
     const existing_title = actionable ? matchExisting(title, tasks) : null;
     const item = {

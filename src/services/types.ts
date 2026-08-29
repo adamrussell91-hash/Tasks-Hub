@@ -88,6 +88,10 @@ export interface TasksStore {
 
   getClareCalibration(domain: Task['domain']): Promise<ClareCalibration>;
   listClareCalibrations(): Promise<ClareCalibration[]>;
+  getHubPrefs(): Promise<import('@/domain/hub-prefs').HubPrefs>;
+  setHubTimezone(
+    timezoneOrCity: string
+  ): Promise<{ ok: boolean; timezone: string; note: string }>;
   proposeWithClare(input: ClareProposalInput): Promise<ClareProposal>;
   briefWithClare(input?: {
     protocol_id?: ClareProtocolId;

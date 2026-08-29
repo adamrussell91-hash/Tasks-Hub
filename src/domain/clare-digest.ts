@@ -21,10 +21,10 @@ export type ClareDumpDigestItem = {
 
 export type ClareDumpDigest = {
   dump_text: string;
-  /** Adam's calendar day in Australia/Sydney — never the server's UTC date. */
+  /** Adam's calendar day in the hub timezone — never the server's UTC date. */
   today: string;
   today_weekday: string;
-  timezone: typeof HUB_TZ;
+  timezone: string;
   preferred_domain: TaskDomain;
   protocol_id: ClareProtocolId | null;
   frameworks: Array<{
@@ -63,9 +63,11 @@ export function buildClareDumpDigest(input: {
   preferredDomain: TaskDomain;
   protocolId?: ClareProtocolId;
   now?: Date;
+  timezone?: string;
   lifeContext?: LifeContextDigest | null;
 }): ClareDumpDigest {
   const now = input.now ?? new Date();
+  const timezone = input.timezone ?? HUB_TZ;
   const open = input.tasks
     .filter((task) => task.status !== 'done' && task.status !== 'dead')
     .slice(0, 40)
@@ -78,9 +80,9 @@ export function buildClareDumpDigest(input: {
 
   return {
     dump_text: input.text.trim(),
-    today: toHubDateKey(now),
-    today_weekday: hubWeekdayLong(now),
-    timezone: HUB_TZ,
+    today: toHubDateKey(now, timezone),
+    today_weekday: hubWeekdayLong(now, timezone),
+    timezone,
     preferred_domain: input.preferredDomain,
     protocol_id: input.protocolId ?? null,
     frameworks: input.frameworks.map((framework) => ({

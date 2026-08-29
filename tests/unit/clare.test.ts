@@ -141,6 +141,17 @@ describe('clare store dump + batch', () => {
     expect(tasks).toHaveLength(dump.proposals.length);
     expect(tasks.some((t) => t.tags.includes('comms'))).toBe(true);
   });
+
+  it('remembers timezone from chat via hub prefs', async () => {
+    const kv = memoryKv();
+    await seedIfEmpty(kv, keys, seed);
+    const store = createTasksStore(kv, keys);
+    expect((await store.getHubPrefs()).timezone).toBe('Australia/Sydney');
+    const saved = await store.setHubTimezone('Melbourne');
+    expect(saved.ok).toBe(true);
+    expect(saved.timezone).toBe('Australia/Melbourne');
+    expect((await store.getHubPrefs()).timezone).toBe('Australia/Melbourne');
+  });
 });
 
 describe('clare store negotiation', () => {

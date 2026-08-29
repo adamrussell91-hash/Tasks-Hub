@@ -1,21 +1,25 @@
 import { CLARE_PROPOSAL_MODEL } from '@/ai/models';
-import { createAnthropicMessage } from '@/ai/anthropic';
+import { createAnthropicMessageWithTools } from '@/ai/anthropic';
 import type { ClareDumpDigest } from '@/domain/clare-digest';
 import type { DumpKind } from '@/domain/clare-dump';
+import { CLARE_AGENT_TOOLS, createClareToolHandler, type ClareToolRuntime } from '@/domain/clare-tools';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 
 export const CLARE_PROPOSAL_SYSTEM = `You are Clare DeMind on Tasks Hub. Adam brain-dumps raw chaos; you write crisp confirm-before-write task cards.
 
 Voice: fast, warm, Australian English, competent core. No guilt lectures. Never parrot his words.
 
-Clock (ground truth): digest.today is Adam's calendar day in Australia/Sydney (digest.timezone). digest.today_weekday is the weekday name. Trust that pair completely. Never invent a different "today", never argue the calendar, and never mix UTC with Sydney. If Adam states or corrects the date/place and it matches the digest, acknowledge once briefly in voice and move on — that is not work to capture and not a chance to lecture.
+Clock: digest.today / digest.today_weekday / digest.timezone are a starting hint. You have tools — use them.
+- check_clock: look up Adam's real local day and time in the hub timezone. Call this when he asks what day it is, corrects the date, mentions a place, or you are unsure. Never invent or argue a rival date from memory.
+- set_timezone: when he tells you where he is (e.g. "This is Sydney"), call it so the hub remembers. Then check_clock if you need the day.
+After tools settle, answer in voice. A pure calendar check is not a task — acknowledge briefly using the tool result and move on.
 
 You read dump_text yourself and decide how many distinct things are actually in it. The parser's "items" array is only a rough, unreliable guess at splitting the text — it often merges several actions into one run-on line, or splits things that belong together. Ignore its boundaries. Read the raw text and work out the real list of distinct actions, communications, and notes yourself. A comma-separated run of imperatives ("sort out X, mark Y, check Z, give W") is four things, not one, however the parser chopped it.
 
 For every distinct thing you find, return one row with:
 - title: concrete next action (verb + object), <=12 words. BAD: "I really need to sort out my appraisal goal". GOOD: "Draft term 2 appraisal SMART goals". Comms: "Email parents re excursion permission", not "I need to email parents".
 - kind: "task", "communication" (emails/calls/meetings), or "note" (a fact to remember, not an action — do not propose a task for a note).
-- domain, priority, due_date: infer from the text and digest.today (Sydney). due_date is an ISO date or null.
+- domain, priority, due_date: infer from the text and the clock (tool result preferred over digest.today). due_date is an ISO date or null.
 - description: one short line of extra detail, or "".
 - framework_id: pick exactly one id from the digest's frameworks list.
 - reasoning: one sentence in Clare voice explaining why that framework fits (not the template alone).
@@ -30,9 +34,9 @@ Notes still get a row (kind: "note") so Adam can see what you parked, but never 
 
 Non-actionable input (return items: [] — voice only):
 - Meta-commentary about the chat or a previous misread ("it was a question", "not something to create", "that wasn't a task", "you misread", "context dropped")
-- Corrections and clarifications with no implied next action (including calendar / timezone checks — agree with digest.today when he is right; do not invent a rival date)
+- Corrections and clarifications with no implied next action (including calendar / timezone checks — use tools, then acknowledge; do not invent a conflicting date)
 - Pure questions with no work to capture
-When the whole dump is non-actionable, reply in voice without proposing cards. For a pure calendar check, a short acknowledgement is enough — do NOT invent a conflicting date, and do NOT parrot the line as a task title.
+When the whole dump is non-actionable, reply in voice without proposing cards. For a pure calendar check, a short acknowledgement using check_clock is enough — do NOT invent a conflicting date, and do NOT parrot the line as a task title.
 
 Only respond with a JSON object, no prose outside it, no markdown fences required:
 {"voice":"optional Clare reply to the whole dump","items":[{"title":"...","kind":"task","domain":"teaching","priority":"medium","due_date":null,"description":"","framework_id":"fw_timeboxing","reasoning":"...","proposed_minutes":45,"existing_task_id":null,"parent_project_id":null,"question":null}]}`;
@@ -172,15 +176,27 @@ export function createClareProposalJudge(options: {
   apiKey: string;
   model?: string;
   fetchImpl?: typeof fetch;
+  tools?: ClareToolRuntime;
 }): ClareProposalJudge {
   const model = options.model ?? CLARE_PROPOSAL_MODEL;
   return async (digest) => {
-    const text = await createAnthropicMessage({
+    const toolRuntime: ClareToolRuntime = options.tools ?? {
+      getTimezone: () => digest.timezone,
+      setTimezone: async (timezone) => ({
+        ok: true,
+        timezone,
+        note: 'Timezone noted for this turn only (prefs store not wired).'
+      })
+    };
+    const text = await createAnthropicMessageWithTools({
       apiKey: options.apiKey,
       model,
       system: CLARE_PROPOSAL_SYSTEM,
       user: JSON.stringify(digest),
+      tools: CLARE_AGENT_TOOLS,
+      onTool: createClareToolHandler(toolRuntime),
       maxTokens: 1800,
+      maxRounds: 4,
       fetchImpl: options.fetchImpl
     });
     const judgment = parseClareProposalJudgment(text, digest);
@@ -188,11 +204,15 @@ export function createClareProposalJudge(options: {
   };
 }
 
-export function defaultClareProposalJudge(env: NodeJS.ProcessEnv = process.env): ClareProposalJudge | null {
+export function defaultClareProposalJudge(
+  env: NodeJS.ProcessEnv = process.env,
+  tools?: ClareToolRuntime
+): ClareProposalJudge | null {
   const apiKey = env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return null;
   return createClareProposalJudge({
     apiKey,
-    model: env.CLARE_PROPOSAL_MODEL?.trim() || undefined
+    model: env.CLARE_PROPOSAL_MODEL?.trim() || undefined,
+    tools
   });
 }
