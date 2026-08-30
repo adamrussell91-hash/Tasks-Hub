@@ -1,20 +1,25 @@
 import type { Project } from '@/schemas/project';
 import type { Task } from '@/schemas/task';
-import { projectPageHash, taskPageHash } from '@/domain/cards';
-import { upcomingExcursionDates } from '@/domain/dashboard-overview';
 import {
-  adaptiveTodayTasks,
-  overdueTasks,
-  preferredDomains
-} from '@/domain/queries';
+  chipUrgencyClass,
+  dashboardFocusStats,
+  dashboardHeatDays,
+  dashboardNextAction,
+  dashboardTimeline,
+  sourceChipClass,
+  TIMELINE_BUCKETS,
+  trendLabel,
+  weeklyCompletionTrend,
+  type DashboardHeatDay,
+  type DashboardTimelineItem
+} from '@/domain/dashboard-overview';
+import { preferredDomains } from '@/domain/queries';
 import { findStallCandidates } from '@/domain/stall';
 import {
-  buildProjectPulseCard,
   findPortfolioTension,
-  LIFECYCLE_LABEL,
+  buildProjectPulseCard,
   projectLifecycleMix,
-  runningProjectCount,
-  type ProjectLifecycle
+  runningProjectCount
 } from '@/domain/projects-pulse';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { renderPressureStrips } from '@/views/pinch-strip';
@@ -26,16 +31,19 @@ export type DashboardOverviewOptions = {
   projects: Project[];
   now?: Date;
   onChanged?: () => void;
+  runningFilterActive?: boolean;
+  onFilterRunning?: () => void;
+  onCompleteTask?: (task: Task) => void;
+  onStartTask?: (task: Task) => void;
+  onRescheduleTask?: (task: Task, dateKey: string) => void;
 };
 
 const OVERVIEW_OPEN_KEY = 'tasks-hub:dashboard-overview-open';
 const MOBILE_OVERVIEW_QUERY = '(max-width: 720px)';
+const TASK_DRAG_MIME = 'application/x-tasks-hub-task';
 
 let tensionDismissed = false;
-
-function isMobileOverview(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia(MOBILE_OVERVIEW_QUERY).matches;
-}
+let draggingTaskId: string | null = null;
 
 function readOverviewOpen(): boolean {
   if (typeof window === 'undefined') return true;
@@ -56,6 +64,15 @@ function viewLink(href: string, label: string): HTMLAnchorElement {
   return link;
 }
 
+function gripIcon(): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML =
+    '<path fill="currentColor" d="M9 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm9 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zM9 12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm9 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zM9 18.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm9 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>';
+  return svg;
+}
+
 function renderTensionBanner(message: string, onDismiss: () => void): HTMLElement {
   const banner = el('div', 'pulse-banner dashboard-overview__banner');
   banner.setAttribute('role', 'status');
@@ -73,75 +90,248 @@ function renderTensionBanner(message: string, onDismiss: () => void): HTMLElemen
   return banner;
 }
 
-function renderTodayCard(tasks: Task[], now: Date): HTMLElement {
-  const card = el('section', 'hub-card dashboard-overview__tile');
-  card.setAttribute('aria-label', 'Today');
-  const head = el('div', 'dashboard-overview__head');
-  head.append(el('p', 'hub-card__eyebrow', 'Today'));
-  head.append(viewLink('#/day', 'Open Today'));
-  card.append(head);
+function renderSparkline(values: number[], delta: number): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'dashboard-sparkline');
+  svg.setAttribute('viewBox', '0 0 84 24');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'Completions over the last 14 days');
+  const max = Math.max(1, ...values);
+  const step = values.length > 1 ? 84 / (values.length - 1) : 84;
+  const coords = values.map((value, index) => {
+    const x = index * step;
+    const y = 22 - (value / max) * 18;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const area = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  area.setAttribute('class', 'dashboard-sparkline__area');
+  area.setAttribute('points', `0,24 ${coords.join(' ')} 84,24`);
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  line.setAttribute('class', 'dashboard-sparkline__line');
+  line.setAttribute('points', coords.join(' '));
+  line.setAttribute('fill', 'none');
+  svg.dataset.trend = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+  svg.append(area, line);
+  return svg;
+}
 
-  const overdue = overdueTasks(tasks, now);
-  if (overdue.length) {
-    card.append(
-      el(
-        'p',
-        'dashboard-overview__alert',
-        `${overdue.length} overdue — clear these first or defer with Clare.`
-      )
-    );
-  }
+function tileTone(id: string, value: number): string {
+  if (id === 'overdue') return value > 0 ? 'danger' : 'calm';
+  if (id === 'attention') return value > 0 ? 'warning' : 'calm';
+  if (id === 'today') return 'today';
+  return 'projects';
+}
 
-  const todayTasks = adaptiveTodayTasks(tasks, now).slice(0, 5);
-  if (!todayTasks.length) {
-    card.append(
-      el(
-        'p',
-        'empty-state empty-state--compact',
-        overdue.length ? 'Nothing else due today.' : 'Nothing due today in your focus domains.'
-      )
-    );
-    return card;
-  }
+function renderFocusStrip(
+  stats: ReturnType<typeof dashboardFocusStats>,
+  options: DashboardOverviewOptions
+): HTMLElement {
+  const strip = el('div', 'dashboard-focus');
+  strip.setAttribute('aria-label', 'Focus');
+  const tiles: Array<{
+    id: string;
+    label: string;
+    value: number;
+    href?: string;
+    onClick?: () => void;
+  }> = [
+    { id: 'today', label: "Today's tasks", value: stats.today, href: '#/day' },
+    {
+      id: 'overdue',
+      label: 'Overdue',
+      value: stats.overdue,
+      onClick: () => document.getElementById('timeline-today')?.scrollIntoView({ block: 'nearest' })
+    },
+    {
+      id: 'attention',
+      label: 'Needs attention',
+      value: stats.needsAttention,
+      href: '#/projects'
+    },
+    {
+      id: 'projects',
+      label: 'Active projects',
+      value: stats.activeProjects,
+      onClick: options.onFilterRunning
+    }
+  ];
 
-  const list = el('ul', 'dashboard-overview__list');
-  for (const task of todayTasks) {
-    const item = el('li');
-    const link = document.createElement('a');
-    link.className = 'dashboard-overview__item';
-    link.href = taskPageHash(task.id);
-    link.append(
-      el('span', 'dashboard-overview__item-title', task.title),
-      el('span', `chip chip--muted dashboard-overview__chip`, task.domain)
+  for (const tile of tiles) {
+    const tone = tileTone(tile.id, tile.value);
+    const node = tile.onClick
+      ? el('button', `dashboard-focus__tile dashboard-focus__tile--${tone}`)
+      : document.createElement('a');
+    if (tile.onClick) {
+      const btn = node as HTMLButtonElement;
+      btn.type = 'button';
+      btn.addEventListener('click', tile.onClick);
+      if (options.runningFilterActive) btn.classList.add('is-active');
+    } else {
+      node.className = `dashboard-focus__tile dashboard-focus__tile--${tone}`;
+      (node as HTMLAnchorElement).href = tile.href ?? '#/board';
+    }
+    node.setAttribute('aria-label', `${tile.value} ${tile.label}`);
+    node.append(
+      el('p', 'dashboard-focus__value', String(tile.value)),
+      el('p', 'dashboard-focus__label', tile.label)
     );
-    item.append(link);
-    list.append(item);
+    strip.append(node);
   }
-  card.append(list);
+  return strip;
+}
+
+function renderNextAction(
+  options: DashboardOverviewOptions,
+  now: Date
+): HTMLElement | null {
+  const action = dashboardNextAction(options.tasks, options.projects, now);
+  if (!action) return null;
+  const card = el('div', 'dashboard-next');
+  card.append(el('p', 'hub-card__eyebrow', 'Next action'));
+  const row = el('div', 'dashboard-next__row');
+  row.append(
+    el('p', 'dashboard-next__title', action.title),
+    el('span', sourceChipClass(action.source), action.source)
+  );
+  const go = el(
+    'button',
+    action.kind === 'complete' ? 'btn btn--primary' : 'btn btn--decisive',
+    action.kind === 'complete' ? 'Complete' : 'Start'
+  );
+  go.type = 'button';
+  go.addEventListener('click', () => {
+    if (action.task && action.kind === 'complete') {
+      options.onCompleteTask?.(action.task);
+      return;
+    }
+    if (action.task && action.kind === 'start') {
+      options.onStartTask?.(action.task);
+      return;
+    }
+    location.hash = action.href.replace(/^#/, '') ? action.href : '#/board';
+  });
+  row.append(go);
+  card.append(row);
   return card;
 }
 
-function renderProjectsCard(projects: Project[], tasks: Task[], now: Date): HTMLElement {
+function bindTaskDrag(handle: HTMLElement, task: Task): void {
+  handle.draggable = true;
+  handle.setAttribute('aria-label', `Drag to reschedule ${task.title}`);
+  handle.addEventListener('dragstart', (event) => {
+    draggingTaskId = task.id;
+    event.dataTransfer?.setData(TASK_DRAG_MIME, task.id);
+    event.dataTransfer?.setData('text/plain', task.id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    handle.closest('.dashboard-row')?.classList.add('is-dragging');
+  });
+  handle.addEventListener('dragend', () => {
+    draggingTaskId = null;
+    handle.closest('.dashboard-row')?.classList.remove('is-dragging');
+  });
+}
+
+function renderTimelineRow(
+  item: DashboardTimelineItem,
+  options: DashboardOverviewOptions
+): HTMLElement {
+  const row = el('li', `dashboard-row dashboard-row--${item.source}`);
+  row.dataset.source = item.source;
+  row.dataset.urgency = item.urgency;
+
+  if (item.task) {
+    const grip = el('button', 'dashboard-row__grip');
+    grip.type = 'button';
+    grip.append(gripIcon());
+    bindTaskDrag(grip, item.task);
+    row.append(grip);
+
+    const check = el('label', 'task-check dashboard-row__check');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = item.task.status === 'done';
+    box.setAttribute('aria-label', `Mark ${item.task.title} done`);
+    box.addEventListener('change', () => options.onCompleteTask?.(item.task!));
+    check.append(box, el('span', 'check-box'));
+    row.append(check);
+  } else {
+    row.append(el('span', 'dashboard-row__grip dashboard-row__grip--static'));
+  }
+
+  const body = document.createElement('a');
+  body.className = 'dashboard-row__body';
+  body.href = item.href;
+  body.append(el('span', 'dashboard-row__title', item.title));
+  const meta = el('span', 'dashboard-row__meta');
+  meta.append(
+    el('span', sourceChipClass(item.source), item.source),
+    el('span', chipUrgencyClass(item.urgency), item.meta),
+    el(
+      'span',
+      'dashboard-row__date',
+      item.daysOut < 0
+        ? 'Overdue'
+        : item.daysOut === 0
+          ? 'Today'
+          : formatDisplayDate(item.due_date)
+    )
+  );
+  body.append(meta);
+  row.append(body);
+  return row;
+}
+
+function renderTimelineCard(
+  items: DashboardTimelineItem[],
+  options: DashboardOverviewOptions,
+  now: Date
+): HTMLElement {
+  const card = el('section', 'hub-card dashboard-overview__tile dashboard-overview__tile--timeline');
+  card.setAttribute('aria-label', 'Timeline');
+  const head = el('div', 'dashboard-overview__head');
+  head.append(el('p', 'hub-card__eyebrow', 'Timeline'));
+  head.append(viewLink('#/day', 'Open Today'));
+  card.append(head);
+
+  const next = renderNextAction(options, now);
+  if (next) card.append(next);
+
+  if (!items.length) {
+    card.append(el('p', 'empty-state empty-state--compact', 'Nothing dated in the next month.'));
+    return card;
+  }
+
+  const rail = el('div', 'dashboard-timeline');
+  for (const bucket of TIMELINE_BUCKETS) {
+    const slice = items.filter((item) => item.bucket === bucket.id);
+    const section = el('section', 'dashboard-timeline__bucket');
+    if (bucket.id === 'today') section.id = 'timeline-today';
+    section.append(el('h3', 'dashboard-timeline__label', bucket.label));
+    if (!slice.length) {
+      section.append(el('p', 'empty-state empty-state--compact', 'Clear.'));
+    } else {
+      const list = el('ul', 'dashboard-overview__list dashboard-timeline__list');
+      for (const item of slice) list.append(renderTimelineRow(item, options));
+      section.append(list);
+    }
+    rail.append(section);
+  }
+  card.append(rail);
+  return card;
+}
+
+function renderProjectsCard(
+  projects: Project[],
+  tasks: Task[],
+  now: Date,
+  options: DashboardOverviewOptions
+): HTMLElement {
   const stallIds = new Set(findStallCandidates(projects, tasks, now).map((c) => c.project.id));
   const mix = projectLifecycleMix(projects, tasks, stallIds, now);
   const running = runningProjectCount(mix);
-  const cards = projects
-    .filter((p) => p.status !== 'archived_dead')
-    .map((p) => buildProjectPulseCard(p, tasks, stallIds, now))
-    .filter((c) => c.lifecycle !== 'completed')
-    .sort((a, b) => {
-      const order: ProjectLifecycle[] = [
-        'needs_attention',
-        'on_the_go',
-        'planning',
-        'stalled',
-        'not_started'
-      ];
-      return order.indexOf(a.lifecycle) - order.indexOf(b.lifecycle);
-    })
-    .slice(0, 4);
+  const trend = weeklyCompletionTrend(tasks, now);
 
-  const card = el('section', 'hub-card dashboard-overview__tile');
+  const card = el('section', 'hub-card dashboard-overview__tile dashboard-overview__tile--projects');
   card.setAttribute('aria-label', 'Projects');
   const head = el('div', 'dashboard-overview__head');
   head.append(el('p', 'hub-card__eyebrow', 'Projects'));
@@ -149,94 +339,72 @@ function renderProjectsCard(projects: Project[], tasks: Task[], now: Date): HTML
   card.append(head);
 
   const portfolio = el('div', 'dashboard-overview__portfolio');
-  portfolio.append(renderProjectPortfolioChart(mix, { running, compact: true, href: '#/projects' }));
+  portfolio.append(
+    renderProjectPortfolioChart(mix, {
+      running,
+      compact: true,
+      onActivate: options.onFilterRunning,
+      active: options.runningFilterActive
+    })
+  );
   card.append(portfolio);
 
-  if (!cards.length) {
-    card.append(el('p', 'empty-state empty-state--compact', 'No live projects yet.'));
-    return card;
-  }
-
-  const list = el('ul', 'dashboard-overview__list');
-  for (const pulse of cards) {
-    const item = el('li');
-    const link = document.createElement('a');
-    link.className = 'dashboard-overview__item';
-    link.href = projectPageHash(pulse.project.id);
-    link.append(
-      el('span', 'dashboard-overview__item-title', pulse.project.title),
-      el('span', 'chip chip--muted dashboard-overview__chip', LIFECYCLE_LABEL[pulse.lifecycle])
-    );
-    item.append(link);
-    list.append(item);
-  }
-  card.append(list);
+  const spark = el('div', `dashboard-trend dashboard-trend--${trend.delta > 0 ? 'up' : trend.delta < 0 ? 'down' : 'flat'}`);
+  spark.append(renderSparkline(trend.daily, trend.delta), el('p', 'dashboard-trend__label', trendLabel(trend)));
+  card.append(spark);
   return card;
 }
 
-function renderExcursionsCard(projects: Project[], now: Date): HTMLElement {
-  const upcoming = upcomingExcursionDates(projects, now).slice(0, 5);
-  const active = projects.filter(
-    (p) => p.type === 'excursion' && p.status !== 'archived_dead'
-  ).length;
-
-  const card = el('section', 'hub-card dashboard-overview__tile');
-  card.setAttribute('aria-label', 'Excursions');
-  const head = el('div', 'dashboard-overview__head');
-  head.append(el('p', 'hub-card__eyebrow', 'Excursions'));
-  head.append(viewLink('#/excursions', 'Open Excursions'));
-  card.append(head);
-
-  card.append(
-    el(
-      'p',
-      'dashboard-overview__stat',
-      active ? `${active} active excursion${active === 1 ? '' : 's'}.` : 'No active excursions.'
-    )
-  );
-
-  if (!upcoming.length) {
-    card.append(
-      el('p', 'empty-state empty-state--compact', 'No admin key dates in the next 90 days.')
+function renderHeatCard(
+  days: DashboardHeatDay[],
+  options: DashboardOverviewOptions
+): HTMLElement {
+  const card = el('section', 'hub-card dashboard-overview__tile dashboard-overview__tile--heat');
+  card.setAttribute('aria-label', 'Next 14 days');
+  card.append(el('p', 'hub-card__eyebrow', 'Next 14 days'));
+  const row = el('div', 'dashboard-heat');
+  row.setAttribute('role', 'list');
+  for (const day of days) {
+    const cell = el('a', 'dashboard-heat__cell');
+    cell.href = `#/week?date=${day.date_key}`;
+    cell.dataset.heat = String(day.heat);
+    if (day.isToday) cell.dataset.today = 'true';
+    cell.setAttribute('role', 'listitem');
+    cell.setAttribute(
+      'aria-label',
+      `${day.count} item${day.count === 1 ? '' : 's'} on ${formatDisplayDate(day.date_key)}`
     );
-    return card;
+    cell.append(el('span', 'dashboard-heat__weekday', day.weekday), el('span', 'dashboard-heat__day', String(day.day)));
+    if (day.count) cell.append(el('span', 'dashboard-heat__count', String(day.count)));
+    cell.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      cell.classList.add('is-drop');
+    });
+    cell.addEventListener('dragleave', () => cell.classList.remove('is-drop'));
+    cell.addEventListener('drop', (event) => {
+      event.preventDefault();
+      cell.classList.remove('is-drop');
+      const id =
+        event.dataTransfer?.getData(TASK_DRAG_MIME) ||
+        event.dataTransfer?.getData('text/plain') ||
+        draggingTaskId;
+      if (!id) return;
+      const task = options.tasks.find((entry) => entry.id === id);
+      if (task) options.onRescheduleTask?.(task, day.date_key);
+    });
+    row.append(cell);
   }
-
-  const list = el('ul', 'dashboard-overview__list');
-  for (const item of upcoming) {
-    const row = el('li');
-    const link = document.createElement('a');
-    link.className = 'dashboard-overview__item';
-    link.href = projectPageHash(item.project.id);
-    const when =
-      item.daysOut === 0
-        ? 'Today'
-        : item.daysOut === 1
-          ? 'Tomorrow'
-          : formatDisplayDate(item.due_date);
-    link.append(
-      el('span', 'dashboard-overview__item-title', `${item.label} · ${item.project.title}`),
-      el('span', 'chip chip--muted dashboard-overview__chip', when)
-    );
-    row.append(link);
-    list.append(row);
-  }
-  card.append(list);
+  card.append(row);
   return card;
 }
 
 function overviewPeek(options: DashboardOverviewOptions, now: Date): string {
-  const { tasks, projects } = options;
-  const overdue = overdueTasks(tasks, now).length;
-  const today = adaptiveTodayTasks(tasks, now).length;
-  const stallIds = new Set(findStallCandidates(projects, tasks, now).map((c) => c.project.id));
-  const running = runningProjectCount(projectLifecycleMix(projects, tasks, stallIds, now));
-  const excursions = projects.filter((p) => p.type === 'excursion' && p.status !== 'archived_dead').length;
+  const stats = dashboardFocusStats(options.tasks, options.projects, now);
   const parts = [
-    overdue ? `${overdue} overdue` : null,
-    today ? `${today} due today` : null,
-    running ? `${running} running` : null,
-    excursions ? `${excursions} excursion${excursions === 1 ? '' : 's'}` : null
+    stats.overdue ? `${stats.overdue} overdue` : null,
+    stats.today ? `${stats.today} due today` : null,
+    stats.needsAttention ? `${stats.needsAttention} need attention` : null,
+    stats.activeProjects ? `${stats.activeProjects} active` : null
   ].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'All clear for now';
 }
@@ -251,7 +419,7 @@ function setOverviewOpen(root: HTMLElement, open: boolean): void {
   if (peek) peek.hidden = open;
 }
 
-/** Overview band for the home dashboard — today, projects, excursions, pressure. */
+/** Overview band for the home dashboard — focus, timeline, load, heat. */
 export function renderDashboardOverview(host: HTMLElement, options: DashboardOverviewOptions): void {
   const now = options.now ?? new Date();
   const { tasks, projects, onChanged } = options;
@@ -262,6 +430,9 @@ export function renderDashboardOverview(host: HTMLElement, options: DashboardOve
   host.dataset.open = open ? 'true' : 'false';
 
   const prefs = preferredDomains(now);
+  const stats = dashboardFocusStats(tasks, projects, now);
+  host.append(renderFocusStrip(stats, options));
+
   const shell = el('div', 'dashboard-overview__shell');
   const toggle = el('button', 'dashboard-overview__toggle');
   toggle.type = 'button';
@@ -313,17 +484,21 @@ export function renderDashboardOverview(host: HTMLElement, options: DashboardOve
     );
   }
 
-  const grid = el('div', 'dashboard-overview__grid');
+  const grid = el('div', 'dashboard-overview__grid dashboard-overview__grid--merged');
+  const timeline = dashboardTimeline(tasks, projects, now);
   grid.append(
-    renderTodayCard(tasks, now),
-    renderProjectsCard(projects, tasks, now),
-    renderExcursionsCard(projects, now)
+    renderTimelineCard(timeline, options, now),
+    renderProjectsCard(projects, tasks, now, options)
   );
   panel.append(grid);
+  panel.append(renderHeatCard(dashboardHeatDays(tasks, projects, now), options));
 
   const pressure = el('div', 'dashboard-overview__pressure');
-  renderPressureStrips(pressure, tasks, now, () => onChanged?.());
-  panel.append(pressure);
+  renderPressureStrips(pressure, tasks, now, () => onChanged?.(), {
+    dueSoon: false,
+    emptyClear: false
+  });
+  if (pressure.childElementCount) panel.append(pressure);
 
   host.append(panel);
 }

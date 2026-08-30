@@ -97,8 +97,8 @@
 }
 
 .status-badge--needs_attention {
-  background: var(--pastel-peach);
-  color: var(--pastel-peach-ink);
+  background: var(--danger-surface);
+  color: var(--danger);
 }
 
 .hub-card__title {
