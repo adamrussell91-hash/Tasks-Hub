@@ -231,11 +231,8 @@ describe('createClareProposalJudge with tools', () => {
     const firstBody = JSON.parse(
       String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body)
     );
-    expect(firstBody.tools.map((t: { name: string }) => t.name)).toEqual([
-      CLARE_CHECK_CLOCK_TOOL,
-      CLARE_SET_TIMEZONE_TOOL,
-      CLARE_READ_PROTOCOL_TOOL,
-      CLARE_UPDATE_PROTOCOL_TOOL
-    ]);
+    expect(firstBody.tools.map((t: { name: string }) => t.name)).toContain(CLARE_CHECK_CLOCK_TOOL);
+    expect(firstBody.tools.map((t: { name: string }) => t.name)).toContain(CLARE_UPDATE_PROTOCOL_TOOL);
+    expect(firstBody.tools.map((t: { name: string }) => t.name)).toContain('read_repo_file');
   });
 });

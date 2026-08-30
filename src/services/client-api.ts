@@ -114,8 +114,15 @@ export const tasksApi = {
     domain?: string;
     protocol_id?: import('@/domain/clare-protocols').ClareProtocolId;
     recent_thread?: Array<{ role: 'user' | 'assistant'; text: string }>;
+    agent_slug?: import('@/domain/agent-protocol').AgentProtocolSlug;
   }) =>
     apiPost<import('@/domain/clare').ClareDumpResult>('/api/clare', { action: 'dump', ...body }),
+
+  applyAgentMutations: (mutations: import('@/domain/agent-mutations').AgentMutation[]) =>
+    apiPost<{ results: Array<{ summary: string; ok: boolean; note: string }> }>('/api/clare', {
+      action: 'apply_mutations',
+      mutations
+    }),
 
   acceptClareProposal: (body: {
     proposal: import('@/domain/clare').ClareProposal;
