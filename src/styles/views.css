@@ -4539,7 +4539,11 @@ body.is-universe-fullscreen .page-header {
 }
 
 .dashboard-focus__tile--danger {
-  background: color-mix(in srgb, var(--danger-surface) 80%, var(--hub-glass-fill));
+  background: color-mix(in srgb, var(--pastel-peach) 70%, var(--danger-surface));
+}
+
+.dashboard-focus__tile--danger .dashboard-focus__value {
+  color: var(--danger);
 }
 
 .dashboard-focus__tile--warning {
