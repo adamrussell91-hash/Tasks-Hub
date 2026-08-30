@@ -4,7 +4,9 @@ import type { ClareCalibration } from '@/schemas/clare';
 import type { ClareJudgedProposalRow } from '@/ai/clare-proposal-judge';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
 import type { DumpItem, DumpKind } from '@/domain/clare-dump';
-import { dumpVoiceLine } from '@/domain/clare-dump';
+import { dumpVoiceLine, duplicateOnBoardQuestion } from '@/domain/clare-dump';
+import type { AgentMutation } from '@/domain/agent-mutations';
+import type { AgentProtocolSlug } from '@/domain/agent-protocol';
 import {
   buildOpenLoopsToolkit,
   buildShatterToolkit,
@@ -301,6 +303,8 @@ export type ClareDumpResult = {
   questions: string[];
   notes: string[];
   toolkit: ClareToolkitResult | null;
+  mutations: AgentMutation[];
+  agent: AgentProtocolSlug;
 };
 
 function proposalFromDumpItem(
@@ -372,7 +376,8 @@ export function assembleDumpResult(
   items: DumpItem[],
   frameworks: FrameworkEntry[],
   calibrationFor: (domain: TaskDomain) => ClareCalibration | null,
-  protocolId?: ClareProtocolId
+  protocolId?: ClareProtocolId,
+  agent: AgentProtocolSlug = 'clare'
 ): ClareDumpResult {
   const questions: string[] = [];
   const notes: string[] = [];
@@ -426,7 +431,9 @@ export function assembleDumpResult(
     proposals,
     questions,
     notes,
-    toolkit
+    toolkit,
+    mutations: [],
+    agent
   };
 }
 
@@ -441,7 +448,9 @@ export function assembleJudgedDumpResult(
   frameworks: FrameworkEntry[],
   calibrationFor: (domain: TaskDomain) => ClareCalibration | null,
   protocolId?: ClareProtocolId,
-  voice?: string | null
+  voice?: string | null,
+  mutations: AgentMutation[] = [],
+  agent: AgentProtocolSlug = 'clare'
 ): ClareDumpResult {
   const questions: string[] = [];
   const notes: string[] = [];
@@ -468,7 +477,7 @@ export function assembleJudgedDumpResult(
     }
     if (row.existing_task_id) {
       if (row.question) questions.push(row.question);
-      else questions.push(`“${row.title}” is already on the board. Leave it, or make a new one?`);
+      else questions.push(duplicateOnBoardQuestion(row.title));
       continue;
     }
     proposals.push(proposalFromJudgmentRow(row, frameworks, calibrationFor(row.domain), protocolId));
@@ -484,15 +493,19 @@ export function assembleJudgedDumpResult(
   }
   if (protocolId === 'open-loops') toolkit = buildOpenLoopsToolkit(rows);
 
-  const fallbackVoice = !rows.length
-    ? 'That dump came through empty. Try again — I only sort chaos that actually arrives.'
-    : `Right, I read that as ${rows.length} thing${rows.length === 1 ? '' : 's'}. Let me untangle it.`;
+  const fallbackVoice = !rows.length && !mutations.length
+    ? 'Got it — what do you want to do next?'
+    : !rows.length
+      ? 'Right — I have changes ready for you to confirm.'
+      : `Right, I read that as ${rows.length} thing${rows.length === 1 ? '' : 's'}. Let me untangle it.`;
 
   return {
     voice: voice && voice.trim().length > 8 ? voice : fallbackVoice,
     proposals,
     questions,
     notes,
-    toolkit
+    toolkit,
+    mutations,
+    agent
   };
 }

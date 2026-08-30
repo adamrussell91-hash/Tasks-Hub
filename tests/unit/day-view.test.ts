@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Task } from '@/schemas/task';
 import { tasksApi } from '@/services/client-api';
 import { renderDayView } from '@/views/dashboard';
-import { toDateKey } from '@/domain/queries';
+import { hubCalendarDate, toDateKey } from '@/domain/queries';
 
 vi.mock('@/services/client-api', () => ({
   tasksApi: {
@@ -26,7 +26,7 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
     framework_used: null,
     estimated_duration: 30,
     actual_duration: null,
-    due_date: toDateKey(new Date()),
+    due_date: toDateKey(hubCalendarDate()),
     created_at: '2026-08-01T00:00:00.000Z',
     updated_at: '2026-08-01T00:00:00.000Z',
     completed_at: null,
@@ -93,8 +93,21 @@ describe('Today view mutations', () => {
     expect(vi.mocked(tasksApi.listTasks)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(tasksApi.createTask).mock.calls[0]?.[0]).toMatchObject({
       title: 'Instant today',
-      due_date: toDateKey(new Date())
+      due_date: toDateKey(hubCalendarDate())
     });
+  });
+
+  it('renders the daily dial on Today', async () => {
+    const existing = task({ id: 'task_today', title: 'Due today', due_time: '09:00' });
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([existing]);
+
+    const canvas = document.createElement('div');
+    document.body.append(canvas);
+    await renderDayView(canvas);
+
+    expect(canvas.querySelector('.daily-dial')).not.toBeNull();
+    expect(canvas.querySelector('.daily-dial .hub-pills')).not.toBeNull();
+    expect(canvas.textContent).toContain('Due today');
   });
 
   it('removes a Today card after delete without a loading flash', async () => {

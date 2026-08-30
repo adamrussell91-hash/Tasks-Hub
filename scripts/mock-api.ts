@@ -344,8 +344,22 @@ export function createMockApi({ seed }: MockApiOptions) {
                   : (String(b.protocol_id) as import('../src/domain/clare-protocols').ClareProtocolId),
               recent_thread: Array.isArray(b.recent_thread)
                 ? (b.recent_thread as Array<{ role: 'user' | 'assistant'; text: string }>)
-                : undefined
+                : undefined,
+              agent_slug:
+                b.agent_slug === undefined
+                  ? undefined
+                  : (String(b.agent_slug) as import('../src/domain/agent-protocol').AgentProtocolSlug)
             })
+          });
+        }
+        if (b.action === 'apply_mutations') {
+          return json(200, {
+            ok: true,
+            data: await s.applyAgentMutations(
+              Array.isArray(b.mutations)
+                ? (b.mutations as import('../src/domain/agent-mutations').AgentMutation[])
+                : []
+            )
           });
         }
         if (b.action === 'accept') {

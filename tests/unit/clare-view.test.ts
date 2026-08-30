@@ -145,7 +145,9 @@ describe('Clare protocol controls', () => {
       proposals: [proposal],
       questions: [],
       notes: [],
-      toolkit: null
+      toolkit: null,
+      mutations: [],
+      agent: 'clare'
     });
     await vi.runOnlyPendingTimersAsync();
     await Promise.resolve();
@@ -162,7 +164,9 @@ describe('Clare protocol controls', () => {
       proposals: [proposal],
       questions: [],
       notes: [],
-      toolkit: null
+      toolkit: null,
+      mutations: [],
+      agent: 'clare'
     });
     const pending = deferred<unknown>();
     vi.mocked(tasksApi.acceptClareBatch).mockReturnValue(pending.promise as Promise<never>);
@@ -207,7 +211,9 @@ describe('Clare protocol controls', () => {
       proposals: [proposal],
       questions: [],
       notes: [],
-      toolkit: null
+      toolkit: null,
+      mutations: [],
+      agent: 'clare'
     });
     await Promise.resolve();
     await Promise.resolve();
@@ -230,21 +236,16 @@ describe('Clare protocol controls', () => {
     await vi.waitFor(() => expect(tasksApi.briefWithClare).toHaveBeenCalledWith('weekly-reset'));
   });
 
-  it('switches the picker to Hammond and briefs from his inbox', async () => {
-    vi.mocked(tasksApi.listAgentInbox).mockResolvedValue([
-      {
-        schema_version: 1,
-        id: 'sf_1',
-        source_project_or_task_id: null,
-        pattern_description: 'Ethics and Da Vinci overlap in the same fortnight.',
-        pattern_kind: 'overlapping_excursions',
-        raised_by: 'Clare DeMind',
-        routed_to: ['General Hammond', 'Penelope Rose Quillian', 'Dr Vera Lenz'],
-        recurrence_note: 'October does this.',
-        fingerprint: 'fp',
-        created_at: '2026-08-26T00:00:00.000Z'
-      }
-    ]);
+  it('switches the picker to Hammond and chats through the shared agent path', async () => {
+    vi.mocked(tasksApi.processDumpWithClare).mockResolvedValue({
+      voice: 'Ethics and Da Vinci overlap in the same fortnight. That is the board.',
+      proposals: [],
+      questions: [],
+      notes: [],
+      toolkit: null,
+      mutations: [],
+      agent: 'hammond'
+    });
     const canvas = document.createElement('main');
     await renderClareView(canvas);
 
@@ -258,7 +259,11 @@ describe('Clare protocol controls', () => {
     expect(canvas.querySelector<HTMLElement>('.clare-prefs__skip')?.hidden).toBe(true);
 
     canvas.querySelector<HTMLButtonElement>('[data-protocol-id="whats-running"]')!.click();
-    await vi.waitFor(() => expect(tasksApi.listAgentInbox).toHaveBeenCalledWith('General Hammond'));
+    await vi.waitFor(() =>
+      expect(tasksApi.processDumpWithClare).toHaveBeenCalledWith(
+        expect.objectContaining({ agent_slug: 'hammond' })
+      )
+    );
     await vi.waitFor(() => expect(canvas.textContent).toContain('Ethics and Da Vinci overlap'));
     const avatars = [...canvas.querySelectorAll<HTMLImageElement>('.chat-message--assistant .chat-message__avatar')];
     expect(avatars.at(-1)?.getAttribute('src')).toBe('/assets/agents/hammond.jpg');

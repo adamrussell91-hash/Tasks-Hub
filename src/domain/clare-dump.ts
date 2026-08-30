@@ -325,6 +325,46 @@ function matchExisting(title: string, tasks: Task[]): string | null {
   return hit?.title ?? null;
 }
 
+/** Phrasing Clare uses when a dump title already exists as an open task. */
+export function duplicateOnBoardQuestion(title: string): string {
+  return `“${title}” is already on the board. Leave it, or make a new one?`;
+}
+
+export type DuplicateFollowUp =
+  | { action: 'leave'; title: string }
+  | { action: 'make_new'; title: string };
+
+/**
+ * When Adam answers a leave-or-new question with a short reply, recover the
+ * original title from recent chat instead of treating the reply as a new dump.
+ */
+export function resolveDuplicateFollowUp(
+  text: string,
+  recentThread?: Array<{ role: 'user' | 'assistant'; text: string }>
+): DuplicateFollowUp | null {
+  const trimmed = text.trim();
+  if (!trimmed || !recentThread?.length) return null;
+
+  const leave =
+    /^(leave it|leave|skip(?: it)?|no|nah|ignore|keep(?: the)? existing)\.?$/i.test(trimmed);
+  const makeNew =
+    /^(make a new one|new one|another one|duplicate(?: it)?|make another|create a new one|yes[,.]?\s*make(?: a)? new(?: one)?)\.?$/i.test(
+      trimmed
+    );
+  if (!leave && !makeNew) return null;
+
+  for (let i = recentThread.length - 1; i >= 0; i -= 1) {
+    const turn = recentThread[i]!;
+    if (turn.role !== 'assistant') continue;
+    const match = turn.text.match(/[“"]([^”"]+)[”"] is already on the board/i);
+    if (!match?.[1]) continue;
+    const title = match[1].trim();
+    if (!title) continue;
+    return leave ? { action: 'leave', title } : { action: 'make_new', title };
+  }
+  return null;
+}
+
 function questionFor(item: {
   title: string;
   kind: DumpKind;
@@ -335,7 +375,7 @@ function questionFor(item: {
 }): string | null {
   if (!item.actionable || item.kind === 'meta') return null;
   if (item.existing_title) {
-    return `“${item.title}” is already on the board. Leave it, or make a new one?`;
+    return duplicateOnBoardQuestion(item.title);
   }
   if (item.kind === 'note') {
     return `“${item.title}” looks like a note — task, comms, or ignore?`;
@@ -377,6 +417,8 @@ export function parseBrainDump(
     preferredDomain?: TaskDomain;
     tasks?: Task[];
     projects?: Project[];
+    /** Skip twin detection — Adam already chose "make a new one". */
+    forceNewTitles?: boolean;
   } = {}
 ): DumpItem[] {
   const now = options.now ?? new Date();
@@ -384,13 +426,14 @@ export function parseBrainDump(
   const preferred = options.preferredDomain ?? 'teaching';
   const tasks = options.tasks ?? [];
   const projects = options.projects ?? [];
+  const forceNew = Boolean(options.forceNewTitles);
   return splitDumpLines(text).map((line) => {
     const lower = line.toLowerCase();
     const kind = inferKind(lower);
     const actionable = kind !== 'meta';
     const { due_date, hint } = inferDue(lower, now, timezone);
     const title = titleCaseAction(line) || stripListPrefix(line);
-    const existing_title = actionable ? matchExisting(title, tasks) : null;
+    const existing_title = actionable && !forceNew ? matchExisting(title, tasks) : null;
     const item = {
       raw: line,
       title,

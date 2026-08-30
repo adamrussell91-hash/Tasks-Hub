@@ -75,6 +75,41 @@ export function hubWeekdayLong(date: Date = new Date(), timeZone: string = HUB_T
   return new Intl.DateTimeFormat('en-AU', { timeZone, weekday: 'long' }).format(date);
 }
 
+export type HubClockParts = {
+  hour: number;
+  minute: number;
+  second: number;
+  weekday: string;
+  dateKey: string;
+};
+
+/** Wall-clock parts in the hub timezone — used by the Today dial now-hand. */
+export function hubClockParts(date: Date = new Date(), timeZone: string = HUB_TZ): HubClockParts {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-AU', {
+      timeZone,
+      weekday: 'long',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+      .formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  );
+  return {
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+    second: Number(parts.second),
+    weekday: parts.weekday ?? '',
+    dateKey: `${parts.year}-${parts.month}-${parts.day}`
+  };
+}
+
 /**
  * Local midnight Date for Adam's current Sydney calendar day.
  * Safe to pass into `toDateKey` / `startOfDay` / `tasksForDay` on a UTC host.

@@ -1,8 +1,9 @@
 import type { FrameworkEntry } from '@/schemas/templates';
 import type { ClareDumpResult, ClareProposal } from '@/domain/clare';
+import type { AgentMutation } from '@/domain/agent-mutations';
+import { mutationLabel } from '@/domain/agent-mutations';
 import { briefingToMarkdown, toolkitToMarkdown, type ClareBriefing } from '@/domain/clare-desk';
 import { isBriefingProtocol, type ClareProtocolId } from '@/domain/clare-protocols';
-import { networkBriefing } from '@/domain/network-desk';
 import { preferredDomains } from '@/domain/queries';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { createHubField, createHubFilter } from '@/views/hub-kit';
@@ -167,23 +168,110 @@ function appendProposalCard(
   list.scrollTop = list.scrollHeight;
 }
 
-function paintDump(root: ParentNode, result: ClareDumpResult, frameworks: FrameworkEntry[], onSaved: () => void): void {
-  appendMessage(root, { role: 'assistant', text: result.voice, agent: 'clare' });
+function appendMutationCard(
+  root: ParentNode,
+  mutation: AgentMutation,
+  agent: ChatAgentSlug,
+  onSaved: () => void
+): void {
+  const list = root.querySelector('#chat-messages');
+  if (!list) return;
+  const card = el('li', 'record-proposal confirm-card');
+  card.setAttribute('role', 'region');
+  card.setAttribute('aria-label', 'Confirm change');
+  card.append(el('p', 'page-header__eyebrow', 'Proposed write'));
+  card.append(el('h3', 'page-header__title', mutation.summary));
+  const meta = el('div', 'hub-chips');
+  meta.append(el('span', 'chip', mutation.kind), el('span', 'chip chip--muted', mutationLabel(mutation)));
+  card.append(meta);
+  if (mutation.kind === 'repo_file') {
+    card.append(el('p', 'record-proposal__reasoning', mutation.path));
+  }
+  const actions = el('div', 'confirm-card__actions');
+  const discard = el('button', 'btn btn--ghost record-proposal__discard', 'Discard');
+  discard.type = 'button';
+  const confirm = el('button', 'btn btn--primary record-proposal__confirm', 'Confirm');
+  confirm.type = 'button';
+  discard.addEventListener('click', () => card.remove());
+  confirm.addEventListener('click', async () => {
+    const previous = confirm.textContent || 'Confirm';
+    setConfirmBusy(confirm, true);
+    discard.disabled = true;
+    try {
+      const { results } = await tasksApi.applyAgentMutations([mutation]);
+      const row = results[0];
+      if (row && !row.ok) throw new Error(row.note);
+      appendSavedCard(card);
+      onSaved();
+    } catch (err) {
+      setConfirmBusy(confirm, false, previous);
+      discard.disabled = false;
+      showChatError(root, err instanceof Error ? err.message : 'Applying that change failed.');
+    }
+  });
+  actions.append(discard, confirm);
+  card.append(actions);
+  list.append(card);
+  list.scrollTop = list.scrollHeight;
+  void agent;
+}
+
+function paintDump(
+  root: ParentNode,
+  result: ClareDumpResult,
+  frameworks: FrameworkEntry[],
+  onSaved: () => void,
+  onDuplicateFollowUp?: (reply: string) => void | Promise<void>
+): void {
+  const agent = result.agent;
+  appendMessage(root, { role: 'assistant', text: result.voice, agent });
   if (result.toolkit) {
-    appendMessage(root, { role: 'assistant', text: toolkitToMarkdown(result.toolkit), agent: 'clare' });
+    appendMessage(root, { role: 'assistant', text: toolkitToMarkdown(result.toolkit), agent });
   }
   if (result.questions.length) {
     appendMessage(root, {
       role: 'assistant',
-      agent: 'clare',
+      agent,
       text: result.questions.map((question) => `- ${question}`).join('\n')
     });
+    const hasDuplicateAsk = result.questions.some((question) =>
+      /is already on the board/i.test(question)
+    );
+    if (hasDuplicateAsk) {
+      const list = root.querySelector('#chat-messages');
+      if (list) {
+        const row = el('li', 'chat-message chat-message--assistant chat-message--actions');
+        row.setAttribute('data-agent', agent);
+        const actions = el('div', 'confirm-card__actions');
+        const leave = el('button', 'btn btn--ghost', 'Leave it');
+        leave.type = 'button';
+        const makeNew = el('button', 'btn btn--primary', 'Make a new one');
+        makeNew.type = 'button';
+        leave.addEventListener('click', () => {
+          leave.disabled = true;
+          makeNew.disabled = true;
+          void onDuplicateFollowUp?.('Leave it');
+        });
+        makeNew.addEventListener('click', () => {
+          leave.disabled = true;
+          makeNew.disabled = true;
+          void onDuplicateFollowUp?.('Make a new one');
+        });
+        actions.append(leave, makeNew);
+        row.append(actions);
+        list.append(row);
+        list.scrollTop = list.scrollHeight;
+      }
+    }
   }
   if (result.notes.length) {
-    appendMessage(root, { role: 'assistant', text: `Parked: ${result.notes.join(' · ')}`, agent: 'clare' });
+    appendMessage(root, { role: 'assistant', text: `Parked: ${result.notes.join(' · ')}`, agent });
   }
   for (const proposal of result.proposals) {
     appendProposalCard(root, proposal, frameworks, onSaved);
+  }
+  for (const mutation of result.mutations ?? []) {
+    appendMutationCard(root, mutation, agent, onSaved);
   }
 }
 
@@ -310,19 +398,6 @@ export function createClareChatController({
     appendMessage(root, { role: 'assistant', text: briefingToMarkdown(briefing), agent: 'clare' });
   }
 
-  async function loadNetworkBriefing(text?: string, protocolId?: string): Promise<void> {
-    const agent = currentAgent();
-    if (!agent.inboxName) return;
-    const flags = await withWait(() => tasksApi.listAgentInbox(agent.inboxName!));
-    if (flags === undefined) return;
-    appendMessage(root, {
-      role: 'assistant',
-      agent: agent.slug,
-      text: networkBriefing(agent, flags, { userText: text, protocolId })
-    });
-    markUnreadIfHidden();
-  }
-
   async function submitDump(text: string): Promise<void> {
     const recent_thread = collectRecentThread(root);
     const result = await withWait(() =>
@@ -330,14 +405,21 @@ export function createClareChatController({
         text,
         domain: preferredDomains()[0] ?? 'teaching',
         protocol_id: selectedProtocolId as ClareProtocolId | undefined,
-        recent_thread
+        recent_thread,
+        agent_slug: selectedSlug
       })
     );
     if (!result) return;
-    paintDump(root, result, frameworks, () => {
-      const field = input();
-      if (field) field.value = '';
-    });
+    paintDump(
+      root,
+      result,
+      frameworks,
+      () => {
+        const field = input();
+        if (field) field.value = '';
+      },
+      (reply) => send(reply)
+    );
     markUnreadIfHidden();
   }
 
@@ -347,7 +429,11 @@ export function createClareChatController({
     collapseTools();
     if (!text) {
       if (selectedSlug !== 'clare') {
-        await loadNetworkBriefing(undefined, selectedProtocolId);
+        await submitDump(
+          selectedProtocolId
+            ? `Run protocol ${selectedProtocolId}`
+            : 'Give me a sitrep from my inbox and what matters.'
+        );
         return;
       }
       if (selectedProtocolId && isBriefingProtocol(selectedProtocolId as ClareProtocolId)) {
@@ -359,10 +445,6 @@ export function createClareChatController({
     }
     appendMessage(root, { role: 'user', text });
     if (field) field.value = '';
-    if (selectedSlug !== 'clare') {
-      await loadNetworkBriefing(text, selectedProtocolId);
-      return;
-    }
     await submitDump(text);
   }
 
@@ -380,7 +462,7 @@ export function createClareChatController({
     collapseTools();
     const text = input()?.value.trim() ?? '';
     if (selectedSlug !== 'clare') {
-      void loadNetworkBriefing(text || undefined, id);
+      void send(text || `Run protocol ${id}`);
       return;
     }
     if (text) {
@@ -418,7 +500,7 @@ export function createClareChatController({
     clearThread();
     paintRoster();
     if (selectedSlug !== 'clare') {
-      await loadNetworkBriefing();
+      await submitDump('Give me a sitrep from my inbox and what matters right now.');
       return;
     }
     await loadBriefing('morning-sweep');
