@@ -103,15 +103,23 @@ function renderPinchCard(pinch: PinchPoint, confirmHost: HTMLElement, onDone: ()
   return card;
 }
 
+export type PressureStripOptions = {
+  /** Due-soon pills. Off on the dashboard — that story lives in the timeline. */
+  dueSoon?: boolean;
+  emptyClear?: boolean;
+};
+
 /** Due-soon strip + pinch flags for Day / Week (in-app reminders). */
 export function renderPressureStrips(
   host: HTMLElement,
   tasks: Task[],
   anchor: Date,
-  onChanged: () => void
+  onChanged: () => void,
+  options: PressureStripOptions = {}
 ): void {
   host.replaceChildren();
-  const soon = dueSoonTasks(tasks, anchor, 1);
+  const showDueSoon = options.dueSoon !== false;
+  const soon = showDueSoon ? dueSoonTasks(tasks, anchor, 1) : [];
   const pinches = detectPinchPoints(tasks, anchor, { days: 7 });
 
   if (soon.length) {
@@ -130,7 +138,7 @@ export function renderPressureStrips(
   }
 
   if (!pinches.length) {
-    if (!soon.length) {
+    if (!soon.length && options.emptyClear !== false) {
       host.append(el('p', 'pinch-clear', 'No pinch points in the next week.'));
     }
     return;

@@ -1,6 +1,7 @@
 import { applyRingTarget } from '@/chart-kit/apply-ring';
 import { animateColumnGrow } from '@/chart-kit/animate';
 import { buildColumns } from '@/chart-kit/columns';
+import { loadToneFor } from '@/domain/dashboard-overview';
 import {
   SUSTAINABLE_RUNNING_LOAD,
   type LifecycleMixSlice,
@@ -12,16 +13,24 @@ export type ProjectPortfolioChartOptions = {
   running: number;
   compact?: boolean;
   href?: string;
+  onActivate?: () => void;
+  active?: boolean;
   onSelect?: (id: ProjectLifecycle | 'all') => void;
   selected?: ProjectLifecycle | 'all';
 };
 
-function renderLoadRing(running: number, compact: boolean, href?: string): HTMLElement {
-  const over = running > SUSTAINABLE_RUNNING_LOAD;
+function renderLoadRing(
+  running: number,
+  compact: boolean,
+  href?: string,
+  onActivate?: () => void,
+  active = false
+): HTMLElement {
+  const tone = loadToneFor(running, SUSTAINABLE_RUNNING_LOAD);
   const size = compact ? 56 : 72;
   const strokeWidth = compact ? 6 : 7;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', over ? 'metric-ring metric-ring--over' : 'metric-ring');
+  svg.setAttribute('class', `metric-ring metric-ring--${tone}`);
   svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
   svg.setAttribute('role', 'img');
   svg.setAttribute(
@@ -55,8 +64,19 @@ function renderLoadRing(running: number, compact: boolean, href?: string): HTMLE
     )
   );
 
-  const wrap = href ? document.createElement('a') : el('div', 'metric-ring-wrap');
-  if (href) {
+  const wrap = onActivate
+    ? el('button', 'metric-ring-wrap metric-ring-wrap--action')
+    : href
+      ? document.createElement('a')
+      : el('div', 'metric-ring-wrap');
+  if (onActivate) {
+    const btn = wrap as HTMLButtonElement;
+    btn.type = 'button';
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    btn.setAttribute('aria-label', 'Filter board to running projects');
+    if (active) btn.classList.add('is-active');
+    btn.addEventListener('click', onActivate);
+  } else if (href) {
     wrap.className = 'metric-ring-wrap metric-ring-wrap--link';
     (wrap as HTMLAnchorElement).href = href;
     wrap.setAttribute('aria-label', 'Open Projects portfolio');
@@ -123,7 +143,9 @@ export function renderProjectPortfolioChart(
 ): HTMLElement {
   const compact = options.compact ?? false;
   const wrap = el('div', compact ? 'project-pulse-chart project-pulse-chart--compact' : 'project-pulse-chart');
-  wrap.append(renderLoadRing(options.running, compact, options.href));
+  wrap.append(
+    renderLoadRing(options.running, compact, options.href, options.onActivate, options.active)
+  );
   const bars = renderMixBars(mix, compact, options.onSelect, options.selected ?? 'all');
   if (bars) wrap.append(bars);
   return wrap;

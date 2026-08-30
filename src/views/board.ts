@@ -22,10 +22,13 @@ import {
 import { deleteTaskNow } from '@/views/card-actions';
 import { mountTaskCard, type TaskCardHandlers } from '@/views/hub-cards';
 import { renderDashboardOverview } from '@/views/dashboard-overview';
+import { requestToggleDone } from '@/views/dashboard';
+import { runningProjectIds } from '@/domain/dashboard-overview';
 
 /** Session-scoped project / domain filters for Kanban. */
 let boardProjectFilter: string | 'all' = 'all';
 let boardDomainFilter: TaskDomain | 'all' = 'all';
+let boardRunningOnly = false;
 let teardownBoard: (() => void) | null = null;
 let teardownColumnNav: (() => void) | null = null;
 let showBoardColumn: ((colId: BoardColumnId) => void) | null = null;
@@ -107,10 +110,13 @@ function persistStatus(
   );
 }
 
-function inScope(task: Task): boolean {
+function inScope(task: Task, runningIds: ReadonlySet<string>): boolean {
   if (task.status === 'dead' || !isBoardTask(task)) return false;
   if (boardProjectFilter !== 'all' && task.parent_project_id !== boardProjectFilter) return false;
   if (boardDomainFilter !== 'all' && task.domain !== boardDomainFilter) return false;
+  if (boardRunningOnly && (!task.parent_project_id || !runningIds.has(task.parent_project_id))) {
+    return false;
+  }
   return true;
 }
 
@@ -143,22 +149,40 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     return;
   }
   const byId = new Map(tasks.map((t) => [t.id, t]));
+  const runningIds = new Set(runningProjectIds(projects, tasks));
   function scoped(): Task[] {
     const eligible = boardTasks(tasks.filter((t) => t.status !== 'dead'));
-    return eligible.filter((t) => {
-      if (boardProjectFilter !== 'all' && t.parent_project_id !== boardProjectFilter) return false;
-      if (boardDomainFilter !== 'all' && t.domain !== boardDomainFilter) return false;
-      return true;
-    });
+    return eligible.filter((t) => inScope(t, runningIds));
   }
 
   canvas.replaceChildren();
+
+  const confirmHost = el('div', 'board-confirm');
+  const reloadBoard = (): void => {
+    void renderBoardView(canvas);
+  };
 
   const overviewHost = el('div', 'dashboard-overview');
   renderDashboardOverview(overviewHost, {
     tasks,
     projects,
-    onChanged: () => void renderBoardView(canvas)
+    runningFilterActive: boardRunningOnly,
+    onChanged: reloadBoard,
+    onFilterRunning: () => {
+      boardRunningOnly = !boardRunningOnly;
+      reloadBoard();
+    },
+    onCompleteTask: (task) => requestToggleDone(confirmHost, task, async () => reloadBoard()),
+    onStartTask: (task) => {
+      void tasksApi.updateTask(task.id, { status: 'in_progress' }).then(reloadBoard, (err: unknown) => {
+        confirmHost.replaceChildren(el('p', 'empty-state', errorMessage(err, 'Could not start')));
+      });
+    },
+    onRescheduleTask: (task, dateKey) => {
+      void tasksApi.updateTask(task.id, { due_date: dateKey }).then(reloadBoard, (err: unknown) => {
+        confirmHost.replaceChildren(el('p', 'empty-state', errorMessage(err, 'Could not reschedule')));
+      });
+    }
   });
   canvas.append(overviewHost);
 
@@ -172,7 +196,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     id: 'board',
     ariaLabel: 'Filters',
     className: 'board-filter hub-filters--inline',
-    active: boardProjectFilter !== 'all' || boardDomainFilter !== 'all'
+    active: boardProjectFilter !== 'all' || boardDomainFilter !== 'all' || boardRunningOnly
   });
   const scope = createHubFilter({
     key: 'Scope',
@@ -206,9 +230,19 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
       upsertTask(created);
     }, boardProjectFilter === 'all' ? null : boardProjectFilter)
   );
-  boardSection.append(toolbar);
+  if (boardRunningOnly) {
+    const clear = el('button', 'btn btn--secondary', 'Running projects');
+    clear.type = 'button';
+    clear.setAttribute('aria-pressed', 'true');
+    clear.title = 'Clear running-projects filter';
+    clear.addEventListener('click', () => {
+      boardRunningOnly = false;
+      reloadBoard();
+    });
+    toolbar.append(clear);
+  }
 
-  const confirmHost = el('div', 'board-confirm');
+  boardSection.append(toolbar);
 
   const board = el('div', 'board board-grid');
   board.setAttribute('aria-label', 'Task board');
@@ -233,7 +267,7 @@ export async function renderBoardView(canvas: HTMLElement): Promise<void> {
     else tasks.push(task);
     byId.set(task.id, task);
     const existing = board.querySelector<HTMLElement>(`[data-id="${task.id}"]`);
-    if (!inScope(task)) {
+    if (!inScope(task, runningIds)) {
       existing?.remove();
       syncChrome();
       return;
