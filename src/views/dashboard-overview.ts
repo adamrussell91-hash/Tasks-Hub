@@ -263,19 +263,15 @@ function renderTimelineRow(
   body.href = item.href;
   body.append(el('span', 'dashboard-row__title', item.title));
   const meta = el('span', 'dashboard-row__meta');
+  const when =
+    item.daysOut < 0 ? 'Overdue' : item.daysOut === 0 ? 'Today' : formatDisplayDate(item.due_date);
   meta.append(
     el('span', sourceChipClass(item.source), item.source),
-    el('span', chipUrgencyClass(item.urgency), item.meta),
-    el(
-      'span',
-      'dashboard-row__date',
-      item.daysOut < 0
-        ? 'Overdue'
-        : item.daysOut === 0
-          ? 'Today'
-          : formatDisplayDate(item.due_date)
-    )
+    el('span', `${chipUrgencyClass(item.urgency)} dashboard-row__when`, when)
   );
+  if (item.source === 'task' && item.meta && item.meta !== when) {
+    meta.append(el('span', 'dashboard-row__date', item.meta));
+  }
   body.append(meta);
   row.append(body);
   return row;
@@ -365,8 +361,8 @@ function renderHeatCard(
   const row = el('div', 'dashboard-heat');
   row.setAttribute('role', 'list');
   for (const day of days) {
-    const cell = el('a', 'dashboard-heat__cell');
-    cell.href = `#/week?date=${day.date_key}`;
+    const cell = el('button', 'dashboard-heat__cell');
+    cell.type = 'button';
     cell.dataset.heat = String(day.heat);
     if (day.isToday) cell.dataset.today = 'true';
     cell.setAttribute('role', 'listitem');
@@ -376,8 +372,12 @@ function renderHeatCard(
     );
     cell.append(el('span', 'dashboard-heat__weekday', day.weekday), el('span', 'dashboard-heat__day', String(day.day)));
     if (day.count) cell.append(el('span', 'dashboard-heat__count', String(day.count)));
+    cell.addEventListener('click', () => {
+      location.hash = `#/week?date=${day.date_key}`;
+    });
     cell.addEventListener('dragover', (event) => {
       event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
       cell.classList.add('is-drop');
     });
     cell.addEventListener('dragleave', () => cell.classList.remove('is-drop'));

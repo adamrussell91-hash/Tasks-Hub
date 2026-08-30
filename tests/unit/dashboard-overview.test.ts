@@ -294,6 +294,7 @@ describe('renderDashboardOverview', () => {
     expect(host.querySelector('.dashboard-row__grip')).not.toBeNull();
     expect(host.querySelector('.dashboard-row .task-check')).not.toBeNull();
     expect(host.querySelector('.chip--source-task')).not.toBeNull();
+    expect(host.querySelector('.chip--urgency-warning')?.textContent).toBe('Today');
     expect(host.querySelector('.dashboard-next')?.textContent).toContain('Mark essays');
   });
 
@@ -326,7 +327,7 @@ describe('renderDashboardOverview', () => {
     host.querySelector<HTMLButtonElement>('.metric-ring-wrap--action')?.click();
     expect(onFilterRunning).toHaveBeenCalledOnce();
 
-    const cell = host.querySelector<HTMLAnchorElement>('.dashboard-heat__cell');
+    const cell = host.querySelector<HTMLButtonElement>('.dashboard-heat__cell');
     expect(cell).not.toBeNull();
     const transfer = {
       data: { 'application/x-tasks-hub-task': open.id, 'text/plain': open.id } as Record<string, string>,
