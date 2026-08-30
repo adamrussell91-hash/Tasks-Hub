@@ -102,7 +102,7 @@ describe('Clare protocol controls', () => {
     expect(canvas.textContent).toMatch(/clare can/i);
     expect(canvas.textContent).toContain(briefing.closer);
     expect(canvas.querySelector('select.hub-filter')).toBeNull();
-    expect(canvas.querySelector('#chat-form .hub-filter')?.tagName).toBe('BUTTON');
+    expect(canvas.querySelector('#chat-form .hub-filter')).toBeNull();
     expect(canvas.querySelector('#chat-input')?.tagName).toBe('TEXTAREA');
     expect(canvas.querySelector('#chat-skip-reasoning')).not.toBeNull();
     expect(canvas.querySelector('.clare-prefs')).toBeNull();
