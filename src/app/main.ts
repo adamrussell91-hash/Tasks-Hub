@@ -9,6 +9,7 @@ import '../styles/hub.css';
 import '../styles/views.css';
 import '../styles/cards.css';
 import '../styles/gantt.css';
+import '../styles/daily-dial.css';
 import '../styles/lesson-engine.css';
 import 'katex/dist/katex.min.css';
 

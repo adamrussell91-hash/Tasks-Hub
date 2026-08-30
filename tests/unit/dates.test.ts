@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildExcursionPlan } from '@/domain/excursion';
 import {
   hubCalendarDate,
+  hubClockParts,
   hubWeekdayLong,
   parseDue,
   tasksForDay,
@@ -122,6 +123,11 @@ describe('hub (Sydney) calendar day from an instant', () => {
     expect(toHubDateKey(instant)).toBe('2026-08-30');
     expect(hubWeekdayLong(instant)).toBe('Sunday');
     expect(toDateKey(hubCalendarDate(instant))).toBe('2026-08-30');
+    const clock = hubClockParts(instant);
+    expect(clock.dateKey).toBe('2026-08-30');
+    expect(clock.weekday).toBe('Sunday');
+    expect(clock.hour).toBe(8);
+    expect(clock.minute).toBe(5);
   });
 
   it('stays on the same Sydney day when the process is already Sydney', () => {

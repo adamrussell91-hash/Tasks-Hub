@@ -3,6 +3,7 @@ import type { Project } from '@/schemas/project';
 import {
   adaptiveTodayTasks,
   backlogTasks,
+  hubCalendarDate,
   preferredDomains,
   searchEntities,
   toDateKey
@@ -29,6 +30,7 @@ import {
   el,
   priorityFilterOptions
 } from '@/views/hub-kit';
+import { mountDailyDial, type DailyDialHandle } from '@/views/daily-dial';
 
 export { renderProjectsView } from '@/views/projects';
 
@@ -156,6 +158,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   showViewLoading(canvas, 'Loading…', '.day-view');
   let tasks: Task[];
   let projects: Project[];
+  let liveDial: DailyDialHandle | null = null;
   try {
     [tasks, projects] = await Promise.all([tasksApi.listTasks(), tasksApi.listProjects()]);
   } catch (err) {
@@ -164,7 +167,9 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
   }
 
   function paint(): void {
-    const today = new Date();
+    liveDial?.destroy();
+    liveDial = null;
+    const today = hubCalendarDate();
     const list = adaptiveTodayTasks(tasks, today).filter((t) => {
       if (dayDomain !== 'all' && t.domain !== dayDomain) return false;
       if (dayPriority !== 'all' && t.priority !== dayPriority) return false;
@@ -209,6 +214,26 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
     );
     canvas.append(filters.root);
 
+    const confirmHost = el('div', 'task-confirm');
+    const dialHost = el('div', 'daily-dial-host');
+    canvas.append(dialHost);
+
+    function remountDial(): void {
+      liveDial?.destroy();
+      liveDial = mountDailyDial(dialHost, {
+        tasks,
+        projects,
+        date: today,
+        filters: { domain: dayDomain, priority: dayPriority },
+        onOpen: (task) => {
+          void renderTaskEditor(confirmHost, task, projects, async () => {
+            tasks = await tasksApi.listTasks().catch(() => tasks);
+            paint();
+          });
+        }
+      });
+    }
+
     const clareLink = el('p', 'clare-inline');
     const goClare = el('button', 'btn btn--secondary', 'Talk to Clare');
     goClare.type = 'button';
@@ -221,8 +246,6 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
     const pressure = el('div', 'pressure-host');
     renderPressureStrips(pressure, tasks, today, () => void paint());
     canvas.append(pressure);
-
-    const confirmHost = el('div', 'task-confirm');
     canvas.append(
       renderQuickAdd(
         (created) => {
@@ -249,6 +272,7 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
               },
               projects
             );
+            remountDial();
             return;
           }
           paint();
@@ -271,7 +295,10 @@ export async function renderDayView(canvas: HTMLElement): Promise<void> {
           el('p', 'empty-state', 'Nothing due today in the preferred domains. Check Backlog or Week.')
         );
       }
+      remountDial();
     }
+
+    remountDial();
 
     if (!list.length) {
       canvas.append(
