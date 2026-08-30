@@ -43,6 +43,7 @@ mutations[] — any of:
 For page/code edits: get_task/get_project/read_repo_file first, then return the full intended page_blocks or file content in mutations. Do not invent entity ids.
 
 Never bounce Adam for "not bringing a dump." Never invent rival dates. digest.recent_thread is continuity. digest.operating_protocol is your starting manual.
+If Adam answers a leave-or-new duplicate question with "make a new one" / "leave it", use the original quoted title — never treat those short replies as task titles.
 
 After tools settle, JSON only:
 {"voice":"...","items":[],"mutations":[]}`;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBrainDump, splitDumpLines } from '@/domain/clare-dump';
+import { parseBrainDump, resolveDuplicateFollowUp, splitDumpLines } from '@/domain/clare-dump';
 import { assembleDumpResult } from '@/domain/clare';
 import type { FrameworkEntry } from '@/schemas/templates';
 
@@ -162,5 +162,73 @@ describe('brain dump parsing', () => {
       preferredDomain: 'teaching'
     });
     expect(items[0]!.due_date).toBe('2026-08-30');
+  });
+
+  it('resolves leave / make-a-new-one replies from the prior duplicate question', () => {
+    const thread = [
+      { role: 'user' as const, text: 'Research fire ants for science club' },
+      {
+        role: 'assistant' as const,
+        text: '- “Research fire ants for science club” is already on the board. Leave it, or make a new one?'
+      }
+    ];
+    expect(resolveDuplicateFollowUp('Make a new one', thread)).toEqual({
+      action: 'make_new',
+      title: 'Research fire ants for science club'
+    });
+    expect(resolveDuplicateFollowUp('Leave it', thread)).toEqual({
+      action: 'leave',
+      title: 'Research fire ants for science club'
+    });
+    expect(resolveDuplicateFollowUp('Research something else entirely', thread)).toBeNull();
+  });
+
+  it('forceNewTitles proposes a twin instead of only asking about the existing one', () => {
+    const task = {
+      schema_version: 1 as const,
+      id: 't1',
+      title: 'Research fire ants for science club',
+      description: '',
+      kind: 'task' as const,
+      bucket: 'active' as const,
+      step_order: 0,
+      domain: 'teaching' as const,
+      framework_used: null,
+      estimated_duration: 60,
+      actual_duration: null,
+      due_date: null,
+      created_at: '2026-08-01T00:00:00.000Z',
+      updated_at: '2026-08-01T00:00:00.000Z',
+      completed_at: null,
+      status: 'open' as const,
+      blocked_since: null,
+      priority: 'medium' as const,
+      parent_project_id: null,
+      parent_task_id: null,
+      depends_on: [] as string[],
+      tags: [] as string[],
+      recurrence_rule: null,
+      due_time: null,
+      remind_at: null,
+      remind_dismissed_at: null,
+      attachments: [] as [],
+      source: 'manual' as const
+    };
+    const blocked = parseBrainDump('Research fire ants for science club', {
+      now: new Date(2026, 7, 30),
+      tasks: [task]
+    });
+    expect(blocked[0]!.existing_title).toBe(task.title);
+    expect(assembleDumpResult(blocked, frameworks, () => null).proposals).toHaveLength(0);
+
+    const forced = parseBrainDump('Research fire ants for science club', {
+      now: new Date(2026, 7, 30),
+      tasks: [task],
+      forceNewTitles: true
+    });
+    expect(forced[0]!.existing_title).toBeNull();
+    expect(assembleDumpResult(forced, frameworks, () => null).proposals.map((p) => p.title)).toEqual([
+      'Research fire ants for science club'
+    ]);
   });
 });

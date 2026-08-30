@@ -61,7 +61,7 @@ import {
   type ClareProposalInput
 } from '@/domain/clare';
 import { buildClareDumpDigest } from '@/domain/clare-digest';
-import { parseBrainDump } from '@/domain/clare-dump';
+import { parseBrainDump, resolveDuplicateFollowUp } from '@/domain/clare-dump';
 import {
   defaultClareProposalJudge,
   type ClareProposalJudge
@@ -874,14 +874,29 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         this.listClareCalibrations()
       ]);
       const byDomain = new Map(calibrations.map((c) => [c.domain, c]));
+      const followUp = resolveDuplicateFollowUp(input.text, input.recent_thread);
+      if (followUp?.action === 'leave') {
+        return {
+          voice: `Leaving “${followUp.title}” as is.`,
+          proposals: [],
+          questions: [],
+          notes: [],
+          toolkit: null,
+          mutations: [],
+          agent: agentSlug
+        };
+      }
+      const dumpText = followUp?.action === 'make_new' ? followUp.title : input.text;
+      const forceNewTitles = followUp?.action === 'make_new';
       const items =
         agentSlug === 'clare'
-          ? parseBrainDump(input.text, {
+          ? parseBrainDump(dumpText, {
               now,
               timezone,
               preferredDomain: input.domain,
               tasks,
-              projects
+              projects,
+              forceNewTitles
             })
           : [];
       const calibrationFor = (domain: TaskDomain) => {
@@ -917,7 +932,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
             ? await (defaultLifeContextProvider()?.() ?? Promise.resolve(null))
             : input.lifeContext;
         const digest = buildClareDumpDigest({
-          text: input.text,
+          text: dumpText,
           items,
           frameworks,
           tasks,
@@ -934,12 +949,18 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         try {
           const judgment = await judge(digest);
           if (judgment.ok) {
+            const rows =
+              forceNewTitles
+                ? judgment.items.map((row) => ({ ...row, existing_task_id: null }))
+                : judgment.items;
             return assembleJudgedDumpResult(
-              judgment.items,
+              rows,
               frameworks,
               calibrationFor,
               input.protocol_id,
-              judgment.voice,
+              forceNewTitles && (!judgment.voice || /already on the board/i.test(judgment.voice))
+                ? `Making a fresh “${followUp!.title}”. Confirm when ready.`
+                : judgment.voice,
               judgment.mutations,
               agentSlug
             );

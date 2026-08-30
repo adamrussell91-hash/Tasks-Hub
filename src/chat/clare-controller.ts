@@ -221,7 +221,8 @@ function paintDump(
   root: ParentNode,
   result: ClareDumpResult,
   frameworks: FrameworkEntry[],
-  onSaved: () => void
+  onSaved: () => void,
+  onDuplicateFollowUp?: (reply: string) => void | Promise<void>
 ): void {
   const agent = result.agent;
   appendMessage(root, { role: 'assistant', text: result.voice, agent });
@@ -234,6 +235,35 @@ function paintDump(
       agent,
       text: result.questions.map((question) => `- ${question}`).join('\n')
     });
+    const hasDuplicateAsk = result.questions.some((question) =>
+      /is already on the board/i.test(question)
+    );
+    if (hasDuplicateAsk) {
+      const list = root.querySelector('#chat-messages');
+      if (list) {
+        const row = el('li', 'chat-message chat-message--assistant chat-message--actions');
+        row.setAttribute('data-agent', agent);
+        const actions = el('div', 'confirm-card__actions');
+        const leave = el('button', 'btn btn--ghost', 'Leave it');
+        leave.type = 'button';
+        const makeNew = el('button', 'btn btn--primary', 'Make a new one');
+        makeNew.type = 'button';
+        leave.addEventListener('click', () => {
+          leave.disabled = true;
+          makeNew.disabled = true;
+          void onDuplicateFollowUp?.('Leave it');
+        });
+        makeNew.addEventListener('click', () => {
+          leave.disabled = true;
+          makeNew.disabled = true;
+          void onDuplicateFollowUp?.('Make a new one');
+        });
+        actions.append(leave, makeNew);
+        row.append(actions);
+        list.append(row);
+        list.scrollTop = list.scrollHeight;
+      }
+    }
   }
   if (result.notes.length) {
     appendMessage(root, { role: 'assistant', text: `Parked: ${result.notes.join(' · ')}`, agent });
@@ -383,10 +413,16 @@ export function createClareChatController({
       })
     );
     if (!result) return;
-    paintDump(root, result, frameworks, () => {
-      const field = input();
-      if (field) field.value = '';
-    });
+    paintDump(
+      root,
+      result,
+      frameworks,
+      () => {
+        const field = input();
+        if (field) field.value = '';
+      },
+      (reply) => send(reply)
+    );
     markUnreadIfHidden();
   }
 

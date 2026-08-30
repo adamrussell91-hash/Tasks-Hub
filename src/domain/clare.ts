@@ -4,7 +4,7 @@ import type { ClareCalibration } from '@/schemas/clare';
 import type { ClareJudgedProposalRow } from '@/ai/clare-proposal-judge';
 import type { ClareProtocolId } from '@/domain/clare-protocols';
 import type { DumpItem, DumpKind } from '@/domain/clare-dump';
-import { dumpVoiceLine } from '@/domain/clare-dump';
+import { dumpVoiceLine, duplicateOnBoardQuestion } from '@/domain/clare-dump';
 import type { AgentMutation } from '@/domain/agent-mutations';
 import type { AgentProtocolSlug } from '@/domain/agent-protocol';
 import {
@@ -476,7 +476,7 @@ export function assembleJudgedDumpResult(
     }
     if (row.existing_task_id) {
       if (row.question) questions.push(row.question);
-      else questions.push(`“${row.title}” is already on the board. Leave it, or make a new one?`);
+      else questions.push(duplicateOnBoardQuestion(row.title));
       continue;
     }
     proposals.push(proposalFromJudgmentRow(row, frameworks, calibrationFor(row.domain), protocolId));
