@@ -6,6 +6,7 @@ import { CLARE_AGENT_TOOLS, createClareToolHandler, type ClareToolRuntime } from
 import { parseAgentMutations, type AgentMutation } from '@/domain/agent-mutations';
 import type { AgentProtocolSlug } from '@/domain/agent-protocol';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
+import { createEmbedBlock } from '@/blocks/create-block';
 
 const AGENT_NAMES: Record<AgentProtocolSlug, string> = {
   clare: 'Clare DeMind',
@@ -251,11 +252,86 @@ export function defaultClareProposalJudge(
   agentSlug?: AgentProtocolSlug
 ): ClareProposalJudge | null {
   const apiKey = env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) return null;
-  return createClareProposalJudge({
-    apiKey,
-    model: env.CLARE_PROPOSAL_MODEL?.trim() || undefined,
-    tools,
-    agentSlug: agentSlug ?? tools?.agentSlug ?? 'clare'
-  });
+  if (apiKey) {
+    return createClareProposalJudge({
+      apiKey,
+      model: env.CLARE_PROPOSAL_MODEL?.trim() || undefined,
+      tools,
+      agentSlug: agentSlug ?? tools?.agentSlug ?? 'clare'
+    });
+  }
+  // Local / no-key: still answer questions and stage page mutations; dumps fall through via ok:false.
+  return localStubClareJudge(agentSlug ?? tools?.agentSlug ?? 'clare');
+}
+
+/** Offline stand-in so `npm run dev` can still exercise chat, Q&A, and page mutations. */
+export function localStubClareJudge(agentSlug: AgentProtocolSlug = 'clare'): ClareProposalJudge {
+  return async (digest) => {
+    const text = digest.dump_text.trim();
+    const lower = text.toLowerCase();
+    const urlMatch = text.match(/https?:\/\/[^\s)\]]+/i);
+
+    if (urlMatch && /\b(add|attach|put|link|page|embed|on the task)\b/i.test(lower)) {
+      const withoutUrl = lower.replace(urlMatch[0].toLowerCase(), ' ');
+      const task =
+        digest.open_tasks.find((row) => {
+          const title = row.title.toLowerCase();
+          return title.length >= 4 && withoutUrl.includes(title.slice(0, Math.min(18, title.length)));
+        }) ?? digest.open_tasks[0];
+      if (!task) {
+        return {
+          ok: true,
+          model: 'local-stub',
+          voice: 'I do not see an open task to hang that URL on yet — create one first.',
+          items: [],
+          mutations: []
+        };
+      }
+      const embed = createEmbedBlock(`blk_${Date.now().toString(36)}`, 'generic');
+      embed.content.url = urlMatch[0];
+      embed.content.title = urlMatch[0];
+      return {
+        ok: true,
+        model: 'local-stub',
+        voice: `Got it — I will put that URL on “${task.title}”. Confirm when you are ready.`,
+        items: [],
+        mutations: [
+          {
+            kind: 'page_blocks',
+            summary: `Add URL to ${task.title}`,
+            entity_type: 'task',
+            entity_id: task.id,
+            page_blocks: [embed]
+          }
+        ]
+      };
+    }
+
+    const looksLikeQuestion =
+      /\?/.test(text) || /^(what|where|when|why|how|who|is it|are you|do you)\b/i.test(lower);
+    const looksLikeWork =
+      /\b(email|mark|write|book|call|prep|finish|sort|organise|organize|due|tomorrow|today i need)\b/i.test(
+        lower
+      );
+    if (looksLikeQuestion && !looksLikeWork) {
+      if (/\b(day|date|today|sydney|timezone|clock)\b/i.test(lower)) {
+        return {
+          ok: true,
+          model: 'local-stub',
+          voice: `It's ${digest.today_weekday} ${digest.today} in ${digest.timezone}.`,
+          items: [],
+          mutations: []
+        };
+      }
+      return {
+        ok: true,
+        model: 'local-stub',
+        voice: `Hearing you. I am ${agentSlug} on the desk with ${digest.open_tasks.length} open tasks in view — dump work or ask me to edit a page whenever.`,
+        items: [],
+        mutations: []
+      };
+    }
+
+    return { ok: false, voice: null, items: [], mutations: [], model: 'local-stub' };
+  };
 }
