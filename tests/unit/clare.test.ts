@@ -125,7 +125,8 @@ describe('clare store dump + batch', () => {
     const dump = await store.processDumpWithClare({
       text: 'Email parents about the excursion\nMarking year 9 essays due tomorrow',
       domain: 'teaching',
-      now: new Date('2026-08-25T09:00:00')
+      now: new Date('2026-08-25T09:00:00'),
+      judge: null
     });
     expect(dump.proposals.length).toBeGreaterThanOrEqual(2);
     expect(dump.voice.toLowerCase()).toMatch(/dump|thing/);

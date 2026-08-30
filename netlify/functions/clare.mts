@@ -84,8 +84,21 @@ export default async function handler(request: Request): Promise<Response> {
           body.protocol_id === undefined
             ? undefined
             : (String(body.protocol_id) as import('../../src/domain/clare-protocols').ClareProtocolId),
-        recent_thread: recent
+        recent_thread: recent,
+        agent_slug:
+          body.agent_slug === undefined
+            ? undefined
+            : (String(body.agent_slug) as import('../../src/domain/agent-protocol').AgentProtocolSlug)
       });
+      return withCors(okResponse(200, result), request, env);
+    }
+
+    if (action === 'apply_mutations') {
+      const result = await store.applyAgentMutations(
+        Array.isArray(body.mutations)
+          ? (body.mutations as import('../../src/domain/agent-mutations').AgentMutation[])
+          : []
+      );
       return withCors(okResponse(200, result), request, env);
     }
 

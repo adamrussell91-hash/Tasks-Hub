@@ -114,7 +114,11 @@ export interface TasksStore {
     judge?: import('@/ai/clare-proposal-judge').ClareProposalJudge | null;
     lifeContext?: import('@/domain/life-context').LifeContextDigest | null;
     recent_thread?: Array<{ role: 'user' | 'assistant'; text: string }>;
+    agent_slug?: import('@/domain/agent-protocol').AgentProtocolSlug;
   }): Promise<ClareDumpResult>;
+  applyAgentMutations(
+    mutations: import('@/domain/agent-mutations').AgentMutation[]
+  ): Promise<{ results: Array<{ summary: string; ok: boolean; note: string }> }>;
   acceptClareProposal(input: {
     proposal: ClareProposal;
     accepted_minutes: number;

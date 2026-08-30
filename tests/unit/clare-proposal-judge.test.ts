@@ -36,7 +36,8 @@ describe('Clare dump digest clock', () => {
     expect(CLARE_PROPOSAL_SYSTEM).toMatch(/check_clock/);
     expect(CLARE_PROPOSAL_SYSTEM).toMatch(/update_protocol/);
     expect(CLARE_PROPOSAL_SYSTEM).toMatch(/Talk like Claude/);
-    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/Never bounce him/);
+    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/mutations/);
+    expect(CLARE_PROPOSAL_SYSTEM).toMatch(/repo_file/);
   });
 });
 
@@ -148,7 +149,8 @@ describe('assembleJudgedDumpResult', () => {
         }
       ],
       model: 'test-judge',
-      ok: true
+      ok: true,
+      mutations: []
     });
 
     const judgment = await judge(

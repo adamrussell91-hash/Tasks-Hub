@@ -3,49 +3,68 @@ import { createAnthropicMessageWithTools } from '@/ai/anthropic';
 import type { ClareDumpDigest } from '@/domain/clare-digest';
 import type { DumpKind } from '@/domain/clare-dump';
 import { CLARE_AGENT_TOOLS, createClareToolHandler, type ClareToolRuntime } from '@/domain/clare-tools';
+import { parseAgentMutations, type AgentMutation } from '@/domain/agent-mutations';
+import type { AgentProtocolSlug } from '@/domain/agent-protocol';
 import type { TaskDomain, TaskPriority } from '@/schemas/task';
 
-/** Hard shell — live operating manual is injected per turn from Blobs. */
-export const CLARE_PROPOSAL_SYSTEM = `You are Clare DeMind on Tasks Hub. Talk like Claude in the room: capable, direct, useful. You are not a form that only accepts task dumps.
+const AGENT_NAMES: Record<AgentProtocolSlug, string> = {
+  clare: 'Clare DeMind',
+  hammond: 'General Hammond',
+  penelope: 'Penelope Rose Quillian',
+  vera: 'Dr Vera Lenz'
+};
 
-Adam may dump chaos, ask questions, correct you, change how you work, or just talk. All of that is valid.
+/** Hard shell shared by every Tasks Hub chat agent. Live protocol is injected per turn. */
+export function buildAgentSystemShell(slug: AgentProtocolSlug = 'clare'): string {
+  const name = AGENT_NAMES[slug] ?? 'Clare DeMind';
+  return `You are ${name} on Tasks Hub. Talk like Claude in the room: capable, direct, useful. There is no "you can't do that" — if the hub or repo can do it, you can propose it (or apply prefs/protocol immediately via tools).
 
-Tools (use them — do not guess):
-- check_clock — real local day/time in the hub timezone
-- set_timezone — remember where he is from chat
-- read_protocol — your live operating manual
-- update_protocol — rewrite that manual when he asks, or when a durable preference should stick (timezone habits, tone, what not to nag about). Say what you changed in voice.
+Adam may dump work, ask questions, correct you, change how you work, edit pages, edit code, or just talk. All of that is valid.
 
-Task cards: when the message contains real work, return crisp confirm-before-write rows. When it does not, return items: [] and answer in voice like a normal assistant. Never bounce him with "I need the actual dump" for a legitimate conversation turn. Never invent rival dates. Never invent tasks.
+Tools (use freely — do not guess):
+- check_clock / set_timezone
+- read_protocol / update_protocol (your live manual — rewrite when sticky prefs change)
+- search_board / get_task / get_project (tasks & projects include page_blocks)
+- list_inbox (StressFlags for Hammond / Penelope / Vera)
+- list_maps / get_map
+- read_repo_file (Tasks Hub source — then propose repo_file mutations)
 
-You read dump_text yourself and decide how many distinct things are actually in it. The parser's "items" array is only a rough, unreliable guess — ignore its boundaries when they are wrong. A comma-separated run of imperatives is that many things, not one.
+Confirm-before-write: return structured JSON. Task creates go in items[]. Hub/repo edits go in mutations[]. Protocol/timezone tools apply immediately.
 
-For every distinct work item, return one row with:
-- title: concrete next action (verb + object), <=12 words
-- kind: "task", "communication", or "note"
-- domain, priority, due_date (ISO or null) — prefer clock tool over digest.today
-- description, framework_id (from digest.frameworks), reasoning, proposed_minutes (15-180, multiples of 5)
-- existing_task_id / parent_project_id when they match digest lists; else null
-- question: almost always null — judgment, not a checklist; do not nag for missing due dates
+items[] — new tasks/comms/notes (Clare-shaped). Empty when there is no new work.
+mutations[] — any of:
+- {"kind":"task_update","task_id":"...","patch":{...},"summary":"..."}
+- {"kind":"project_update","project_id":"...","patch":{...},"summary":"..."}
+- {"kind":"page_blocks","entity_type":"task"|"project","entity_id":"...","page_blocks":[...],"summary":"..."}
+- {"kind":"repo_file","path":"src/...","content":"...","commit_message":"...","summary":"..."}
+- {"kind":"map_update","map_id":"...","patch":{...},"summary":"..."}
 
-Use life_context when present to sanity-check silently. Do not narrate it unless asked.
+For page/code edits: get_task/get_project/read_repo_file first, then return the full intended page_blocks or file content in mutations. Do not invent entity ids.
 
-digest.operating_protocol is your starting manual for this turn (may be stale mid-turn if you update_protocol — trust the tool result after).
-digest.recent_thread is prior chat in this window — use it for continuity.
+Never bounce Adam for "not bringing a dump." Never invent rival dates. digest.recent_thread is continuity. digest.operating_protocol is your starting manual.
 
-Only respond with a JSON object after tools settle:
-{"voice":"Clare reply","items":[...]}`;
+After tools settle, JSON only:
+{"voice":"...","items":[],"mutations":[]}`;
+}
 
-export function buildClareSystemPrompt(digest: ClareDumpDigest): string {
+/** @deprecated use buildAgentSystemShell('clare') — kept for existing imports/tests */
+export const CLARE_PROPOSAL_SYSTEM = buildAgentSystemShell('clare');
+
+export function buildClareSystemPrompt(
+  digest: ClareDumpDigest,
+  slug: AgentProtocolSlug = 'clare'
+): string {
   const protocol = digest.operating_protocol?.trim();
-  if (!protocol) return CLARE_PROPOSAL_SYSTEM;
-  return `${CLARE_PROPOSAL_SYSTEM}
+  const shell = buildAgentSystemShell(slug);
+  if (!protocol) return shell;
+  return `${shell}
 
 ---
 LIVE OPERATING PROTOCOL (follow this; you may update it with update_protocol):
 ${protocol.slice(0, 12_000)}
 ---`;
 }
+
 
 export type ClareJudgedProposalRow = {
   title: string;
@@ -65,6 +84,7 @@ export type ClareJudgedProposalRow = {
 export type ClareProposalJudgment = {
   voice: string | null;
   items: ClareJudgedProposalRow[];
+  mutations: AgentMutation[];
   model: string | null;
   /** False when the model's reply could not be parsed at all — callers should fall back rather than trust an empty read. */
   ok: boolean;
@@ -122,20 +142,20 @@ export function parseClareProposalJudgment(text: string, digest: ClareDumpDigest
   const start = payload.indexOf('{');
   const end = payload.lastIndexOf('}');
   if (start < 0 || end <= start) {
-    return { voice: null, items: [], model: null, ok: false };
+    return { voice: null, items: [], mutations: [], model: null, ok: false };
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(payload.slice(start, end + 1));
   } catch {
-    return { voice: null, items: [], model: null, ok: false };
+    return { voice: null, items: [], mutations: [], model: null, ok: false };
   }
 
-  const body = parsed as { voice?: unknown; items?: unknown };
+  const body = parsed as { voice?: unknown; items?: unknown; mutations?: unknown };
   const voice =
     typeof body.voice === 'string' && body.voice.trim().length > 8
-      ? body.voice.trim().slice(0, 400)
+      ? body.voice.trim().slice(0, 800)
       : null;
 
   const rows = Array.isArray(body.items) ? body.items : [];
@@ -175,7 +195,13 @@ export function parseClareProposalJudgment(text: string, digest: ClareDumpDigest
     });
   }
 
-  return { voice, items, model: null, ok: true };
+  return {
+    voice,
+    items,
+    mutations: parseAgentMutations(body.mutations),
+    model: null,
+    ok: true
+  };
 }
 
 export function createClareProposalJudge(options: {
@@ -183,8 +209,10 @@ export function createClareProposalJudge(options: {
   model?: string;
   fetchImpl?: typeof fetch;
   tools?: ClareToolRuntime;
+  agentSlug?: AgentProtocolSlug;
 }): ClareProposalJudge {
   const model = options.model ?? CLARE_PROPOSAL_MODEL;
+  const agentSlug = options.agentSlug ?? options.tools?.agentSlug ?? 'clare';
   return async (digest) => {
     const toolRuntime: ClareToolRuntime = options.tools ?? {
       getTimezone: () => digest.timezone,
@@ -199,17 +227,17 @@ export function createClareProposalJudge(options: {
         markdown,
         note: 'Protocol noted for this turn only (store not wired).'
       }),
-      agentSlug: 'clare'
+      agentSlug
     };
     const text = await createAnthropicMessageWithTools({
       apiKey: options.apiKey,
       model,
-      system: buildClareSystemPrompt(digest),
+      system: buildClareSystemPrompt(digest, agentSlug),
       user: JSON.stringify(digest),
       tools: CLARE_AGENT_TOOLS,
       onTool: createClareToolHandler(toolRuntime),
-      maxTokens: 1800,
-      maxRounds: 6,
+      maxTokens: 4096,
+      maxRounds: 8,
       fetchImpl: options.fetchImpl
     });
     const judgment = parseClareProposalJudgment(text, digest);
@@ -219,13 +247,15 @@ export function createClareProposalJudge(options: {
 
 export function defaultClareProposalJudge(
   env: NodeJS.ProcessEnv = process.env,
-  tools?: ClareToolRuntime
+  tools?: ClareToolRuntime,
+  agentSlug?: AgentProtocolSlug
 ): ClareProposalJudge | null {
   const apiKey = env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return null;
   return createClareProposalJudge({
     apiKey,
     model: env.CLARE_PROPOSAL_MODEL?.trim() || undefined,
-    tools
+    tools,
+    agentSlug: agentSlug ?? tools?.agentSlug ?? 'clare'
   });
 }

@@ -42,6 +42,7 @@ import { addDays, backlogTasks, hubCalendarDate, toDateKey } from '@/domain/quer
 import { DEFAULT_HUB_PREFS, parseHubPrefs, resolveTimeZoneInput, type HubPrefs } from '@/domain/hub-prefs';
 import {
   defaultAgentProtocol,
+  isAgentProtocolSlug,
   parseAgentProtocol,
   type AgentProtocolDoc,
   type AgentProtocolSlug
@@ -70,6 +71,14 @@ import {
   type ClareBriefingJudge
 } from '@/ai/clare-briefing-judge';
 import { defaultLifeContextProvider } from '@/ai/life-hub-client';
+import { defaultAgentRepoClient } from '@/ai/github-repo';
+import {
+  mutationLabel,
+  sanitizeProjectPatch,
+  sanitizeTaskPatch,
+  type AgentMutation
+} from '@/domain/agent-mutations';
+import { PageBlockSchema } from '@/schemas/page-block';
 import { lifeContextToPromptBlock } from '@/domain/life-context';
 import { buildClareBriefing } from '@/domain/clare-desk';
 import { DEFAULT_STALL_WEEKS, findStallCandidates, outcomeProjectStatus } from '@/domain/stall';
@@ -852,9 +861,11 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       }
     },
     async processDumpWithClare(input) {
+      const rawSlug = String(input.agent_slug ?? 'clare');
+      const agentSlug: AgentProtocolSlug = isAgentProtocolSlug(rawSlug) ? rawSlug : 'clare';
       const prefs = await this.getHubPrefs();
       const timezone = prefs.timezone;
-      const protocolDoc = await this.getAgentProtocol('clare');
+      const protocolDoc = await this.getAgentProtocol(agentSlug);
       const now = hubCalendarDate(input.now ?? new Date(), timezone);
       const [frameworks, tasks, projects, calibrations] = await Promise.all([
         this.listFrameworks(),
@@ -863,13 +874,16 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
         this.listClareCalibrations()
       ]);
       const byDomain = new Map(calibrations.map((c) => [c.domain, c]));
-      const items = parseBrainDump(input.text, {
-        now,
-        timezone,
-        preferredDomain: input.domain,
-        tasks,
-        projects
-      });
+      const items =
+        agentSlug === 'clare'
+          ? parseBrainDump(input.text, {
+              now,
+              timezone,
+              preferredDomain: input.domain,
+              tasks,
+              projects
+            })
+          : [];
       const calibrationFor = (domain: TaskDomain) => {
         const cal = byDomain.get(domain);
         return cal && cal.sample_count > 0 ? cal : null;
@@ -877,14 +891,25 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       const toolRuntime = {
         getTimezone: async () => (await this.getHubPrefs()).timezone,
         setTimezone: (zone: string) => this.setHubTimezone(zone),
-        getProtocol: async () => (await this.getAgentProtocol('clare')).markdown,
-        setProtocol: (markdown: string) => this.setAgentProtocol('clare', markdown),
-        agentSlug: 'clare' as const,
+        getProtocol: async () => (await this.getAgentProtocol(agentSlug)).markdown,
+        setProtocol: (markdown: string) => this.setAgentProtocol(agentSlug, markdown),
+        listTasks: () => this.listTasks(),
+        listProjects: () => this.listProjects(),
+        getTask: (id: string) => this.getTask(id),
+        getProject: (id: string) => this.getProject(id),
+        listInbox: (agent: string) => this.listAgentInbox(agent),
+        listMaps: () => this.listMaps(),
+        getMap: async (id: string) => {
+          const maps = await this.listMaps();
+          return maps.find((map) => map.id === id) ?? null;
+        },
+        repo: defaultAgentRepoClient(),
+        agentSlug,
         now: () => input.now ?? new Date()
       };
       const judge: ClareProposalJudge | null =
         input.judge === undefined
-          ? defaultClareProposalJudge(process.env, toolRuntime)
+          ? defaultClareProposalJudge(process.env, toolRuntime, agentSlug)
           : input.judge;
       if (judge) {
         const lifeContext =
@@ -914,14 +939,97 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
               frameworks,
               calibrationFor,
               input.protocol_id,
-              judgment.voice
+              judgment.voice,
+              judgment.mutations,
+              agentSlug
             );
           }
         } catch {
           // Model call failed outright — fall through to the offline parser.
         }
       }
+      if (agentSlug !== 'clare') {
+        return {
+          voice:
+            'I am online but the model key is missing locally — set ANTHROPIC_API_KEY, or talk to me on production.',
+          proposals: [],
+          questions: [],
+          notes: [],
+          toolkit: null,
+          mutations: [],
+          agent: agentSlug
+        };
+      }
       return assembleDumpResult(items, frameworks, calibrationFor, input.protocol_id);
+    },
+    async applyAgentMutations(mutations: AgentMutation[]) {
+      const results: Array<{ summary: string; ok: boolean; note: string }> = [];
+      const repo = defaultAgentRepoClient();
+      for (const mutation of mutations) {
+        try {
+          if (mutation.kind === 'task_update') {
+            await this.updateTask(mutation.task_id, sanitizeTaskPatch(mutation.patch));
+            results.push({ summary: mutation.summary, ok: true, note: mutationLabel(mutation) });
+            continue;
+          }
+          if (mutation.kind === 'project_update') {
+            await this.updateProject(mutation.project_id, sanitizeProjectPatch(mutation.patch));
+            results.push({ summary: mutation.summary, ok: true, note: mutationLabel(mutation) });
+            continue;
+          }
+          if (mutation.kind === 'page_blocks') {
+            const blocks = mutation.page_blocks.map((block) => PageBlockSchema.parse(block));
+            if (mutation.entity_type === 'task') {
+              await this.updateTask(mutation.entity_id, { page_blocks: blocks });
+            } else {
+              await this.updateProject(mutation.entity_id, { page_blocks: blocks });
+            }
+            results.push({ summary: mutation.summary, ok: true, note: mutationLabel(mutation) });
+            continue;
+          }
+          if (mutation.kind === 'map_update') {
+            await this.updateMap(
+              mutation.map_id,
+              mutation.patch as {
+                title?: string;
+                year?: number | null;
+                lines?: import('@/schemas/map').TransitMap['lines'];
+                stations?: import('@/schemas/map').TransitMap['stations'];
+                ticks?: import('@/schemas/map').TransitMap['ticks'];
+              }
+            );
+            results.push({ summary: mutation.summary, ok: true, note: mutationLabel(mutation) });
+            continue;
+          }
+          if (mutation.kind === 'repo_file') {
+            if (!repo) {
+              results.push({
+                summary: mutation.summary,
+                ok: false,
+                note: 'AGENT_REPO_TOKEN not configured — cannot write repo files.'
+              });
+              continue;
+            }
+            const written = await repo.putFile({
+              path: mutation.path,
+              content: mutation.content,
+              message: mutation.commit_message
+            });
+            results.push({
+              summary: mutation.summary,
+              ok: written.ok,
+              note: written.commit_url ? `${written.note} ${written.commit_url}` : written.note
+            });
+          }
+        } catch (err) {
+          results.push({
+            summary: mutation.summary,
+            ok: false,
+            note: err instanceof Error ? err.message : 'Apply failed'
+          });
+        }
+      }
+      return { results };
     },
     async acceptClareProposal({ proposal, accepted_minutes, framework_id }) {
       const stamp = nowIso();
