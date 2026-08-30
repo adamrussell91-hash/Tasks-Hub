@@ -376,7 +376,8 @@ export function assembleDumpResult(
   items: DumpItem[],
   frameworks: FrameworkEntry[],
   calibrationFor: (domain: TaskDomain) => ClareCalibration | null,
-  protocolId?: ClareProtocolId
+  protocolId?: ClareProtocolId,
+  agent: AgentProtocolSlug = 'clare'
 ): ClareDumpResult {
   const questions: string[] = [];
   const notes: string[] = [];
@@ -432,7 +433,7 @@ export function assembleDumpResult(
     notes,
     toolkit,
     mutations: [],
-    agent: 'clare'
+    agent
   };
 }
 

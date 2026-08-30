@@ -888,8 +888,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
       }
       const dumpText = followUp?.action === 'make_new' ? followUp.title : input.text;
       const forceNewTitles = followUp?.action === 'make_new';
+      // Twin follow-ups are shared across agents; Clare also uses the offline parser for dumps.
       const items =
-        agentSlug === 'clare'
+        agentSlug === 'clare' || forceNewTitles
           ? parseBrainDump(dumpText, {
               now,
               timezone,
@@ -969,6 +970,9 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           // Model call failed outright — fall through to the offline parser.
         }
       }
+      if (forceNewTitles && items.length) {
+        return assembleDumpResult(items, frameworks, calibrationFor, input.protocol_id, agentSlug);
+      }
       if (agentSlug !== 'clare') {
         return {
           voice:
@@ -981,7 +985,7 @@ export function createTasksStore(kv: KvAdapter, keys: KeyBuilders): TasksStore {
           agent: agentSlug
         };
       }
-      return assembleDumpResult(items, frameworks, calibrationFor, input.protocol_id);
+      return assembleDumpResult(items, frameworks, calibrationFor, input.protocol_id, agentSlug);
     },
     async applyAgentMutations(mutations: AgentMutation[]) {
       const results: Array<{ summary: string; ok: boolean; note: string }> = [];
