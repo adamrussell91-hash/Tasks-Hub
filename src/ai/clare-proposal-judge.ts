@@ -261,11 +261,14 @@ export function defaultClareProposalJudge(
     });
   }
   // Local / no-key: still answer questions and stage page mutations; dumps fall through via ok:false.
-  return localStubClareJudge(agentSlug ?? tools?.agentSlug ?? 'clare');
+  return localStubClareJudge(agentSlug ?? tools?.agentSlug ?? 'clare', tools);
 }
 
 /** Offline stand-in so `npm run dev` can still exercise chat, Q&A, and page mutations. */
-export function localStubClareJudge(agentSlug: AgentProtocolSlug = 'clare'): ClareProposalJudge {
+export function localStubClareJudge(
+  agentSlug: AgentProtocolSlug = 'clare',
+  tools?: ClareToolRuntime
+): ClareProposalJudge {
   return async (digest) => {
     const text = digest.dump_text.trim();
     const lower = text.toLowerCase();
@@ -290,6 +293,8 @@ export function localStubClareJudge(agentSlug: AgentProtocolSlug = 'clare'): Cla
       const embed = createEmbedBlock(`blk_${Date.now().toString(36)}`, 'generic');
       embed.content.url = urlMatch[0];
       embed.content.title = urlMatch[0];
+      const existing = tools?.getTask ? await tools.getTask(task.id) : null;
+      const prior = Array.isArray(existing?.page_blocks) ? existing.page_blocks : [];
       return {
         ok: true,
         model: 'local-stub',
@@ -301,7 +306,7 @@ export function localStubClareJudge(agentSlug: AgentProtocolSlug = 'clare'): Cla
             summary: `Add URL to ${task.title}`,
             entity_type: 'task',
             entity_id: task.id,
-            page_blocks: [embed]
+            page_blocks: [...prior, embed]
           }
         ]
       };
