@@ -4644,6 +4644,11 @@ body.is-universe-fullscreen .page-header {
   align-items: start;
 }
 
+.dashboard-overview__grid--merged .dashboard-overview__tile {
+  min-height: 0;
+  height: max-content;
+}
+
 .dashboard-overview__tile {
   display: flex;
   flex-direction: column;
