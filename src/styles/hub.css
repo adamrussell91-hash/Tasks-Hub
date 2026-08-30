@@ -145,17 +145,24 @@
     font-size: var(--text-base);
     overflow-wrap: anywhere;
   }
+}
 
-  .page-header__title {
-    font-size: var(--text-xl);
-  }
+.page-header__copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-header__title,
+.page-header__title-input {
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .page-header--cover .page-header__copy {
   min-height: 0;
 }
 
-input.page-header__title-input {
+.page-header__title-input {
   display: block;
   width: 100%;
   min-width: 0;
@@ -163,13 +170,16 @@ input.page-header__title-input {
   padding: 0;
   border: 0;
   background: transparent;
-  font: inherit;
+  font-family: inherit;
   color: inherit;
   letter-spacing: inherit;
   line-height: inherit;
+  resize: none;
+  overflow: hidden;
+  field-sizing: content;
 }
 
-input.page-header__title-input:focus-visible {
+.page-header__title-input:focus-visible {
   outline: 2px solid var(--wave);
   outline-offset: 4px;
   border-radius: var(--radius-xs);

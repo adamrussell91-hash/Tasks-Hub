@@ -140,6 +140,11 @@ export function viewChrome(view: HubViewId): { eyebrow: string; title: string } 
   return { eyebrow: 'Home', title: 'Dashboard' };
 }
 
+function fitTitleField(field: HTMLTextAreaElement): void {
+  field.style.height = 'auto';
+  field.style.height = `${field.scrollHeight}px`;
+}
+
 /** One name in the header — editable. Do not put a second title on the card. */
 export function bindEditablePageTitle(
   header: HTMLElement | undefined,
@@ -152,19 +157,29 @@ export function bindEditablePageTitle(
   if (!header) return;
   const existing = header.querySelector('.page-header__title');
   if (!existing) return;
-  const input = document.createElement('input');
-  input.type = 'text';
+  const input = document.createElement('textarea');
   input.className = 'page-header__title page-header__title-input';
   input.value = value;
+  input.rows = 1;
   input.setAttribute('aria-label', 'Title');
   input.addEventListener('input', () => {
-    const next = input.value.trim();
+    const cleaned = input.value.replace(/[\r\n]+/g, ' ');
+    if (input.value !== cleaned) input.value = cleaned;
+    fitTitleField(input);
+    const next = cleaned.trim();
     if (next) handlers.onChange(next);
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    input.blur();
   });
   input.addEventListener('blur', () => {
     if (!input.value.trim()) input.value = handlers.current();
+    fitTitleField(input);
   });
   existing.replaceWith(input);
+  fitTitleField(input);
 }
 
 function iconButton(
@@ -415,13 +430,27 @@ export interface PageHeaderConfig {
   actions?: HTMLElement | null;
 }
 
+function restoreHeaderTitle(existing: Element): HTMLElement {
+  if (existing instanceof HTMLHeadingElement && existing.tagName === 'H1') {
+    existing.className = 'page-header__title';
+    return existing;
+  }
+  const heading = document.createElement('h1');
+  heading.className = 'page-header__title';
+  existing.replaceWith(heading);
+  return heading;
+}
+
 function syncPageHeaderCopy(refs: HubShellRefs, config: PageHeaderConfig): boolean {
   const copy = refs.pageHeader.querySelector('.page-header__copy');
   const eyebrow = copy?.querySelector('.page-header__eyebrow');
-  const title = copy?.querySelector('.page-header__title');
-  if (!copy || !eyebrow || !title || !refs.pageHeader.contains(refs.headerActions)) return false;
+  const existingTitle = copy?.querySelector('.page-header__title');
+  if (!copy || !eyebrow || !existingTitle || !refs.pageHeader.contains(refs.headerActions)) {
+    return false;
+  }
 
   eyebrow.textContent = config.eyebrow;
+  const title = restoreHeaderTitle(existingTitle);
   title.textContent = config.title;
   let supporting = copy.querySelector('.page-header__supporting');
   if (config.supporting) {

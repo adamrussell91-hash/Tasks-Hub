@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  bindEditablePageTitle,
   hashQuery,
   isSoftViewChange,
   parseHashRoute,
@@ -175,6 +176,25 @@ describe('view surfaces', () => {
     expect(refs.refreshButton).toBe(refresh);
     expect(title?.textContent).toBe('Week');
     expect(refs.railNav.querySelector('[aria-current="page"]')?.textContent).toBe('Week');
+  });
+
+  it('restores a heading when leaving an editable task title', () => {
+    const root = document.createElement('div');
+    const refs = renderHubShell(root, { onLogout: vi.fn(), onRefresh: vi.fn() });
+    renderPageHeader(refs, { eyebrow: 'Dashboard', title: 'Plan Year 5/6 Pathfinders STEAM extension course' });
+    bindEditablePageTitle(refs.pageHeader, 'Plan Year 5/6 Pathfinders STEAM extension course', {
+      onChange: vi.fn(),
+      current: () => 'Plan Year 5/6 Pathfinders STEAM extension course'
+    });
+
+    expect(refs.pageHeader.querySelector('textarea.page-header__title-input')).not.toBeNull();
+
+    renderPageHeader(refs, { eyebrow: 'Home', title: 'Dashboard' });
+
+    const title = refs.pageHeader.querySelector('.page-header__title');
+    expect(title?.tagName).toBe('H1');
+    expect(title?.textContent).toBe('Dashboard');
+    expect(refs.pageHeader.querySelector('.page-header__title-input')).toBeNull();
   });
 });
 

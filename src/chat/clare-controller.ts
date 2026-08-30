@@ -3,6 +3,7 @@ import type { ClareDumpResult, ClareProposal } from '@/domain/clare';
 import { briefingToMarkdown, toolkitToMarkdown, type ClareBriefing } from '@/domain/clare-desk';
 import { isBriefingProtocol, type ClareProtocolId } from '@/domain/clare-protocols';
 import { networkBriefing } from '@/domain/network-desk';
+import { preferredDomains } from '@/domain/queries';
 import { formatDisplayDate } from '../../design-kit/js/format-display-date.js';
 import { createHubField, createHubFilter } from '@/views/hub-kit';
 import { tasksApi } from '@/services/client-api';
@@ -55,8 +56,6 @@ function syncComposer(root: ParentNode, slug: ChatAgentSlug): void {
   const agent = agentBySlug(slug);
   const input = root.querySelector<HTMLTextAreaElement>('#chat-input');
   if (input) input.placeholder = agent.placeholder;
-  const domain = root.querySelector<HTMLElement>('#chat-domain');
-  if (domain) domain.hidden = slug !== 'clare';
   const skip = root.querySelector<HTMLElement>('.clare-prefs__skip');
   if (skip) skip.hidden = slug !== 'clare';
 }
@@ -216,8 +215,6 @@ export function createClareChatController({
   let statusBubble: HTMLElement | null = null;
 
   const input = () => root.querySelector<HTMLTextAreaElement>('#chat-input');
-  const domainValue = () =>
-    root.querySelector<HTMLElement>('#chat-domain')?.dataset.hubValue || 'teaching';
   const currentAgent = () => agentBySlug(selectedSlug);
 
   function paintRoster(): void {
@@ -331,7 +328,7 @@ export function createClareChatController({
     const result = await withWait(() =>
       tasksApi.processDumpWithClare({
         text,
-        domain: domainValue(),
+        domain: preferredDomains()[0] ?? 'teaching',
         protocol_id: selectedProtocolId as ClareProtocolId | undefined,
         recent_thread
       })

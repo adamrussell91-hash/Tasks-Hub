@@ -2325,7 +2325,7 @@
     padding-block: var(--space-1);
   }
 
-  /* Input full-width; Domain + Send on a row underneath — not beside the textarea. */
+  /* Input full-width; Send on a row underneath — not beside the textarea. */
   .chat-view[data-panel-mode='overlay'] .chat-form {
     flex: 0 0 auto;
     flex-direction: column;
@@ -2347,11 +2347,6 @@
     width: 100%;
     flex-wrap: nowrap;
     justify-content: flex-end;
-  }
-
-  .chat-view[data-panel-mode='overlay'] .chat-form__tools .hub-filter {
-    flex: 1 1 auto;
-    min-width: 0;
   }
 
   body:has(.chat-view[data-panel-mode='overlay']:not([hidden])) .floating-chat-button {

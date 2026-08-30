@@ -254,7 +254,7 @@ describe('Clare protocol controls', () => {
     );
     expect(canvas.textContent).toMatch(/Hammond can/);
     expect(canvas.querySelector<HTMLTextAreaElement>('#chat-input')?.placeholder).toMatch(/running/i);
-    expect(canvas.querySelector<HTMLElement>('#chat-domain')?.hidden).toBe(true);
+    expect(canvas.querySelector('#chat-domain')).toBeNull();
     expect(canvas.querySelector<HTMLElement>('.clare-prefs__skip')?.hidden).toBe(true);
 
     canvas.querySelector<HTMLButtonElement>('[data-protocol-id="whats-running"]')!.click();

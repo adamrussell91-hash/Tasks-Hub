@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const viewsCss = readFileSync(path.resolve(process.cwd(), 'src/styles/views.css'), 'utf8');
 
 describe('mobile overlay chat form', () => {
-  it('stacks the composer as a column so Domain/Send sit under the textarea', () => {
+  it('stacks the composer as a column so Send sits under the textarea', () => {
     const formRule = viewsCss.match(
       /\.chat-view\[data-panel-mode='overlay'\]\s+\.chat-form\s*\{([^}]+)\}/g
     );
