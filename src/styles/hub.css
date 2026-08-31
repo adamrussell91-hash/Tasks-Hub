@@ -122,8 +122,8 @@
     min-width: 0;
     max-width: 100%;
     overflow-x: clip;
-    /* 12px side gutters — denser than desktop, still clear of the screen edge */
-    padding: var(--space-3);
+    /* 16px side gutters — matches common iOS content inset; keeps tile shadows inside clip */
+    padding: var(--space-4);
     padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
   }
 
