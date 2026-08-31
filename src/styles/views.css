@@ -4497,12 +4497,19 @@ body.is-universe-fullscreen .page-header {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
   margin-bottom: var(--space-4);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .dashboard-focus__tile {
   display: grid;
   gap: var(--space-1);
+  /* width:100% + overflow:hidden — WebKit won't shrink grid <button>s otherwise */
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
+  overflow: hidden;
   padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -4571,6 +4578,8 @@ body.is-universe-fullscreen .page-header {
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--muted);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
 }
 
 .dashboard-overview__panel {
@@ -5221,20 +5230,44 @@ button.column-bar--row.is-active {
 }
 
 @media (max-width: 720px) {
+  /* Phone density — closer to iOS secondary/caption sizes so one screen holds more */
   .dashboard-focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
   }
 
-  .dashboard-overview__grid--merged {
-    grid-template-columns: minmax(0, 1fr);
+  .dashboard-focus__tile {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    gap: 0;
   }
 
-  .dashboard-heat {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+  .dashboard-focus__value {
+    font-size: var(--text-xl);
+  }
+
+  .dashboard-focus__label {
+    font-size: var(--text-2xs);
+  }
+
+  .dashboard-overview {
+    margin-bottom: var(--space-4);
+  }
+
+  .dashboard-overview__shell {
+    margin-bottom: var(--space-3);
   }
 
   .dashboard-overview__toggle {
     display: inline-flex;
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .dashboard-overview__peek {
+    display: block;
+    font-size: var(--text-xs);
   }
 
   .dashboard-overview__shell .dashboard-overview__lede {
@@ -5245,12 +5278,19 @@ button.column-bar--row.is-active {
     display: block;
   }
 
-  .dashboard-overview__peek {
-    display: block;
+  .dashboard-overview__grid {
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .dashboard-overview__grid--merged {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .dashboard-overview__tile {
     min-width: 0;
+    max-width: 100%;
+    gap: var(--space-2);
   }
 
   .dashboard-overview__head {
@@ -5269,6 +5309,46 @@ button.column-bar--row.is-active {
   .dashboard-overview__item-title {
     white-space: normal;
     overflow-wrap: anywhere;
+    font-size: var(--text-base);
+  }
+
+  .dashboard-overview__stat,
+  .dashboard-overview__alert {
+    font-size: var(--text-xs);
+  }
+
+  .dashboard-next {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1);
+  }
+
+  .dashboard-next__title {
+    font-size: var(--text-base);
+  }
+
+  .dashboard-next__row {
+    gap: var(--space-2);
+  }
+
+  .dashboard-row {
+    padding: var(--space-2);
+  }
+
+  .dashboard-row__title {
+    font-size: var(--text-base);
+  }
+
+  .dashboard-timeline {
+    gap: var(--space-3);
+  }
+
+  .dashboard-heat {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .dashboard-board .section-title {
+    font-size: var(--text-md);
+    margin: var(--space-4) 0 var(--space-2);
   }
 }
 

@@ -122,7 +122,8 @@
     min-width: 0;
     max-width: 100%;
     overflow-x: clip;
-    padding: var(--space-4);
+    /* 12px side gutters — denser than desktop, still clear of the screen edge */
+    padding: var(--space-3);
     padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
   }
 
@@ -135,14 +136,25 @@
   .page-header {
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: var(--space-3);
-    margin-bottom: var(--space-4);
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
     min-width: 0;
     max-width: 100%;
   }
 
+  /* Utility-app title size (~32px). Leave .page-header__title-input alone so
+     task/project editors keep readable type while editing. */
+  .page-header__title:not(.page-header__title-input) {
+    font-size: var(--text-xl);
+  }
+
+  .page-header__eyebrow {
+    font-size: var(--text-2xs);
+    margin-bottom: var(--space-1);
+  }
+
   .page-header__supporting {
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
     overflow-wrap: anywhere;
   }
 }
