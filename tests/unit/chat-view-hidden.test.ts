@@ -12,6 +12,8 @@ describe('parked Clare chat', () => {
     expect(view.id).toBe('chat-view');
     expect(view.hidden).toBe(true);
     expect(view.classList.contains('chat-view')).toBe(true);
+    expect(view.querySelector('#chat-domain')).toBeNull();
+    expect(view.querySelector('.chat-form__tools .hub-filter')).toBeNull();
   });
 
   it('closes the overlay back into a host that does not take layout', () => {

@@ -102,7 +102,7 @@ describe('Clare protocol controls', () => {
     expect(canvas.textContent).toMatch(/clare can/i);
     expect(canvas.textContent).toContain(briefing.closer);
     expect(canvas.querySelector('select.hub-filter')).toBeNull();
-    expect(canvas.querySelector('#chat-form .hub-filter')?.tagName).toBe('BUTTON');
+    expect(canvas.querySelector('#chat-form .hub-filter')).toBeNull();
     expect(canvas.querySelector('#chat-input')?.tagName).toBe('TEXTAREA');
     expect(canvas.querySelector('#chat-skip-reasoning')).not.toBeNull();
     expect(canvas.querySelector('.clare-prefs')).toBeNull();
@@ -255,7 +255,7 @@ describe('Clare protocol controls', () => {
     );
     expect(canvas.textContent).toMatch(/Hammond can/);
     expect(canvas.querySelector<HTMLTextAreaElement>('#chat-input')?.placeholder).toMatch(/running/i);
-    expect(canvas.querySelector<HTMLElement>('#chat-domain')?.hidden).toBe(true);
+    expect(canvas.querySelector('#chat-domain')).toBeNull();
     expect(canvas.querySelector<HTMLElement>('.clare-prefs__skip')?.hidden).toBe(true);
 
     canvas.querySelector<HTMLButtonElement>('[data-protocol-id="whats-running"]')!.click();

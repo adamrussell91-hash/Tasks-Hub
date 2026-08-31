@@ -1,6 +1,4 @@
-import { preferredDomains } from '@/domain/queries';
 import type { ChatProtocol } from '@/chat/agents';
-import { createHubFilter, domainFilterOptions } from '@/views/hub-kit';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -147,20 +145,11 @@ export function buildChatView(): HTMLElement {
   input.rows = 2;
   input.placeholder = 'Dump the chaos. One thing, or twelve.';
   input.setAttribute('aria-label', 'Message');
-  const preferred = preferredDomains()[0] ?? 'teaching';
-  const domain = createHubFilter({
-    key: 'Domain',
-    label: 'Default domain',
-    value: preferred,
-    defaultValue: preferred,
-    options: domainFilterOptions(false)
-  });
-  domain.el.id = 'chat-domain';
   const send = el('button', 'btn btn--primary', 'Send');
   send.id = 'chat-send';
   send.type = 'submit';
   const tools = el('div', 'chat-form__tools');
-  tools.append(domain.el, send);
+  tools.append(send);
   form.append(label, input, tools);
   view.append(form);
 
