@@ -4778,6 +4778,12 @@ body.is-universe-fullscreen .page-header {
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--pastel-gold) 45%, var(--hub-glass-fill));
   border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.dashboard-next:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .dashboard-next__row {
