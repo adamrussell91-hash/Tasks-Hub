@@ -5230,7 +5230,7 @@ button.column-bar--row.is-active {
 }
 
 @media (max-width: 720px) {
-  /* Phone density — closer to iOS secondary/caption sizes so one screen holds more */
+  /* Phone density — nearer iOS Title 3 / caption so one screen holds more */
   .dashboard-focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
@@ -5238,13 +5238,14 @@ button.column-bar--row.is-active {
   }
 
   .dashboard-focus__tile {
-    padding: var(--space-3);
+    padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
     gap: 0;
+    box-shadow: var(--elev-1);
   }
 
   .dashboard-focus__value {
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
   }
 
   .dashboard-focus__label {
@@ -5276,6 +5277,7 @@ button.column-bar--row.is-active {
 
   .dashboard-overview[data-open='true'] .dashboard-overview__shell .dashboard-overview__lede {
     display: block;
+    font-size: var(--text-xs);
   }
 
   .dashboard-overview__grid {
@@ -5287,7 +5289,8 @@ button.column-bar--row.is-active {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .dashboard-overview__tile {
+  /* Beat cards.css @520px .hub-card padding (imported after views.css) */
+  .hub-card.dashboard-overview__tile {
     min-width: 0;
     max-width: 100%;
     gap: var(--space-2);
@@ -5296,6 +5299,10 @@ button.column-bar--row.is-active {
 
   .dashboard-overview__head {
     flex-wrap: wrap;
+  }
+
+  .dashboard-overview__head .hub-card__eyebrow {
+    font-size: var(--text-2xs);
   }
 
   .dashboard-overview__portfolio {
@@ -5319,28 +5326,44 @@ button.column-bar--row.is-active {
   }
 
   .dashboard-next {
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-2);
     gap: var(--space-1);
   }
 
   .dashboard-next__title {
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
   }
 
   .dashboard-next__row {
     gap: var(--space-2);
   }
 
+  .dashboard-next .btn {
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-3);
+  }
+
   .dashboard-row {
-    padding: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    gap: var(--space-1);
   }
 
   .dashboard-row__title {
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
+  }
+
+  .dashboard-row__meta .chip,
+  .dashboard-row__date,
+  .dashboard-row__when {
+    font-size: var(--text-2xs);
   }
 
   .dashboard-timeline {
-    gap: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .dashboard-timeline__label {
+    margin-bottom: var(--space-1);
   }
 
   .dashboard-heat {
@@ -5348,8 +5371,8 @@ button.column-bar--row.is-active {
   }
 
   .dashboard-board .section-title {
-    font-size: var(--text-md);
-    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-base);
+    margin: var(--space-3) 0 var(--space-2);
   }
 }
 

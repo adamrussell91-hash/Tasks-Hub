@@ -142,10 +142,10 @@
     max-width: 100%;
   }
 
-  /* Utility-app title size (~32px). Leave .page-header__title-input alone so
-     task/project editors keep readable type while editing. */
+  /* Utility-app title (~21px, near iOS Title 3). Leave the title input alone so
+     task/project editors stay readable while editing. */
   .page-header__title:not(.page-header__title-input) {
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
   }
 
   .page-header__eyebrow {
