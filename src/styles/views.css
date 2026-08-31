@@ -5291,6 +5291,7 @@ button.column-bar--row.is-active {
     min-width: 0;
     max-width: 100%;
     gap: var(--space-2);
+    padding: var(--space-3);
   }
 
   .dashboard-overview__head {
