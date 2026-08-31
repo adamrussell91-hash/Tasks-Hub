@@ -124,7 +124,8 @@ function tileTone(id: string, value: number): string {
 
 function renderFocusStrip(
   stats: ReturnType<typeof dashboardFocusStats>,
-  options: DashboardOverviewOptions
+  options: DashboardOverviewOptions,
+  host: HTMLElement
 ): HTMLElement {
   const strip = el('div', 'dashboard-focus');
   strip.setAttribute('aria-label', 'Focus');
@@ -140,7 +141,15 @@ function renderFocusStrip(
       id: 'overdue',
       label: 'Overdue',
       value: stats.overdue,
-      onClick: () => document.getElementById('timeline-today')?.scrollIntoView({ block: 'nearest' })
+      onClick: () => {
+        writeOverviewOpen(true);
+        setOverviewOpen(host, true);
+        requestAnimationFrame(() => {
+          document
+            .getElementById('timeline-today')
+            ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+      }
     },
     {
       id: 'attention',
@@ -152,23 +161,36 @@ function renderFocusStrip(
       id: 'projects',
       label: 'Active projects',
       value: stats.activeProjects,
-      onClick: options.onFilterRunning
+      onClick: () => {
+        if (options.onFilterRunning) {
+          options.onFilterRunning();
+          requestAnimationFrame(() => {
+            document
+              .querySelector('.dashboard-board')
+              ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          });
+          return;
+        }
+        location.hash = '#/projects';
+      }
     }
   ];
 
   for (const tile of tiles) {
     const tone = tileTone(tile.id, tile.value);
-    const node = tile.onClick
-      ? el('button', `dashboard-focus__tile dashboard-focus__tile--${tone}`)
-      : document.createElement('a');
+    const className = `dashboard-focus__tile dashboard-focus__tile--${tone}`;
+    let node: HTMLElement;
     if (tile.onClick) {
-      const btn = node as HTMLButtonElement;
+      const btn = el('button', className) as HTMLButtonElement;
       btn.type = 'button';
       btn.addEventListener('click', tile.onClick);
-      if (options.runningFilterActive) btn.classList.add('is-active');
+      if (tile.id === 'projects' && options.runningFilterActive) btn.classList.add('is-active');
+      node = btn;
     } else {
-      node.className = `dashboard-focus__tile dashboard-focus__tile--${tone}`;
-      (node as HTMLAnchorElement).href = tile.href ?? '#/board';
+      const link = document.createElement('a');
+      link.className = className;
+      link.href = tile.href ?? '#/board';
+      node = link;
     }
     node.setAttribute('aria-label', `${tile.value} ${tile.label}`);
     node.append(
@@ -187,19 +209,34 @@ function renderNextAction(
   const action = dashboardNextAction(options.tasks, options.projects, now);
   if (!action) return null;
   const card = el('div', 'dashboard-next');
+  card.setAttribute('role', 'link');
+  card.tabIndex = 0;
+  card.setAttribute('aria-label', `Next action: ${action.title}`);
+  const openAction = (): void => {
+    location.hash = action.href.replace(/^#/, '') ? action.href : '#/board';
+  };
+  card.addEventListener('click', (event) => {
+    if ((event.target as HTMLElement | null)?.closest('button')) return;
+    openAction();
+  });
+  card.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if ((event.target as HTMLElement | null)?.closest('button')) return;
+    event.preventDefault();
+    openAction();
+  });
   card.append(el('p', 'hub-card__eyebrow', 'Next action'));
   const row = el('div', 'dashboard-next__row');
-  row.append(
-    el('p', 'dashboard-next__title', action.title),
-    el('span', sourceChipClass(action.source), action.source)
-  );
+  const title = el('p', 'dashboard-next__title', action.title);
+  row.append(title, el('span', sourceChipClass(action.source), action.source));
   const go = el(
     'button',
     action.kind === 'complete' ? 'btn btn--primary' : 'btn btn--decisive',
     action.kind === 'complete' ? 'Complete' : 'Start'
   );
   go.type = 'button';
-  go.addEventListener('click', () => {
+  go.addEventListener('click', (event) => {
+    event.stopPropagation();
     if (action.task && action.kind === 'complete') {
       options.onCompleteTask?.(action.task);
       return;
@@ -208,7 +245,7 @@ function renderNextAction(
       options.onStartTask?.(action.task);
       return;
     }
-    location.hash = action.href.replace(/^#/, '') ? action.href : '#/board';
+    openAction();
   });
   row.append(go);
   card.append(row);
@@ -431,7 +468,7 @@ export function renderDashboardOverview(host: HTMLElement, options: DashboardOve
 
   const prefs = preferredDomains(now);
   const stats = dashboardFocusStats(tasks, projects, now);
-  host.append(renderFocusStrip(stats, options));
+  host.append(renderFocusStrip(stats, options, host));
 
   const shell = el('div', 'dashboard-overview__shell');
   const toggle = el('button', 'dashboard-overview__toggle');

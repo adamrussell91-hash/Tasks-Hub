@@ -298,6 +298,53 @@ describe('renderDashboardOverview', () => {
     expect(host.querySelector('.dashboard-next')?.textContent).toContain('Mark essays');
   });
 
+  it('makes every focus tile and the next-action card activate on click', () => {
+    const onFilterRunning = vi.fn();
+    const host = document.createElement('div');
+    const open = task({ id: 't1', title: 'Mark essays', due_date: '2026-08-27', domain: 'teaching' });
+    renderDashboardOverview(host, {
+      now,
+      tasks: [open, task({ id: 't2', title: 'Late', due_date: '2026-08-20', domain: 'teaching' })],
+      projects: [project({ id: 'p1', title: 'MindWorks', status: 'active' })],
+      onFilterRunning
+    });
+
+    const tiles = [...host.querySelectorAll<HTMLElement>('.dashboard-focus__tile')];
+    expect(tiles).toHaveLength(4);
+    for (const tile of tiles) {
+      expect(tile.tagName === 'A' || tile.tagName === 'BUTTON').toBe(true);
+    }
+
+    const today = tiles.find((tile) => tile.getAttribute('aria-label')?.includes("Today's tasks"));
+    const overdue = tiles.find((tile) => tile.getAttribute('aria-label')?.includes('Overdue'));
+    const attention = tiles.find((tile) => tile.getAttribute('aria-label')?.includes('Needs attention'));
+    const projects = tiles.find((tile) => tile.getAttribute('aria-label')?.includes('Active projects'));
+    expect(today?.tagName).toBe('A');
+    expect((today as HTMLAnchorElement).href).toContain('#/day');
+    expect(attention?.tagName).toBe('A');
+    expect((attention as HTMLAnchorElement).href).toContain('#/projects');
+    expect(overdue?.tagName).toBe('BUTTON');
+    expect(projects?.tagName).toBe('BUTTON');
+
+    host.dataset.open = 'false';
+    const panel = host.querySelector<HTMLElement>('.dashboard-overview__panel');
+    if (panel) panel.hidden = true;
+    overdue?.click();
+    expect(host.dataset.open).toBe('true');
+    expect(panel?.hidden).toBe(false);
+    expect(sessionStorage.getItem('tasks-hub:dashboard-overview-open')).toBe('true');
+
+    projects?.click();
+    expect(onFilterRunning).toHaveBeenCalledOnce();
+
+    const next = host.querySelector<HTMLElement>('.dashboard-next');
+    expect(next?.getAttribute('role')).toBe('link');
+    const hashBefore = window.location.hash;
+    next?.click();
+    expect(window.location.hash).toContain('#/task/');
+    window.location.hash = hashBefore;
+  });
+
   it('wires start, complete, reschedule, and running-filter actions', () => {
     const onStartTask = vi.fn();
     const onCompleteTask = vi.fn();
