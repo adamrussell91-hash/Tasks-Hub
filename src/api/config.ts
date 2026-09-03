@@ -1,12 +1,13 @@
 /**
  * Production API origin. Prefer VITE_API_BASE_URL at Pages build time.
  */
-export const PLACEHOLDER_API_BASE_URL = 'https://tasks-api.adam-russell.com';
+export const PLACEHOLDER_API_BASE_URL = 'https://api.adam-russell.com';
 
 const SAME_ORIGIN_API_HOSTS = new Set([
   'localhost',
   '127.0.0.1',
   '[::1]',
+  'api.adam-russell.com',
   'tasks-api.adam-russell.com',
   'artasks-hub.netlify.app'
 ]);
