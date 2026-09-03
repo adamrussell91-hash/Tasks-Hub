@@ -39,7 +39,7 @@ export function attachPassphraseCapture(
   };
 }
 
-export const API_SIGN_IN_URL = 'https://tasks-api.adam-russell.com';
+export const API_SIGN_IN_URL = 'https://api.adam-russell.com';
 
 export function messageForSignInFailure(err: unknown): string {
   if (err instanceof ApiClientError) {

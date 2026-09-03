@@ -100,7 +100,7 @@ describe('sign-in helpers', () => {
   it('points a real origin block at the API host', () => {
     expect(
       messageForSignInFailure(new ApiClientError({ code: 'forbidden', message: 'nope' }))
-    ).toContain('https://tasks-api.adam-russell.com');
+    ).toContain('https://api.adam-russell.com');
   });
 });
 
@@ -177,7 +177,7 @@ describe('API base URL', () => {
 
   it('uses the configured API origin on the Pages host', () => {
     expect(resolveApiBaseUrl('tasks-hub.adam-russell.com')).toBe(
-      'https://tasks-api.adam-russell.com'
+      'https://api.adam-russell.com'
     );
   });
 });
